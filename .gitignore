@@ -26,11 +26,3 @@
 *.tmp
 *.bak
 
-# Unity bundles are restored separately; see README and build-inputs.
-/AugaIntegration/Assets/augaassets
-/EquipmentIntegration/Assets/eaqs
-/Overhaul/Assets/overhaul_bossroom
-/Overhaul/Assets/overhaul_mountainbossroom
-/Overhaul/Assets/overhaul_swampbossroom
-/Overhaul/Assets/overhaul_dash
-/Overhaul/Assets/overhaul_shields

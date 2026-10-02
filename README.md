@@ -80,9 +80,9 @@ Les fichiers BepInEx sont créés sous `BepInEx/config`, dont `plopyy.valheim.Ov
 
 Les autres références comprennent les assemblies publicisées de Valheim, ses bibliothèques d'interface, TextMeshPro et les modules Unity. Plusieurs déclarent `0.0.0.0` : cela **n'identifie pas la version de Valheim**. Le fichier [build-inputs-2.2.0.0.json](build-inputs-2.2.0.0.json) recense les 43 références locales directes et de framework, leurs versions et empreintes SHA-256. Il identifie les fichiers utilisés pour la version 2.2.0.0 ; ce n'est pas un résolveur de dépendances transitives.
 
-### Bundles et ressources à fournir
+### Bundles inclus et ressources de compilation
 
-Ces fichiers restent locaux et doivent être restaurés à leur emplacement avant compilation :
+Les sept bundles ci-dessous sont inclus dans le dépôt via **Git LFS**. Il n'est pas nécessaire de télécharger Auga ou EquipmentAndQuickSlots pour récupérer leurs bundles. Les trois images PNG et fastJSON restent des prérequis externes, comme indiqué après le tableau.
 
 | Chemin dans le dépôt | Identification |
 |---|---|
@@ -98,7 +98,18 @@ Ces fichiers restent locaux et doivent être restaurés à leur emplacement avan
 
 Les bundles n'ont pas de numéro de version applicatif indépendant. Le manifeste `build-inputs-2.2.0.0.json` donne leur taille et leur SHA-256 exacts. `Unity.Auga.dll` est produit automatiquement par le sous-projet `AugaUnityLib`, puis embarqué avec les autres ressources.
 
-Les PNG, PSD, bundles, DLL, archives, caches et notes de travail sont exclus de Git. **Un clone seul ne suffit donc pas à compiler** : il faut aussi les ressources listées ci-dessus et les références locales.
+Installer Git LFS, puis récupérer le dépôt et ses bundles :
+
+```powershell
+git lfs install
+git clone https://github.com/plopyy/Overhaul.git
+cd Overhaul
+git lfs pull
+```
+
+Pour un clone existant, exécuter `git pull` puis `git lfs pull`. Les pointeurs LFS doivent être remplacés par les vrais fichiers avant compilation ; privilégier cette méthode au téléchargement d'une archive ZIP GitHub.
+
+Les PNG, PSD, DLL, archives, caches et notes de travail restent exclus de Git. **Les bundles sont fournis, mais un clone seul ne suffit pas encore à compiler** : il faut les trois PNG embarqués et `fastJSON.dll` listés dans le tableau, ainsi que les références du dossier `Libs`.
 
 Organisation de l'environnement de développement :
 
