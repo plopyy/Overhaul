@@ -112,31 +112,15 @@ Les versions ci-dessous sont celles des fichiers utilisés pour Overhaul 2.2.0.0
 | `UnityEngine.TextRenderingModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.UI.dll` | 1.0.0.0 | 1.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.UIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
-| `fastJSON.dll` | 2.4.0.0 | 2.4.0.2 | fastJSON ; placer dans `AugaIntegration/Assets` |
+| `fastJSON.dll` | 2.4.0.0 | 2.4.0.2 | fastJSON |
 
-Les fichiers suffixés `_publicized` sont les versions publicisées des assemblies du client : leurs membres internes ont été rendus accessibles pour compiler le mod. Ils doivent être préparés à partir des assemblies de la même version du jeu. Placer toutes les références dans `../Libs`, sauf `fastJSON.dll` dont le chemin est indiqué dans le tableau.
+Les fichiers suffixés `_publicized` sont les versions publicisées des assemblies du client : leurs membres internes ont été rendus accessibles pour compiler le mod. Ils doivent être préparés à partir des assemblies de la même version du jeu. Placer toutes les références dans `../Libs`.
 
 Le fichier [build-inputs-2.2.0.0.json](build-inputs-2.2.0.0.json) recense ces 43 références locales directes et de framework avec leurs empreintes SHA-256. Il identifie les fichiers utilisés pour la version 2.2.0.0 ; ce n’est pas un résolveur de dépendances transitives.
 
-### Bundles inclus et ressources de compilation
+### Récupérer et compiler le projet
 
-Les sept bundles ci-dessous sont inclus dans le dépôt via **Git LFS**, et les trois images PNG embarquées sont également fournies dans Git. Il n'est pas nécessaire de télécharger Auga ou EquipmentAndQuickSlots pour récupérer leurs bundles. Les bibliothèques de compilation, dont fastJSON, restent à fournir.
-
-| Chemin dans le dépôt | Identification |
-|---|---|
-| `AugaIntegration/Assets/augaassets` | Bundle Auga modifié pour Overhaul ; version Unity masquée dans son en-tête (`0.0.0`) |
-| `EquipmentIntegration/Assets/eaqs` | Bundle EQS provenant de la distribution 3.1.2 ; en-tête Unity 6000.0.58f2 |
-| `Overhaul/Assets/overhaul_shields` | Bundle personnalisé ; version Unity masquée dans son en-tête (`0.0.0`) |
-| `Overhaul/Assets/overhaul_dash` | En-tête Unity 6000.0.75f1 |
-| `Overhaul/Assets/overhaul_bossroom` | En-tête Unity 6000.0.75f1 |
-| `Overhaul/Assets/overhaul_mountainbossroom` | En-tête Unity 6000.0.75f1 |
-| `Overhaul/Assets/overhaul_swampbossroom` | En-tête Unity 6000.0.75f1 |
-| `Overhaul/Assets/spirit_icon.png`, `spirit_texture.png`, `hoe_drain_tar.png` | Images embarquées nécessaires à la compilation |
-| `AugaIntegration/Assets/fastJSON.dll` | Bibliothèque embarquée, version indiquée ci-dessus |
-
-Les bundles n'ont pas de numéro de version applicatif indépendant. Le manifeste `build-inputs-2.2.0.0.json` donne leur taille et leur SHA-256 exacts. `Unity.Auga.dll` est produit automatiquement par le sous-projet `AugaUnityLib`, puis embarqué avec les autres ressources.
-
-Installer Git LFS, puis récupérer le dépôt et ses bundles :
+Installer Git LFS, puis récupérer le dépôt :
 
 ```powershell
 git lfs install
@@ -145,9 +129,7 @@ cd Overhaul
 git lfs pull
 ```
 
-Pour un clone existant, exécuter `git pull` puis `git lfs pull`. Les pointeurs LFS doivent être remplacés par les vrais fichiers avant compilation ; privilégier cette méthode au téléchargement d'une archive ZIP GitHub.
-
-Les trois PNG embarqués (`spirit_icon.png`, `spirit_texture.png` et `hoe_drain_tar.png`) sont suivis dans Git. Les autres PNG, les PSD, DLL, archives, caches et notes de travail restent exclus. **Toutes les ressources embarquées de type image ou bundle sont fournies** ; pour compiler, il reste à installer `fastJSON.dll` à l'emplacement indiqué dans le tableau et les références du dossier `Libs`.
+Pour un clone existant : `git pull`, puis `git lfs pull`.
 
 Organisation de l'environnement de développement :
 

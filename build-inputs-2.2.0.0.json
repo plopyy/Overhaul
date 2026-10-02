@@ -258,7 +258,7 @@
       "sha256": "89E31F812501D5DAE1235545D442284C603141924ABCF387E1F4B447F43C3C27"
     },
     {
-      "path": "Overhaul/AugaIntegration/Assets/fastJSON.dll",
+      "path": "Libs/fastJSON.dll",
       "assemblyVersion": "2.4.0.0",
       "fileVersion": "2.4.0.2",
       "sha256": "E8C0812EB91F6BBF4D6C7361F7AB8036356D98099C3594FC78D70EAC21D936F8"

@@ -192,7 +192,7 @@
 <Reference Include="APIManager"><HintPath>..\..\Libs\APIManager.dll</HintPath><Private>False</Private></Reference>
 <Reference Include="ui_lib"><HintPath>..\..\Libs\ui_lib.dll</HintPath><Private>False</Private></Reference>
 <Reference Include="assembly_steamworks_publicized"><HintPath>..\..\Libs\assembly_steamworks_publicized.dll</HintPath><Private>False</Private></Reference>
-<Reference Include="fastJSON"><HintPath>..\AugaIntegration\Assets\fastJSON.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="fastJSON"><HintPath>..\..\Libs\fastJSON.dll</HintPath><Private>False</Private></Reference>
 <Reference Include="System.Core"><Private>False</Private></Reference>
 <Reference Include="System.Xml.Linq"><Private>False</Private></Reference>
 <Reference Include="System.Data.DataSetExtensions"><Private>False</Private></Reference>
@@ -253,7 +253,7 @@
 <Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
 <EmbeddedResource Include="..\AugaIntegration\Assets\augaassets"><LogicalName>Overhaul.augaassets</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\AugaIntegration\AugaUnityLib\bin\$(Configuration)\Unity.Auga.dll"><LogicalName>Overhaul.Unity.Auga.dll</LogicalName></EmbeddedResource>
-<EmbeddedResource Include="..\AugaIntegration\Assets\fastJSON.dll"><LogicalName>Overhaul.fastJSON.dll</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="..\..\Libs\fastJSON.dll"><LogicalName>Overhaul.fastJSON.dll</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\..\Libs\APIManager.dll"><LogicalName>Overhaul.APIManager.dll</LogicalName></EmbeddedResource>
 </ItemGroup>
 <ItemGroup><EmbeddedResource Include="..\AugaIntegration\Assets\Noto-OFL.txt"><LogicalName>Auga.Licenses.Noto-OFL.txt</LogicalName></EmbeddedResource></ItemGroup><ItemGroup><Compile Include="..\EquipmentIntegration\**\*.cs" Exclude="..\EquipmentIntegration\src\Auga\**\*.cs" /><EmbeddedResource Include="..\EquipmentIntegration\Assets\eaqs"><LogicalName>Overhaul.eaqs</LogicalName></EmbeddedResource></ItemGroup></Project>
