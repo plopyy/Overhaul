@@ -120,7 +120,7 @@ Le fichier [build-inputs-2.2.0.0.json](build-inputs-2.2.0.0.json) recense ces 43
 
 ### Bundles inclus et ressources de compilation
 
-Les sept bundles ci-dessous sont inclus dans le dépôt via **Git LFS**. Il n'est pas nécessaire de télécharger Auga ou EquipmentAndQuickSlots pour récupérer leurs bundles. Les trois images PNG et fastJSON restent des prérequis externes, comme indiqué après le tableau.
+Les sept bundles ci-dessous sont inclus dans le dépôt via **Git LFS**, et les trois images PNG embarquées sont également fournies dans Git. Il n'est pas nécessaire de télécharger Auga ou EquipmentAndQuickSlots pour récupérer leurs bundles. Les bibliothèques de compilation, dont fastJSON, restent à fournir.
 
 | Chemin dans le dépôt | Identification |
 |---|---|
@@ -147,7 +147,7 @@ git lfs pull
 
 Pour un clone existant, exécuter `git pull` puis `git lfs pull`. Les pointeurs LFS doivent être remplacés par les vrais fichiers avant compilation ; privilégier cette méthode au téléchargement d'une archive ZIP GitHub.
 
-Les PNG, PSD, DLL, archives, caches et notes de travail restent exclus de Git. **Les bundles sont fournis, mais un clone seul ne suffit pas encore à compiler** : il faut les trois PNG embarqués et `fastJSON.dll` listés dans le tableau, ainsi que les références du dossier `Libs`.
+Les trois PNG embarqués (`spirit_icon.png`, `spirit_texture.png` et `hoe_drain_tar.png`) sont suivis dans Git. Les autres PNG, les PSD, DLL, archives, caches et notes de travail restent exclus. **Toutes les ressources embarquées de type image ou bundle sont fournies** ; pour compiler, il reste à installer `fastJSON.dll` à l'emplacement indiqué dans le tableau et les références du dossier `Libs`.
 
 Organisation de l'environnement de développement :
 

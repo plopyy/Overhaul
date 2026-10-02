@@ -8,6 +8,11 @@
 *.[pP][sS][dD]
 *.[pP][sS][dD].meta
 
+# Images embedded in Overhaul.dll are required to compile.
+!/Overhaul/Assets/spirit_icon.png
+!/Overhaul/Assets/spirit_texture.png
+!/Overhaul/Assets/hoe_drain_tar.png
+
 # Build products, IDE state and local archives
 **/bin/
 **/obj/
