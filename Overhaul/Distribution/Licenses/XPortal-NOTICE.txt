@@ -1,0 +1,7 @@
+XPortal 1.2.25 by SpikeHimself, integrated into Overhaul.
+Source: https://github.com/SpikeHimself/XPortal
+Commit: 360eccc528f87c137b07dff9905800159e90d8dc
+License: GNU GPL version 3; see XPortal-GPL-3.0.txt.
+Modified sources: OverhaulV2/XPortalIntegration in the corresponding Overhaul source distribution.
+Changes: Overhaul lifecycle/configuration, existing AugaXPortal prefab, input registration,
+session cleanup, server message validation and null guards. Original portal data keys retained.

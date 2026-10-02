@@ -1,0 +1,8 @@
+﻿using UnityEngine;using UnityEditor;using UnityEngine.UI;using TMPro;using AugaUnity;
+public static class StatusOverviewMigration {
+public static void Run(){const string path="Assets/Prefabs/HUD.prefab";var h=PrefabUtility.LoadPrefabContents(path);var root=h.transform.Find("hudroot");var old=root.Find("StatusOverview");if(old)Object.DestroyImmediate(old.gameObject);
+var go=new GameObject("StatusOverview",typeof(RectTransform));go.transform.SetParent(root,false);var r=(RectTransform)go.transform;r.anchorMin=r.anchorMax=new Vector2(1,1);r.pivot=new Vector2(1,1);r.sizeDelta=new Vector2(240,600);
+var biome=Object.Instantiate(root.Find("MiniMap/small/biome").gameObject,go.transform,false);biome.name="Biome";var b=(RectTransform)biome.transform;b.anchorMin=b.anchorMax=new Vector2(.5f,1);b.pivot=new Vector2(.5f,1);b.anchoredPosition=Vector2.zero;b.sizeDelta=new Vector2(240,36);
+var clock=Object.Instantiate(biome.transform.Find("Content").gameObject,go.transform,false);clock.name="Clock";var c=(RectTransform)clock.transform;c.anchorMin=c.anchorMax=new Vector2(.5f,1);c.pivot=new Vector2(.5f,1);c.anchoredPosition=new Vector2(0,-36);c.sizeDelta=new Vector2(240,26);var text=clock.GetComponent<TMP_Text>();text.text="12:00";text.fontSize=18;text.alignment=TextAlignmentOptions.Center;
+var effects=Object.Instantiate(root.Find("StatusEffects").gameObject,go.transform,false);effects.name="Effects";var e=(RectTransform)effects.transform;e.anchorMin=e.anchorMax=new Vector2(.5f,1);e.pivot=new Vector2(.5f,1);e.anchoredPosition=new Vector2(0,-70);e.sizeDelta=new Vector2(240,500);
+PrefabUtility.SaveAsPrefabAsset(h,path);PrefabUtility.UnloadPrefabContents(h);AssetDatabase.SaveAssets();AugaCompatibilityBundleBuild.Run();}}

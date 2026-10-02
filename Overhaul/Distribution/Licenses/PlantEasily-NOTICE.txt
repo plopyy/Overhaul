@@ -1,0 +1,5 @@
+PlantEasily 2.2.2 by Advize, GPL-3.0.
+Upstream: https://github.com/AdvizeGH/Advize_ValheimMods/tree/1deeb3962eb8681394961b0f35a4dfbc315c6f99/Advize_PlantEasily
+Adapted for Overhaul: single-plugin lifecycle, French labels, session cleanup, preserved network initialization flags.
+Harvesting, harvest hover text, and automatic replanting from PlantEasily have been removed. Overhaul supplies those behaviors separately.
+Modified sources: OverhaulV2/PlantEasilyIntegration. License: LICENSE.txt in that directory.

@@ -1,0 +1,69 @@
+using JetBrains.Annotations;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace AugaUnity
+{
+    public class CraftingRequirementsPanel : MonoBehaviour
+    {
+        public GameObject[] RequirementList = new GameObject[0];
+        public Image Icon;
+        [CanBeNull] public Image UpgradedIcon;
+        [CanBeNull] public Image WorkbenchIcon;
+        public TMP_Text WorkbenchLevel;
+        [CanBeNull] public TMP_Text OriginalQualityLevel;
+        [CanBeNull] public TMP_Text NewQualityLevel;
+        public TMP_Text ItemCraftType;
+        [CanBeNull] public UpgradeRequirementsWireFrame WireFrame;
+
+        public void Activate(InventoryGui inventoryGui, ComplexTooltip itemInfo)
+        {
+            inventoryGui.m_recipeRequirementList = RequirementList;
+            itemInfo.Icon = Icon;
+            
+            inventoryGui.m_minStationLevelText = WorkbenchLevel;
+            inventoryGui.m_itemCraftType = ItemCraftType;
+            Update();
+        }
+
+        public void Update()
+        {
+            var inventoryGui = InventoryGui.instance;
+
+            if (UpgradedIcon != null && Icon != null)
+            {
+                UpgradedIcon.enabled = Icon.enabled;
+                UpgradedIcon.sprite = Icon.sprite;
+            }
+
+            if (inventoryGui && Player.m_localPlayer != null)
+            {
+                var workbench = Player.m_localPlayer.GetCurrentCraftingStation();
+
+                if (WorkbenchIcon != null)
+                {
+                    WorkbenchIcon.enabled = workbench != null;
+                    if (workbench != null)
+                    {
+                        WorkbenchIcon.sprite = workbench.m_icon;
+                    }
+                }
+
+                var itemData = InventorySelection.Item(inventoryGui);
+                if (itemData != null)
+                {
+                    if (OriginalQualityLevel != null)
+                    {
+                        OriginalQualityLevel.text = itemData.m_quality.ToString();
+                    }
+
+                    if (NewQualityLevel != null)
+                    {
+                        NewQualityLevel.text = (itemData.m_quality + 1).ToString();
+                    }
+                }
+            }
+        }
+    }
+}

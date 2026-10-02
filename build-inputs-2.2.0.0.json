@@ -1,0 +1,333 @@
+{
+  "overhaul": "2.2.0.0",
+  "dotnetSdk": "10.0.302",
+  "targetFramework": "net472",
+  "unityEditor": "6000.0.75f1",
+  "note": "Observed local input files. Assembly 0.0.0.0 is not the game version. Hashes identify exact files; not a transitive dependency resolver.",
+  "libraries": [
+    {
+      "path": "Libs/0Harmony.dll",
+      "assemblyVersion": "2.9.0.0",
+      "fileVersion": "2.9.0.0",
+      "sha256": "1A21CC03424FC82C3DD1346905D16494536B9595AE4162228D99FB7C285C1031"
+    },
+    {
+      "path": "Libs/APIManager.dll",
+      "assemblyVersion": "1.0.0.0",
+      "fileVersion": "1.0.0.0",
+      "sha256": "320C2DC8ADEE4F82A466660762012DA8B39ABDDACCD378BA1CDD402B99060046"
+    },
+    {
+      "path": "Libs/assembly_guiutils_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "41E5FB2A3F4E144B7EE388D09B355DA6535C06C7EBADD7A2924145BCA806B718"
+    },
+    {
+      "path": "Libs/assembly_postprocessing_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "A7C29CF2DF03A92AA4EFB9AE9734EA4FE16ED3F1A81B33671E92B9C7CE2F9F4D"
+    },
+    {
+      "path": "Libs/assembly_steamworks_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "2AE1BBB3BCCC8C3BF44FB4799E611951CCE7742FA5D920C3FC9B33D42F84EA77"
+    },
+    {
+      "path": "Libs/assembly_sunshafts_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "D587F9AD83E705F47A5AAB1262C346F86A0AA09D277F8E72C686125F12534B6B"
+    },
+    {
+      "path": "Libs/assembly_utils_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "958700BD2446BC6867277F3642A91D54878D847B365004E25E5CF1A7817782BD"
+    },
+    {
+      "path": "Libs/assembly_valheim_publicized.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "2E6EA05D74F1948E9682BDFB1625E5BE78BB3E01409F5D104F19D93E0C2A88A8"
+    },
+    {
+      "path": "Libs/BepInEx.dll",
+      "assemblyVersion": "5.4.23.5",
+      "fileVersion": "5.4.23.5",
+      "sha256": "F09821B2A7B990C6F50C5EF23229635303CE675374B70EDC6F5A9B960CB818E3"
+    },
+    {
+      "path": "Libs/gui_framework.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "32CA7F51FC5A7C2B628B4BA3D8D42F1408D518570279BD2E99F30C1C4B5ADBC9"
+    },
+    {
+      "path": "Libs/Jotunn.dll",
+      "assemblyVersion": "2.24.3.0",
+      "fileVersion": "2.24.3.0",
+      "sha256": "6DE489FD207A1E1C258324CDB572D6F5C820C02420C3EDBCDAD5006E5C0AFB4B"
+    },
+    {
+      "path": "Libs/Microsoft.CSharp.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "89014351B459FD1A4B72EB55EB2FB37A29F09DBA43BE8D3C05C099896A2A9978"
+    },
+    {
+      "path": "Libs/mscorlib.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "5ED1180FC8CB409D57952296C7F573F2B1B3D3D2A2CD37258EF407498A17DD4D"
+    },
+    {
+      "path": "Libs/netstandard.dll",
+      "assemblyVersion": "2.1.0.0",
+      "fileVersion": "2.1.0.0",
+      "sha256": "6AE62E082DC494A2433984177F60CA4DB5FAE69B1F360A8B33754172B310B8C5"
+    },
+    {
+      "path": "Libs/Newtonsoft.Json.dll",
+      "assemblyVersion": "13.0.0.0",
+      "fileVersion": "13.0.2",
+      "sha256": "A56146202232958F46BD6A28B5A7DA166AEA123EE0D646735A46E5C341DFBF1F"
+    },
+    {
+      "path": "Libs/SoftReferenceableAssets.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "0C529A84C1AB011AEFA43A75231B9412FC6A532D22752C3F0D4934926691E810"
+    },
+    {
+      "path": "Libs/Splatform.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "AB1753F05F5FAE8C8614B729DE852C3282C5F174EB6E672F76480579B1F41DCE"
+    },
+    {
+      "path": "Libs/System.Core.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "9493EBE16569F6067BEEF5281D68E83EE9511DB7F55245B1DC2C95E8E189FCE3"
+    },
+    {
+      "path": "Libs/System.Data.DataSetExtensions.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "1356D8889A0EDD5A658F2F942638EBF33269E68C4F72F2775741B821A6C6520B"
+    },
+    {
+      "path": "Libs/System.Data.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "6081CA5F31ADB626455939A12D2F99FBA9E963BC05E9ACAA1F7921C0D84784BB"
+    },
+    {
+      "path": "Libs/System.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "439CA04B265472AFE66DF7802BED26E880B3DB35E33C7E0ECF182611F4B9B6D7"
+    },
+    {
+      "path": "Libs/System.Net.Http.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "3677239BD08808DA011F94A7C41371BAAC10BEFA6423098C187471B236D2DB38"
+    },
+    {
+      "path": "Libs/System.Xml.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "F8D4A2AF788E679811171031B79F4AC5204E00526EFA0F0F3507984C3EE96D0A"
+    },
+    {
+      "path": "Libs/System.Xml.Linq.dll",
+      "assemblyVersion": "4.0.0.0",
+      "fileVersion": "4.6.57.0",
+      "sha256": "181938ADE3495F679DB26FC767585BBD84B10F664D47EF1E3422D667F4954370"
+    },
+    {
+      "path": "Libs/ui_lib.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "871AF5A542917169C420EDA072FC32E8540DA1051E9E1114B30240306DF9F5D2"
+    },
+    {
+      "path": "Libs/Unity.InputSystem.dll",
+      "assemblyVersion": "1.19.0.0",
+      "fileVersion": "1.19.0.0",
+      "sha256": "97E3F420DFD0025EC8537054132C141870BD23B613E6992F3D5DFDD146FDBBA2"
+    },
+    {
+      "path": "Libs/Unity.TextMeshPro.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "719A2E22767F1A9C7B92F47AEA2F58550FAE2E76189F99181757B04A3595E181"
+    },
+    {
+      "path": "Libs/UnityEngine.AIModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "CCAF3166D338AD16A2B5D0204F6D56F7CA71E8EA702F50E424961A33DC966249"
+    },
+    {
+      "path": "Libs/UnityEngine.AnimationModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "6ABB58C69CB0F85BFEF5AC81868C3D5CAAC2D6ECAC39DF3C5266BA1C5212BA58"
+    },
+    {
+      "path": "Libs/UnityEngine.AssetBundleModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "0BF4F1D76A83E50FB661A65F4543D53566CCF9BE0103FFF40754B7A242E36E33"
+    },
+    {
+      "path": "Libs/UnityEngine.AudioModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "5487A2DA60E98A0FAD07796D78FAF409CE30C209071495379773BF58B5023F76"
+    },
+    {
+      "path": "Libs/UnityEngine.CoreModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "FBA3821AFB6867FE4D471DC50BF04BA21E6982B33AB6B5336B08A5C55119D990"
+    },
+    {
+      "path": "Libs/UnityEngine.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "2F43705EBD2E3726BA06FB054BEA23C265F9168BF6D16CAD21789CDBE0E1B179"
+    },
+    {
+      "path": "Libs/UnityEngine.ImageConversionModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "1BDBF4D86118074BD439C4DC72F5A728D80661D09244EA27F5DA50F9CB3C2615"
+    },
+    {
+      "path": "Libs/UnityEngine.IMGUIModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "6D79759136956F7E01F07E850905F9A8869CFD6987672CB85310AF35E510E109"
+    },
+    {
+      "path": "Libs/UnityEngine.InputLegacyModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "DFC47973633481E2D7E4A310E4381B36B7CFF5A04C04F1D19E7D2395B82637B0"
+    },
+    {
+      "path": "Libs/UnityEngine.ParticleSystemModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "D32CB4D68C4488C402388BA16BE6A1F2A462B00D76C92CC60BCB74FB5CAC614B"
+    },
+    {
+      "path": "Libs/UnityEngine.PhysicsModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "98C812A75597BA922BB668FC3CE3104742B1C617ADCF06267399CA3F35032B3E"
+    },
+    {
+      "path": "Libs/UnityEngine.TerrainPhysicsModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "79E4E50781AFD5BA0DDC7A304326EC7030D32B7A0558C630A2FDA50C045D1397"
+    },
+    {
+      "path": "Libs/UnityEngine.TextRenderingModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "7021F3013CABDC67A8F5A2B27E1D98C00F0102C6C45CC26D05312EC1797D7C84"
+    },
+    {
+      "path": "Libs/UnityEngine.UI.dll",
+      "assemblyVersion": "1.0.0.0",
+      "fileVersion": "1.0.0.0",
+      "sha256": "61703D54EBDAEBB8AE0070257213888AFF7E4BFA5E61599DE7C0049427C07A0E"
+    },
+    {
+      "path": "Libs/UnityEngine.UIModule.dll",
+      "assemblyVersion": "0.0.0.0",
+      "fileVersion": "0.0.0.0",
+      "sha256": "89E31F812501D5DAE1235545D442284C603141924ABCF387E1F4B447F43C3C27"
+    },
+    {
+      "path": "Overhaul/AugaIntegration/Assets/fastJSON.dll",
+      "assemblyVersion": "2.4.0.0",
+      "fileVersion": "2.4.0.2",
+      "sha256": "E8C0812EB91F6BBF4D6C7361F7AB8036356D98099C3594FC78D70EAC21D936F8"
+    }
+  ],
+  "embeddedAssets": [
+    {
+      "path": "Overhaul/Assets/hoe_drain_tar.png",
+      "bytes": 1048726,
+      "sha256": "D7E35D775F057D9B187BAEB926B0D6561327BE304D7ADEE3EC5EFDF50A149AA3"
+    },
+    {
+      "path": "Overhaul/Assets/overhaul_bossroom",
+      "bytes": 1801982,
+      "sha256": "AF19873625C55BB7BCB1E9C9CAD176E59363454235E2821CDF921CD38AF8943E",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "6000.0.75f1"
+    },
+    {
+      "path": "Overhaul/Assets/overhaul_dash",
+      "bytes": 157876,
+      "sha256": "7372A22F8C350A26FAD902358FD102A9E67CA959E7D6765B1D8A6B8F8605EB6D",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "6000.0.75f1"
+    },
+    {
+      "path": "Overhaul/Assets/overhaul_mountainbossroom",
+      "bytes": 2574280,
+      "sha256": "BF6E4611F81DF3FCEFFDD6DE7D4248E071CCAE3F9DC89D3E1BB3F338B73B1E63",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "6000.0.75f1"
+    },
+    {
+      "path": "Overhaul/Assets/overhaul_shields",
+      "bytes": 49480043,
+      "sha256": "4E9860026EB13AB925A9CDAC39510D5711B91F4BCB89FD4CD980499CD78AA927",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "0.0.0"
+    },
+    {
+      "path": "Overhaul/Assets/overhaul_swampbossroom",
+      "bytes": 1888475,
+      "sha256": "E63D12EB56BA752BB24E033F95D30C2C40D2DEAEB22CC98C0C837D91C2250C0C",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "6000.0.75f1"
+    },
+    {
+      "path": "Overhaul/Assets/spirit_icon.png",
+      "bytes": 335272,
+      "sha256": "A12C2CD0224721A8F593AC660B324AE95952FC114AE8F1EE8ABFB6E71E7CA623"
+    },
+    {
+      "path": "Overhaul/Assets/spirit_texture.png",
+      "bytes": 972436,
+      "sha256": "6E011A208481AE5084D23B2FA1D1A3F02DDDBB6B2959C4703BD24E0D81B8BA65"
+    },
+    {
+      "path": "AugaIntegration/Assets/augaassets",
+      "bytes": 107188656,
+      "sha256": "4E7601F9263EEB170CBF432E1F3D461309215E986EE6D18B0B966155568FC387",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "0.0.0"
+    },
+    {
+      "path": "EquipmentIntegration/Assets/eaqs",
+      "bytes": 197143,
+      "sha256": "BE88455B0AB432C645016C9F261BFB9E7A8E481EA5DD2FAE02B62A4522D863BD",
+      "bundleFormat": "5.x.x",
+      "unityVersionInHeader": "6000.0.58f2"
+    }
+  ]
+}

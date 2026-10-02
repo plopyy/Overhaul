@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{ACD8ED39-D79C-4E24-A1E3-3C33B2227385}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Overhaul</RootNamespace>
+    <AssemblyName>Overhaul</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FrameworkPathOverride>$(MSBuildThisFileDirectory)..\..\Libs</FrameworkPathOverride>
+    <LangVersion>12</LangVersion><FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\PlantEasilyIntegration\**\*.cs" />
+    <Compile Include="..\XPortalIntegration\**\*.cs" />
+    <Compile Include="TreeFallDirection.cs" />
+    <Reference Include="UnityEngine.AIModule"><HintPath>..\..\Libs\UnityEngine.AIModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="Splatform"><HintPath>..\..\Libs\Splatform.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\Libs\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="assembly_valheim_publicized">
+      <HintPath>..\..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="assembly_utils_publicized">
+      <HintPath>..\..\Libs\assembly_utils_publicized.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\Libs\BepInEx.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Jotunn">
+      <HintPath>..\..\Libs\Jotunn.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="netstandard">
+      <HintPath>..\..\Libs\netstandard.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SoftReferenceableAssets">
+      <HintPath>..\..\Libs\SoftReferenceableAssets.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.InputSystem"><HintPath>..\..\Libs\Unity.InputSystem.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\Libs\UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Libs\UnityEngine.AnimationModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Libs\UnityEngine.AssetBundleModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Libs\UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Libs\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\Libs\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>..\..\Libs\Unity.TextMeshPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>..\..\Libs\UnityEngine.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DynamicCombat.cs" /><Compile Include="Leveling\*.cs" /><Compile Include="Storage\*.cs" />
+    <Compile Include="Dungeons\DungeonPolicy.cs" />
+    <Compile Include="Dungeons\DungeonRuntime.cs" />
+    <Compile Include="Dungeons\DungeonResetSafety.cs" />
+    <Compile Include="Dungeons\DungeonVisits.cs" />
+    <Compile Include="Dungeons\DungeonReconnect.cs" />
+    <Compile Include="Dungeons\DungeonDeathGrave.cs" />
+    <Compile Include="Dungeons\DungeonPatches.cs" />
+    <Compile Include="Dungeons\Boss*.cs" />
+    <Compile Include="Commands\AdminCommands.cs" />
+    <Compile Include="Commands\AdminCommandAccess.cs" />
+    <Compile Include="Commands\MudCollisionTest.cs" />
+    <Compile Include="AlterItemStat.cs" />
+    <Compile Include="AttackLocomotionPose.cs" />
+    <Compile Include="CrouchedBow.cs" />
+    <Compile Include="ShoulderCamera.cs" />
+    <Compile Include="DashAnimationPose.cs" />
+    <Compile Include="DashAnimationPlayback.cs" />
+    <Compile Include="Overhaul.cs" />
+	<Compile Include="StaffShieldVfx.cs" />
+    <Compile Include="Patches\AttackPatches.cs" />
+    <Compile Include="Patches\EitrRefineryPatches.cs" />
+    <Compile Include="Patches\CharacterAnimEventPatches.cs" />
+    <Compile Include="Patches\CharacterPatches.cs" />
+    <Compile Include="Patches\HumanoidPatches.cs" />
+    <Compile Include="Patches\InventoryPatches.cs" />
+    <Compile Include="Patches\PlayerPatches.cs" />
+    <Compile Include="Patches\HoldPickupPatch.cs" />
+    <Compile Include="Patches\ZSyncAnimationPatches.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\BuildVersion.g.cs" />
+    <Compile Include="NetworkVersion.cs" />
+    <Compile Include="Utility\Log.cs" />
+    <Compile Include="Utility\OverhaulConfig.cs" />
+    <Compile Include="Utility\WeaponAttackSpeeds.cs" />
+    <Compile Include="Utility\ConfigSections.cs" />
+    <Compile Include="Utility\WeaponReworkEffects.cs" />
+    <Compile Include="AI\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="assembly_guiutils_publicized"><HintPath>..\..\Libs\assembly_guiutils_publicized.dll</HintPath><Private>False</Private></Reference><Reference Include="Newtonsoft.Json"><HintPath>..\..\Libs\Newtonsoft.Json.dll</HintPath><Private>False</Private></Reference><Reference Include="System"><HintPath>..\..\Libs\System.dll</HintPath><Private>False</Private></Reference>
+    <Folder Include="Extensions\" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_swampbossroom"><LogicalName>Overhaul.Assets.overhaul_swampbossroom</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_bossroom"><LogicalName>Overhaul.Assets.overhaul_bossroom</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Distribution\*.cfg"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Distribution\Localisation\*.json"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_dash">
+      <LogicalName>Overhaul.Assets.overhaul_dash</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_shields">
+      <LogicalName>Overhaul.Assets.overhaul_shields</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="IncrementOverhaulVersion" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Increment-Version.ps1&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot;" />
+  </Target>
+  <Target Name="KeepRuntimeDependenciesInGame" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" />
+    </ItemGroup>
+  </Target>
+  <Target Name="CopyPluginToPackages" AfterTargets="Build">
+    <PropertyGroup>
+      <PackagesDirectory Condition="'$(PackagesDirectory)' == ''">$(MSBuildThisFileDirectory)..\..\Packages\Overhaul</PackagesDirectory>
+    </PropertyGroup>
+    <MakeDir Directories="$(PackagesDirectory)" Condition="!Exists('$(PackagesDirectory)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackagesDirectory)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\AlterItemStat.cfg" DestinationFolder="$(PackagesDirectory)" SkipUnchangedFiles="true" /><ItemGroup><LevelingDistribution Include="$(MSBuildProjectDirectory)\Distribution\**\*" Exclude="$(MSBuildProjectDirectory)\Distribution\DungeonBossLoot.cfg" /></ItemGroup><Copy SourceFiles="@(LevelingDistribution)" DestinationFiles="@(LevelingDistribution->'$(PackagesDirectory)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\Distribution\DungeonBossLoot.cfg" DestinationFolder="$(PackagesDirectory)" Condition="!Exists('$(PackagesDirectory)\DungeonBossLoot.cfg')" />
+  </Target>
+
+<ItemGroup>
+<Reference Include="APIManager"><HintPath>..\..\Libs\APIManager.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="ui_lib"><HintPath>..\..\Libs\ui_lib.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="assembly_steamworks_publicized"><HintPath>..\..\Libs\assembly_steamworks_publicized.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="fastJSON"><HintPath>..\AugaIntegration\Assets\fastJSON.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="System.Core"><Private>False</Private></Reference>
+<Reference Include="System.Xml.Linq"><Private>False</Private></Reference>
+<Reference Include="System.Data.DataSetExtensions"><Private>False</Private></Reference>
+<Reference Include="Microsoft.CSharp"><Private>False</Private></Reference>
+<Reference Include="System.Data"><Private>False</Private></Reference>
+<Reference Include="System.Net.Http"><Private>False</Private></Reference>
+<Reference Include="System.Xml"><Private>False</Private></Reference>
+<Reference Include="UnityEngine.ImageConversionModule"><HintPath>..\..\Libs\UnityEngine.ImageConversionModule.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="UnityEngine.InputLegacyModule"><HintPath>..\..\Libs\UnityEngine.InputLegacyModule.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="UnityEngine.TerrainPhysicsModule"><HintPath>..\..\Libs\UnityEngine.TerrainPhysicsModule.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="UnityEngine.TextRenderingModule"><HintPath>..\..\Libs\UnityEngine.TextRenderingModule.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="UnityEngine.UIModule"><HintPath>..\..\Libs\UnityEngine.UIModule.dll</HintPath><Private>False</Private></Reference>
+<Reference Include="gui_framework"><HintPath>..\..\Libs\gui_framework.dll</HintPath><Private>False</Private></Reference>
+<ProjectReference Include="..\AugaIntegration\AugaUnityLib\AugaUnityLib.csproj"><Name>AugaUnityLib</Name><Private>False</Private></ProjectReference>
+<Compile Include="..\AugaIntegration\Auga\API.cs" />
+<Compile Include="..\AugaIntegration\Auga\API.Common.cs" />
+<Compile Include="..\AugaIntegration\Auga\Auga.cs" />
+<Compile Include="..\AugaIntegration\Auga\MovableHudElement.cs" />
+<Compile Include="..\AugaIntegration\Auga\AugaLog_Hooks.cs" />
+<Compile Include="..\AugaIntegration\Auga\Chat_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Connection_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\DamageText_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Extensions.cs" />
+<Compile Include="..\AugaIntegration\Auga\GuiBar_Patch.cs" />
+<Compile Include="..\AugaIntegration\Auga\Hud_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Vitals_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\QuickInventory_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\LastHitTracker.cs" />
+<Compile Include="..\AugaIntegration\Auga\MainMenu_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\MessageHud_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\PauseMenu_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\PausePrefabInstaller.cs" />
+<Compile Include="..\AugaIntegration\Auga\RightPanel_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\PlayerInventory_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Settings_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\UiModules.cs" />
+<Compile Include="..\AugaIntegration\Auga\SetupHelper.cs" />
+<Compile Include="..\AugaIntegration\Auga\Store_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\TextInput_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\EnemeyHud_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\TextViewer_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Text_Patch.cs" />
+<Compile Include="..\AugaIntegration\Auga\UITooltip_Patch.cs" />
+<Compile Include="..\AugaIntegration\Auga\Minimap_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Barber_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\Chatter.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\EquipmentQuickSlotsCompatibility.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\EquipmentPanelBridge.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\XPortalCompatibility.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\OverhaulCompatibility.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\Jewelcrafting.cs" />
+<Compile Include="..\AugaIntegration\Auga\Compat\SearsCatalog.cs" />
+<Compile Include="..\AugaIntegration\Auga\SkillsDialog_Patch.cs" />
+<Compile Include="..\AugaIntegration\Auga\Utilities\TranspilerHelpers.cs" />
+<Compile Include="..\AugaIntegration\Auga\TranslationLanguage.cs" />
+<Compile Include="..\AugaIntegration\Auga\CharacterSelection_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\WorldSelection_Setup.cs" />
+<Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
+<EmbeddedResource Include="..\AugaIntegration\Assets\augaassets"><LogicalName>Overhaul.augaassets</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="..\AugaIntegration\AugaUnityLib\bin\$(Configuration)\Unity.Auga.dll"><LogicalName>Overhaul.Unity.Auga.dll</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="..\AugaIntegration\Assets\fastJSON.dll"><LogicalName>Overhaul.fastJSON.dll</LogicalName></EmbeddedResource>
+<EmbeddedResource Include="..\..\Libs\APIManager.dll"><LogicalName>Overhaul.APIManager.dll</LogicalName></EmbeddedResource>
+</ItemGroup>
+<ItemGroup><EmbeddedResource Include="..\AugaIntegration\Assets\Noto-OFL.txt"><LogicalName>Auga.Licenses.Noto-OFL.txt</LogicalName></EmbeddedResource></ItemGroup><ItemGroup><Compile Include="..\EquipmentIntegration\**\*.cs" Exclude="..\EquipmentIntegration\src\Auga\**\*.cs" /><EmbeddedResource Include="..\EquipmentIntegration\Assets\eaqs"><LogicalName>Overhaul.eaqs</LogicalName></EmbeddedResource></ItemGroup></Project>
+
+
+
+
+
+

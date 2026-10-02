@@ -1,0 +1,36 @@
+# Local notes: the project README is the only Markdown tracked here.
+*.[mM][dD]
+!/README.md
+
+# Artwork and Photoshop sources
+*.[pP][nN][gG]
+*.[pP][nN][gG].meta
+*.[pP][sS][dD]
+*.[pP][sS][dD].meta
+
+# Build products, IDE state and local archives
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.dll
+*.exe
+*.pdb
+*.mdb
+*.zip
+*.7z
+*.rar
+*.log
+*.tmp
+*.bak
+
+# Unity bundles are restored separately; see README and build-inputs.
+/AugaIntegration/Assets/augaassets
+/EquipmentIntegration/Assets/eaqs
+/Overhaul/Assets/overhaul_bossroom
+/Overhaul/Assets/overhaul_mountainbossroom
+/Overhaul/Assets/overhaul_swampbossroom
+/Overhaul/Assets/overhaul_dash
+/Overhaul/Assets/overhaul_shields

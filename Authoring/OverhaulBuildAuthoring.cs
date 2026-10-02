@@ -1,0 +1,58 @@
+using System;using System.IO;using System.Linq;using System.Collections.Generic;using UnityEditor;using UnityEngine;using UnityEngine.UI;using TMPro;using Object=UnityEngine.Object;
+public static class OverhaulBuildAuthoring {
+const string Folder="Assets/OverhaulBuild";static TMP_FontAsset font;static Sprite panel,button,selected;static Color ink=new Color(.84f,.81f,.75f),gold=new Color(1,.65f,.12f);static GameObject host;
+static void Rect(Transform t,float x,float y,float w,float h){var r=(RectTransform)t;r.anchorMin=r.anchorMax=r.pivot=new Vector2(.5f,.5f);r.anchoredPosition=new Vector2(x,y);r.sizeDelta=new Vector2(w,h);r.localScale=Vector3.one;}
+static void Fill(Transform t){var r=(RectTransform)t;r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;r.localScale=Vector3.one;}
+static GameObject Clone(GameObject p,Transform parent){var g=Object.Instantiate(p,parent,false);g.name=p.name;return g;}
+static GameObject Save(GameObject g,string name){Skin(g);var p=PrefabUtility.SaveAsPrefabAsset(g,Folder+"/"+name+".prefab");Object.DestroyImmediate(g);return p;}
+static void Skin(GameObject g){
+foreach(var text in g.GetComponentsInChildren<TMP_Text>(true)){if(text.font&&AssetDatabase.GetAssetPath(text.font).StartsWith("Assets/Fonts/",StringComparison.Ordinal))continue;text.font=font;text.fontSharedMaterial=font.material;text.color=ink;text.fontSize=Mathf.Clamp(text.fontSize,14,22);text.enableAutoSizing=false;text.fontStyle=FontStyles.Normal;text.outlineWidth=0;}
+foreach(var image in g.GetComponentsInChildren<Image>(true)){if(image.sprite&&!AssetDatabase.Contains(image.sprite)){image.sprite=button;image.type=Image.Type.Sliced;}if(image.material&&!AssetDatabase.Contains(image.material))image.material=null;if(image.GetComponent<Mask>())image.GetComponent<Mask>().showMaskGraphic=false;}
+foreach(var t in g.GetComponentsInChildren<BuildUiTagButton>(true)){t.m_baseTextColor=ink;t.m_missingMaterialColor=new Color(.45f,.42f,.38f);foreach(var image in t.GetComponentsInChildren<Image>(true)){image.sprite=null;image.color=Color.clear;}}// No transient references from the read-only game bundle may leak into the authored prefab.
+foreach(var c in g.GetComponentsInChildren<Component>(true)){if(!c||c is Transform)continue;var so=new SerializedObject(c);if(c is MonoBehaviour){var script=MonoImporter.GetAllRuntimeMonoScripts().FirstOrDefault(m=>m.GetClass()==c.GetType()&&AssetDatabase.Contains(m));if(!script)throw new Exception("No local script "+c.GetType());so.FindProperty("m_Script").objectReferenceValue=script;}var p=so.GetIterator();while(p.Next(true)){if(p.propertyType!=SerializedPropertyType.ObjectReference||p.propertyPath=="m_Script")continue;var v=p.objectReferenceValue;if(!v||AssetDatabase.Contains(v))continue;if(v is Component cp&&cp.transform.IsChildOf(g.transform)||v is GameObject go&&go.transform.IsChildOf(g.transform))continue;p.objectReferenceValue=null;}so.ApplyModifiedPropertiesWithoutUndo();}
+}
+public static void Run(){Directory.CreateDirectory(Folder);host=new GameObject("Inactive authoring");host.SetActive(false);var native=OverhaulBuildSource.Load().LoadAsset<GameObject>("Assets/UI/prefabs/IngameGui/IngameGui_HUD.prefab").GetComponent<Hud>().m_buildUi;
+var original=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/BuildHud.prefab");font=AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Fonts/SourceSansPro-Regular SDF.asset");panel=original.transform.Find("Bkg2").GetComponent<Image>().sprite;var element=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/BuildHudElement.prefab");button=element.GetComponent<Image>().sprite;selected=element.transform.Find("selected").GetComponent<Image>().sprite;
+var piece=Clone(element,host.transform);Object.DestroyImmediate(piece.GetComponent<UITooltip>());piece.GetComponent<Image>().color=new Color(.14f,.12f,.1f,.9f);var pc=piece.AddComponent<BuildUiPieceButton>();pc.m_icon=piece.transform.Find("icon").GetComponent<Image>();pc.m_upgradeArrow=piece.transform.Find("upgrade").GetComponent<Image>();var star=Clone(piece.transform.Find("upgrade").gameObject,piece.transform);star.name="Favorite";Rect(star.transform,21,21,14,14);pc.m_favoriteStar=star.GetComponent<Image>();pc.m_favoriteStar.sprite=AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Sprites/EnemyHud/star.png");pc.m_favoriteStar.color=gold;piece.transform.Find("selected").gameObject.SetActive(false);var piecePrefab=Save(piece,"AugaBuildPiece");
+var tagPrefab=Save(Clone(native.m_tagButtonPrefab,host.transform),"AugaBuildTag");var favoritePrefab=Save(Clone(native.m_favoritesDropdown.checkButtonPrefab,host.transform),"AugaBuildFavoriteCategory");
+// Original Auga frame is retained; the new game's complete controller hierarchy is authored inside it.
+var root=Clone(original,host.transform);root.name="AugaConstruction";foreach(var c in root.GetComponents<MonoBehaviour>())Object.DestroyImmediate(c);foreach(Transform t in root.transform.Cast<Transform>().ToArray())if(t.name!="Darken"&&t.name!="Bkg2")Object.DestroyImmediate(t.gameObject);Rect(root.transform,0,0,966,536);foreach(Transform t in root.transform)Fill(t);
+var controls=Clone(native.gameObject,root.transform);controls.name="Controls";Fill(controls.transform);var ui=controls.GetComponent<BuildUi>();ui.m_majorMaterials.Clear();ui.m_pieceButtonPrefab=piecePrefab;ui.m_tagButtonPrefab=tagPrefab;ui.m_favoritesDropdown.checkButtonPrefab=favoritePrefab;
+var bar=controls.transform.Find("bar");Fill(bar);var window=bar.Find("SelectionWindow");Fill(window);window.Find("Background").gameObject.SetActive(false);Rect(window.Find("TabContainer"),0,280,1000,60);Rect(window.Find("Main View"),0,-20,946,466);Fill(window.Find("Main View/Root"));
+// Use four exact Auga tabs, retaining native keyboard/gamepad tab behavior.
+var oldTabContainer=window.Find("TabContainer");
+var divider=Clone(original.transform.Find("DividerLarge").gameObject,window);divider.name="AugaTabs";Rect(divider.transform,0,233,926,40);
+Object.DestroyImmediate(divider.GetComponent<AugaUnity.BuildHudTabFixer>());
+foreach(var b in divider.GetComponentsInChildren<Button>(true))if(b.name=="PageLeft"||b.name=="PageRight")b.gameObject.SetActive(false);
+var tabContainer=divider.transform.Find("TabContainer");Rect(tabContainer,0,0,580,40);
+var tabs=tabContainer.Find("Tabs");var source=original.transform.Find("DividerLarge/TabContainer/Tabs/Misc");foreach(Transform t in tabs.Cast<Transform>().ToArray())Object.DestroyImmediate(t.gameObject);
+divider.GetComponent<AugaUnity.HorizontalDividerFitter>().Content=(RectTransform)tabs;ui.m_tabContainer=(RectTransform)tabs;ui.m_tabHandler.m_tabs.Clear();
+var labels=new[]{"$auga_build_usage","$auga_build_materials","$auga_build_recent","$auga_build_favorites"};
+for(int i=0;i<4;i++){var t=Clone(source.gameObject,tabs);t.name="Tab"+i;t.SetActive(true);foreach(var text in t.GetComponentsInChildren<TMP_Text>(true)){text.text=labels[i];text.fontSize*=1.35f;text.color=text.transform.IsChildOf(t.transform.Find("Selected"))?Color.white:ink;}var b=t.GetComponent<Button>();var colors=b.colors;colors.normalColor=Color.white;colors.highlightedColor=Color.white;colors.selectedColor=Color.white;b.colors=colors;b.onClick=new Button.ButtonClickedEvent();ui.m_tabHandler.m_tabs.Add(new TabHandler.Tab{m_button=b,m_default=i==0,m_onClick=new UnityEngine.Events.UnityEvent()});}
+tabs.GetComponent<HorizontalLayoutGroup>().spacing+=8f;var tr=(RectTransform)tabs;tr.anchorMin=tr.anchorMax=tr.pivot=new Vector2(.5f,.5f);tr.anchoredPosition=Vector2.zero;
+// Keep the native TabHandler alive, but hide its obsolete visual hierarchy.
+ui.m_hideWithTagList.Clear();ui.m_hideWithTagList.Add((RectTransform)divider.transform);Object.DestroyImmediate(oldTabContainer.gameObject);Rect(ui.m_tagListContainer,-338,0,250,436);ui.m_pieceView.anchorMin=Vector2.zero;ui.m_pieceView.anchorMax=Vector2.one;ui.m_pieceView.offsetMin=new Vector2(280,15);ui.m_pieceView.offsetMax=new Vector2(-10,-15);var grid=ui.m_pieceButtonsContainer.GetComponent<GridLayoutGroup>();grid.padding.left=0;grid.padding.right=0;grid.cellSize=new Vector2(64,64);grid.spacing=new Vector2(8,8);grid.constraint=GridLayoutGroup.Constraint.Flexible;
+foreach(var n in new[]{"bar","bar/SelectionWindow","bar/SelectionWindow/Main View","bar/SelectionWindow/Main View/Root"})controls.transform.Find(n).gameObject.SetActive(true);foreach(var scroll in new[]{ui.m_pieceScrollRect,ui.m_tagListScrollRect}){Fill(scroll.viewport);scroll.viewport.offsetMax=new Vector2(-16,0);var content=scroll.content;content.anchorMin=new Vector2(0,1);content.anchorMax=Vector2.one;content.pivot=new Vector2(0,1);content.anchoredPosition=Vector2.zero;content.sizeDelta=new Vector2(0,content.sizeDelta.y);scroll.GetComponent<Image>().color=new Color(0,0,0,.16f);}
+var tagScroll=(RectTransform)ui.m_tagListScrollRect.transform;Fill(tagScroll);tagScroll.offsetMax=new Vector2(0,-56);Rect(ui.m_searchField.transform.parent,0,196,250,40);
+var oldSearch=ui.m_searchField;
+var searchSource=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/MainMenu.prefab").transform.Find("StartGame/Panel/JoinPanel/Filter");
+var search=Clone(searchSource.gameObject,ui.m_tagListContainer);search.name="AugaSearch";Rect(search.transform,23,196,210,35);search.transform.localScale=Vector3.one*.85f;Rect(oldSearch.transform.parent,-108,196,32,40);
+// The menu donor submits text and forces focus every frame; construction uses native filtering.
+var inheritedSubmit=search.GetComponent<AugaUnity.GuiInputFieldSubmit>();if(inheritedSubmit)Object.DestroyImmediate(inheritedSubmit);
+ui.m_specialButtonsContainer.SetParent(ui.m_tagListContainer,false);Rect(ui.m_specialButtonsContainer,-103,196,64,64);ui.m_specialButtonsContainer.localScale=Vector3.one*.65f;
+ui.m_searchField=search.GetComponent<GUIFramework.GuiInputField>();ui.m_searchField.onValueChanged=new TMP_InputField.OnChangeEvent();ui.m_searchField.onEndEdit=new TMP_InputField.SubmitEvent();ui.m_searchField.text="";Object.DestroyImmediate(oldSearch.gameObject);
+foreach(var scroll in new[]{ui.m_pieceScrollRect,ui.m_tagListScrollRect}){
+ var old=scroll.verticalScrollbar;var replacement=Clone(original.transform.Find("ScrollBar").gameObject,scroll.transform);replacement.name="AugaScrollbar";var r=(RectTransform)replacement.transform;r.anchorMin=new Vector2(1,0);r.anchorMax=Vector2.one;r.pivot=new Vector2(1,.5f);r.offsetMin=new Vector2(-8,0);r.offsetMax=Vector2.zero;
+ scroll.verticalScrollbar=replacement.GetComponent<Scrollbar>();scroll.verticalScrollbar.direction=Scrollbar.Direction.BottomToTop;scroll.verticalScrollbar.value=1;scroll.verticalScrollbarVisibility=ScrollRect.ScrollbarVisibility.AutoHide;
+ if(old)Object.DestroyImmediate(old.gameObject);
+}ui.m_favoritesDropdown.GetComponent<Image>().sprite=panel;ui.m_favoritesDropdown.gameObject.SetActive(false);var rootUi=root.AddComponent<BuildUi>();EditorUtility.CopySerialized(ui,rootUi);foreach(var c in root.GetComponentsInChildren<MonoBehaviour>(true)){var so=new SerializedObject(c);var it=so.GetIterator();while(it.Next(true))if(it.propertyType==SerializedPropertyType.ObjectReference&&it.objectReferenceValue==ui)it.objectReferenceValue=rootUi;so.ApplyModifiedPropertiesWithoutUndo();}Object.DestroyImmediate(ui);controls.SetActive(true);root.SetActive(false);var output=Save(root,"AugaConstruction");AssetImporter.GetAtPath(Folder+"/AugaConstruction.prefab").SetAssetBundleNameAndVariant("augaassets","");AssetDatabase.SaveAssets();Object.DestroyImmediate(host);Debug.Log("Authored AugaConstruction with native BuildUi and four original Auga tabs.");AugaCompatibilityBundleBuild.Run();}
+}
+
+
+
+
+
+
+
+
+
