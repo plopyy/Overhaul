@@ -66,19 +66,57 @@ Les fichiers BepInEx sont créés sous `BepInEx/config`, dont `plopyy.valheim.Ov
 - Éditeur d'assets et de validation : **Unity 6000.0.75f1**.
 - Les références sont résolues depuis un dossier `Libs` placé à côté du dépôt. Elles doivent provenir de l'environnement de jeu et des dépendances compatibles ; elles ne sont pas distribuées ici.
 
-| Bibliothèque | Version relevée sur le fichier utilisé |
-|---|---|
-| BepInEx | 5.4.23.5 |
-| Jotunn | 2.24.3.0 |
-| `0Harmony.dll` | Assembly et fichier 2.9.0.0 |
-| Newtonsoft.Json | Fichier 13.0.2 ; assembly 13.0.0.0 |
-| APIManager | 1.0.0.0 |
-| fastJSON | Fichier 2.4.0.2 ; assembly 2.4.0.0 |
-| Unity Input System | 1.19.0.0 |
-| UnityEngine.UI | 1.0.0.0 |
-| netstandard | 2.1.0.0 |
+Les versions ci-dessous sont celles des fichiers utilisés pour Overhaul 2.2.0.0. Pour toutes les lignes indiquant **Client Valheim correspondant**, prendre les DLL du **client de la version de Valheim ciblée**, en conservant un ensemble cohérent provenant de cette même version. Cela concerne aussi les modules Unity et les bibliothèques .NET fournis avec le jeu. Une version d’assembly `0.0.0.0` ne signifie pas que le fichier est interchangeable entre versions de Valheim.
 
-Les autres références comprennent les assemblies publicisées de Valheim, ses bibliothèques d'interface, TextMeshPro et les modules Unity. Plusieurs déclarent `0.0.0.0` : cela **n'identifie pas la version de Valheim**. Le fichier [build-inputs-2.2.0.0.json](build-inputs-2.2.0.0.json) recense les 43 références locales directes et de framework, leurs versions et empreintes SHA-256. Il identifie les fichiers utilisés pour la version 2.2.0.0 ; ce n'est pas un résolveur de dépendances transitives.
+| Bibliothèque | Version assembly | Version fichier | Provenance / préparation |
+|---|---|---|---|
+| `0Harmony.dll` | 2.9.0.0 | 2.9.0.0 | Harmony fourni avec BepInEx |
+| `APIManager.dll` | 1.0.0.0 | 1.0.0.0 | APIManager |
+| `assembly_guiutils_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `assembly_postprocessing_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `assembly_steamworks_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `assembly_sunshafts_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `assembly_utils_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `assembly_valheim_publicized.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant, puis publicisation |
+| `BepInEx.dll` | 5.4.23.5 | 5.4.23.5 | BepInEx 5 |
+| `gui_framework.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `Jotunn.dll` | 2.24.3.0 | 2.24.3.0 | Jotunn |
+| `Microsoft.CSharp.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `mscorlib.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `netstandard.dll` | 2.1.0.0 | 2.1.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `Newtonsoft.Json.dll` | 13.0.0.0 | 13.0.2 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `SoftReferenceableAssets.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `Splatform.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Core.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Data.DataSetExtensions.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Data.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Net.Http.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Xml.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `System.Xml.Linq.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `ui_lib.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `Unity.InputSystem.dll` | 1.19.0.0 | 1.19.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `Unity.TextMeshPro.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.AIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.AnimationModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.AssetBundleModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.AudioModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.CoreModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.ImageConversionModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.IMGUIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.InputLegacyModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.ParticleSystemModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.PhysicsModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.TerrainPhysicsModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.TextRenderingModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.UI.dll` | 1.0.0.0 | 1.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.UIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `fastJSON.dll` | 2.4.0.0 | 2.4.0.2 | fastJSON ; placer dans `AugaIntegration/Assets` |
+
+Les fichiers suffixés `_publicized` sont les versions publicisées des assemblies du client : leurs membres internes ont été rendus accessibles pour compiler le mod. Ils doivent être préparés à partir des assemblies de la même version du jeu. Placer toutes les références dans `../Libs`, sauf `fastJSON.dll` dont le chemin est indiqué dans le tableau.
+
+Le fichier [build-inputs-2.2.0.0.json](build-inputs-2.2.0.0.json) recense ces 43 références locales directes et de framework avec leurs empreintes SHA-256. Il identifie les fichiers utilisés pour la version 2.2.0.0 ; ce n’est pas un résolveur de dépendances transitives.
 
 ### Bundles inclus et ressources de compilation
 
