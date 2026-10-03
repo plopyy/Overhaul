@@ -80,7 +80,7 @@ public static class Jewelcrafting
 
         for (var i = 0; i < instrs.Count; ++i)
         {
-            if (instrs[i].opcode == OpCodes.Dup && instrs[i+1].opcode == OpCodes.Callvirt
+            if (i + 3 < instrs.Count && instrs[i].opcode == OpCodes.Dup && instrs[i+1].opcode == OpCodes.Callvirt
                                                   && instrs[i+2].opcode == OpCodes.Stloc_0 
                                                   && instrs[i+3].opcode == OpCodes.Ldloca_S)
             {
@@ -109,7 +109,7 @@ public static class Jewelcrafting
 
         for (var i = 0; i < instrs.Count; ++i)
         { 
-            if (instrs[i].opcode == OpCodes.Callvirt && instrs[i+1].opcode == OpCodes.Stloc_S)
+            if (i + 3 < instrs.Count && instrs[i].opcode == OpCodes.Callvirt && instrs[i+1].opcode == OpCodes.Stloc_S)
             {
                 yield return th.LogMessage(instrs[i]);
                 yield return th.LogMessage(instrs[i+1]);

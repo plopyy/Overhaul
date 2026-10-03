@@ -59,22 +59,10 @@ namespace Overhaul
 
             loadAttempted = true;
             Log.LogInfo($"Unity runtime detected: {Application.unityVersion}");
-            using (Stream resource = typeof(StaffShieldVfx).Assembly.GetManifestResourceStream("Overhaul.Assets." + BundleFileName))
+            try { bundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets." + BundleFileName); }
+            catch (InvalidOperationException error)
             {
-                if (resource == null)
-                {
-                    Log.LogError($"Embedded shield VFX bundle was not found: {BundleFileName}");
-                    return;
-                }
-                using (var memory = new MemoryStream())
-                {
-                    resource.CopyTo(memory);
-                    bundle = AssetBundle.LoadFromMemory(memory.ToArray());
-                }
-            }
-            if (bundle == null)
-            {
-                Log.LogError($"Unable to load embedded shield VFX bundle: {BundleFileName}");
+                Log.LogError(error.Message);
                 return;
             }
 

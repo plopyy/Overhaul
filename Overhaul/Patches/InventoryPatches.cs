@@ -7,13 +7,24 @@ using System.Threading.Tasks;
 
 namespace Overhaul.Patches
 {
-    [HarmonyPatch(typeof(ObjectDB), "UpdateRegisters")]
-    internal static class WoodenArrowRecipePatch
+    internal static class WoodenArrowRecipe
     {
-        [HarmonyPostfix]
-        private static void Postfix(ObjectDB __instance)
+        internal static void Initialize()
         {
-            foreach (var recipe in __instance.m_recipes)
+            Shutdown();
+            Jotunn.Managers.ItemManager.OnItemsRegistered += Apply;
+            Jotunn.Managers.ItemManager.OnItemsRegisteredFejd += Apply;
+        }
+        internal static void Shutdown()
+        {
+            Jotunn.Managers.ItemManager.OnItemsRegistered -= Apply;
+            Jotunn.Managers.ItemManager.OnItemsRegisteredFejd -= Apply;
+        }
+        private static void Apply()
+        {
+            var database = ObjectDB.instance;
+            if (!database) return;
+            foreach (var recipe in database.m_recipes)
             {
                 if (!recipe || !recipe.m_item || recipe.m_item.gameObject.name != "ArrowWood") continue;
                 recipe.m_craftingStation = null;

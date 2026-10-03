@@ -53,24 +53,9 @@ namespace Overhaul.Dungeons
         internal static bool InLane(ZDO proxy, Vector3 position) { return BossInteriorReservation.Bounds(proxy).Contains(position); }
         internal static void Initialize()
         {
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Overhaul.Assets.overhaul_bossroom"))
-            {
-                if (stream == null) throw new InvalidOperationException("Boss room resource missing");
-                var bytes = new byte[stream.Length]; stream.Read(bytes, 0, bytes.Length);
-                bundle = AssetBundle.LoadFromMemory(bytes);
-            }
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Overhaul.Assets.overhaul_swampbossroom"))
-            {
-                if (stream == null) throw new InvalidOperationException("Swamp boss room resource missing");
-                var bytes = new byte[stream.Length]; stream.Read(bytes, 0, bytes.Length);
-                swampBundle = AssetBundle.LoadFromMemory(bytes);
-            }
-            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Overhaul.Assets.overhaul_mountainbossroom"))
-            {
-                if (stream == null) throw new InvalidOperationException("Mountain boss room resource missing");
-                var bytes = new byte[stream.Length]; stream.Read(bytes, 0, bytes.Length);
-                mountainBundle = AssetBundle.LoadFromMemory(bytes);
-            }
+            if (!bundle) bundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_bossroom");
+            if (!swampBundle) swampBundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_swampbossroom");
+            if (!mountainBundle) mountainBundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_mountainbossroom");
             DungeonManager.OnVanillaRoomsAvailable -= RegisterRooms;
             DungeonManager.OnVanillaRoomsAvailable += RegisterRooms;
         }

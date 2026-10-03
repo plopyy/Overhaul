@@ -49,7 +49,7 @@ namespace Auga
             
             for (int i = 0; i < instrs.Count; ++i)
             {
-                if (i > 6 && instrs[i].opcode == OpCodes.Ldarg_0 && instrs[i+1].opcode == OpCodes.Ldc_I4_1 && 
+                if (i > 6 && i + 2 < instrs.Count && instrs[i].opcode == OpCodes.Ldarg_0 && instrs[i+1].opcode == OpCodes.Ldc_I4_1 &&
                     instrs[i+2].opcode == OpCodes.Stfld && instrs[i+2].operand.Equals(wasFocusedField) )
                 {
                     //Call Method needs Minimap Instance as parameter

@@ -31,7 +31,7 @@ namespace Overhaul.Utility
             internal readonly List<string> Settings=new List<string>();
         }
         internal static string Defaults(string file)
-                {
+        {
             return Jotunn.Utils.AssetUtils.LoadTextFromResources("Overhaul.Defaults." + file, typeof(ConfigSections).Assembly)
                 ?? throw new InvalidDataException("Missing embedded Overhaul defaults: " + file);
         }

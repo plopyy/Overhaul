@@ -61,6 +61,7 @@ namespace Overhaul
             DvergerCirclet.Initialize();
             Storage.FeedingTrough.Initialize();
             Storage.CharcoalKilnWoods.Initialize();
+            Patches.WoodenArrowRecipe.Initialize();
             Storage.ProductionClock.Initialize();
 			StaffShieldVfx.Initialize();
             DoPatching();
@@ -106,6 +107,7 @@ namespace Overhaul
             DvergerCirclet.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
+            Patches.WoodenArrowRecipe.Shutdown();
             OverhaulConfig.StopSyncManager();
             Storage.ProductionClock.Shutdown();
             Dungeons.BossEncounter.Shutdown();

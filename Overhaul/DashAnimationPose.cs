@@ -21,16 +21,7 @@ namespace Overhaul
         {
             if (loadAttempted) return controller != null;
             loadAttempted = true;
-            using (Stream stream = typeof(DashAnimationPose).Assembly.GetManifestResourceStream("Overhaul.Assets.overhaul_dash"))
-            {
-                if (stream == null) throw new InvalidOperationException("Embedded dash animations missing");
-                using (var memory = new MemoryStream())
-                {
-                    stream.CopyTo(memory);
-                    bundle = AssetBundle.LoadFromMemory(memory.ToArray());
-                }
-            }
-            if (!bundle) throw new InvalidOperationException("Unable to load dash animations");
+            bundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_dash");
             controller = bundle.LoadAsset<RuntimeAnimatorController>("Assets/OverhaulDash/Dash.controller");
             if (!controller) throw new InvalidOperationException("Dash controller missing");
             return true;

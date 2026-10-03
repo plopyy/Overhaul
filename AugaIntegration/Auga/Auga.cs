@@ -548,25 +548,9 @@ namespace Auga
         {
             // The prefab bundle and its behaviours are built together. An old loose
             // bundle beside the DLL must not silently replace the corrected prefabs.
-            var assembly = typeof(Auga).Assembly;
-            using (var stream = assembly.GetManifestResourceStream($"{assembly.GetName().Name}.{filename}"))
-            {
-                if (stream == null)
-                    throw new InvalidOperationException($"Missing embedded Auga bundle: {filename}");
-                var bytes = new byte[checked((int)stream.Length)];
-                int position = 0;
-                while (position < bytes.Length)
-                {
-                    int read = stream.Read(bytes, position, bytes.Length - position);
-                    if (read == 0) throw new EndOfStreamException(filename);
-                    position += read;
-                }
-                var bundle = AssetBundle.LoadFromMemory(bytes);
-                if (bundle == null)
-                    throw new InvalidOperationException($"Unable to load embedded Auga bundle: {filename}");
-                _instance.Logger.LogInfo($"Loaded embedded prefab bundle {filename} ({bytes.Length} bytes) from {assembly.Location}");
-                return bundle;
-            }
+            var bundle = global::Overhaul.Utility.EmbeddedAssets.LoadBundle("Overhaul." + filename);
+            _instance.Logger.LogInfo($"Loaded embedded prefab bundle {filename} from {typeof(Auga).Assembly.Location}");
+            return bundle;
         }
 
         public static string LoadJsonText(string filename)

@@ -32,6 +32,7 @@ namespace EquipmentAndQuickSlots
 
         internal static void Initialize(ManualLogSource log)
         {
+            if (IsInitialized) return;
             // Jotunn requires custom synchronized files below BepInEx/config.
             var config = OpenConfig(Paths.ConfigPath, Paths.ConfigPath);
             Initialize(log, config);
@@ -88,13 +89,7 @@ namespace EquipmentAndQuickSlots
 
         public static AssetBundle LoadAssetBundle(string filename)
         {
-            using (var stream = typeof(EquipmentAndQuickSlots).Assembly.GetManifestResourceStream("Overhaul." + filename))
-            using (var buffer = new MemoryStream())
-            {
-                if (stream == null) throw new InvalidOperationException("Missing EQS asset bundle: " + filename);
-                stream.CopyTo(buffer);
-                return AssetBundle.LoadFromMemory(buffer.ToArray());
-            }
+            return global::Overhaul.Utility.EmbeddedAssets.LoadBundle("Overhaul." + filename);
         }
 
         public static void Log(string message) { if (ValConfig.LoggingEnabled?.Value == true) logger?.LogMessage(message); }
