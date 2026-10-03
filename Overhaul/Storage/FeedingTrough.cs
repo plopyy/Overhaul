@@ -23,8 +23,17 @@ namespace Overhaul.Storage
             internal long Ticket, Owner;
         }
         private static readonly ConditionalWeakTable<MonsterAI, Search> Searches = new ConditionalWeakTable<MonsterAI, Search>();
-        internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
-        internal static void Shutdown() { PrefabManager.OnVanillaPrefabsAvailable -= Register; Loaded.Clear(); }
+        internal static void Initialize()
+        {
+            PrefabManager.OnVanillaPrefabsAvailable += Register;
+            PrefabManager.OnPrefabsRegistered += TroughInventory.RefreshFoods;
+        }
+        internal static void Shutdown()
+        {
+            PrefabManager.OnVanillaPrefabsAvailable -= Register;
+            PrefabManager.OnPrefabsRegistered -= TroughInventory.RefreshFoods;
+            Loaded.Clear(); TroughInventory.ClearFoods();
+        }
 
         private static void Register()
         {
@@ -33,6 +42,7 @@ namespace Overhaul.Storage
             Configure(custom.PiecePrefab, PrefabManager.Instance.GetPrefab("Wood").GetComponent<ItemDrop>(),
                 PrefabManager.Instance.GetPrefab("blackforge_ext1"), PrefabManager.Instance.GetPrefab("Acorn"), PrefabManager.Instance.GetPrefab("Carrot"),
                 PrefabManager.Instance.GetPrefab("Raspberry"), PrefabManager.Instance.GetPrefab("Turnip"));
+            TroughPresentation.CreateIcon(custom.PiecePrefab);
             PieceManager.Instance.AddPiece(custom);
         }
 
@@ -42,6 +52,7 @@ namespace Overhaul.Storage
             piece.m_name = "$overhaul_feeding_trough";
             piece.m_description = "$overhaul_feeding_trough_description";
             piece.m_craftingStation = null;
+            piece.m_usage = Piece.UsageTagFlags.Misc | Piece.UsageTagFlags.Furniture | Piece.UsageTagFlags.Storage;
             piece.m_resources = new[] { new Piece.Requirement { m_resItem = wood, m_amount = 10, m_recover = true } };
             var container = prefab.GetComponent<Container>();
             container.m_name = piece.m_name;
@@ -246,6 +257,7 @@ namespace Overhaul.Storage
             private static void Postfix(MonsterAI __instance)
             {
                 var ai=__instance;
+                TroughInventory.RegisterAnimal(ai);
                 if(ai.m_nview && ai.m_nview.IsValid())
                     ai.m_nview.Register<ZDOID,long,string>(ReplyRpc,(sender,id,ticket,food)=>Fed(ai,sender,id,ticket,food));
             }
@@ -264,16 +276,46 @@ namespace Overhaul.Storage
     internal sealed class TroughContainer : MonoBehaviour
     {
         internal Container Container;
+        private Inventory observedInventory;
+        private GameObject decoration;
         private const string ReceiptsKey="overhaul_trough_receipts_v1";
         private sealed class Receipt { internal ZDOID Animal;internal long Ticket,Time;internal string Food; }
         private void Start()
         {
             Container=GetComponent<Container>();
             if(!Container || !Container.m_nview || !Container.m_nview.IsValid())return;
+            AttachInventory();
             FeedingTrough.Loaded.Add(this);
             Container.m_nview.Register<ZDOID,long>(FeedingTrough.RequestRpc,Request);
         }
-        private void OnDestroy() => FeedingTrough.Loaded.Remove(this);
+        internal void AttachInventory()
+        {
+            if (!Container) Container = GetComponent<Container>();
+            var inventory = Container ? Container.GetInventory() : null;
+            if (inventory == null || inventory == observedInventory) return;
+            DetachInventory();
+            observedInventory = inventory;
+            TroughInventory.Register(inventory, this);
+            observedInventory.m_onChanged += RefreshVisual;
+            decoration = transform.Find("Overhaul trough/Food decoration")?.gameObject;
+            RefreshVisual();
+        }
+        internal void RefreshVisual()
+        {
+            if (!decoration || observedInventory == null) return;
+            bool full = false;
+            foreach (var item in observedInventory.GetAllItems())
+                if (item.m_stack > 0 && TroughInventory.IsFood(item)) { full = true; break; }
+            if (decoration.activeSelf != full) decoration.SetActive(full);
+        }
+        private void DetachInventory()
+        {
+            if (observedInventory == null) return;
+            observedInventory.m_onChanged -= RefreshVisual;
+            TroughInventory.Unregister(observedInventory);
+            observedInventory = null;
+        }
+        private void OnDestroy() { DetachInventory(); FeedingTrough.Loaded.Remove(this); }
 
         internal void Request(long sender,ZDOID animalId,long ticket)
         {

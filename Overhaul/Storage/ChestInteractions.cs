@@ -23,6 +23,7 @@ namespace Overhaul.Storage
 
         internal static void EnsureName(Container c)
         {
+            if (c && c.GetComponent<TroughContainer>()) return;
             var data = ChestAccess.Data(c);
             if (Eligible(c) && c.m_nview.IsOwner() && string.IsNullOrEmpty(data.GetString(NameKey, "")))
                 data.Set(NameKey, c.m_name);
@@ -37,6 +38,7 @@ namespace Overhaul.Storage
         internal static string Name(Container c)
         {
             if (!c) return "";
+            if (c.GetComponent<TroughContainer>()) return Localization.instance.Localize(c.m_name);
             if (!Eligible(c)) return c.m_name;
             EnsureName(c);
             var name = ChestAccess.Data(c).GetString(NameKey, c.m_name);
@@ -49,6 +51,7 @@ namespace Overhaul.Storage
 
         internal static bool Rename(Container c, long sender, ZDOID actorId, string text)
         {
+            if (c && c.GetComponent<TroughContainer>()) return false;
             var actor = ChestAccess.Actor(sender, actorId);
             if (actor == null || !Eligible(c) || !c.m_nview.IsOwner() ||
                 Vector3.Distance(actor.GetPosition(), c.transform.position) > 5f ||
@@ -74,6 +77,7 @@ namespace Overhaul.Storage
         }
         internal static bool BeginRename(Container c, Player player)
         {
+            if (c && c.GetComponent<TroughContainer>()) return false;
             if (!player || !TextInput.instance || !Access(c, player.GetPlayerID()) ||
                 Vector3.Distance(player.transform.position, c.transform.position) > 5f) return false;
             TextInput.instance.RequestText(new NameReceiver(c), "$overhaul_chest_rename", NameLimit);
@@ -149,6 +153,7 @@ namespace Overhaul.Storage
                 var c = __instance;
                 if (ChestAccess.Data(c) == null) return;
                 EnsureName(c);
+                if (c.GetComponent<TroughContainer>()) return;
                 c.m_nview.Register<ZDOID, string>(RenameRpc, (sender, actor, text) => Rename(c, sender, actor, text));
             }
         }
@@ -169,7 +174,10 @@ namespace Overhaul.Storage
             static void Postfix(Container __instance, ref string __result)
             {
                 var player = Player.m_localPlayer;
-                if (player && Access(__instance, player.GetPlayerID())) __result += Hint();
+                if (player && Access(__instance, player.GetPlayerID()))
+                    __result += __instance.GetComponent<TroughContainer>()
+                        ? Localization.instance.Localize("\n[<color=yellow><b>" + KeyLabel + "</b></color>] $overhaul_chest_take_all")
+                        : Hint();
             }
         }
         [HarmonyPatch(typeof(Container), nameof(Container.GetHoverName))]
