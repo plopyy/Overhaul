@@ -67,29 +67,53 @@ namespace Overhaul.Storage
             model.name = "Cooler model";
             model.gameObject.SetActive(true);
             UnityEngine.Object.Instantiate(cooler.transform.Find("collider"), root.transform, false);
-            // The native Low mesh is the dry basin; High also contains a water submesh.
-            // Keep the original GPU mesh intact: some native meshes do not permit CPU access.
+            // Keep the detailed native basin intact; hide only its water material.
             foreach (var lod in model.GetComponentsInChildren<LODGroup>(true)) UnityEngine.Object.DestroyImmediate(lod);
-            model.Find("High").gameObject.SetActive(false);
-            model.Find("Low").gameObject.SetActive(true);
-            // Meshes only: fixed decoration, with no item, physics or networking components.
+            model.Find("High").gameObject.SetActive(true);
+            model.Find("Low").gameObject.SetActive(false);
+            var basin = model.Find("High").GetComponent<MeshRenderer>();
+            var basinMaterials = basin.sharedMaterials;
+            var invisible = new Material(model.Find("Low").GetComponent<MeshRenderer>().sharedMaterial);
+            invisible.name = "Overhaul hidden water";
+            invisible.SetColor("_Color", Color.clear);
+            invisible.SetColor("_EmissionColor", Color.black);
+            invisible.SetFloat("_Mode", 2);
+            invisible.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            invisible.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            invisible.SetInt("_ZWrite", 0);
+            invisible.DisableKeyword("_ALPHATEST_ON");
+            invisible.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            invisible.DisableKeyword("_EMISSION");
+            invisible.EnableKeyword("_ALPHABLEND_ON");
+            invisible.renderQueue = 3000;
+            for (int i = 0; i < basinMaterials.Length; i++)
+                if (basinMaterials[i].name.IndexOf("water", StringComparison.OrdinalIgnoreCase) >= 0) basinMaterials[i] = invisible;
+            basin.sharedMaterials = basinMaterials;
+            // Fixed seeded scatter: no gameplay RNG, physical items or per-frame simulation.
             var food = new GameObject("Food decoration").transform;
             food.SetParent(root.transform, false);
-            for (int i = 0; i < 6; i++)
-                AddFood(food, acorn.transform.Find("acorn"), "Acorns", new Vector3(-.49f+i*.19f,.16f,(i%2==0?-.09f:.09f)), i*73f, .42f);
-            for (int i = 0; i < 4; i++)
-                AddFood(food, carrot.transform.Find("attach"), "Carrot", new Vector3(-.40f+i*.25f,.18f,(i%2==0?.055f:-.055f)), 75f+i*12f, .57f);
-            for (int i = 0; i < 8; i++)
-                AddFood(food, raspberry.transform.Find("attach"), "Raspberry", new Vector3(-.52f+i*.145f,.19f,(i%2==0?-.13f:.12f)), i*47f, .38f);
-            for (int i = 0; i < 3; i++)
-                AddFood(food, turnip.transform.Find("attach"), "Turnip", new Vector3(-.38f+i*.37f,.17f,(i%2==0?-.03f:.055f)), i*113f, .33f);
+            var random = new System.Random(71839);
+            for (int i = 0; i < 100; i++)
+            {
+                int kind = random.Next(4);
+                float x = (float)(random.NextDouble() * 1.16 - .58);
+                float z = (float)(random.NextDouble() * .30 - .15);
+                float height = .13f + (float)random.NextDouble() * .16f + .10f * (1f - Mathf.Abs(x) / .65f);
+                float yaw = (float)random.NextDouble() * 360f;
+                float variation = .85f + (float)random.NextDouble() * .30f;
+                var source = kind == 0 ? acorn.transform.Find("acorn") :
+                    (kind == 1 ? carrot : kind == 2 ? raspberry : turnip).transform.Find("attach");
+                float size = kind == 0 ? .52f : kind == 1 ? .55f : kind == 2 ? .44f : .34f;
+                AddFood(food, source, "Food", new Vector3(x,height,z), yaw, size * variation,
+                    new Vector3((float)random.NextDouble()*50f-25f,0,(float)random.NextDouble()*60f-30f));
+            }
             CombineFood(food);
             foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = prefab.layer;
             var wear = prefab.GetComponent<WearNTear>();
             if (wear) wear.m_new = wear.m_worn = wear.m_broken = root;
         }
 
-        private static void AddFood(Transform parent, Transform source, string name, Vector3 position, float yaw, float scale)
+        private static void AddFood(Transform parent, Transform source, string name, Vector3 position, float yaw, float scale, Vector3 tilt)
         {
             if (!source) throw new InvalidOperationException("Missing feeding trough decoration: " + name);
             var holder = new GameObject(name).transform;
@@ -104,7 +128,7 @@ namespace Overhaul.Storage
             var bottom = holder.InverseTransformPoint(new Vector3(bounds.center.x, bounds.min.y, bounds.center.z));
             visual.localPosition -= bottom;
             holder.localPosition = position;
-            holder.localRotation = Quaternion.Euler(0, yaw, 0);
+            holder.localRotation = Quaternion.Euler(tilt.x, yaw, tilt.z);
             holder.localScale = Vector3.one * scale;
         }
         private static void CombineFood(Transform food)
@@ -125,8 +149,6 @@ namespace Overhaul.Storage
                         transform = food.worldToLocalMatrix * filter.transform.localToWorldMatrix });
                 }
             }
-            var children = new List<GameObject>();
-            foreach (Transform child in food) children.Add(child.gameObject);
             foreach (var pair in groups)
             {
                 var mesh = new Mesh { name = "Overhaul trough " + pair.Key.name };
@@ -288,6 +310,7 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
 
 
 
