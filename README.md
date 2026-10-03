@@ -12,7 +12,7 @@ Le projet est en développement, actuellement en série **2.2**. Les fonctionnal
 - Réglages d'expérience selon les biomes, catégories de monstres, étoiles et participation aux combats.
 - Statistiques d'objets, vitesses d'attaque et effets des familles d'armes configurables.
 - Durabilité maximale des armes, outils et armures doublée, y compris les gains par amélioration. Les objets existants conservent leurs points restants et peuvent être réparés jusqu'au nouveau maximum.
-- Dégâts de coupe des haches doublés sur les arbres et dégâts de minage des pioches doublés sur les roches et minerais, sans modifier les dégâts contre les créatures.
+- Dégâts de coupe des haches doublés sur les arbres. Bonus de minage ×2 sur les roches, minerais et tas de boue, ainsi que sur les golems et les créatures vulnérables au minage ; dégâts inchangés contre les autres créatures.
 - Les attaques usent les armes et outils uniquement lorsqu'elles touchent une créature. Les tirs sont comptés à l'impact, une seule fois par attaque, avec les bonus de progression habituels.
 - Comportements de créatures enrichis : agressivité, défense, réactions de groupe et fuite.
 - Visée à l'arc accroupi, caméra décalée à l'épaule et impulsion de saut indépendante de la pente.

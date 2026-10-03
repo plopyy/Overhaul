@@ -30,7 +30,8 @@ namespace Overhaul
                 hit = hit.Clone();
                 hit.m_damage.m_chop *= 2f;
             }
-            else if ((__instance is MineRock || __instance is MineRock5) &&
+            else if ((__instance is MineRock || __instance is MineRock5 ||
+                (__instance is Destructible resource && !tree && !resource.GetComponent<RandomFlyingBird>())) &&
                 hit.m_skill == Skills.SkillType.Pickaxes && hit.m_damage.m_pickaxe > 0f)
             {
                 hit = hit.Clone();
