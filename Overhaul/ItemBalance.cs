@@ -65,7 +65,7 @@ namespace Overhaul
             private static void Prefix(SE_Stats __instance)
             {
                 // The localization key also identifies cloned effects; no localized text lookup.
-                if (__instance.m_name == "$se_beltstrength") __instance.m_addMaxCarryWeight = 400f;
+                if (__instance.m_name == "$item_beltstrength") __instance.m_addMaxCarryWeight = 400f;
             }
         }
     }
