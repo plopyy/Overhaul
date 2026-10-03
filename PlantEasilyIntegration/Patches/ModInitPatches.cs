@@ -74,33 +74,21 @@ static class ModInitPatches
         foreach (PickableDB entry in PickableRefs)
             PrefabRefs[entry.key] = null;
 
-        int totalNeeded = PrefabRefs.Count;
-        int foundCount = 0;
-
-        foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
-        {
-            if (PrefabRefs.TryGetValue(go.name, out GameObject existing))
-            {
-                if (existing == null)
-                    foundCount++;
-                // Always overwrite, earlier prefabs may be editor-only duds. Double check this again later, may not be needed.
-                PrefabRefs[go.name] = go;
-
-                if (foundCount == totalNeeded)
-                {
-                    Dbgl("Found all prefab references");
-                    break;
-                }
-            }
-        }
-
+        ResolvePrefabRefs();
         InitLineRenderers();
         PickableDB.InitPickableSpacingConfig();
     }
+    internal static void ResolvePrefabRefs()
+    {
+        foreach (string name in PrefabRefs.Keys.ToArray())
+            PrefabRefs[name] = Jotunn.Managers.PrefabManager.Instance.GetPrefab(name);
+    }
+
     // Make a dedicated Grid Direction Renderer class or something, this stuff is kind of scattered atm
     private static void InitLineRenderers()
     {
-        Material material = Resources.FindObjectsOfTypeAll<Material>().First(m => m.name == "Default-Line");
+        Material material = Jotunn.Managers.PrefabManager.Cache.GetPrefab<Material>("Default-Line")
+            ?? throw new System.InvalidOperationException("PlantEasily grid material Default-Line unavailable");
         GhostGrid.DirectionRenderer = new();
         Object.DontDestroyOnLoad(GhostGrid.DirectionRenderer);
 

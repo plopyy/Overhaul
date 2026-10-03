@@ -1231,28 +1231,8 @@ namespace Overhaul
 			return visualWasCreated;
 		}
 
-		private static GameObject FindLoadedPrefab(string prefabName)
-		{
-			if (ZNetScene.instance != null)
-			{
-				GameObject networkPrefab = ZNetScene.instance.GetPrefab(prefabName);
-				if (networkPrefab != null)
-				{
-					return networkPrefab;
-				}
-			}
-
-			GameObject[] loadedObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-			for (int i = 0; i < loadedObjects.Length; i++)
-			{
-				if (loadedObjects[i].name == prefabName)
-				{
-					return loadedObjects[i];
-				}
-			}
-
-			return null;
-		}
+		private static GameObject FindLoadedPrefab(string prefabName) =>
+            Jotunn.Managers.PrefabManager.Instance.GetPrefab(prefabName);
 
 		public static bool IsDashing(Player player)
 		{
