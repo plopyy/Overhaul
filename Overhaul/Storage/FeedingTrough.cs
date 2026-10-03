@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
@@ -28,11 +28,13 @@ namespace Overhaul.Storage
         {
             if (PrefabManager.Instance.GetPrefab(Name)) return;
             var custom = new CustomPiece(Name, "piece_chest_wood", "_HammerPieceTable");
-            Configure(custom.PiecePrefab, PrefabManager.Instance.GetPrefab("Wood").GetComponent<ItemDrop>());
+            Configure(custom.PiecePrefab, PrefabManager.Instance.GetPrefab("Wood").GetComponent<ItemDrop>(),
+                PrefabManager.Instance.GetPrefab("blackforge_ext1"), PrefabManager.Instance.GetPrefab("Acorn"), PrefabManager.Instance.GetPrefab("Carrot"),
+                PrefabManager.Instance.GetPrefab("Raspberry"), PrefabManager.Instance.GetPrefab("Turnip"));
             PieceManager.Instance.AddPiece(custom);
         }
 
-        internal static void Configure(GameObject prefab, ItemDrop wood)
+        internal static void Configure(GameObject prefab, ItemDrop wood, GameObject cooler, GameObject acorn, GameObject carrot, GameObject raspberry, GameObject turnip)
         {
             var piece = prefab.GetComponent<Piece>();
             piece.m_name = "$overhaul_feeding_trough";
@@ -45,44 +47,102 @@ namespace Overhaul.Storage
             container.m_open = null; container.m_closed = null;
             container.m_defaultItems = new DropTable();
             if (!prefab.GetComponent<TroughContainer>()) prefab.AddComponent<TroughContainer>();
-            BuildVisual(prefab);
+            BuildVisual(prefab, cooler, acorn, carrot, raspberry, turnip);
         }
 
-        private static void BuildVisual(GameObject prefab)
+        private static void BuildVisual(GameObject prefab, GameObject cooler, GameObject acorn, GameObject carrot, GameObject raspberry, GameObject turnip)
         {
             if (prefab.transform.Find("Overhaul trough")) return;
-            Material wood = null;
-            foreach (var renderer in prefab.GetComponentsInChildren<MeshRenderer>(true))
-            {
-                if (!wood && renderer.sharedMaterial) wood = renderer.sharedMaterial;
-                renderer.enabled = false;
-            }
+            if (!cooler || !cooler.transform.Find("new") || !cooler.transform.Find("collider"))
+                throw new InvalidOperationException("Feeding trough requires the black forge cooler model.");
+            foreach (var lod in prefab.GetComponentsInChildren<LODGroup>(true)) lod.enabled = false;
+            foreach (var renderer in prefab.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
             foreach (var collider in prefab.GetComponentsInChildren<Collider>(true)) collider.enabled = false;
-            var root = new GameObject("Overhaul trough"); root.transform.SetParent(prefab.transform, false);
-            root.layer = prefab.layer;
-            // Reuse the chest's wood material, with one combined mesh and collider per board.
-            var shapes = new[] {
-                new Vector3(0,.25f,0),new Vector3(0,.5f,.4f),new Vector3(0,.5f,-.4f),
-                new Vector3(.9f,.5f,0),new Vector3(-.9f,.5f,0),new Vector3(.65f,.1f,0),new Vector3(-.65f,.1f,0)
-            };
-            var sizes = new[] {
-                new Vector3(1.9f,.12f,.9f),new Vector3(1.9f,.5f,.1f),new Vector3(1.9f,.5f,.1f),
-                new Vector3(.1f,.5f,.8f),new Vector3(.1f,.5f,.8f),new Vector3(.15f,.25f,.8f),new Vector3(.15f,.25f,.8f)
-            };
-            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            var source = cube.GetComponent<MeshFilter>().sharedMesh;
-            var combine = new CombineInstance[shapes.Length];
-            for (int i=0;i<shapes.Length;i++)
+
+            var root = new GameObject("Overhaul trough");
+            root.transform.SetParent(prefab.transform, false);
+            root.transform.localScale = cooler.transform.localScale * .8f;
+            // Only clone the visual and collider children: no station, network object or forge behavior.
+            var model = UnityEngine.Object.Instantiate(cooler.transform.Find("new"), root.transform, false);
+            model.name = "Cooler model";
+            model.gameObject.SetActive(true);
+            UnityEngine.Object.Instantiate(cooler.transform.Find("collider"), root.transform, false);
+            foreach (var filter in model.GetComponentsInChildren<MeshFilter>(true))
             {
-                combine[i] = new CombineInstance { mesh=source, transform=Matrix4x4.TRS(shapes[i],Quaternion.identity,sizes[i]) };
-                var collider=root.AddComponent<BoxCollider>();collider.center=shapes[i];collider.size=sizes[i];
+                var renderer = filter.GetComponent<MeshRenderer>();
+                var materials = renderer.sharedMaterials;
+                Mesh dryMesh = null;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    if (!materials[i] || materials[i].name.IndexOf("water", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    if (!dryMesh) dryMesh = UnityEngine.Object.Instantiate(filter.sharedMesh);
+                    dryMesh.SetTriangles(Array.Empty<int>(), i);
+                }
+                if (dryMesh) { dryMesh.name = "Overhaul dry cooler"; filter.sharedMesh = dryMesh; }
             }
-            UnityEngine.Object.DestroyImmediate(cube);
-            var mesh=new Mesh { name="Overhaul trough wood" };mesh.CombineMeshes(combine);
-            root.AddComponent<MeshFilter>().sharedMesh=mesh;
-            root.AddComponent<MeshRenderer>().sharedMaterial=wood;
+            // Meshes only: fixed decoration, with no item, physics or networking components.
+            var food = new GameObject("Food decoration").transform;
+            food.SetParent(root.transform, false);
+            for (int i = 0; i < 6; i++)
+                AddFood(food, acorn.transform.Find("acorn"), "Acorns", new Vector3(-.49f+i*.19f,.16f,(i%2==0?-.09f:.09f)), i*73f, .42f);
+            for (int i = 0; i < 4; i++)
+                AddFood(food, carrot.transform.Find("attach"), "Carrot", new Vector3(-.40f+i*.25f,.18f,(i%2==0?.055f:-.055f)), 75f+i*12f, .57f);
+            for (int i = 0; i < 8; i++)
+                AddFood(food, raspberry.transform.Find("attach"), "Raspberry", new Vector3(-.52f+i*.145f,.19f,(i%2==0?-.13f:.12f)), i*47f, .38f);
+            for (int i = 0; i < 3; i++)
+                AddFood(food, turnip.transform.Find("attach"), "Turnip", new Vector3(-.38f+i*.37f,.17f,(i%2==0?-.03f:.055f)), i*113f, .33f);
+            CombineFood(food);
+            foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = prefab.layer;
+            var wear = prefab.GetComponent<WearNTear>();
+            if (wear) wear.m_new = wear.m_worn = wear.m_broken = root;
         }
 
+        private static void AddFood(Transform parent, Transform source, string name, Vector3 position, float yaw, float scale)
+        {
+            if (!source) throw new InvalidOperationException("Missing feeding trough decoration: " + name);
+            var holder = new GameObject(name).transform;
+            holder.SetParent(parent, false);
+            var visual = UnityEngine.Object.Instantiate(source, holder, false);
+            // Keep authored rotation/scale (the carrot is already lying down), then center its visible bounds.
+            visual.localPosition = Vector3.zero;
+            foreach (var collider in visual.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(collider);
+            var renderers = visual.GetComponentsInChildren<MeshRenderer>();
+            var bounds = renderers[0].bounds;
+            foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+            var bottom = holder.InverseTransformPoint(new Vector3(bounds.center.x, bounds.min.y, bounds.center.z));
+            visual.localPosition -= bottom;
+            holder.localPosition = position;
+            holder.localRotation = Quaternion.Euler(0, yaw, 0);
+            holder.localScale = Vector3.one * scale;
+        }
+        private static void CombineFood(Transform food)
+        {
+            // One renderer per native material instead of one per vegetable/seed mesh.
+            var groups = new Dictionary<Material, List<CombineInstance>>();
+            foreach (var filter in food.GetComponentsInChildren<MeshFilter>())
+            {
+                var materials = filter.GetComponent<MeshRenderer>().sharedMaterials;
+                for (int i = 0; i < materials.Length; i++)
+                {
+                    if (!groups.TryGetValue(materials[i], out var list))
+                        groups.Add(materials[i], list = new List<CombineInstance>());
+                    list.Add(new CombineInstance { mesh = filter.sharedMesh, subMeshIndex = i,
+                        transform = food.worldToLocalMatrix * filter.transform.localToWorldMatrix });
+                }
+            }
+            var children = new List<GameObject>();
+            foreach (Transform child in food) children.Add(child.gameObject);
+            foreach (var pair in groups)
+            {
+                var mesh = new Mesh { name = "Overhaul trough " + pair.Key.name };
+                mesh.CombineMeshes(pair.Value.ToArray(), true, true);
+                var part = new GameObject(pair.Key.name);
+                part.transform.SetParent(food, false);
+                part.AddComponent<MeshFilter>().sharedMesh = mesh;
+                part.AddComponent<MeshRenderer>().sharedMaterial = pair.Key;
+            }
+            foreach (var child in children) UnityEngine.Object.DestroyImmediate(child);
+        }
         internal static bool Hungry(MonsterAI ai) => ai && ai.m_character &&
             !ai.m_character.IsDead() && ai.m_tamable && ai.m_tamable.IsHungry();
         internal static ItemDrop.ItemData Food(Container container, MonsterAI ai)
@@ -233,3 +293,5 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
+
