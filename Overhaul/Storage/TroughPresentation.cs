@@ -29,7 +29,7 @@ namespace Overhaul.Storage
             marker.transform.localRotation = Quaternion.identity;
             marker.transform.localScale = Vector3.one;
             var circle = marker.GetComponent<CircleProjector>();
-            if (circle) circle.m_radius = FeedingTrough.SearchRange;
+            if (circle) circle.m_radius = FeedingTrough.FeedRange;
             marker.SetActive(true);
         }
 

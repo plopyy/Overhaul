@@ -14,7 +14,9 @@ namespace Overhaul.Storage
     {
         internal const string Name = "Overhaul_FeedingTrough";
         internal const string RequestRpc = "Overhaul_TroughMeal", ReplyRpc = "Overhaul_TroughFed";
-        internal const float SearchRange = 4f;
+        internal const float SearchRange = 20f;
+        internal const float FeedRange = 4f;
+        internal static bool InFeedRange(Vector3 animal, Vector3 trough) => (animal - trough).sqrMagnitude <= FeedRange * FeedRange;
         internal static readonly HashSet<TroughContainer> Loaded = new HashSet<TroughContainer>();
         private sealed class Search
         {
@@ -213,7 +215,7 @@ namespace Overhaul.Storage
                     float distance=(ai.transform.position-trough.transform.position).sqrMagnitude;
                     if(distance>closest)continue;
                     trough.Container.Load();
-                    if(Food(trough.Container,ai)==null || !ai.HavePath(trough.transform.position))continue;
+                    if(Food(trough.Container,ai)==null || (!InFeedRange(ai.transform.position,trough.transform.position) && !ai.HavePath(trough.transform.position)))continue;
                     search.Target=trough;closest=distance;
                 }
                 search.Started=Time.time;search.NextRequest=0;
@@ -221,10 +223,10 @@ namespace Overhaul.Storage
             }
             if(!search.Target)return false;
             var target=search.Target;
-            if(ai.MoveTo(dt,target.transform.position,Mathf.Max(1.3f,ai.m_consumeRange),false))
+            if(InFeedRange(ai.transform.position,target.transform.position))
             {
                 ai.LookAt(target.transform.position);
-                if(ai.IsLookingAt(target.transform.position,20f,false) && Time.time>=search.NextRequest)
+                if(Time.time>=search.NextRequest)
                 {
                     if(search.Ticket==0)search.Ticket=DateTime.UtcNow.Ticks;
                     search.NextRequest=Time.time+2f;
@@ -232,6 +234,7 @@ namespace Overhaul.Storage
                     target.Container.m_nview.InvokeRPC(RequestRpc,ai.m_character.GetZDOID(),search.Ticket);
                 }
             }
+            else ai.MoveTo(dt,target.transform.position,FeedRange,false);
             return true;
         }
 
@@ -324,7 +327,7 @@ namespace Overhaul.Storage
             var ai=animalObject?animalObject.GetComponent<MonsterAI>():null;
             if(!ai || !ai.m_nview || !ai.m_nview.IsValid() || ai.m_nview.GetZDO().GetOwner()!=sender ||
                 !ai.m_character || ai.m_character.IsDead() ||
-                (ai.transform.position-transform.position).sqrMagnitude>Mathf.Pow(Mathf.Max(1.3f,ai.m_consumeRange)+.5f,2))return;
+                !FeedingTrough.InFeedRange(ai.transform.position,transform.position))return;
             var data=Container.m_nview.GetZDO();long now=DateTime.UtcNow.Ticks;
             var receipts=ReadReceipts(data,now);
             foreach(var receipt in receipts)

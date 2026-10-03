@@ -2506,5 +2506,5 @@
   "overhaul_chest_take_all": "Tout prendre",
   "overhaul_key_shift": "Maj",
   "overhaul_feeding_trough": "Mangeoire",
-  "overhaul_feeding_trough_description": "Quatre emplacements pour nourrir les animaux alentour et les apprivoiser. Ils détectent la mangeoire à 4 m maximum et s'en approchent pour manger leur nourriture habituelle."
+  "overhaul_feeding_trough_description": "Quatre emplacements pour nourrir les animaux alentour et les apprivoiser. Ils détectent la mangeoire à 20 m et peuvent manger leur nourriture habituelle à 4 m maximum, même sans se déplacer."
 }

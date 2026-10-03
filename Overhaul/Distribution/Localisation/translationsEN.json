@@ -2501,5 +2501,5 @@
   "overhaul_chest_take_all": "Take all",
   "overhaul_key_shift": "Shift",
   "overhaul_feeding_trough": "Feeding trough",
-  "overhaul_feeding_trough_description": "Four slots to feed and tame nearby animals. They detect the trough within 4 m and approach it to eat their usual food."
+  "overhaul_feeding_trough_description": "Four slots to feed and tame nearby animals. They detect the trough within 20 m and can eat their usual food within 4 m, even without moving."
 }
