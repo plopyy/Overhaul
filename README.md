@@ -61,6 +61,8 @@ Les mods tiers qui référencent directement les anciennes DLL intégrées peuve
 
 ## Configuration
 
+Les multiplicateurs globaux de poids (×0,5) et de durabilité (×2) s'appliquent après les réglages des objets, y compris par qualité. L'ancienne capacité par défaut de 300 est migrée une seule fois vers 600 ; les capacités personnalisées sont conservées.
+
 Les configurations distribuées couvrent les statistiques d'objets (`AlterItemStat.cfg`), la progression, les passifs, les armes, les monstres, l'interface et les donjons. Les valeurs de départ sont dans `Overhaul/Distribution` et `Overhaul/AlterItemStat.cfg`.
 
 Les fichiers BepInEx sont créés sous `BepInEx/config`, dont `plopyy.valheim.Overhaul.cfg` et les configurations des modules intégrés. Les traductions sont dans `Localisation/translationsFR.json` et `translationsEN.json`. Certaines règles sont contrôlées et synchronisées par le serveur ; les préférences d'affichage et de touches restent locales.
