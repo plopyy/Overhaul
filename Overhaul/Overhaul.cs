@@ -60,6 +60,7 @@ namespace Overhaul
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
             Storage.FeedingTrough.Initialize();
+            Storage.CharcoalKilnWoods.Initialize();
             Storage.ProductionClock.Initialize();
 			StaffShieldVfx.Initialize();
             DoPatching();
@@ -104,7 +105,11 @@ namespace Overhaul
             TarDrain.Shutdown();
             DvergerCirclet.Shutdown();
             Storage.FeedingTrough.Shutdown();
+            Storage.CharcoalKilnWoods.Shutdown();
+            OverhaulConfig.StopSyncManager();
             Storage.ProductionClock.Shutdown();
+            Dungeons.BossEncounter.Shutdown();
+            Dungeons.BossDungeonLayout.Shutdown();
             Dungeons.BossNativeMaterials.Release();
             Dungeons.MistlandsBossRoom.Release();
             Dungeons.DungeonRuntime.ClearSession();
@@ -127,4 +132,3 @@ namespace Overhaul
 		}
 	}
 }
-

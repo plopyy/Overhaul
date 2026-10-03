@@ -19,7 +19,7 @@ namespace Overhaul.Utility
                         case "Charge":case "LightFirstAttackMovement":case "HeavyFirstAttackMovement":
                             replacement=value=="oui"?"true":value=="non"?"false":null;break;
                         case "Aggressiveness":replacement=value=="agressif"?"aggressive":value=="vicieux"?"cunning":null;break;
-                        case "Intelligence":replacement=value=="debile"||value=="débile"?"dumb":value=="intelligent"?"smart":null;break;
+                        case "Intelligence":replacement=value=="debile"||value=="dÃ©bile"?"dumb":value=="intelligent"?"smart":null;break;
                         case "GroupBehavior":replacement=value=="meute"?"pack":null;break;
                     }
                     return replacement==null?match.Value:match.Groups[1].Value+key+match.Groups[3].Value+replacement;
@@ -31,7 +31,10 @@ namespace Overhaul.Utility
             internal readonly List<string> Settings=new List<string>();
         }
         internal static string Defaults(string file)
-        {using(var stream=typeof(ConfigSections).Assembly.GetManifestResourceStream("Overhaul.Defaults."+file))using(var reader=new StreamReader(stream))return reader.ReadToEnd();}
+                {
+            return Jotunn.Utils.AssetUtils.LoadTextFromResources("Overhaul.Defaults." + file, typeof(ConfigSections).Assembly)
+                ?? throw new InvalidDataException("Missing embedded Overhaul defaults: " + file);
+        }
         internal static string Complete(string existing,string template)
         {
             var sections=new Dictionary<string,Section>();var comments=new List<string>();Section current=null;

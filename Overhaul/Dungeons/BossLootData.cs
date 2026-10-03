@@ -19,9 +19,7 @@ namespace Overhaul.Dungeons
         internal static void Initialize()
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(BossLootData).Assembly.Location), FileName);
-            if (!File.Exists(path))
-                using (var stream = typeof(BossLootData).Assembly.GetManifestResourceStream("Overhaul.Defaults." + FileName))
-                using (var reader = new StreamReader(stream)) File.WriteAllText(path, reader.ReadToEnd());
+            if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
             string text=File.ReadAllText(path);tables=Read(text);
             if(!text.Split('\n').Any(l=>l.Split('#',';')[0].Trim()=="[Mistlands]")){if(!File.Exists(path+".mistlands.bak"))File.Copy(path,path+".mistlands.bak");File.AppendAllText(path,MistlandsDefaults);}
         }

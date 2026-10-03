@@ -48,7 +48,8 @@ namespace Overhaul.Dungeons
         // Explicit eligible forest captains/elites; no global boss keys or event creatures.
         internal static readonly string[] Roster = { "Greydwarf_Shaman", "Greydwarf_Elite", "Troll", "Ghost" };
 
-        internal static void Initialize() { BossData.Initialize(); BossLootData.Initialize(); PrefabManager.OnVanillaPrefabsAvailable += RegisterChest; }
+        internal static void Initialize() { BossData.Initialize(); BossLootData.Initialize(); PrefabManager.OnVanillaPrefabsAvailable -= RegisterChest; PrefabManager.OnVanillaPrefabsAvailable += RegisterChest; }
+        internal static void Shutdown() => PrefabManager.OnVanillaPrefabsAvailable -= RegisterChest;
         private static void RegisterChest()
         {
             RegisterChestPrefab(ChestName, "TreasureChest_forestcrypt");
@@ -295,4 +296,3 @@ namespace Overhaul.Dungeons
         }
     }
 }
-

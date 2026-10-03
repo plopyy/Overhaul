@@ -36,8 +36,7 @@ namespace Overhaul.Leveling
             foreach (string file in Files)
             {
                 string path = Path.Combine(DirectoryPath, file);
-                if (!File.Exists(path)) using (var stream = typeof(LevelingConfig).Assembly.GetManifestResourceStream("Overhaul.Defaults." + file))
-                    using (var reader = new StreamReader(stream)) File.WriteAllText(path, reader.ReadToEnd());
+                if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(file));
             }
             Current = Load(DirectoryPath); Local = Current;
         }

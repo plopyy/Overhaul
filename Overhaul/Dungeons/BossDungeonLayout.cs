@@ -71,8 +71,10 @@ namespace Overhaul.Dungeons
                 var bytes = new byte[stream.Length]; stream.Read(bytes, 0, bytes.Length);
                 mountainBundle = AssetBundle.LoadFromMemory(bytes);
             }
+            DungeonManager.OnVanillaRoomsAvailable -= RegisterRooms;
             DungeonManager.OnVanillaRoomsAvailable += RegisterRooms;
         }
+        internal static void Shutdown() => DungeonManager.OnVanillaRoomsAvailable -= RegisterRooms;
         private static void RegisterRooms()
         {
             if (arena != null) return;

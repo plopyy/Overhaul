@@ -75,7 +75,7 @@ namespace Overhaul.AI
                         if(!float.TryParse(value,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out rule.DumbChance)||float.IsNaN(rule.DumbChance)||float.IsInfinity(rule.DumbChance)||rule.DumbChance<0||rule.DumbChance>100)throw new InvalidDataException("DumbChance expects a percentage from 0 to 100");break;
                     case "Charge":rule.Charge=value=="oui"||value=="true"?true:value=="non"||value=="false"?false:throw new InvalidDataException("Charge expects true/false");break;
                     case "Aggressiveness":rule.Aggression=normal?Aggression.Normal:value=="aggressive"?Aggression.Aggressive:value=="cunning"?Aggression.Cunning:throw new InvalidDataException("Invalid aggression: "+value);break;
-                    case "Intelligence":rule.Intelligence=value=="vanilla"?Intelligence.Vanilla:value=="normal"?Intelligence.Normal:value=="dumb"||value=="débile"?Intelligence.Dumb:value=="smart"?Intelligence.Smart:throw new InvalidDataException("Invalid intelligence: "+value);break;
+                    case "Intelligence":rule.Intelligence=value=="vanilla"?Intelligence.Vanilla:value=="normal"?Intelligence.Normal:value=="dumb"||value=="dÃ©bile"?Intelligence.Dumb:value=="smart"?Intelligence.Smart:throw new InvalidDataException("Invalid intelligence: "+value);break;
                     case "GroupBehavior":rule.Group=normal?GroupBehavior.Normal:value=="helper"?GroupBehavior.Helper:value=="pack"?GroupBehavior.Pack:throw new InvalidDataException("Invalid group behavior: "+value);break;
                     default:throw new InvalidDataException("Unknown mob option: "+key);
                 }
@@ -94,7 +94,7 @@ namespace Overhaul.AI
         internal static void Initialize()
         {
             string path=Path.Combine(Leveling.LevelingConfig.DirectoryPath,"MobBehaviors.cfg");string defaults;
-            using(var reader=new StreamReader(typeof(MobBehaviorConfig).Assembly.GetManifestResourceStream("Overhaul.Defaults.MobBehaviors.cfg")))defaults=reader.ReadToEnd();
+            defaults=Utility.ConfigSections.Defaults("MobBehaviors.cfg");
             if(!File.Exists(path))File.WriteAllText(path,defaults);
             string existing=File.ReadAllText(path),complete=Utility.ConfigSections.Complete(Utility.ConfigSections.EnglishValues(existing),defaults);
             var rules=Parse(complete);if(existing!=complete)File.WriteAllText(path,complete);

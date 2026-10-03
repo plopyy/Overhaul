@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using HarmonyLib;
 using UnityEngine;
 
@@ -9,32 +9,61 @@ namespace Overhaul.Storage
     {
         internal static readonly string[] Woods = { "Wood", "FineWood", "RoundLog", "ElderBark", "YggdrasilWood", "Blackwood", "Frostwood" };
 
-        private static void Prefix(Smelter __instance) => Configure(__instance, ObjectDB.instance);
+        private static readonly System.Collections.Generic.List<Jotunn.Entities.CustomItemConversion> Conversions =
+            new System.Collections.Generic.List<Jotunn.Entities.CustomItemConversion>();
+        private static bool initialized;
 
-        internal static void Configure(Smelter kiln, ObjectDB database)
+        internal static void Initialize()
         {
-            if (!database || Utils.GetPrefabName(kiln.gameObject) != "charcoal_kiln") return;
-            var coal = database.GetItemPrefab("Coal");
-            if (!coal) return;
-            // Own the list before extending it, preserving existing and modded recipes.
-            kiln.m_conversion = new System.Collections.Generic.List<Smelter.ItemConversion>(kiln.m_conversion);
+            if (initialized) return;
+            initialized = true;
+            Jotunn.Managers.PrefabManager.OnVanillaPrefabsAvailable += Register;
+            Jotunn.Managers.ItemManager.OnItemsRegistered += PrioritizePrefab;
+        }
+
+        internal static void Shutdown()
+        {
+            if (!initialized) return;
+            initialized = false;
+            Jotunn.Managers.PrefabManager.OnVanillaPrefabsAvailable -= Register;
+            Jotunn.Managers.ItemManager.OnItemsRegistered -= PrioritizePrefab;
+            foreach (var conversion in Conversions) Jotunn.Managers.ItemManager.Instance.RemoveItemConversion(conversion);
+            Conversions.Clear();
+        }
+
+        private static void Register()
+        {
+            if (Conversions.Count != 0) return;
             foreach (var name in Woods)
             {
-                if (kiln.m_conversion.Exists(c => c.m_from && c.m_from.gameObject.name == name)) continue;
-                var wood = database.GetItemPrefab(name);
-                if (wood) kiln.m_conversion.Add(new Smelter.ItemConversion {
-                    m_from = wood.GetComponent<ItemDrop>(), m_to = coal.GetComponent<ItemDrop>() });
-            }
-            int normal = kiln.m_conversion.FindIndex(c => c.m_from && c.m_from.gameObject.name == "Wood");
-            if (normal > 0)
-            {
-                var conversion = kiln.m_conversion[normal];
-                kiln.m_conversion.RemoveAt(normal);
-                kiln.m_conversion.Insert(0, conversion);
+                // Wood already has its native conversion. Optional woods must exist in this game version.
+                if (name == "Wood" || !Jotunn.Managers.PrefabManager.Instance.GetPrefab(name)) continue;
+                var conversion = new Jotunn.Entities.CustomItemConversion(new Jotunn.Configs.SmelterConversionConfig {
+                    Station = "charcoal_kiln", FromItem = name, ToItem = "Coal" });
+                if (Jotunn.Managers.ItemManager.Instance.AddItemConversion(conversion)) Conversions.Add(conversion);
             }
         }
-    }
 
+        private static void PrioritizePrefab()
+        {
+            var prefab = Jotunn.Managers.PrefabManager.Instance.GetPrefab("charcoal_kiln");
+            if (prefab) PrioritizeNormalWood(prefab.GetComponent<Smelter>());
+        }
+
+        private static void Prefix(Smelter __instance) => PrioritizeNormalWood(__instance);
+
+        internal static void PrioritizeNormalWood(Smelter kiln)
+        {
+            if (!kiln || Utils.GetPrefabName(kiln.gameObject) != "charcoal_kiln") return;
+            int normal = kiln.m_conversion.FindIndex(c => c.m_from && c.m_from.gameObject.name == "Wood");
+            if (normal <= 0) return;
+            // Only copy if another mod moved the native recipe. Conversions themselves belong to Jotunn.
+            kiln.m_conversion = new System.Collections.Generic.List<Smelter.ItemConversion>(kiln.m_conversion);
+            var conversion = kiln.m_conversion[normal];
+            kiln.m_conversion.RemoveAt(normal);
+            kiln.m_conversion.Insert(0, conversion);
+        }
+    }
     // Extend the normal interaction; native recipes, inventory removal, RPCs,
     // animation and effects remain responsible for each accepted item.
     internal static class SmelterQuickFill
@@ -127,4 +156,3 @@ namespace Overhaul.Storage
         { if (__result && __state > 1) SmelterQuickFill.FillMore(__instance, sw, user, null, true, __state - 1); }
     }
 }
-

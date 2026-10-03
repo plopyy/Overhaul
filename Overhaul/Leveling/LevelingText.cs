@@ -18,8 +18,7 @@ namespace Overhaul.Leveling
             {
                 string file="translations"+language+".json";
                 string path=Path.Combine(LevelingConfig.DirectoryPath,"Localisation",file);
-                using(var stream=typeof(LevelingText).Assembly.GetManifestResourceStream("Overhaul.Defaults."+file))
-                    using(var reader=new StreamReader(stream))words=JsonConvert.DeserializeObject<Dictionary<string,string>>(reader.ReadToEnd());
+                words=JsonConvert.DeserializeObject<Dictionary<string,string>>(Utility.ConfigSections.Defaults(file));
                 if(File.Exists(path))foreach(var entry in JsonConvert.DeserializeObject<Dictionary<string,string>>(File.ReadAllText(path)))words[entry.Key]=entry.Value;
                 Languages[language]=words;
             }

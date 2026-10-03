@@ -18,7 +18,7 @@ namespace Overhaul.Leveling
             if(!File.Exists(PathName))File.WriteAllText(PathName,Defaults());
             Reload();
         }
-        static string Defaults(){using(var s=typeof(ClassSkillConfig).Assembly.GetManifestResourceStream("Overhaul.Defaults.ClassSkill.cfg"))using(var r=new StreamReader(s))return r.ReadToEnd();}
+        static string Defaults() => Utility.ConfigSections.Defaults("ClassSkill.cfg");
         internal static bool Reload()
         {
             try {

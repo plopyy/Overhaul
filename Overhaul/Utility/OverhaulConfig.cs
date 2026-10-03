@@ -273,22 +273,27 @@ namespace Overhaul.Utility
 		}
 
 		// Token: 0x0600004B RID: 75
-		public static void SyncManager()
-		{
-			SynchronizationManager.OnConfigurationSynchronized += delegate(object obj, ConfigurationSynchronizationEventArgs attr)
-			{
-				if (attr.InitialSynchronization)
-				{
-					Logger.LogMessage("Initial Config sync event received");
-					return;
-				}
-				Logger.LogMessage("Config sync event received");
-			};
-			SynchronizationManager.OnAdminStatusChanged += delegate()
-			{
-				Logger.LogMessage("Admin status sync event received: " + (SynchronizationManager.Instance.PlayerIsAdmin ? "You're admin now" : "Downvoted, client"));
-			};
-		}
-	}
-}
+        private static bool watchingSync;
+        public static void SyncManager()
+        {
+            if (watchingSync) return;
+            watchingSync = true;
+            SynchronizationManager.OnConfigurationSynchronized += ConfigurationSynchronized;
+            SynchronizationManager.OnAdminStatusChanged += AdminStatusChanged;
+        }
 
+        internal static void StopSyncManager()
+        {
+            if (!watchingSync) return;
+            watchingSync = false;
+            SynchronizationManager.OnConfigurationSynchronized -= ConfigurationSynchronized;
+            SynchronizationManager.OnAdminStatusChanged -= AdminStatusChanged;
+        }
+
+        private static void ConfigurationSynchronized(object sender, ConfigurationSynchronizationEventArgs args) =>
+            Logger.LogMessage(args.InitialSynchronization ? "Initial Config sync event received" : "Config sync event received");
+
+        private static void AdminStatusChanged() => Logger.LogMessage("Admin status sync event received: " +
+            (SynchronizationManager.Instance.PlayerIsAdmin ? "You're admin now" : "Downvoted, client"));
+    }
+}
