@@ -38,9 +38,6 @@ namespace EquipmentAndQuickSlots {
                 return;
 
             float baseCarryWeight = ValConfig.BaseCarryWeight.Value;
-            if (Mathf.Approximately(baseCarryWeight, ValConfig.VanillaCarryWeight))
-                return;
-
             player.m_maxCarryWeight = baseCarryWeight;
         }
 
