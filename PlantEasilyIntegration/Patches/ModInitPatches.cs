@@ -1,4 +1,4 @@
-﻿namespace Advize_PlantEasily;
+namespace Advize_PlantEasily;
 
 using System.Collections.Generic;
 using System.Linq;
@@ -87,8 +87,8 @@ static class ModInitPatches
     // Make a dedicated Grid Direction Renderer class or something, this stuff is kind of scattered atm
     private static void InitLineRenderers()
     {
-        Material material = Jotunn.Managers.PrefabManager.Cache.GetPrefab<Material>("Default-Line")
-            ?? throw new System.InvalidOperationException("PlantEasily grid material Default-Line unavailable");
+        // Default-Line is a built-in material, which may appear after Jotunn caches materials.
+        Material material = Resources.FindObjectsOfTypeAll<Material>().First(m => m.name == "Default-Line");
         GhostGrid.DirectionRenderer = new();
         Object.DontDestroyOnLoad(GhostGrid.DirectionRenderer);
 

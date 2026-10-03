@@ -6,7 +6,6 @@ using UnityEngine.UI;
 
 #if ! API
 using System.Linq;
-using System.Threading;
 using AugaUnity;
 using Object = UnityEngine.Object;
 #endif
@@ -90,12 +89,9 @@ namespace Auga
         public static GameObject Panel_Create(Transform parent, Vector2 size, string name, bool withCornerDecoration)
         {
 #if ! API
+            if (!Auga.Assets.PanelBase)
+                throw new InvalidOperationException("Auga panel prefab is unavailable; UI assets must be loaded before creating panels.");
             var panel = Object.Instantiate(Auga.Assets.PanelBase, parent);
-            if (Auga.Assets.PanelBase == null)
-            {
-                Auga.LogError($"Auga.Assets.PanelBase is null");
-                Thread.Sleep(25000);
-            }
             panel.name = name;
             if (!withCornerDecoration)
             {

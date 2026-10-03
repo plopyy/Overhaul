@@ -4,7 +4,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using Auga.Compat;
 using AugaUnity;
 using BepInEx;
@@ -196,14 +195,14 @@ namespace Auga
                 Jewelcrafting.Synergy = Jewelcrafting.ModAssembly.GetType("Jewelcrafting.Synergy");
                 Jewelcrafting.SocketsBackground = Jewelcrafting.ModAssembly.GetType("Jewelcrafting.SocketsBackground");
                 Jewelcrafting.FusionBoxSetup = Jewelcrafting.ModAssembly.GetType("Jewelcrafting.FusionBoxSetup");
-                Jewelcrafting.AddSealButton = Jewelcrafting.FusionBoxSetup.GetNestedType("AddSealButton");
-                Jewelcrafting.AddSynergyIcon = Jewelcrafting.Synergy.GetNestedType("AddSynergyIcon",BindingFlags.NonPublic | BindingFlags.Static);
-                Jewelcrafting.DisplaySynergyView = Jewelcrafting.Synergy.GetNestedType("DisplaySynergyView");
+                Jewelcrafting.AddSealButton = Jewelcrafting.FusionBoxSetup?.GetNestedType("AddSealButton");
+                Jewelcrafting.AddSynergyIcon = Jewelcrafting.Synergy?.GetNestedType("AddSynergyIcon",BindingFlags.NonPublic | BindingFlags.Static);
+                Jewelcrafting.DisplaySynergyView = Jewelcrafting.Synergy?.GetNestedType("DisplaySynergyView");
                 Jewelcrafting.GemCursor = Jewelcrafting.ModAssembly.GetType("Jewelcrafting.GemCursor");
-                Jewelcrafting.CacheVanillaCursor = Jewelcrafting.GemCursor.GetNestedType("CacheVanillaCursor",BindingFlags.NonPublic | BindingFlags.Static);
+                Jewelcrafting.CacheVanillaCursor = Jewelcrafting.GemCursor?.GetNestedType("CacheVanillaCursor",BindingFlags.NonPublic | BindingFlags.Static);
                 Jewelcrafting.GemStones = Jewelcrafting.ModAssembly.GetType("Jewelcrafting.GemStones");
-                Jewelcrafting.OpenFakeSocketsContainer = Jewelcrafting.GemStones.GetNestedType("OpenFakeSocketsContainer");
-                Jewelcrafting.CloseFakeSocketsContainer = Jewelcrafting.GemStones.GetNestedType("CloseFakeSocketsContainer",BindingFlags.NonPublic | BindingFlags.Static);
+                Jewelcrafting.OpenFakeSocketsContainer = Jewelcrafting.GemStones?.GetNestedType("OpenFakeSocketsContainer");
+                Jewelcrafting.CloseFakeSocketsContainer = Jewelcrafting.GemStones?.GetNestedType("CloseFakeSocketsContainer",BindingFlags.NonPublic | BindingFlags.Static);
 
                 var compatibilityFailure = false;
                 
@@ -212,7 +211,8 @@ namespace Auga
                     var awakeMethod = AccessTools.Method(Jewelcrafting.DisplaySynergyView, "Awake");
                     var awakePostfixMethod = AccessTools.Method(typeof(InventoryGui), nameof(InventoryGui.Awake));
                     
-                    _harmony.Patch(awakeMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.DisplaySynergyView_Awake_Transpiler)));
+                    if (awakeMethod == null) compatibilityFailure = true;
+                    else _harmony.Patch(awakeMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.DisplaySynergyView_Awake_Transpiler)));
                     _harmony.Patch(awakePostfixMethod, postfix:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.IvnentoryGui_Awake_Postfix)));
                 }
                 else
@@ -236,7 +236,7 @@ namespace Auga
                         Debug.LogWarning($"sealPostfixMethod ==  null: {sealPostfixMethod == null}");
                     }
                     
-                    _harmony.Patch(sealPostfixMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.FusionBoxSetup_AddSealButton_Postfix_Transpiler)));
+                    if (sealPostfixMethod != null) _harmony.Patch(sealPostfixMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.FusionBoxSetup_AddSealButton_Postfix_Transpiler)));
                 }
                 else
                     compatibilityFailure = true;
@@ -250,7 +250,7 @@ namespace Auga
                         compatibilityFailure = true;
                         Debug.LogWarning($"cursorPostfixMethod ==  null: {cursorPostfixMethod ==  null}");
                     }
-                    _harmony.Patch(cursorPostfixMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemCursor_CacheVanillaCursor_Postfix_Transpiler)));
+                    if (cursorPostfixMethod != null) _harmony.Patch(cursorPostfixMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemCursor_CacheVanillaCursor_Postfix_Transpiler)));
                 }
                 else
                     compatibilityFailure = true;
@@ -263,7 +263,7 @@ namespace Auga
                         compatibilityFailure = true;
                         Debug.LogWarning($"openSocketsMethod ==  null: {openSocketsMethod ==  null}");
                     }
-                    _harmony.Patch(openSocketsMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemStones_OpenFakeSocketsContainer_Open_Transpiler)));
+                    if (openSocketsMethod != null) _harmony.Patch(openSocketsMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemStones_OpenFakeSocketsContainer_Open_Transpiler)));
                 }
                 else
                     compatibilityFailure = true;
@@ -276,7 +276,7 @@ namespace Auga
                         compatibilityFailure = true;
                         Debug.LogWarning($"closeSocketsMethod ==  null: {closeSocketsMethod ==  null}");
                     }
-                    _harmony.Patch(closeSocketsMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemStones_CloseFakeSocketsContainer_Prefix_Transpiler)));
+                    if (closeSocketsMethod != null) _harmony.Patch(closeSocketsMethod, transpiler:new HarmonyMethod(typeof(Jewelcrafting), nameof(Jewelcrafting.GemStones_CloseFakeSocketsContainer_Prefix_Transpiler)));
                 }
                 else
                     compatibilityFailure = true;
@@ -296,7 +296,6 @@ namespace Auga
                     Debug.LogWarning($"Jewelcrafting.OpenFakeSocketsContainer ==  null: {Jewelcrafting.OpenFakeSocketsContainer ==  null}");
                     Debug.LogWarning($"Jewelcrafting.CloseFakeSocketsContainer ==  null: {Jewelcrafting.CloseFakeSocketsContainer ==  null}");
                     Debug.LogError("Jewelcrafting Compatibility Failed - Contact Vapok with the above information");
-                    Thread.Sleep(15000);
                 }
             }
             
