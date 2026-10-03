@@ -70,7 +70,10 @@ namespace Overhaul.Persistence
                 return db.Read();
             }, true);
         }
-        internal Task<long> Write(PlayerIdentity identity, PlayerBatch batch) => Submit(() => Get(identity).Apply(batch), false);
+        // Wake immediately for every validated action. Completion follows the durable commit.
+        internal Task<long> Write(PlayerIdentity identity, PlayerBatch batch) => Submit(() => Get(identity).Apply(batch), true);
+        internal Task<PlayerBatch> Move(PlayerIdentity identity, PlayerInventoryMove request, PlayerInventoryRules rules)
+            => Submit(() => Get(identity).Move(request, rules), true);
         internal Task<PlayerSnapshot> Lookup(PlayerIdentity identity) => Submit(() =>
         {
             var db = Get(identity);

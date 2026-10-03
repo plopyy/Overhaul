@@ -204,22 +204,45 @@ namespace Overhaul.Persistence
         internal long Apply(PlayerBatch batch)
         {
             if (!Complete) throw new InvalidOperationException("Player has not completed initialization");
-            long result = 0; string digest = batch.Digest();
+            long result = 0;
+            db.Transaction(() => result = ApplyInsideTransaction(batch));
+            return result;
+        }
+        private long ApplyInsideTransaction(PlayerBatch batch)
+        {
+            string digest = batch.Digest();
+            using (var old = db.Query("SELECT revision,digest FROM operations WHERE id=?", batch.Operation))
+                if (old.Read())
+                {
+                    if (old.Text(1) != digest) throw new InvalidDataException("Operation replay changed its contents");
+                    return old.Long(0);
+                }
+            if (Revision != batch.ExpectedRevision) throw new InvalidOperationException("Stale player revision");
+            ApplyRows(batch.Changes);
+            long result = checked(batch.ExpectedRevision + 1);
+            db.Write("UPDATE identity SET revision=? WHERE id=1", result);
+            db.Write("INSERT INTO operations VALUES(?,?,?)", batch.Operation, result, digest);
+            db.Write("DELETE FROM operations WHERE revision<=?", result - 1024);
+            return result;
+        }
+        internal PlayerBatch Move(PlayerInventoryMove request, PlayerInventoryRules rules)
+        {
+            if (!Complete) throw new InvalidOperationException("Player has not completed initialization");
+            db.Execute("CREATE TABLE IF NOT EXISTS inventory_actions(id TEXT PRIMARY KEY,request TEXT NOT NULL,revision INTEGER NOT NULL,payload BLOB NOT NULL)");
+            PlayerBatch result = null;
             db.Transaction(() =>
             {
-                using (var old = db.Query("SELECT revision,digest FROM operations WHERE id=?", batch.Operation))
+                using (var old = db.Query("SELECT request,payload FROM inventory_actions WHERE id=?", request.Operation))
                     if (old.Read())
                     {
-                        if (old.Text(1) != digest) throw new InvalidDataException("Operation replay changed its contents");
-                        result = old.Long(0); return;
+                        if (old.Text(0) != request.Fingerprint) throw new InvalidDataException("Action replay changed its contents");
+                        result = PlayerBatchFormat.Decode(old.Blob(1)); return;
                     }
-                if (Revision != batch.ExpectedRevision) throw new InvalidOperationException("Stale player revision");
-                ApplyRows(batch.Changes);
-                result = checked(batch.ExpectedRevision + 1);
-                db.Write("UPDATE identity SET revision=? WHERE id=1", result);
-                db.Write("INSERT INTO operations VALUES(?,?,?)", batch.Operation, result, digest);
-                // Old retries are rejected by revision after bounded receipt retention.
-                db.Write("DELETE FROM operations WHERE revision<=?", result - 1024);
+                if (Revision != request.Revision) throw new InvalidOperationException("Stale inventory action revision");
+                result = PlayerInventoryAuthority.Prepare(request, rules, ReadTables("inventory", "item_data"));
+                long revision = ApplyInsideTransaction(result);
+                db.Write("INSERT INTO inventory_actions VALUES(?,?,?,?)", request.Operation, request.Fingerprint, revision, PlayerBatchFormat.Encode(result));
+                db.Write("DELETE FROM inventory_actions WHERE revision<=?", revision - 1024);
             });
             return result;
         }
@@ -234,11 +257,12 @@ namespace Overhaul.Persistence
                 else new DatabaseRow(table.Name, string.Join(",", table.Columns), table.Keys, change.Values).Write(db);
             }
         }
-        internal PlayerChange[] Read()
+        internal PlayerChange[] Read() => ReadTables();
+        private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");
             var rows = new List<PlayerChange>();
-            foreach (var table in Tables)
+            foreach (var table in Tables.Where(t => tables.Length == 0 || tables.Contains(t.Name)))
                 using (var data = db.Query("SELECT " + string.Join(",", table.Columns.Select(c => "\"" + c + "\"")) + " FROM \"" + table.Name + "\" ORDER BY " + string.Join(",", table.Columns.Take(table.Keys).Select(c => "\"" + c + "\""))))
                     while (data.Read()) rows.Add(new PlayerChange(table.Name, false, Enumerable.Range(0, table.Columns.Length).Select(data.Value).ToArray()));
             return rows.ToArray();
