@@ -43,6 +43,7 @@ namespace Overhaul
         private void Initialize()
         {
             Log.Init(base.Logger);
+			Persistence.PlayerPersistenceConfig.Bind(base.Config);
 			OverhaulConfig.Bind(base.Config);
             AlterItemStat.Initialize();
             Leveling.LevelingConfig.Initialize();

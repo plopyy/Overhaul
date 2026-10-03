@@ -16,7 +16,7 @@ namespace Overhaul.Persistence
         internal PlayerIdentity(long world, string provider, string account)
         {
             if (world == 0 || string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(account) ||
-                provider.Length > 32 || account.Length > 256 || provider.Any(c => !char.IsLetterOrDigit(c) && c != '_'))
+                provider.Length > 32 || account.Length > 256 || provider.Any(c => !(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') && !(c >= '0' && c <= '9') && c != '_'))
                 throw new ArgumentException("Invalid authenticated player identity");
             World = world; Provider = provider.ToLowerInvariant(); Account = account;
         }
@@ -24,9 +24,10 @@ namespace Overhaul.Persistence
         {
             get
             {
-                // No platform ID is treated as a path. Provider keeps independent account spaces distinct.
+                // Steam IDs remain readable. Arbitrary identifiers are encoded, never treated as paths.
+                if (Account.Length <= 32 && Account.All(c => c >= '0' && c <= '9')) return Provider + "_" + Account + ".db";
                 using (var hash = SHA256.Create())
-                    return Provider + "_" + BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(Account))).Replace("-", "").ToLowerInvariant() + ".db";
+                    return Provider + "_hash_" + BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(Account))).Replace("-", "").ToLowerInvariant() + ".db";
             }
         }
         internal string PathIn(string worldDirectory) => Path.Combine(Path.GetFullPath(worldDirectory), "players", FileName);
