@@ -19,6 +19,20 @@ namespace Overhaul.Persistence
         private static readonly Dictionary<ZDOID,long> ids=new Dictionary<ZDOID,long>();
         private static readonly HashSet<ZDOID> dirty=new HashSet<ZDOID>();
         internal static bool Active=>writer!=null&&!loading;
+        internal static bool SaveHeader(World world)
+        {
+            if(!TryWorld(world.m_worldName,world.m_fileSource,out var stored))return false;
+            if(stored.m_uid!=world.m_uid)throw new InvalidDataException("World metadata identity mismatch");
+            if(Active){Save(false);return true;}
+            string path=PathFor(world.m_worldName,world.m_fileSource);
+            using(var guard=new FileStream(path+".owner",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
+            using(var db=new SqliteDatabase(path))
+            {
+                var header=new WorldRecord{Name=world.m_name,SeedName=world.m_seedName,Seed=world.m_seed,Uid=world.m_uid,Generation=world.m_worldGenVersion};header.InitialKeys.AddRange(world.m_startingGlobalKeys);
+                db.Transaction(()=>WorldSql.WriteHeader(db,header));
+            }
+            return true;
+        }
         internal static string PathFor(string name,FileHelpers.FileSource source)
         {
             if(string.IsNullOrEmpty(name)||System.IO.Path.GetFileName(name)!=name)throw new InvalidDataException("Invalid world name");
@@ -40,11 +54,12 @@ namespace Overhaul.Persistence
         {
             var world=ZNet.m_world;
             if(world==null||world.m_menu||world.m_fileSource!=FileHelpers.FileSource.Local)return false;
-            Close();loading=true;session=net;nextId=0;
+            Close();loading=true;session=net;nextId=0;FileStream startupOwnership=null;
             try
             {
                 string path=PathFor(world.m_worldName,world.m_fileSource),directory=System.IO.Path.GetDirectoryName(path);
                 Directory.CreateDirectory(directory);
+                startupOwnership=new FileStream(path+".owner",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
                 if(File.Exists(path))
                 {
                     bool complete;
@@ -63,7 +78,7 @@ namespace Overhaul.Persistence
                         File.Move(temporary,path);
                     }
                 }
-                writer=new ProgressiveWriter(path);
+                writer=new ProgressiveWriter(path,startupOwnership);startupOwnership=null;
                 var links=new List<ZDOID>();var manager=net.m_zdoMan;manager.ResetBeforeLoad();
                 using(var db=new SqliteDatabase(path,true))
                 {
@@ -90,6 +105,7 @@ namespace Overhaul.Persistence
                 ZLog.LogError("[Overhaul SQLite] World loading failed; saving disabled. Native files retained. "+ex);
                 throw; // Do not start an empty world or fall back to an old native generation.
             }
+            finally{startupOwnership?.Dispose();}
         }
         internal static void Mark(ZDOID uid){if(Active)dirty.Add(uid);}
         private static bool CanSave()=>Active&&session&&session.IsServer()&&!ZNet.m_loadError&&!SaveSystem.HasSessionFlag(SaveSystemSessionFlags.DontSaveWorld)&&!ZoneSystem.instance.SkipSaving()&&!DungeonDB.instance.SkipSaving();
@@ -134,6 +150,11 @@ namespace Overhaul.Persistence
     {
         static bool Prefix(string name,FileHelpers.FileSource source,ref World __result)=>!GamePersistence.TryWorld(name,source,out __result);
     }
+    [HarmonyPatch(typeof(World),nameof(World.GetDevWorld))]
+    internal static class SqliteDevWorldPatch
+    {
+        static bool Prefix(ref World __result)=>!GamePersistence.TryWorld(Game.instance.m_devWorldName,FileHelpers.FileSource.Local,out __result);
+    }
     [HarmonyPatch(typeof(World),nameof(World.LoadWorld))]
     internal static class SqliteWorldHeaderPatch
     {
@@ -162,10 +183,14 @@ namespace Overhaul.Persistence
     {
         static bool Prefix(World __instance)
         {
-            if(!GamePersistence.TryWorld(__instance.m_worldName,__instance.m_fileSource,out _))return true;
-            if(GamePersistence.Active)GamePersistence.Save(false);
-            return false;
+            return !GamePersistence.SaveHeader(__instance);
         }
+    }
+    [HarmonyPatch]
+    internal static class SqliteWorldMetadataWriterPatch
+    {
+        static MethodBase TargetMethod()=>AccessTools.Method(typeof(World),nameof(World.SaveWorldFWLData),new[]{typeof(DateTime),typeof(FileWriter).MakeByRefType()});
+        static bool Prefix(World __instance,ref FileWriter metaWriter){if(!GamePersistence.SaveHeader(__instance))return true;metaWriter=null;return false;}
     }
     [HarmonyPatch(typeof(ZNet),"LoadWorld")]
     internal static class SqliteLoadPatch

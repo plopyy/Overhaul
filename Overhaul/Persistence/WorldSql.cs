@@ -68,6 +68,12 @@ namespace Overhaul.Persistence
             new DatabaseRow("events","id,type,name,time,x,y,z,json",1,2,"raid",state.EventName,state.EventTime,state.EventPosition[0],state.EventPosition[1],state.EventPosition[2],null).Write(db);
             new DatabaseRow("events","id,type,name,time,x,y,z,json",1,3,"persistent",null,null,null,null,null,state.PersistentEvents).Write(db);
         }
+        internal static void WriteHeader(SqliteDatabase db,WorldRecord state)
+        {
+            db.Write("UPDATE world SET name=?,seed_name=?,seed=?,generation_version=? WHERE id=1 AND uid=?",state.Name,state.SeedName,state.Seed,state.Generation,state.Uid);
+            db.Write("DELETE FROM world_keys WHERE source='initial'");
+            foreach(string key in state.InitialKeys)db.Write("INSERT INTO world_keys(source,key) VALUES ('initial',?)",key);
+        }
         private static void Replace(SqliteDatabase db,string table,string keys,int keyCount,IEnumerable<DatabaseRow> data)
         {
             var previous=new Dictionary<string,object[]>();string[] columns=keys.Split(',').Select(k=>"\""+k+"\"").ToArray();

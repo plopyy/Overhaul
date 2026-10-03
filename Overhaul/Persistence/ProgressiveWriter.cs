@@ -21,11 +21,11 @@ namespace Overhaul.Persistence
         private Exception failure;
         internal string LastError { get { lock(gate)return failure?.ToString(); } }
         internal long Committed { get { lock(gate)return committed; } }
-        internal ProgressiveWriter(string path)
+        internal ProgressiveWriter(string path,FileStream existingOwnership=null)
         {
             this.path=path;
             // Prevent two running servers from logically overwriting the same world.
-            ownership=new FileStream(path+".owner",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+            ownership=existingOwnership??new FileStream(path+".owner",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
             try
             {
                 using(var db=new SqliteDatabase(path,true))if(!MigrationState.Complete(db))throw new InvalidDataException("Incomplete world migration");
