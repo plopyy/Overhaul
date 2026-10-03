@@ -71,6 +71,22 @@ namespace Overhaul.Persistence
             }, true);
         }
         internal Task<long> Write(PlayerIdentity identity, PlayerBatch batch) => Submit(() => Get(identity).Apply(batch), false);
+        internal Task<PlayerSnapshot> Lookup(PlayerIdentity identity) => Submit(() =>
+        {
+            var db = Get(identity);
+            return db.Complete ? new PlayerSnapshot(db.Revision, db.Read()) : null;
+        }, true);
+        internal Task<PlayerSnapshot> Initialize(PlayerIdentity identity, Func<IEnumerable<PlayerChange>> initial, bool imported) => Submit(() =>
+        {
+            var db = Get(identity);
+            // Recheck on the writer thread: a delayed import must never replace a completed character.
+            if (!db.Complete)
+            {
+                var rows = initial().ToArray();
+                db.Initialize(imported, rows, imported ? rows : null);
+            }
+            return new PlayerSnapshot(db.Revision, db.Read());
+        }, true);
         internal Task<long> Revision(PlayerIdentity identity) => Submit(() => Get(identity).Revision, true);
         // FIFO barrier. Earlier failed writes are surfaced by their own tasks and must not be ignored.
         internal Task<bool> Flush() => Submit(() => true, true);
