@@ -130,6 +130,7 @@ namespace Overhaul.Persistence
         private readonly SqliteDatabase db;
         private readonly FileStream ownership;
         private readonly PlayerIdentity identity;
+        private bool complete, actionSchemaReady;
         internal bool BelongsTo(PlayerIdentity player) => player != null && player.World == identity.World &&
             player.Provider == identity.Provider && player.Account == identity.Account;
 
@@ -165,9 +166,10 @@ namespace Overhaul.Persistence
         {
             get
             {
+                if (complete) return true;
                 if (!HasTable("migration_state")) return false;
                 VerifyIdentity();
-                using (var row = db.Query("SELECT status FROM migration_state WHERE id=1")) return row.Read() && row.Text(0) == "complete";
+                using (var row = db.Query("SELECT status FROM migration_state WHERE id=1")) return complete = row.Read() && row.Text(0) == "complete";
             }
         }
         internal long Revision
@@ -199,6 +201,7 @@ namespace Overhaul.Persistence
                 db.Execute("CREATE TABLE migration_state(id INTEGER PRIMARY KEY CHECK(id=1),status TEXT NOT NULL CHECK(status='complete'),completed_at TEXT NOT NULL)");
                 db.Execute("INSERT INTO migration_state VALUES(1,'complete',?)", DateTime.UtcNow.ToString("O"));
             });
+            complete = true;
             return true;
         }
         internal long Apply(PlayerBatch batch)
@@ -228,7 +231,11 @@ namespace Overhaul.Persistence
         internal PlayerBatch Move(PlayerInventoryMove request, PlayerInventoryRules rules)
         {
             if (!Complete) throw new InvalidOperationException("Player has not completed initialization");
-            db.Execute("CREATE TABLE IF NOT EXISTS inventory_actions(id TEXT PRIMARY KEY,request TEXT NOT NULL,revision INTEGER NOT NULL,payload BLOB NOT NULL)");
+            if (!actionSchemaReady)
+            {
+                db.Execute("CREATE TABLE IF NOT EXISTS inventory_actions(id TEXT PRIMARY KEY,request TEXT NOT NULL,revision INTEGER NOT NULL,payload BLOB NOT NULL)");
+                actionSchemaReady = true;
+            }
             PlayerBatch result = null;
             db.Transaction(() =>
             {
@@ -239,8 +246,11 @@ namespace Overhaul.Persistence
                         result = PlayerBatchFormat.Decode(old.Blob(1)); return;
                     }
                 if (Revision != request.Revision) throw new InvalidOperationException("Stale inventory action revision");
-                result = PlayerInventoryAuthority.Prepare(request, rules, ReadTables("inventory", "item_data"));
-                long revision = ApplyInsideTransaction(result);
+                result = PlayerInventoryAuthority.Prepare(request, rules, ReadSlots(request));
+                // This command already has its own replay record; do not write a second receipt.
+                ApplyRows(result.Changes);
+                long revision = checked(request.Revision + 1);
+                db.Write("UPDATE identity SET revision=? WHERE id=1", revision);
                 db.Write("INSERT INTO inventory_actions VALUES(?,?,?,?)", request.Operation, request.Fingerprint, revision, PlayerBatchFormat.Encode(result));
                 db.Write("DELETE FROM inventory_actions WHERE revision<=?", revision - 1024);
             });
@@ -256,6 +266,17 @@ namespace Overhaul.Persistence
                     db.Write("DELETE FROM \"" + table.Name + "\" WHERE " + string.Join(" AND ", table.Columns.Take(table.Keys).Select(c => "\"" + c + "\"=?")), change.Values);
                 else new DatabaseRow(table.Name, string.Join(",", table.Columns), table.Keys, change.Values).Write(db);
             }
+        }
+        // Read only the two participating slots, not the entire character inventory.
+        private PlayerChange[] ReadSlots(PlayerInventoryMove request)
+        {
+            var rows = new List<PlayerChange>();
+            foreach (var table in Tables.Where(t => t.Name == "inventory" || t.Name == "item_data"))
+                using (var data = db.Query("SELECT " + string.Join(",", table.Columns.Select(c => "\"" + c + "\"")) +
+                    " FROM \"" + table.Name + "\" WHERE bag=? AND ((x=? AND y=?) OR (x=? AND y=?))",
+                    "main", request.FromX, request.FromY, request.ToX, request.ToY))
+                    while (data.Read()) rows.Add(new PlayerChange(table.Name, false, Enumerable.Range(0, table.Columns.Length).Select(data.Value).ToArray()));
+            return rows.ToArray();
         }
         internal PlayerChange[] Read() => ReadTables();
         private PlayerChange[] ReadTables(params string[] tables)
