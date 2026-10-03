@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -165,6 +165,7 @@
     <Folder Include="Extensions\" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\trough-layout.tsv"><LogicalName>Overhaul.Assets.trough-layout.tsv</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
@@ -265,6 +266,7 @@
 <EmbeddedResource Include="..\..\Libs\APIManager.dll"><LogicalName>Overhaul.APIManager.dll</LogicalName></EmbeddedResource>
 </ItemGroup>
 <ItemGroup><EmbeddedResource Include="..\AugaIntegration\Assets\Noto-OFL.txt"><LogicalName>Auga.Licenses.Noto-OFL.txt</LogicalName></EmbeddedResource></ItemGroup><ItemGroup><Compile Include="..\EquipmentIntegration\**\*.cs" Exclude="..\EquipmentIntegration\src\Auga\**\*.cs" /><EmbeddedResource Include="..\EquipmentIntegration\Assets\eaqs"><LogicalName>Overhaul.eaqs</LogicalName></EmbeddedResource></ItemGroup></Project>
+
 
 
 

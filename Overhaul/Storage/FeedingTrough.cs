@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
 using Jotunn.Entities;
@@ -89,24 +91,26 @@ namespace Overhaul.Storage
             for (int i = 0; i < basinMaterials.Length; i++)
                 if (basinMaterials[i].name.IndexOf("water", StringComparison.OrdinalIgnoreCase) >= 0) basinMaterials[i] = invisible;
             basin.sharedMaterials = basinMaterials;
-            // Fixed seeded scatter: no gameplay RNG, physical items or per-frame simulation.
+            // Approved static layout: authored once, never simulated or randomized in game.
             var food = new GameObject("Food decoration").transform;
             food.SetParent(root.transform, false);
-            var random = new System.Random(71839);
-            for (int i = 0; i < 100; i++)
+            using (var stream = typeof(FeedingTrough).Assembly.GetManifestResourceStream("Overhaul.Assets.trough-layout.tsv"))
+            using (var reader = new StreamReader(stream))
             {
-                int kind = random.Next(4);
-                float x = (float)(random.NextDouble() * 1.16 - .58);
-                float z = (float)(random.NextDouble() * .30 - .15);
-                float height = .18f + (float)random.NextDouble() * .055f + .025f * (1f - Mathf.Abs(x) / .65f);
-                float yaw = (float)random.NextDouble() * 360f;
-                float variation = .85f + (float)random.NextDouble() * .30f;
-                var source = kind == 0 ? acorn.transform.Find("acorn") :
-                    (kind == 1 ? carrot : kind == 2 ? raspberry : turnip).transform.Find("attach");
-                float size = kind == 0 ? .52f : kind == 1 ? .55f : kind == 2 ? .44f : .34f;
-                AddFood(food, source, "Food", new Vector3(x,height,z), yaw, size * variation,
-                    new Vector3((float)random.NextDouble()*50f-25f,0,(float)random.NextDouble()*60f-30f));
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    var values = line.Split('\t');
+                    var source = values[0] == "Acorn" ? acorn.transform.Find("acorn") :
+                        (values[0] == "Carrot" ? carrot : values[0] == "Raspberry" ? raspberry : turnip).transform.Find("attach");
+                    var numbers = new float[8];
+                    for (int i = 0; i < numbers.Length; i++) numbers[i] = float.Parse(values[i + 1], CultureInfo.InvariantCulture);
+                    AddFood(food, source, values[0], new Vector3(numbers[0], numbers[1], numbers[2]), 0, numbers[7], Vector3.zero);
+                    food.GetChild(food.childCount - 1).localRotation = new Quaternion(numbers[3], numbers[4], numbers[5], numbers[6]);
+                }
             }
+            TroughFoliage.Trim(food, root.transform);
             CombineFood(food);
             foreach (var t in root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = prefab.layer;
             var wear = prefab.GetComponent<WearNTear>();
@@ -136,10 +140,12 @@ namespace Overhaul.Storage
             // One renderer per native material instead of one per vegetable/seed mesh.
             var groups = new Dictionary<Material, List<CombineInstance>>();
             var combined = new List<GameObject>();
+            var trimmedMeshes = new HashSet<Mesh>();
             foreach (var filter in food.GetComponentsInChildren<MeshFilter>())
             {
                 if (!filter.sharedMesh.isReadable) continue;
                 combined.Add(filter.gameObject);
+                if (filter.sharedMesh.name.StartsWith("Trough trimmed ", StringComparison.Ordinal)) trimmedMeshes.Add(filter.sharedMesh);
                 var materials = filter.GetComponent<MeshRenderer>().sharedMaterials;
                 for (int i = 0; i < materials.Length; i++)
                 {
@@ -159,6 +165,7 @@ namespace Overhaul.Storage
                 part.AddComponent<MeshRenderer>().sharedMaterial = pair.Key;
             }
             foreach (var child in combined) UnityEngine.Object.DestroyImmediate(child);
+            foreach (var mesh in trimmedMeshes) UnityEngine.Object.DestroyImmediate(mesh);
         }
         internal static bool Hungry(MonsterAI ai) => ai && ai.m_character &&
             !ai.m_character.IsDead() && ai.m_tamable && ai.m_tamable.IsHungry();
@@ -310,6 +317,8 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
+
 
 
 
