@@ -2,6 +2,13 @@ using HarmonyLib;
 
 namespace Overhaul
 {
+    // Both crafting and repair use this native usability gate.
+    [HarmonyPatch(typeof(CraftingStation), nameof(CraftingStation.CheckUsable))]
+    internal static class OpenAirCrafting
+    {
+        private static void Prefix(CraftingStation __instance) => __instance.m_craftRequireRoof = false;
+    }
+
     [HarmonyPatch(typeof(InventoryGui), "CanRepair")]
     internal static class UniversalRepair
     {

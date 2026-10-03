@@ -28,6 +28,8 @@ Le projet est en développement, actuellement en série **2.2**. Les fonctionnal
 
 ### Construction, agriculture et exploration
 
+- Stations de fabrication et de réparation utilisables sans toit ni abri.
+
 - Mangeoire de quatre emplacements réservés aux aliments des animaux, avec approche et alimentation à 4 m maximum. Son aspect passe de vide à rempli selon son contenu ; le cercle de portée apparaît pendant le placement. Icône pleine, filtres Divers, Meuble et Stockage, sans renommage.
 
 - Réparation de tout objet réparable sur n'importe quelle station de réparation, sans exigence de type ni de niveau.
