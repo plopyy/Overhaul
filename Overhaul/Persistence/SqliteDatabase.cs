@@ -146,9 +146,19 @@ namespace Overhaul.Persistence
         }
         internal void Write(string sql, params object[] values)
         {
-            if (!commands.TryGetValue(sql, out var command)) commands.Add(sql, command = Query(sql, values));
-            else command.Bind(values);
-            while (command.Read()) { }
+            Statement command = null;
+            try
+            {
+                if (!commands.TryGetValue(sql, out command)) commands.Add(sql, command = Query(sql, values));
+                else command.Bind(values);
+                while (command.Read()) { }
+            }
+            catch
+            {
+                // sqlite3_reset returns the preceding step error. Discard failed cached
+                // statements so a valid retry after rollback does not repeat that old error.
+                commands.Remove(sql); command?.Dispose(); throw;
+            }
         }
         internal void Transaction(Action action)
         {
