@@ -25,8 +25,17 @@ namespace Overhaul.Leveling
         private static readonly Dictionary<long,Session> Sessions=new Dictionary<long,Session>();
         private static readonly HashSet<ZDOID> Rewarded=new HashSet<ZDOID>();
         private static ZDOMan world;
+        private static float nextRewardCleanup;
         private static void EnsureWorld()
-        { if(world==ZDOMan.instance)return;world=ZDOMan.instance;Sessions.Clear();Rewarded.Clear(); }
+        { if(world==ZDOMan.instance)return;world=ZDOMan.instance;Sessions.Clear();Rewarded.Clear();nextRewardCleanup=0; }
+        private static void PruneRewards()
+        {
+            if(world==null || Time.realtimeSinceStartup<nextRewardCleanup)return;
+            nextRewardCleanup=Time.realtimeSinceStartup+60f;
+            // Missing ZDOs cannot pass Reward's validation again. Keep the guard
+            // for every surviving ZDO, including unloaded but persistent objects.
+            Rewarded.RemoveWhere(id=>world.GetZDO(id)==null);
+        }
         internal static void Register(ZNetPeer peer)=>peer.m_rpc.Register<string>(Rpc,Receive);
         // Entry point for authenticated admin commands only; never exposed as a player action.
         internal static string AdminReset(ZNetPeer peer)
@@ -127,7 +136,7 @@ namespace Overhaul.Leveling
         }
         private static void Reward(Packet packet,long owner)
         {
-            EnsureWorld();ZDOID victimId=ParseId(packet.Victim);ZDO victim=world.GetZDO(victimId);
+            EnsureWorld();PruneRewards();ZDOID victimId=ParseId(packet.Victim);ZDO victim=world.GetZDO(victimId);
             // Native monster simulation belongs to its owning peer. Verify that ownership,
             // rather than requiring its final health replication to beat this reliable RPC.
             if(victim==null || victim.GetOwner()!=owner || victim.GetBool(ZDOVars.s_tamed,false) || Rewarded.Contains(victimId))return;

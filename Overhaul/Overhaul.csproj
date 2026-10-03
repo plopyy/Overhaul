@@ -36,6 +36,10 @@
     <Compile Include="..\PlantEasilyIntegration\**\*.cs" />
     <Compile Include="..\XPortalIntegration\**\*.cs" />
     <Compile Include="TreeFallDirection.cs" />
+    <Compile Include="Persistence\*.cs" />
+    <EmbeddedResource Include="..\..\Libs\overhaul_sqlite3.dll"><LogicalName>Overhaul.sqlite3.win-x64.dll</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Persistence\schema.sql"><LogicalName>Overhaul.Persistence.schema.sql</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Persistence\names.tsv"><LogicalName>Overhaul.Persistence.names.tsv</LogicalName></EmbeddedResource>
     <Reference Include="UnityEngine.AIModule"><HintPath>..\..\Libs\UnityEngine.AIModule.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="Splatform"><HintPath>..\..\Libs\Splatform.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="0Harmony">
@@ -84,6 +88,10 @@
     <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Libs\UnityEngine.AudioModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>..\..\Libs\UnityEngine.JSONSerializeModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">

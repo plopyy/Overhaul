@@ -84,9 +84,19 @@ namespace Overhaul.Storage
         {
             if (ChestAccess.Data(__instance) == null) return;
             ChestAccess.Loaded.Add(__instance);
+            if (!__instance.GetComponent<ChestRegistration>())
+                __instance.gameObject.AddComponent<ChestRegistration>().Container = __instance;
             var c = __instance;
             c.m_nview.Register<ZDOID, bool>(ChestAccess.PrivacyRpc, (sender, actor, value) => ChestAccess.SetPrivacy(c, sender, actor, value));
             c.m_nview.Register<ZDOID, ZDOID, string>(ChestAccess.LeaseRpc, (sender, actor, station, token) => ChestAccess.RequestLease(c, sender, actor, station, token));
+        }
+    }
+    internal sealed class ChestRegistration : MonoBehaviour
+    {
+        internal Container Container;
+        private void OnDestroy()
+        {
+            if (!ReferenceEquals(Container, null)) ChestAccess.Loaded.Remove(Container);
         }
     }
     [HarmonyPatch(typeof(Container), "CheckAccess")]

@@ -106,6 +106,7 @@ Les versions ci-dessous sont celles des fichiers utilisés pour Overhaul 2.2.0.0
 | `UnityEngine.ImageConversionModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.IMGUIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.InputLegacyModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `UnityEngine.JSONSerializeModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.ParticleSystemModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.PhysicsModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.TerrainPhysicsModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
@@ -113,6 +114,7 @@ Les versions ci-dessous sont celles des fichiers utilisés pour Overhaul 2.2.0.0
 | `UnityEngine.UI.dll` | 1.0.0.0 | 1.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `UnityEngine.UIModule.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `fastJSON.dll` | 2.4.0.0 | 2.4.0.2 | fastJSON |
+| `overhaul_sqlite3.dll` | Native x64 | 3.53.4 | SQLite Windows x64, renommer `sqlite3.dll` depuis `sqlite-dll-win-x64-3530400.zip` ([SQLite](https://www.sqlite.org/download.html)) |
 
 Les fichiers suffixés `_publicized` sont les versions publicisées des assemblies du client : leurs membres internes ont été rendus accessibles pour compiler le mod. Ils doivent être préparés à partir des assemblies de la même version du jeu. Placer toutes les références dans `../Libs`.
 

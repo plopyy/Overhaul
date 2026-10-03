@@ -59,6 +59,8 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
+            Storage.FeedingTrough.Initialize();
+            Storage.ProductionClock.Initialize();
 			StaffShieldVfx.Initialize();
             DoPatching();
             Commands.AdminCommands.Initialize();
@@ -75,6 +77,8 @@ namespace Overhaul
 
         public void LateUpdate()
         {
+            Storage.ProductionClock.Tick();
+            Persistence.GamePersistence.Tick();
             Storage.VehicleMarkers.Tick();
             Storage.CircletFog.Tick();
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.LateUpdate();
@@ -88,6 +92,7 @@ namespace Overhaul
         }
 		public void OnDestroy()
 		{
+            Persistence.GamePersistence.Close();
             XPortal.XPortal.Stop();
             Advize_PlantEasily.PlantEasily.Stop();
             Leveling.ClassWindow.Clear();
@@ -98,6 +103,8 @@ namespace Overhaul
             Commands.AdminCommands.Clear();
             TarDrain.Shutdown();
             DvergerCirclet.Shutdown();
+            Storage.FeedingTrough.Shutdown();
+            Storage.ProductionClock.Shutdown();
             Dungeons.BossNativeMaterials.Release();
             Dungeons.MistlandsBossRoom.Release();
             Dungeons.DungeonRuntime.ClearSession();

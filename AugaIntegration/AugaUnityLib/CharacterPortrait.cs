@@ -170,6 +170,8 @@ namespace AugaUnity
         private Texture _texture;
         private GameObject _attachedItem;
         private List<Renderer> _renderers;
+        private readonly MaterialPropertyBlock _properties = new MaterialPropertyBlock();
+        private static readonly int SkinColor = Shader.PropertyToID("_SkinColor");
 
         public void Setup(PlayerCustomizaton playerCustomizaton, PortraitMode mode, int index)
         {
@@ -194,7 +196,9 @@ namespace AugaUnity
             foreach (var renderer in _renderers)
             {
                 renderer.forceRenderingOff = false;
-                renderer.material.SetColor("_SkinColor", hairColor);
+                renderer.GetPropertyBlock(_properties);
+                _properties.SetColor(SkinColor, hairColor);
+                renderer.SetPropertyBlock(_properties);
             }
 
             camera.Render();

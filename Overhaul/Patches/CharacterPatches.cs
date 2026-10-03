@@ -1,5 +1,5 @@
 ﻿using HarmonyLib;
-using System.Diagnostics;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using UnityEngine;
@@ -64,30 +64,32 @@ namespace Overhaul.Patches
         }
     }
 
-    [HarmonyPatch(typeof(Character))]
+    [HarmonyPatch]
     internal class CharacterPatches
     {
-        [HarmonyPatch("IsSwimming")]
-        [HarmonyPrefix]
-        private static bool IsSwimming_Prefix(ref bool __result, Character __instance, float ___m_swimTimer)
+        private static IEnumerable<MethodBase> TargetMethods()
         {
-            if (___m_swimTimer < 0.5f)
+            yield return AccessTools.Method(typeof(Humanoid), nameof(Humanoid.UpdateEquipment));
+            yield return AccessTools.Method(typeof(Humanoid), nameof(Humanoid.EquipItem));
+        }
+
+        private static bool EquipmentSwimming(Character character) =>
+            !(character.IsPlayer() && character.m_swimTimer < .5f) && character.IsSwimming();
+
+        [HarmonyTranspiler]
+        private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var original = AccessTools.Method(typeof(Character), nameof(Character.IsSwimming));
+            var replacement = AccessTools.Method(typeof(CharacterPatches), nameof(EquipmentSwimming));
+            foreach (var instruction in instructions)
             {
-                StackTrace stackTrace = new StackTrace();
-                string text = "";
-                int num = 2;
-                while (num < stackTrace.FrameCount && num < 10)
+                if (instruction.Calls(original))
                 {
-                    text = text + GeneralExtensions.FullDescription(stackTrace.GetFrame(num).GetMethod()) + "-";
-                    num++;
+                    instruction.opcode = OpCodes.Call;
+                    instruction.operand = replacement;
                 }
-                if (__instance.IsPlayer() && (text.Contains("UpdateEquipment") || text.Contains("EquipItem")))
-                {
-                    __result = false;
-                    return false;
-                }
+                yield return instruction;
             }
-            return true;
         }
     }
 }

@@ -14,6 +14,8 @@ namespace Overhaul.Storage
         private Player player;
         private float nextScan;
         private bool nearby;
+        private double shownDps = double.NaN, shownPeak = double.NaN;
+        private bool shownDuration, shownHits;
         private void Awake() => instance = this;
         internal static bool BlocksPointer(Vector2 position, bool locked)
         {
@@ -39,6 +41,7 @@ namespace Overhaul.Storage
                 var prefab = Auga.Auga.Assets.TrainingMeter;
                 if (!prefab) return;
                 panel = Instantiate(prefab, transform.Find("hudroot"), false);
+                shownDps = shownPeak = double.NaN;
                 var canvas = panel.GetComponentInParent<Canvas>();
                 if (canvas && !canvas.GetComponent<GraphicRaycaster>()) canvas.gameObject.AddComponent<GraphicRaycaster>();
                 Localization.instance.Localize(panel.transform);
@@ -64,8 +67,17 @@ namespace Overhaul.Storage
         private void Refresh()
         {
             var session = TrainingDamageMeter.Session;
-            dps.text = session.Duration > 0 ? session.Dps.ToString("0.0") : "—";
-            peak.text = session.Count > 0 ? session.Peak.ToString("0.0") : "—";
+            bool duration = session.Duration > 0, hits = session.Count > 0;
+            if (shownDps != session.Dps || shownDuration != duration)
+            {
+                dps.text = duration ? session.Dps.ToString("0.0") : "—";
+                shownDps = session.Dps; shownDuration = duration;
+            }
+            if (shownPeak != session.Peak || shownHits != hits)
+            {
+                peak.text = hits ? session.Peak.ToString("0.0") : "—";
+                shownPeak = session.Peak; shownHits = hits;
+            }
         }
         private void OnDestroy()
         {

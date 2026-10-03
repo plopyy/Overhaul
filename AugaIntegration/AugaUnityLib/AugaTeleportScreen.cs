@@ -20,6 +20,8 @@ namespace AugaUnity
         private Camera _camera;
         private EffectFade _effectFade;
         private MeshRenderer _meshRenderer;
+        private RenderTexture _targetTexture;
+        private readonly MaterialPropertyBlock _properties = new MaterialPropertyBlock();
         private Vector3 _camSpeed = Vector3.zero;
         private Vector3 _camRotSpeed = Vector3.zero;
 
@@ -44,7 +46,8 @@ namespace AugaUnity
                 _cameraTargetEnd = _stage.transform.Find("CameraTargetEnd");
                 _camera.transform.position = _cameraTarget.position;
                 _camera.transform.rotation = _cameraTarget.rotation;
-                _camera.targetTexture = new RenderTexture(Screen.width, Screen.height, 24);
+                _targetTexture = new RenderTexture(Screen.width, Screen.height, 24);
+                _camera.targetTexture = _targetTexture;
                 _camera.GetComponent<DepthOfField>().enabled = false;
                 _camera.GetComponent<SunShafts>().enabled = false;
                 foreach (Transform child in _camera.transform)
@@ -75,11 +78,16 @@ namespace AugaUnity
 
             _camera.enabled = true;
             _camera.GetComponent<SunShafts>().enabled = false;
-            _camera.transform.position = _cameraTarget.position;
-            _camera.transform.rotation = _cameraTarget.rotation;
+            if (_cameraTarget)
+            {
+                _camera.transform.position = _cameraTarget.position;
+                _camera.transform.rotation = _cameraTarget.rotation;
+            }
 
             _effectFade.SetActive(true);
-            _meshRenderer.material.SetColor("_EmissionColor", new Color(5, 2.38f, 0, 1));
+            _meshRenderer.GetPropertyBlock(_properties);
+            _properties.SetColor("_EmissionColor", new Color(5, 2.38f, 0, 1));
+            _meshRenderer.SetPropertyBlock(_properties);
         }
 
         public void Update()
@@ -93,18 +101,28 @@ namespace AugaUnity
 
         public void OnDisable()
         {
+            if (!_stage || !_camera) return;
             _stage.gameObject.SetActive(false);
 
-            _camera.transform.position = _cameraTarget.position;
-            _camera.transform.rotation = _cameraTarget.rotation;
+            if (_cameraTarget)
+            {
+                _camera.transform.position = _cameraTarget.position;
+                _camera.transform.rotation = _cameraTarget.rotation;
+            }
         }
 
         public void OnDestroy()
         {
-            if (_camera != null && _camera.targetTexture != null)
+            if (_camera) _camera.targetTexture = null;
+            if (DisplayImage) DisplayImage.texture = null;
+            if (_targetTexture)
             {
-                _camera.targetTexture.Release();
+                _targetTexture.Release();
+                Destroy(_targetTexture);
             }
+            if (_stage) Destroy(_stage);
+            _targetTexture = null;
+            _stage = null;
         }
     }
 }
