@@ -11,11 +11,14 @@ Le projet est en développement, actuellement en série **2.2**. Les fonctionnal
 - Expérience, niveaux, points de statistiques et bonus passifs, avec progression persistante du personnage.
 - Réglages d'expérience selon les biomes, catégories de monstres, étoiles et participation aux combats.
 - Statistiques d'objets, vitesses d'attaque et effets des familles d'armes configurables.
+- Durabilité maximale des armes, outils et armures doublée, y compris les gains par amélioration. Les objets existants conservent leurs points restants et peuvent être réparés jusqu'au nouveau maximum.
+- Les attaques usent les armes et outils uniquement lorsqu'elles touchent une créature. Les tirs sont comptés à l'impact, une seule fois par attaque, avec les bonus de progression habituels.
 - Comportements de créatures enrichis : agressivité, défense, réactions de groupe et fuite.
 - Visée à l'arc accroupi, caméra décalée à l'épaule et impulsion de saut indépendante de la pente.
 
 ### Interface et inventaire
 
+- Poids de tous les objets réduit de moitié, capacité de base de 600 et bonus du Megingjord de 400. Les réglages personnalisés de capacité restent conservés.
 - Interface Auga intégrée et adaptée aux systèmes d'Overhaul, avec traductions françaises et anglaises.
 - Emplacements d'équipement, apparences cosmétiques séparées des statistiques, raccourcis de nourriture et de munitions.
 - Coffres renommables : nom enregistré, visible dans la fenêtre et en visant le coffre. `R` prend tout le contenu disponible et `Maj + R` permet de renommer.

@@ -38,6 +38,7 @@
     <Compile Include="TreeFallDirection.cs" />
     <Compile Include="ItemBalance.cs" />
     <Compile Include="AttackDurability.cs" />
+    <Compile Include="HarvestDamage.cs" />
     <Compile Include="Persistence\*.cs" />
     <EmbeddedResource Include="..\..\Libs\overhaul_sqlite3.dll"><LogicalName>Overhaul.sqlite3.win-x64.dll</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Persistence\schema.sql"><LogicalName>Overhaul.Persistence.schema.sql</LogicalName></EmbeddedResource>
