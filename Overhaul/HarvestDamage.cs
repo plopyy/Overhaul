@@ -23,7 +23,8 @@ namespace Overhaul
             if (hit == null) return;
             bool tree = __instance is TreeBase || __instance is TreeLog ||
                 (__instance is Destructible destructible && destructible.GetDestructibleType() == DestructibleType.Tree);
-            if (tree && hit.m_skill == Skills.SkillType.Axes && hit.m_damage.m_chop > 0f)
+            // Native axes report their special WoodCutting skill when the target is a tree.
+            if (tree && (hit.m_skill == Skills.SkillType.Axes || hit.m_skill == Skills.SkillType.WoodCutting) && hit.m_damage.m_chop > 0f)
             {
                 hit = hit.Clone();
                 hit.m_damage.m_chop *= 2f;
