@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace Overhaul.Persistence
@@ -37,7 +38,12 @@ namespace Overhaul.Persistence
         }
         private readonly PlayerDatabaseWriter writer;
         private readonly Func<DateTime> clock;
-        private readonly Dictionary<object, Session> sessions = new Dictionary<object, Session>();
+        private sealed class ConnectionComparer : IEqualityComparer<object>
+        {
+            public new bool Equals(object a, object b) => ReferenceEquals(a, b);
+            public int GetHashCode(object value) => RuntimeHelpers.GetHashCode(value);
+        }
+        private readonly Dictionary<object, Session> sessions = new Dictionary<object, Session>(new ConnectionComparer());
         internal PlayerAdmission(PlayerDatabaseWriter writer, Func<DateTime> clock = null)
         { this.writer = writer; this.clock = clock ?? (() => DateTime.UtcNow); }
         internal Session Begin(object authenticatedConnection, PlayerIdentity identity, bool allowImport, Func<IEnumerable<PlayerChange>> fresh)

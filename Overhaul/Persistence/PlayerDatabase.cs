@@ -130,6 +130,8 @@ namespace Overhaul.Persistence
         private readonly SqliteDatabase db;
         private readonly FileStream ownership;
         private readonly PlayerIdentity identity;
+        internal bool BelongsTo(PlayerIdentity player) => player != null && player.World == identity.World &&
+            player.Provider == identity.Provider && player.Account == identity.Account;
 
         internal PlayerDatabase(string path, PlayerIdentity identity)
         {
