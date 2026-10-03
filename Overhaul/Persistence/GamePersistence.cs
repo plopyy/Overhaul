@@ -14,6 +14,7 @@ namespace Overhaul.Persistence
         private static ZNet session;
         private static bool loading;
         private static long nextId;
+        private static long sessionUid;
         private static float nextCapture;
         private static string lastError;
         private static readonly Dictionary<ZDOID,long> ids=new Dictionary<ZDOID,long>();
@@ -23,7 +24,7 @@ namespace Overhaul.Persistence
         {
             if(!TryWorld(world.m_worldName,world.m_fileSource,out var stored))return false;
             if(stored.m_uid!=world.m_uid)throw new InvalidDataException("World metadata identity mismatch");
-            if(Active){Save(false);return true;}
+            if(Active&&world.m_uid==sessionUid){Save(false);return true;}
             string path=PathFor(world.m_worldName,world.m_fileSource);
             using(var guard=new FileStream(path+".owner",FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None))
             using(var db=new SqliteDatabase(path))
@@ -40,7 +41,7 @@ namespace Overhaul.Persistence
         }
         internal static bool TryWorld(string name,FileHelpers.FileSource source,out World result)
         {
-            result=null;if(source!=FileHelpers.FileSource.Local)return false;
+            result=null;if(source==FileHelpers.FileSource.Auto)source=FileHelpers.FileSource.Local;if(source!=FileHelpers.FileSource.Local)return false;
             string path=PathFor(name,source);if(!File.Exists(path))return false;
             using(var db=new SqliteDatabase(path,true))
             {
@@ -53,8 +54,8 @@ namespace Overhaul.Persistence
         internal static bool Load(ZNet net)
         {
             var world=ZNet.m_world;
-            if(world==null||world.m_menu||world.m_fileSource!=FileHelpers.FileSource.Local)return false;
-            Close();loading=true;session=net;nextId=0;FileStream startupOwnership=null;
+            if(!net.IsServer()||world==null||world.m_menu||world.m_fileSource!=FileHelpers.FileSource.Local)return false;
+            Close();loading=true;session=net;sessionUid=world.m_uid;nextId=0;FileStream startupOwnership=null;
             try
             {
                 string path=PathFor(world.m_worldName,world.m_fileSource),directory=System.IO.Path.GetDirectoryName(path);
@@ -109,7 +110,7 @@ namespace Overhaul.Persistence
             finally{startupOwnership?.Dispose();}
         }
         internal static void Mark(ZDOID uid){if(Active)dirty.Add(uid);}
-        private static bool CanSave()=>Active&&session&&session.IsServer()&&!ZNet.m_loadError&&!SaveSystem.HasSessionFlag(SaveSystemSessionFlags.DontSaveWorld)&&!ZoneSystem.instance.SkipSaving()&&!DungeonDB.instance.SkipSaving();
+        private static bool CanSave()=>Active&&session&&session.IsServer()&&ZNet.m_world!=null&&ZNet.m_world.m_uid==sessionUid&&!ZNet.m_loadError&&!SaveSystem.HasSessionFlag(SaveSystemSessionFlags.DontSaveWorld)&&!ZoneSystem.instance.SkipSaving()&&!DungeonDB.instance.SkipSaving();
         internal static void Capture()
         {
             if(!CanSave())return;
@@ -131,7 +132,7 @@ namespace Overhaul.Persistence
             try
             {
                 if(Time.realtimeSinceStartup>=nextCapture){Capture();writer.RequestFlush();nextCapture=Time.realtimeSinceStartup+5;}
-                string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] SAVE FAILED; changes remain pending: "+error);}
+                string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] Write or backup failed; failed operations will be retried: "+error);}
             }
             catch(Exception ex){ZNet.m_loadError=true;ZLog.LogError("[Overhaul SQLite] Snapshot failed; saving disabled: "+ex);}
         }

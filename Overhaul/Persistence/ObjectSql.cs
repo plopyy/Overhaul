@@ -11,9 +11,16 @@ namespace Overhaul.Persistence
         internal static Func<int, string> PrefabName = NameCatalog.Prefab;
         internal static void Write(SqliteDatabase db, ObjectRecord o, bool importing = false)
         {
+            long? oldChunk=null;
+            if(!importing)using(var previous=db.Query("SELECT chunk FROM objects WHERE id=?",o.Id))if(previous.Read())oldChunk=previous.Long(0);
             db.Write("INSERT OR IGNORE INTO chunks(id,native_index,size_level,native_version,object_count) VALUES (?,?,?,0,0)", o.Chunk, (o.Chunk - 1) & 65535, (o.Chunk - 1) >> 16);
             new DatabaseRow("objects", "id,chunk,chunk_order,prefab_hash,prefab,x,y,z,rotation_x,rotation_y,rotation_z,persistent,distant,network_type,flags,raw_data,zdo_user,zdo_id", 1,
                 o.Id,o.Chunk,o.Order,o.Prefab,o.Name,o.Position[0],o.Position[1],o.Position[2],o.Rotation[0],o.Rotation[1],o.Rotation[2],(o.Flags&256)!=0,(o.Flags&512)!=0,(o.Flags>>10)&3,o.Flags,FloatBytes(o.Position.Concat(o.Rotation).ToArray()),o.User,o.NetworkId).Write(db);
+            if(!importing&&oldChunk!=o.Chunk)
+            {
+                db.Write("UPDATE chunks SET object_count=object_count+1 WHERE id=?",o.Chunk);
+                if(oldChunk.HasValue)db.Write("UPDATE chunks SET object_count=object_count-1 WHERE id=?",oldChunk.Value);
+            }
             var old = new HashSet<string>();
             if (!importing) using (var rows = db.Query("SELECT type,key_hash FROM properties WHERE object_id=?", o.Id))
                 while (rows.Read()) old.Add(rows.Text(0) + ":" + rows.Long(1));
@@ -60,7 +67,11 @@ namespace Overhaul.Persistence
             else if(key==Rooms)db.Write("DELETE FROM dungeons WHERE object_id=?",id);
             else if(key==Terrain)db.Write("DELETE FROM terrain WHERE object_id=?",id);
         }
-        internal static void Delete(SqliteDatabase db,long id) => db.Write("DELETE FROM objects WHERE id=?",id);
+        internal static void Delete(SqliteDatabase db,long id)
+        {
+            db.Write("UPDATE chunks SET object_count=object_count-1 WHERE id=(SELECT chunk FROM objects WHERE id=?)",id);
+            db.Write("DELETE FROM objects WHERE id=?",id);
+        }
         private static byte[] FloatBytes(float[] values){var bytes=new byte[values.Length*4];Buffer.BlockCopy(values,0,bytes,0,bytes.Length);return bytes;}
 
         private static void Inventory(SqliteDatabase db,long id,byte[] data)

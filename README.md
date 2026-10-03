@@ -32,6 +32,20 @@ Le projet est en développement, actuellement en série **2.2**. Les fonctionnal
 
 ## Installation
 
+### Sauvegarde progressive du monde
+
+Les mondes locaux au format natif 41 sont migrés automatiquement vers `<dossier du monde>/<nom du monde>.db`. La console affiche la progression de 0 à 100 %. La table `migration_state` n'est créée avec son unique ligne `complete` qu'après vérification de la migration et validation de la transaction. Une migration interrompue est conservée à part puis recommencée depuis les fichiers natifs, qui restent intacts.
+
+Après migration, SQLite sert au chargement et à la sauvegarde du monde. Les objets modifiés et les données globales sont enregistrés en arrière-plan, environ toutes les cinq secondes. Un arrêt normal vide les écritures en attente. Une interruption brutale peut perdre les modifications encore en attente. Les sauvegardes périodiques demandées par le jeu créent aussi des copies autonomes dans `sqlite-backups` (trois conservées).
+
+Les profils des personnages conservent leur sauvegarde native côté client. Les inventaires des coffres et les autres inventaires du monde sont dans `inventory`, avec une ligne par emplacement occupé. Le nom personnalisé d'un coffre est dans `properties`, clé `Overhaul.ChestName`.
+
+SQLite utilise temporairement des fichiers `.db-wal` et `.db-shm` pendant son fonctionnement. Pour copier un monde actif, utiliser une copie de `sqlite-backups`. Pour copier son fichier `.db` directement, arrêter normalement le serveur au préalable. Le fichier `.owner` empêche deux instances Overhaul d'écrire simultanément dans le même monde.
+
+Cette intégration cible les mondes locaux. Les mondes cloud gardent le fonctionnement natif. Les anciennes sauvegardes non découpées doivent d'abord être converties par la version compatible de Valheim. Windows x64 embarque SQLite 3.53.4 ; Linux nécessite `libsqlite3.so.0` version 3.52.0 ou supérieure et n'a pas été validé dans cet environnement.
+
+Tests effectués sur une copie de monde : migration et reconstruction de 556 403 objets, reprise après interruption, écritures et suppressions, chargement dans les classes natives puis redémarrage. Les transferts personnage/coffre, les piles partielles et le refus quand l'inventaire est plein sont vérifiés après sauvegarde et rechargement natifs du personnage et du monde. Les compétences et données personnalisées sont conservées dans ces tests. Un essai multijoueur sur serveur réel reste nécessaire.
+
 Le dépôt contient les sources ; il ne constitue pas un package prêt à installer.
 
 1. Installer BepInEx 5 et Jotunn compatibles avec la version de Valheim utilisée.

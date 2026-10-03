@@ -1,0 +1,9 @@
+SQLite 3.53.4
+https://www.sqlite.org/
+
+SQLite is in the public domain. See https://www.sqlite.org/copyright.html
+Overhaul embeds the official Windows x64 sqlite3.dll, renamed overhaul_sqlite3.dll.
+Source archive: sqlite-dll-win-x64-3530400.zip
+Native DLL SHA-256: AB57D0437795ECC757CB693F32EA224173FA9856594D95CFA6B5033E645CD1EC
+
+The Overhaul C# adapter and world persistence implementation are part of Overhaul.

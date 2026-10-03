@@ -19,7 +19,8 @@ namespace Overhaul.Persistence
         private long submitted,committed;
         private bool stopping,disposed,backup;
         private Exception failure;
-        internal string LastError { get { lock(gate)return failure?.ToString(); } }
+        private string failureText;
+        internal string LastError { get { lock(gate)return failureText; } }
         internal long Committed { get { lock(gate)return committed; } }
         internal ProgressiveWriter(string path,FileStream existingOwnership=null)
         {
@@ -82,12 +83,12 @@ namespace Overhaul.Persistence
                             if(metadata!=null)WorldSql.Write(db,metadata);
                         });
                         batch.Clear();metadata=null;
-                        lock(gate){committed=version;failure=null;Monitor.PulseAll(gate);}
+                        lock(gate){committed=version;failure=null;failureText=null;Monitor.PulseAll(gate);}
                         if(createBackup)Backup(db);
                     }
                     catch(Exception ex)
                     {
-                        lock(gate){failure=ex;backup|=createBackup;Monitor.PulseAll(gate);}
+                        lock(gate){failure=ex;failureText=ex.ToString();backup|=createBackup;Monitor.PulseAll(gate);}
                         db?.Dispose();db=null;
                     }
                     lock(gate)if(stopping)break;

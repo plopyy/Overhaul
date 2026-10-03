@@ -27,4 +27,12 @@ CREATE INDEX properties_key ON properties(key_hash,type);
 CREATE UNIQUE INDEX inventory_position ON inventory(object_id,x,y);
 
 CREATE TABLE migration (id INTEGER PRIMARY KEY CHECK(id=1),native_save INTEGER,format_version INTEGER,source TEXT,started_at TEXT,object_count INTEGER);
-CREATE TABLE world_data (key TEXT PRIMARY KEY, data BLOB NOT NULL) WITHOUT ROWID;
+CREATE VIEW v_objects AS SELECT id,prefab,chunk,x,y,z,persistent,distant,network_type,zdo_user,zdo_id FROM objects;
+CREATE VIEW v_properties AS SELECT p.object_id,o.prefab,p.key,p.type,p.integer,p.real,p.text,p.x,p.y,p.z,p.w,length(p.blob) AS bytes FROM properties p JOIN objects o ON o.id=p.object_id;
+CREATE VIEW v_inventory AS SELECT i.object_id,o.prefab AS container,i.x,i.y,i.prefab,i.stack,i.quality,i.durability,i.crafter_name FROM inventory i JOIN objects o ON o.id=i.object_id;
+CREATE VIEW object_counts AS SELECT prefab,prefab_hash,count(*) AS count FROM objects GROUP BY prefab_hash;
+INSERT INTO schema_guide VALUES ('inventory','One occupied inventory slot per row. object_id identifies the owning world object. x and y identify the slot.');
+INSERT INTO schema_guide VALUES ('properties','Typed persistent ZDO values. Unknown key names retain their exact numeric hash. Overhaul.ChestName stores a chest name.');
+INSERT INTO schema_guide VALUES ('migration_state','Created only at successful migration commit. A single complete row is required before using this world.');
+INSERT INTO schema_guide VALUES ('objects','Persistent world entities. zdo_user and zdo_id preserve network references between restarts.');
+INSERT INTO schema_guide VALUES ('player_history','World player history only. Character profiles remain in native client files.');
