@@ -33,13 +33,13 @@ namespace Overhaul.Persistence
             z.m_prefab=o.Prefab;z.m_rotation=Vector(o.Rotation);z.Persistent=(o.Flags&256)!=0;z.Distant=(o.Flags&512)!=0;z.Type=(ZDO.ObjectType)((o.Flags>>10)&3);z.SetOwnerInternal(0);
             foreach(var p in o.Properties)switch(p.Type)
             {
-                case "float":ZDOExtraData.Add(uid,p.Key,(float)p.Value);break;
-                case "int":ZDOExtraData.Add(uid,p.Key,(int)p.Value);break;
-                case "long":ZDOExtraData.Add(uid,p.Key,(long)p.Value);break;
-                case "string":ZDOExtraData.Add(uid,p.Key,(string)p.Value);break;
-                case "bytes":ZDOExtraData.Add(uid,p.Key,(byte[])p.Value);break;
-                case "vector3":ZDOExtraData.Add(uid,p.Key,Vector((float[])p.Value));break;
-                case "quaternion":var q=(float[])p.Value;ZDOExtraData.Add(uid,p.Key,new Quaternion(q[0],q[1],q[2],q[3]));break;
+                case "float":ZDOExtraData.Set(uid,p.Key,(float)p.Value);break;
+                case "int":ZDOExtraData.Set(uid,p.Key,(int)p.Value);break;
+                case "long":ZDOExtraData.Set(uid,p.Key,(long)p.Value);break;
+                case "string":ZDOExtraData.Set(uid,p.Key,(string)p.Value);break;
+                case "bytes":ZDOExtraData.Set(uid,p.Key,(byte[])p.Value);break;
+                case "vector3":ZDOExtraData.Set(uid,p.Key,Vector((float[])p.Value));break;
+                case "quaternion":var q=(float[])p.Value;ZDOExtraData.Set(uid,p.Key,new Quaternion(q[0],q[1],q[2],q[3]));break;
                 default:throw new InvalidDataException("Unknown world property type");
             }
             if(o.ConnectionType!=0)

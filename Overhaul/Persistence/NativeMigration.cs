@@ -14,7 +14,7 @@ namespace Overhaul.Persistence
             internal uint Version;
             internal string File;
         }
-        internal static void Run(string directory,string destination,Func<byte[],byte[]> brotli,Action<int,string> progress,Action<long> afterObject=null)
+        internal static void Run(string directory,string destination,Func<byte[],byte[]> brotli,Action<int,string> progress,Action<long> afterObject=null,long? expectedWorld=null)
         {
             if(File.Exists(destination))throw new IOException("World database already exists: " + destination);
             string temporary=destination+".migrating";
@@ -24,8 +24,8 @@ namespace Overhaul.Persistence
                 using(var previous=new SqliteDatabase(temporary))
                 {
                     if(!WorldSchema.Owned(previous))throw new InvalidDataException("Unrecognized migration file; refusing to replace it.");
-                    completed=MigrationState.Complete(previous);
-                    previous.Execute("PRAGMA wal_checkpoint(TRUNCATE)");
+                    completed=MigrationState.Complete(previous,expectedWorld);
+                    previous.Checkpoint();
                 }
                 if(completed){File.Move(temporary,destination);progress(100,"Completed migration recovered");return;}
                 File.Move(temporary,temporary+".interrupted-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff"));
@@ -58,6 +58,7 @@ namespace Overhaul.Persistence
                 NativeFormat.End(map);
             }
             var world=WorldSql.Parse(Read(prefix+".fwl2"),Read(prefix+".db2"),brotli);
+            if(expectedWorld.HasValue&&world.Uid!=expectedWorld.Value)throw new InvalidDataException("Native migration belongs to a different world");
             ObjectSql.PrefabName=NameCatalog.Prefab;
             using(var db=new SqliteDatabase(temporary))
             {
@@ -89,7 +90,7 @@ namespace Overhaul.Persistence
                     MigrationState.Finish(db,world.Uid);
                     progress(99,"Committing migration");
                 });
-                db.Execute("PRAGMA wal_checkpoint(TRUNCATE)");
+                db.Checkpoint();
             }
             // Re-open the committed database before publishing its final name.
             using(var verify=new SqliteDatabase(temporary,true))

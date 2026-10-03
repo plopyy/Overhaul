@@ -139,6 +139,11 @@ namespace Overhaul.Persistence
         }
         internal Statement Query(string sql, params object[] values) => new Statement(this, sql, values);
         internal void Execute(string sql, params object[] values) { using (var command = Query(sql, values)) while (command.Read()) { } }
+        internal void Checkpoint()
+        {
+            using(var row=Query("PRAGMA wal_checkpoint(TRUNCATE)"))
+                if(!row.Read()||row.Long(0)!=0||row.Long(1)!=0||row.Long(2)!=0)throw new IOException("SQLite checkpoint is busy; database was not published or moved.");
+        }
         internal void Write(string sql, params object[] values)
         {
             if (!commands.TryGetValue(sql, out var command)) commands.Add(sql, command = Query(sql, values));

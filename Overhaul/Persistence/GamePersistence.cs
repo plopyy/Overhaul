@@ -63,18 +63,18 @@ namespace Overhaul.Persistence
                 if(File.Exists(path))
                 {
                     bool complete;
-                    using(var db=new SqliteDatabase(path)){if(!WorldSchema.Owned(db))throw new InvalidDataException("Unrecognized world database");complete=MigrationState.Complete(db,world.m_uid);db.Execute("PRAGMA wal_checkpoint(TRUNCATE)");}
+                    using(var db=new SqliteDatabase(path)){if(!WorldSchema.Owned(db))throw new InvalidDataException("Unrecognized world database");complete=MigrationState.Complete(db,world.m_uid);db.Checkpoint();}
                     if(!complete)File.Move(path,path+".incomplete-"+DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff"));
                 }
                 if(!File.Exists(path))
                 {
                     if(Directory.GetFiles(directory,"_main.*.ok").Length>0)
-                        NativeMigration.Run(directory,path,BrotliCompressor.DecompressBytes,(percent,message)=>ZLog.Log("[Overhaul SQLite] Migration "+percent+"%: "+message));
+                        NativeMigration.Run(directory,path,BrotliCompressor.DecompressBytes,(percent,message)=>ZLog.Log("[Overhaul SQLite] Migration "+percent+"%: "+message),expectedWorld:world.m_uid);
                     else if(world.m_needsDB||File.Exists(world.GetDBPath()))throw new InvalidDataException("Existing world has no complete format-41 chunked save. Native save retained.");
                     else
                     {
                         string temporary=path+".new-"+Guid.NewGuid().ToString("N");
-                        using(var db=new SqliteDatabase(temporary)){WorldSchema.Create(db);db.Transaction(()=>{WorldSql.Write(db,GameSnapshot.CaptureWorld(net));MigrationState.Finish(db,world.m_uid);});db.Execute("PRAGMA wal_checkpoint(TRUNCATE)");}
+                        using(var db=new SqliteDatabase(temporary)){WorldSchema.Create(db);db.Transaction(()=>{WorldSql.Write(db,GameSnapshot.CaptureWorld(net));MigrationState.Finish(db,world.m_uid);});db.Checkpoint();}
                         File.Move(temporary,path);
                     }
                 }
@@ -94,7 +94,8 @@ namespace Overhaul.Persistence
                 manager.m_deadZDOs.Clear();manager.DirtyChunks.Clear();manager.DirtyPortalObjects=false;
                 net.WorldSetup();net.OnWorldSaveLoaded();
                 // Convert every imported connection together before incremental snapshots can mix formats.
-                if(links.Count>0){writer.Enqueue(links.Select(uid=>GameSnapshot.Capture(manager.GetZDO(uid),ids[uid])).ToArray(),null);writer.Flush();}
+                links.AddRange(manager.GetPortalList().Select(z=>z.m_uid));
+                if(links.Count>0){writer.Enqueue(links.Distinct().Select(uid=>GameSnapshot.Capture(manager.GetZDO(uid),ids[uid])).ToArray(),null);writer.Flush();}
                 loading=false;nextCapture=Time.realtimeSinceStartup+5;lastError=null;
                 ZLog.Log("[Overhaul SQLite] World loaded: "+ids.Count+" objects. Progressive saves every 5 seconds: "+path);
                 return true;
@@ -223,7 +224,7 @@ namespace Overhaul.Persistence
     [HarmonyPatch]
     internal static class SqliteExtraChangedPatch
     {
-        static IEnumerable<MethodBase> TargetMethods()=>AccessTools.GetDeclaredMethods(typeof(ZDOExtraData)).Where(m=>(m.Name=="Set"||m.Name=="Add"||m.Name.StartsWith("Remove",StringComparison.Ordinal)||m.Name=="SetConnection")&&m.GetParameters().Length>0&&m.GetParameters()[0].ParameterType==typeof(ZDOID));
+        static IEnumerable<MethodBase> TargetMethods()=>AccessTools.GetDeclaredMethods(typeof(ZDOExtraData)).Where(m=>(m.Name=="Set"||m.Name=="Update"||m.Name=="Add"||m.Name.StartsWith("Remove",StringComparison.Ordinal)||m.Name=="SetConnection")&&m.GetParameters().Length>0&&m.GetParameters()[0].ParameterType==typeof(ZDOID));
         static void Postfix(ZDOID __0)=>GamePersistence.Mark(__0);
     }
 }
