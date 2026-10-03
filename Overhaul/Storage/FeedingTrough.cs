@@ -98,7 +98,7 @@ namespace Overhaul.Storage
                 int kind = random.Next(4);
                 float x = (float)(random.NextDouble() * 1.16 - .58);
                 float z = (float)(random.NextDouble() * .30 - .15);
-                float height = .13f + (float)random.NextDouble() * .16f + .10f * (1f - Mathf.Abs(x) / .65f);
+                float height = .18f + (float)random.NextDouble() * .055f + .025f * (1f - Mathf.Abs(x) / .65f);
                 float yaw = (float)random.NextDouble() * 360f;
                 float variation = .85f + (float)random.NextDouble() * .30f;
                 var source = kind == 0 ? acorn.transform.Find("acorn") :
@@ -310,6 +310,7 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
 
 
 
