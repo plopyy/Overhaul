@@ -67,19 +67,11 @@ namespace Overhaul.Storage
             model.name = "Cooler model";
             model.gameObject.SetActive(true);
             UnityEngine.Object.Instantiate(cooler.transform.Find("collider"), root.transform, false);
-            foreach (var filter in model.GetComponentsInChildren<MeshFilter>(true))
-            {
-                var renderer = filter.GetComponent<MeshRenderer>();
-                var materials = renderer.sharedMaterials;
-                Mesh dryMesh = null;
-                for (int i = 0; i < materials.Length; i++)
-                {
-                    if (!materials[i] || materials[i].name.IndexOf("water", StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    if (!dryMesh) dryMesh = UnityEngine.Object.Instantiate(filter.sharedMesh);
-                    dryMesh.SetTriangles(Array.Empty<int>(), i);
-                }
-                if (dryMesh) { dryMesh.name = "Overhaul dry cooler"; filter.sharedMesh = dryMesh; }
-            }
+            // The native Low mesh is the dry basin; High also contains a water submesh.
+            // Keep the original GPU mesh intact: some native meshes do not permit CPU access.
+            foreach (var lod in model.GetComponentsInChildren<LODGroup>(true)) UnityEngine.Object.DestroyImmediate(lod);
+            model.Find("High").gameObject.SetActive(false);
+            model.Find("Low").gameObject.SetActive(true);
             // Meshes only: fixed decoration, with no item, physics or networking components.
             var food = new GameObject("Food decoration").transform;
             food.SetParent(root.transform, false);
@@ -119,8 +111,11 @@ namespace Overhaul.Storage
         {
             // One renderer per native material instead of one per vegetable/seed mesh.
             var groups = new Dictionary<Material, List<CombineInstance>>();
+            var combined = new List<GameObject>();
             foreach (var filter in food.GetComponentsInChildren<MeshFilter>())
             {
+                if (!filter.sharedMesh.isReadable) continue;
+                combined.Add(filter.gameObject);
                 var materials = filter.GetComponent<MeshRenderer>().sharedMaterials;
                 for (int i = 0; i < materials.Length; i++)
                 {
@@ -141,7 +136,7 @@ namespace Overhaul.Storage
                 part.AddComponent<MeshFilter>().sharedMesh = mesh;
                 part.AddComponent<MeshRenderer>().sharedMaterial = pair.Key;
             }
-            foreach (var child in children) UnityEngine.Object.DestroyImmediate(child);
+            foreach (var child in combined) UnityEngine.Object.DestroyImmediate(child);
         }
         internal static bool Hungry(MonsterAI ai) => ai && ai.m_character &&
             !ai.m_character.IsDead() && ai.m_tamable && ai.m_tamable.IsHungry();
@@ -293,5 +288,6 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
 
 
