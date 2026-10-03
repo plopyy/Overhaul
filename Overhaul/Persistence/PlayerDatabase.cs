@@ -130,7 +130,7 @@ namespace Overhaul.Persistence
         private readonly SqliteDatabase db;
         private readonly FileStream ownership;
         private readonly PlayerIdentity identity;
-        private bool complete, actionSchemaReady;
+        private bool complete;
         internal bool BelongsTo(PlayerIdentity player) => player != null && player.World == identity.World &&
             player.Provider == identity.Provider && player.Account == identity.Account;
 
@@ -231,28 +231,15 @@ namespace Overhaul.Persistence
         internal PlayerBatch Move(PlayerInventoryMove request, PlayerInventoryRules rules)
         {
             if (!Complete) throw new InvalidOperationException("Player has not completed initialization");
-            if (!actionSchemaReady)
-            {
-                db.Execute("CREATE TABLE IF NOT EXISTS inventory_actions(id TEXT PRIMARY KEY,request TEXT NOT NULL,revision INTEGER NOT NULL,payload BLOB NOT NULL)");
-                actionSchemaReady = true;
-            }
             PlayerBatch result = null;
             db.Transaction(() =>
             {
-                using (var old = db.Query("SELECT request,payload FROM inventory_actions WHERE id=?", request.Operation))
-                    if (old.Read())
-                    {
-                        if (old.Text(0) != request.Fingerprint) throw new InvalidDataException("Action replay changed its contents");
-                        result = PlayerBatchFormat.Decode(old.Blob(1)); return;
-                    }
                 if (Revision != request.Revision) throw new InvalidOperationException("Stale inventory action revision");
                 result = PlayerInventoryAuthority.Prepare(request, rules, ReadSlots(request));
-                // This command already has its own replay record; do not write a second receipt.
+                // Revision and item changes commit together; retries with the old revision are refused.
                 ApplyRows(result.Changes);
                 long revision = checked(request.Revision + 1);
                 db.Write("UPDATE identity SET revision=? WHERE id=1", revision);
-                db.Write("INSERT INTO inventory_actions VALUES(?,?,?,?)", request.Operation, request.Fingerprint, revision, PlayerBatchFormat.Encode(result));
-                db.Write("DELETE FROM inventory_actions WHERE revision<=?", revision - 1024);
             });
             return result;
         }
