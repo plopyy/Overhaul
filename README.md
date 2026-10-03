@@ -28,6 +28,7 @@ Le projet est en développement, actuellement en série **2.2**. Les fonctionnal
 
 ### Construction, agriculture et exploration
 
+- Réparation de tout objet réparable sur n'importe quelle station de réparation, sans exigence de type ni de niveau.
 - Déplacement des constructions compatibles avec `H`, marteau en main, sans établi ; conservation de leur contenu.
 - Plantation en grille issue de PlantEasily, intégrée au cultivateur. La récolte de zone et le ramassage en maintenant `E` utilisent les systèmes d'Overhaul.
 - Sélection des destinations de portails avec XPortal intégré à la fenêtre Auga.
