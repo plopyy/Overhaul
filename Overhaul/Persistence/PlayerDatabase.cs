@@ -266,6 +266,7 @@ namespace Overhaul.Persistence
             return rows.ToArray();
         }
         internal PlayerChange[] Read() => ReadTables();
+        internal PlayerSnapshot InventoryState() => new PlayerSnapshot(Revision, ReadTables("inventory", "item_data"));
         private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");
