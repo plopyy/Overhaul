@@ -16,12 +16,15 @@ namespace Overhaul
             internal ItemDrop.ItemData Weapon;
             internal float Pending;
             internal bool HitCreature;
+            internal bool HitResource;
+            internal float Charged;
 
             internal void Charge()
             {
-                if (!HitCreature || Pending <= 0f) return;
-                float cost = Pending;
-                Pending = 0f;
+                float due = Pending * (HitCreature ? 1f : HitResource ? 0.5f : 0f);
+                float cost = due - Charged;
+                if (cost <= 0f) return;
+                Charged = due;
                 // A projectile can outlive its owner or the item being dropped/destroyed.
                 if (!Player || !Player.GetInventory().ContainsItem(Weapon)) return;
                 float reduction = Leveling.LevelingEffects.Passive(Player, "artisan") ? 1f
@@ -41,7 +44,7 @@ namespace Overhaul
         }
 
         // Receives exactly the native debit (including world modifiers). No write occurs
-        // until a creature is touched. All projectiles in one attack share this debit.
+        // until a creature or harvest resource is touched. Mixed hits pay at most the full debit.
         internal static void Debit(ItemDrop.ItemData item, float value, Attack attack)
         {
             Attempt attempt = Get(attack);
@@ -132,6 +135,30 @@ namespace Overhaul
                 Current = attempt;
             }
             private static void Finalizer(Attempt __state) => Current = __state;
+        }
+
+        [HarmonyPatch]
+        internal static class ResourceHit
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {
+                foreach (var type in new[] { typeof(TreeBase), typeof(TreeLog), typeof(Destructible), typeof(MineRock), typeof(MineRock5) })
+                    yield return AccessTools.Method(type, "Damage");
+            }
+            private static void Prefix(object __instance, HitData hit)
+            {
+                if (Current == null || hit == null) return;
+                bool tree = __instance is TreeBase || __instance is TreeLog ||
+                    (__instance is Destructible d && d.GetDestructibleType() == DestructibleType.Tree);
+                bool harvest = tree
+                    ? (hit.m_skill == Skills.SkillType.Axes || hit.m_skill == Skills.SkillType.WoodCutting) && hit.m_damage.m_chop > 0f
+                    : (__instance is MineRock || __instance is MineRock5 ||
+                        (__instance is Destructible resource && !resource.GetComponent<RandomFlyingBird>())) &&
+                        hit.m_skill == Skills.SkillType.Pickaxes && hit.m_damage.m_pickaxe > 0f;
+                if (!harvest) return;
+                Current.HitResource = true;
+                Current.Charge();
+            }
         }
 
         [HarmonyPatch(typeof(Character), "Damage")]
