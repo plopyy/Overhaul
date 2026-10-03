@@ -91,9 +91,10 @@ namespace Overhaul.Persistence
             if (session.State == PlayerAdmission.Phase.Closed) { Dispose(); return; }
             if (session.State == PlayerAdmission.Phase.Failed) { Fail(session.Error); return; }
             if (announced == session.State) return;
+            var phase = session.State;
             try
             {
-                switch (session.State)
+                switch (phase)
                 {
                     case PlayerAdmission.Phase.AwaitingImport:
                         send(Encode(Message.ImportRequest, session.Nonce)); break;
@@ -104,7 +105,7 @@ namespace Overhaul.Persistence
                     case PlayerAdmission.Phase.Ready:
                         send(Encode(Message.Ready, session.Nonce, session.Snapshot.Revision)); break;
                 }
-                announced = session.State;
+                announced = phase;
             }
             catch (Exception error) { Fail(error); }
         }
@@ -147,6 +148,8 @@ namespace Overhaul.Persistence
         // Only the current server transport may invoke this method. Loading must finish before ack.
         internal void Receive(byte[] bytes)
         {
+            if (Closed) return;
+            Tick();
             if (Closed) return;
             try
             {
