@@ -144,6 +144,9 @@ namespace Overhaul.Storage
             foreach (var filter in food.GetComponentsInChildren<MeshFilter>())
             {
                 if (!filter.sharedMesh.isReadable) continue;
+                // Vegetation shaders depend on the original object transform; keep their renderers intact.
+                var material = filter.GetComponent<MeshRenderer>().sharedMaterial;
+                if (material && (material.name == "Turnip" || material.name == "carrot_blast" || material.name == "oak_leaf")) continue;
                 combined.Add(filter.gameObject);
                 if (filter.sharedMesh.name.StartsWith("Trough trimmed ", StringComparison.Ordinal)) trimmedMeshes.Add(filter.sharedMesh);
                 var materials = filter.GetComponent<MeshRenderer>().sharedMaterials;
@@ -317,6 +320,7 @@ namespace Overhaul.Storage
             ai.m_nview.InvokeRPC(owner,FeedingTrough.ReplyRpc,Container.m_nview.GetZDO().m_uid,ticket,food);
     }
 }
+
 
 
 
