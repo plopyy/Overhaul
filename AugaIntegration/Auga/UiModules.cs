@@ -75,7 +75,9 @@ namespace Auga
             var grid = Grid(__instance);
             if (grid == null) return;
             __instance.StopMovement();
-            __instance.scrollSensitivity = grid.cellSize.y + grid.spacing.y;
+            // A wheel notch in the game's UI produces a fractional scroll delta.
+            // Apply the 20x correction to the row pitch, rather than to other menus.
+            __instance.scrollSensitivity = (grid.cellSize.y + grid.spacing.y) * 20f;
         }
 
         private static void Finalizer(UnityEngine.UI.ScrollRect __instance, float __state)
