@@ -155,7 +155,12 @@ namespace EquipmentAndQuickSlots {
             UtilitySlotCount.SettingChanged += (_, _) => MultiUtility.OnUtilitySlotCountChanged();
             ExtraInventoryRows = BindServerConfig("Inventory", "Extra Inventory Rows", 0, "Additional visible inventory rows on top of the game's four. The equipment and quick slots move down with the grid.", false, 0, Slots.MaxExtraRows);
             ExtraInventoryRows.SettingChanged += (_, _) => Slots.OnVisibleRowsChanged();
-            BaseCarryWeight = BindServerConfig("Inventory", "Base Carry Weight", VanillaCarryWeight, "The player's base carry weight before belts and other modifiers. 300 is the game default and leaves other mods' carry-weight changes untouched.", false, 50f, 5000f);
+            BaseCarryWeight = BindServerConfig("Inventory", "Base Carry Weight", 600f, "The player's base carry weight before belts and other modifiers. Overhaul defaults to 600.", false, 50f, 5000f);
+            var carryWeightMigrated = Config.Bind("Internal", "Carry weight 600 migration", false,
+                new ConfigDescription("Tracks the one-time migration of the former 300 default to 600.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
+            if (!carryWeightMigrated.Value && Mathf.Approximately(BaseCarryWeight.Value, VanillaCarryWeight))
+                BaseCarryWeight.Value = 600f;
+            carryWeightMigrated.Value = true;
             BaseCarryWeight.SettingChanged += (_, _) => InventoryPatches.ApplyBaseCarryWeight(Player.m_localPlayer);
 
             // Everything under Gravestone is balance: what survives death and what the player

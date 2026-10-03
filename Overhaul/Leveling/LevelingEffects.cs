@@ -110,8 +110,8 @@ namespace Overhaul.Leveling
         internal sealed class Snapshot { internal Player Player;internal Dictionary<ItemDrop.ItemData,float> Items; }
         private static IEnumerable<MethodBase> TargetMethods()
         {
-            yield return AccessTools.Method(typeof(Attack),"OnAttackTrigger");
-            yield return AccessTools.Method(typeof(Attack),"FireProjectileBurst");
+            // AttackDurability applies these bonuses when a creature is hit, including
+            // delayed projectiles. Taking an attack-wide snapshot would refund twice.
             yield return AccessTools.Method(typeof(Humanoid),"DrainEquipedItemDurability");
             yield return AccessTools.Method(typeof(Player),"DamageArmorDurability");
             yield return AccessTools.Method(typeof(Player),"UpdatePlacement");
