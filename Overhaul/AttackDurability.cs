@@ -150,7 +150,7 @@ namespace Overhaul
         {
             private static void Prefix(Destructible __instance)
             {
-                if (Current == null || !__instance.GetComponent<Bird>()) return;
+                if (Current == null || !__instance.GetComponent<RandomFlyingBird>()) return;
                 Current.HitCreature = true;
                 Current.Charge();
             }
