@@ -10,18 +10,30 @@ namespace Overhaul.Persistence
     internal sealed class GameDamageClock
     {
         private double advanced=Time.timeAsDouble;
-        internal double Elapsed=>Math.Max(0,Time.timeAsDouble-advanced);
-        internal void Reset()=>advanced=Time.timeAsDouble;
+        private double? stopped;
+        internal double Elapsed=>Math.Max(0,(stopped??Time.timeAsDouble)-advanced);
+        internal void Reset()=>advanced=stopped??Time.timeAsDouble;
+        internal void Freeze(){if(!stopped.HasValue)stopped=Time.timeAsDouble;}
         internal static bool Active(PlayerSnapshot state)=>state!=null&&PlayerResources.Read(state,"health")>0&&state.Rows.Any(r=>r.Table=="status"&&
             (ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])) is SE_Burning||ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])) is SE_Poison));
-        internal PlayerActionPlan Prepare(PlayerSnapshot state,Player player)
+        internal PlayerActionPlan Prepare(PlayerSnapshot state,Player player,bool final=false)
         {
             if(!player||!Active(state)){Reset();return null;}
-            double seconds=Math.Min(60,Elapsed);if(seconds<=0)return null;
-            var result=GameDamageOverTime.Advance(state,player,seconds);advanced+=seconds;
-            if(result.Lethal)return GameDeathTransaction.Prepare(state,result.Changes,player,result.LastHit??new HitData());
-            if(result.Changes.Length==0)return null;
-            return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,result.Changes),new Dictionary<long,ObjectRecord>()),()=>{});
+            var changes=new List<PlayerChange>();var current=state;
+            do
+            {
+                double seconds=Math.Min(60,Elapsed);if(seconds<=0)break;
+                var result=GameDamageOverTime.Advance(current,player,seconds);advanced+=seconds;
+                foreach(var row in result.Changes)
+                {
+                    changes.RemoveAll(r=>r.SameKey(row)||row.Delete&&row.Table=="status"&&r.Table=="status_data"&&r.SameStatus(row));
+                    changes.Add(row);
+                }
+                current=PlayerProgressService.Overlay(current,result.Changes);
+                if(result.Lethal)return GameDeathTransaction.Prepare(state,changes,player,result.LastHit??new HitData());
+            }while(final&&Elapsed>0&&Active(current));
+            if(changes.Count==0)return null;
+            return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,changes),new Dictionary<long,ObjectRecord>()),()=>{});
         }
     }
 }

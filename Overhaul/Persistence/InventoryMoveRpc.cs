@@ -30,7 +30,7 @@ namespace Overhaul.Persistence
             if(!player||!GameDamageClock.Active(canonical)){damageClock.Reset();return;}
             if(!final&&damageClock.Elapsed<.2)return;
             damagePending=true;
-            if(!serverActions.Enqueue(state=>damageClock.Prepare(state,player),()=>damagePending=false))damagePending=false;
+            if(!serverActions.Enqueue(state=>damageClock.Prepare(state,player,final),()=>damagePending=false))damagePending=false;
         }
         private void CaptureWear()
         {
@@ -345,7 +345,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
-            if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);QueueDamage(true);}
+            if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);damageClock.Freeze();QueueDamage(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();}
