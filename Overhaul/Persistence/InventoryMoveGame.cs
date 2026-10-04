@@ -87,7 +87,7 @@ namespace Overhaul.Persistence
             internal InventoryMoveLease Reserve(InventoryMoveRequest request)
             {
                 var peer = ZNet.instance.GetPeer(rpc);
-                var actor = peer == null ? null : ChestAccess.Actor(peer.m_uid, peer.m_characterID);
+                var actor = PlayerSessionGame.Actor(rpc);
                 var id = new ZDOID(request.ContainerUser, request.ContainerId);
                 var instance = ZNetScene.instance.FindInstance(id);
                 var chest = instance ? instance.GetComponent<Container>() : null;

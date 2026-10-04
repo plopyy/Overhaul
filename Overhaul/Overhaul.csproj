@@ -46,6 +46,7 @@
     <EmbeddedResource Include="Persistence\names.tsv"><LogicalName>Overhaul.Persistence.names.tsv</LogicalName></EmbeddedResource>
     <Reference Include="UnityEngine.AIModule"><HintPath>..\..\Libs\UnityEngine.AIModule.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="Splatform"><HintPath>..\..\Libs\Splatform.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PlayFab"><HintPath>..\..\Libs\PlayFab.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="0Harmony">
       <HintPath>..\..\Libs\0Harmony.dll</HintPath>
       <Private>False</Private>

@@ -40,6 +40,7 @@ namespace Overhaul.Persistence
         }
 
         internal PlayerAdmissionClient Client => client;
+        internal bool Closed => closed;
         private void Send(string name, byte[] bytes)
         {
             var package = new ZPackage(); package.Write(bytes); rpc.Invoke(name, package);

@@ -112,6 +112,7 @@ Les versions ci-dessous sont celles des fichiers utilisés pour Overhaul 2.2.0.0
 | `Newtonsoft.Json.dll` | 13.0.0.0 | 13.0.2 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `SoftReferenceableAssets.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `Splatform.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
+| `PlayFab.dll` | 0.0.0.0 | 0.0.0.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `System.Core.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `System.Data.DataSetExtensions.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
 | `System.Data.dll` | 4.0.0.0 | 4.6.57.0 | Client Valheim correspondant (`valheim_Data/Managed`) |
