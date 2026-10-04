@@ -17,8 +17,9 @@ namespace Overhaul.Persistence
             }
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
+            var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
             var bag = Prepare(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
-                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food")), reply.Snapshot);
+                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects")), reply.Snapshot);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () =>
             {
@@ -42,6 +43,7 @@ namespace Overhaul.Persistence
                 if (chest != null) { container.m_inventory.Clear(); container.m_inventory.AddRange(chest); }
                 progression();
                 food();
+                potions();
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)

@@ -31,6 +31,7 @@ namespace Overhaul.Persistence
             if (request.Action.Amount != 1) throw new InvalidOperationException("Invalid meal quantity");
             int slot = request.Action.FromY * 256 + request.Action.FromX;
             var item = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);
+            if (item.m_shared.m_consumeStatusEffect) return PlayerPotionGame.Prepare(request,snapshot,inventory,item);
             if (item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Consumable || item.m_shared.m_food <= 0 ||
                 item.m_shared.m_consumeStatusEffect || item.m_worldLevel < Game.m_worldLevel)
                 throw new InvalidOperationException("This consumable requires another action handler");
@@ -88,8 +89,7 @@ namespace Overhaul.Persistence
             try
             {
                 var stat = confirmed.Changes.FirstOrDefault(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "statistics:0:food");
-                if (stat == null) return;
-                var item = confirmed.Changes.Where(r => r.Table == "food" && !r.Delete).Select(r => Meal((string)r.Values[1],1))
+                var item = stat == null ? PlayerPotionGame.Consumed(confirmed) : confirmed.Changes.Where(r => r.Table == "food" && !r.Delete).Select(r => Meal((string)r.Values[1],1))
                     .FirstOrDefault(i => i.m_shared.m_name == (string)stat.Values[1]);
                 if (item == null) return;
                 player.m_consumeItemEffects.Create(player.transform.position,Quaternion.identity,null,1f,-1,player.GetZDOID());
@@ -148,7 +148,7 @@ namespace Overhaul.Persistence
         private readonly PlayerIdentity identity;
         private readonly PlayerDatabaseWriter writer;
         private Task<bool> pending;
-        private double elapsed;
+        private double elapsed, effectElapsed;
         private int frame = -1;
         internal PlayerFoodClockGame(PlayerIdentity identity,PlayerDatabaseWriter writer) { this.identity = identity; this.writer = writer; }
         internal void Tick(bool active)
@@ -157,12 +157,12 @@ namespace Overhaul.Persistence
             if (frame != Time.frameCount)
             {
                 frame = Time.frameCount;
-                if (active) elapsed += Time.deltaTime * Game.m_foodRate;
+                if (active) { elapsed += Time.deltaTime * Game.m_foodRate; effectElapsed += Time.deltaTime; }
             }
-            if (elapsed >= 1 && pending == null) Flush();
+            if ((elapsed >= 1 || effectElapsed >= 1) && pending == null) Flush();
         }
         private void Flush()
-        { if (elapsed <= 0) return; pending = writer.AdvanceFood(identity,elapsed); elapsed = 0; }
+        { if (elapsed <= 0 && effectElapsed <= 0) return; pending = writer.AdvanceTimers(identity,elapsed,effectElapsed); elapsed = effectElapsed = 0; }
         internal void Close()
         {
             var earlier = pending; Flush();

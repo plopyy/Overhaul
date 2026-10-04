@@ -104,6 +104,7 @@ namespace Overhaul.Persistence
                 PlayerNativeFormat.Encode(rows, Appearance()), PlayerMapFormat.Encode(rows));
             // Swap only after complete reconstruction. The selected file-backed profile is never mutated.
             Game.instance.m_playerProfile = profile;
+            PlayerPotionGame.Initial(rows);
             if (!ZNet.instance.IsServer()) ZNet.instance.GetServerRPC().Invoke("PlayerID", profile.m_playerID);
         }
         private static void ClientFailed(Exception error)
@@ -146,6 +147,7 @@ namespace Overhaul.Persistence
             localClient?.Dispose(); localServer?.Dispose(); localClient = localServer = null;
             if (Game.instance && originalProfile != null) Game.instance.m_playerProfile = originalProfile;
             originalProfile = null; failed = false; awaitingMode = false;
+            PlayerPotionGame.Initial(null);
         }
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]
         private static class Connect

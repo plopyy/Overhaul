@@ -120,13 +120,15 @@ namespace Overhaul.Persistence
                 "kind TEXT NOT NULL,key TEXT NOT NULL,value TEXT NOT NULL,PRIMARY KEY(kind,key)"),
             new Table("food", "slot,prefab,remaining", 1,
                 "slot INTEGER PRIMARY KEY CHECK(slot>=0),prefab TEXT NOT NULL,remaining REAL NOT NULL CHECK(remaining>=0)"),
+            new Table("effects", "id,prefab,category,elapsed,duration", 1,
+                "id INTEGER PRIMARY KEY,prefab TEXT NOT NULL,category TEXT NOT NULL,elapsed REAL NOT NULL CHECK(elapsed>=0),duration REAL NOT NULL CHECK(duration>0)"),
             new Table("custom_data", "key,value", 1, "key TEXT PRIMARY KEY,value TEXT NOT NULL"),
             new Table("map", "layer,chunk,data", 2, "layer TEXT NOT NULL,chunk INTEGER NOT NULL,data BLOB NOT NULL,PRIMARY KEY(layer,chunk)"),
             new Table("pins", "id,type,label,x,y,z,checked,owner", 1,
                 "id TEXT PRIMARY KEY,type INTEGER NOT NULL,label TEXT NOT NULL,x REAL NOT NULL,y REAL NOT NULL,z REAL NOT NULL,checked INTEGER NOT NULL,owner INTEGER NOT NULL"),
             new Table("spawn", "kind,x,y,z", 1, "kind TEXT PRIMARY KEY,x REAL NOT NULL,y REAL NOT NULL,z REAL NOT NULL")
         };
-        private const int ApplicationId = 0x4F564850, Format = 1;
+        private const int ApplicationId = 0x4F564850, Format = 2;
         private readonly SqliteDatabase db;
         private readonly FileStream ownership;
         private readonly PlayerIdentity identity;
@@ -149,7 +151,18 @@ namespace Overhaul.Persistence
                     if (id == 0) using (var tables = db.Query("SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"))
                         if (tables.Read()) throw new InvalidDataException("Refusing an unrelated SQLite database");
                 }
-                if (HasTable("identity")) VerifyIdentity();
+                if (HasTable("identity"))
+                {
+                    VerifyIdentity();
+                    long version; using (var row = db.Query("SELECT format FROM identity WHERE id=1")) { row.Read(); version = row.Long(0); }
+                    if (version == 1 && Complete) db.Transaction(() =>
+                    {
+                        var effects = Tables.Single(t => t.Name == "effects");
+                        db.Execute("CREATE TABLE effects(" + effects.Ddl + ")");
+                        db.Write("UPDATE identity SET format=? WHERE id=1",Format);
+                        db.Execute("PRAGMA user_version=" + Format);
+                    });
+                }
             }
             catch { db?.Dispose(); ownership.Dispose(); throw; }
         }
@@ -159,7 +172,7 @@ namespace Overhaul.Persistence
         {
             using (var row = db.Query("SELECT world,provider,account,format FROM identity WHERE id=1"))
                 if (!row.Read() || row.Long(0) != identity.World || row.Text(1) != identity.Provider ||
-                    row.Text(2) != identity.Account || row.Long(3) != Format)
+                    row.Text(2) != identity.Account || (row.Long(3) != Format && row.Long(3) != 1))
                     throw new InvalidDataException("Player database identity or format mismatch");
         }
         internal bool Complete
@@ -282,7 +295,7 @@ namespace Overhaul.Persistence
                 ApplyRows(batch.Changes); db.Write("UPDATE identity SET revision=? WHERE id=1", checked(batch.ExpectedRevision + 1));
             });
         }
-        internal PlayerChange[] ActionState() => ReadTables("inventory", "item_data", "state", "food", "skills", "custom_data", "knowledge", "spawn");
+        internal PlayerChange[] ActionState() => ReadTables("inventory", "item_data", "state", "food", "effects", "skills", "custom_data", "knowledge", "spawn");
         private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");

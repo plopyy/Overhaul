@@ -87,6 +87,7 @@ namespace Overhaul.Persistence
             var changes = action.Objects; var containers = action.Containers;
             foreach (var pair in containers) pair.Value.Validate(world,pair.Key);
             var batch = action.Player.Changes.Any(r => r.Table == "food") ? PlayerFoodClock.Rebase(action.Player,player.FoodClock) : action.Player;
+            if (batch.Changes.Any(r => r.Table == "effects")) batch = PlayerEffectClock.Rebase(batch,player.EffectClock);
             if (changes.Count == 0 && containers.Count == 0) player.CommitDelta(batch);
             else
             {

@@ -39,31 +39,40 @@ namespace Overhaul.Persistence
         {
             get { using (var row = db.Query("SELECT real FROM state WHERE key=?",PlayerFoodClock.Key)) return row.Read() ? Convert.ToDouble(row.Value(0)) : 0; }
         }
-        internal void AdvanceFood(double seconds)
+        internal void AdvanceFood(double seconds) => AdvanceTimers(seconds,0);
+        internal void AdvanceTimers(double seconds,double effectSeconds)
         {
             if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0) throw new ArgumentOutOfRangeException(nameof(seconds));
+            if (double.IsNaN(effectSeconds) || double.IsInfinity(effectSeconds) || effectSeconds < 0) throw new ArgumentOutOfRangeException(nameof(effectSeconds));
             if (!Complete) throw new InvalidOperationException("Incomplete food clock");
-            if (seconds == 0) return;
+            if (seconds == 0 && effectSeconds == 0) return;
             db.Transaction(() =>
             {
                 ApplyRows(new[] { PlayerFoodClock.Anchor(FoodClock + seconds) });
                 db.Write("UPDATE food SET remaining=MAX(0,remaining-?)",seconds);
                 db.Write("DELETE FROM food WHERE remaining<=0");
+                if (effectSeconds > 0)
+                {
+                    ApplyRows(new[] { PlayerEffectClock.Anchor(EffectClock + effectSeconds) });
+                    db.Write("UPDATE effects SET elapsed=elapsed+?",effectSeconds);
+                    db.Write("DELETE FROM effects WHERE elapsed>=duration");
+                }
             });
         }
     }
     internal sealed partial class PlayerDatabaseWriter
     {
-        internal Task<bool> AdvanceFood(PlayerIdentity identity,double seconds)
+        internal Task<bool> AdvanceFood(PlayerIdentity identity,double seconds) => AdvanceTimers(identity,seconds,0);
+        internal Task<bool> AdvanceTimers(PlayerIdentity identity,double seconds,double effectSeconds)
         {
-            if (shared == null) return Submit(() => { Get(identity).AdvanceFood(seconds); return true; },true);
+            if (shared == null) return Submit(() => { Get(identity).AdvanceTimers(seconds,effectSeconds); return true; },true);
             return SubmitWorld(world =>
             {
                 PrepareTransfers(world);
                 // A failed cross-database meal must recover before another timer checkpoint.
                 using (var pending = world.Query("SELECT 1 FROM player_transfers WHERE provider=? AND account=? AND complete=0",identity.Provider,identity.Account))
                     if (pending.Read()) throw new InvalidOperationException("Food timer is waiting for transfer recovery");
-                Get(identity).AdvanceFood(seconds); return true;
+                Get(identity).AdvanceTimers(seconds,effectSeconds); return true;
             });
         }
     }

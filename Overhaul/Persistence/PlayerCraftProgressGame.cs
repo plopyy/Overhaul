@@ -13,7 +13,10 @@ namespace Overhaul.Persistence
         internal static float Factor(PlayerSnapshot snapshot,Skills.SkillType type)
         {
             var row = snapshot.Rows.FirstOrDefault(r => r.Table == "skills" && Convert.ToInt32(r.Values[0]) == (int)type);
-            return row == null ? 0 : Mathf.Clamp01(Mathf.Floor(Convert.ToSingle(row.Values[1]))/100f);
+            if (type == Skills.SkillType.None) return 0;
+            float level = row == null ? 0 : Convert.ToSingle(row.Values[1]);
+            foreach (var effect in PlayerPotionGame.Active(snapshot)) effect.ModifySkillLevel(type,ref level);
+            return Mathf.Clamp01(Mathf.Floor(level)/100f);
         }
         internal static float LootChance(PlayerSnapshot snapshot)
         {
@@ -33,7 +36,9 @@ namespace Overhaul.Persistence
             var rows = snapshot.Rows.Where(r => r.Table == "skills").Select(r => r.Values).ToDictionary(r => Convert.ToInt32(r[0]));
             var value = new Skills.Skill(info);
             if (rows.TryGetValue((int)type,out var before)) { value.m_level = Convert.ToSingle(before[1]); value.m_accumulator = Convert.ToSingle(before[2]); }
-            bool raised = value.Raise(amount);
+            float multiplier = 1;
+            foreach (var effect in PlayerPotionGame.Active(snapshot)) effect.ModifyRaiseSkill(type,ref multiplier);
+            bool raised = value.Raise(amount * multiplier);
             yield return new PlayerChange("skills",false,(int)type,value.m_level,value.m_accumulator);
             if (raised && definitions.m_useSkillCap)
             {
