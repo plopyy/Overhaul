@@ -109,6 +109,8 @@ namespace Overhaul.Persistence
                     {effects.Add(()=>{if(row.Delete)player.m_trophies.Remove(key);else if(!player.m_trophies.Contains(key))player.m_trophies.Add(key);});continue;}
                     if(category=="stations")
                     {int level=row.Delete?0:int.Parse((string)v[2],CultureInfo.InvariantCulture);if(level<0)throw new System.IO.InvalidDataException("Invalid station level");effects.Add(()=>{if(row.Delete)player.m_knownStations.Remove(key);else player.m_knownStations[key]=level;});continue;}
+                    if(category=="texts")
+                    {effects.Add(()=>{if(row.Delete)player.m_knownTexts.Remove(key);else player.m_knownTexts[key]=(string)v[2];});continue;}
                     float value = row.Delete ? 0 : float.Parse((string)v[2],CultureInfo.InvariantCulture);
                     var stats = Game.instance.GetPlayerProfile().m_playerStats[0];
                     if (category == "statistics:0:values")

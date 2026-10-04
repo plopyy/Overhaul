@@ -14,6 +14,7 @@ namespace Overhaul.Persistence
         internal static void RegisterEntrances(GameObject root)
         {
             if(!root||!GameCreatureAuthority.Enabled)return;
+            GameDiscoveryRuntime.Register(root);
             foreach(var entry in root.GetComponentsInChildren<Teleport>(true))
             {
                 if(!entrances.Add(entry))continue;
@@ -120,7 +121,7 @@ namespace Overhaul.Persistence
         private static class RegisterRoom
         {private static void Postfix(Room __result){if(__result)RegisterEntrances(__result.gameObject);}}
         internal static void Prune()=>entrances.RemoveWhere(entry=>!entry);
-        internal static void Clear()=>entrances.Clear();
+        internal static void Clear(){entrances.Clear();GameDiscoveryRuntime.Clear();}
     }
 }
 
