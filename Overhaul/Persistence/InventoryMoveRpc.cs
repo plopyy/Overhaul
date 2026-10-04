@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace Overhaul.Persistence
@@ -56,12 +57,18 @@ namespace Overhaul.Persistence
             var player = Player.m_localPlayer;
             if (!player) throw new InvalidDataException("Player disappeared during inventory action");
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
-            if (reply.Notification) return;
             var gui = InventoryGui.instance;
+            if (reply.Notification)
+            {
+                if (gui && gui.m_dragInventory == containerInventory && gui.m_dragItem != null &&
+                    ContainerVersions.Slots(reply.Container).Contains(gui.m_dragItem.m_gridPos.y * 256 + gui.m_dragItem.m_gridPos.x))
+                    gui.SetupDragItem(null, null, 1);
+                return;
+            }
             if (gui)
             {
                 gui.SetupDragItem(null, null, 1);
-                if (Controller.Pending.Open && reply.Accepted && Container && !afterOpen.HasValue) gui.Show(Container, 1);
+                if (Controller.Pending.Open && reply.Accepted && Container && ViewActive && !afterOpen.HasValue) gui.Show(Container, 1);
                 else if (!reply.ContainerAllowed && gui.m_currentContainer == Container) gui.Hide();
                 gui.UpdateCraftingPanel(false);
             }
