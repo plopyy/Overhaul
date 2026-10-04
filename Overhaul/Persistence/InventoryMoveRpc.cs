@@ -245,7 +245,7 @@ namespace Overhaul.Persistence
                 var foodView=PlayerFoodGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="food"),Player.m_localPlayer);
                 var effectView=PlayerPotionGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="effects"),Player.m_localPlayer);
                 var statusView=GameStatusGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="status"||r.Table=="status_data"),Player.m_localPlayer);
-                var lifeView=GameLifeView.Presentation(reply.Player.Changes.Where(r=>r.Table=="state"&&GameLifeView.IsKey((string)r.Values[0])),Player.m_localPlayer);
+                var lifeView=GameLifeView.Presentation(reply.Player.Changes.Where(r=>r.Table=="spawn"||r.Table=="state"&&GameLifeView.IsKey((string)r.Values[0])),Player.m_localPlayer);
                 progressView();foodView();effectView();statusView();resourceView();lifeView();
                 GameCharacterView.Confirm(reply.Player);
             }
@@ -326,7 +326,7 @@ namespace Overhaul.Persistence
             if (!disposed && !rpc.IsConnected()) Dispose();
             if(!disposed && serverActions!=null)
             {
-                var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);}
+                var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);}
                 CaptureWear();
                 QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
@@ -369,6 +369,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
+            if(server!=null)GameMovementRuntime.SavePosition(PlayerSessionGame.Actor(rpc)?.m_uid??knownActor,true);
             if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);damageClock.Freeze();QueueDamage(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;

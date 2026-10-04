@@ -13,6 +13,8 @@ namespace Overhaul.Persistence
             internal Vector3 Position,Velocity,Angular;
             internal Quaternion Rotation;
             internal GameCombatContext.Frame Frame;
+            internal bool PositionPending,HaveSavedPosition;
+            internal Vector3 SavedPosition;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
         [ThreadStatic] private static Player simulating;
@@ -25,6 +27,19 @@ namespace Overhaul.Persistence
         internal static bool Managed(Player player)=>GameCreatureAuthority.Enabled&&player&&player.m_nview&&player.m_nview.IsValid()&&InventoryMoveGame.State(player.GetZDOID())!=null;
         internal static void Forget(ZDOID actor)=>motions.Remove(actor);
         internal static void Clear(){motions.Clear();simulating=null;}
+        internal static void SavePosition(ZDOID actor,bool final=false)
+        {
+            if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
+            var point=motion.Position;
+            if(motion.HaveSavedPosition&&motion.SavedPosition==point)return;
+            var state=InventoryMoveGame.State(actor);if(state==null||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return;
+            // One outstanding position update per actor. Slow disks cannot grow
+            // an unbounded queue of intermediate physics coordinates.
+            motion.PositionPending=true;
+            if(!InventoryMoveGame.Progress(actor,current=>GameDeathProgress.IsDead(current)||PlayerResources.Read(current,"health")<=0?Array.Empty<PlayerChange>():
+                new[]{new PlayerChange("spawn",false,"logout",(double)point.x,(double)point.y,(double)point.z)},()=>
+                {motion.PositionPending=false;motion.HaveSavedPosition=true;motion.SavedPosition=point;}))motion.PositionPending=false;
+        }
         private static Motion Remember(Player player)
         {
             var id=player.GetZDOID();if(!motions.TryGetValue(id,out var motion))motions.Add(id,motion=new Motion());
