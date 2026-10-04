@@ -19,6 +19,10 @@ namespace Overhaul.Persistence
             internal long ViewSequence;
             internal Player Player;
             internal bool Suspended,WasKinematic;
+            internal Vector2s CheckedZone;
+            internal bool HaveCheckedZone,AreaReady;
+            internal double NextAreaCheck;
+            internal PlayerChange[] DerivedRows;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
         [ThreadStatic] private static Player simulating;
@@ -72,12 +76,33 @@ namespace Overhaul.Persistence
             if(context)
             {
                 var motion=Remember(player);var state=InventoryMoveGame.State(player.GetZDOID());
-                if(motion.Frame==null||!ReferenceEquals(motion.Frame.State,state))motion.Frame=new GameCombatContext.Frame
-                {Player=player,State=state,Equipment=GameCombatEquipment.Equipped(state),Effects=GameAttackResources.Effects(state)};
-                motion.Frame.Weapon=motion.Frame.Equipment.FirstOrDefault(item=>item.IsWeapon());
+                if(motion.Frame==null)motion.Frame=new GameCombatContext.Frame{Player=player};
+                if(!ReferenceEquals(motion.Frame.State,state))
+                {
+                    // Position/resource commits retain immutable inventory/effect
+                    // rows. Avoid rebuilding item definitions on every such commit.
+                    var relevant=state.Rows.Where(Derived);
+                    if(motion.DerivedRows==null||!relevant.SequenceEqual(motion.DerivedRows))
+                    {
+                        motion.DerivedRows=relevant.ToArray();motion.Frame.Equipment=GameCombatEquipment.Equipped(state);motion.Frame.Effects=GameAttackResources.Effects(state);
+                        motion.Frame.InventoryWeight=null;motion.Frame.Weapon=motion.Frame.Equipment.FirstOrDefault(item=>item.IsWeapon());
+                    }
+                    motion.Frame.State=state;
+                }
                 GameCombatContext.Current=motion.Frame;
             }
             simulating=player;return scope;
+        }
+        private static bool Derived(PlayerChange row)=>row.Table=="inventory"||row.Table=="item_data"||row.Table=="effects"||row.Table=="status"||row.Table=="status_data";
+        private static bool AreaReady(Player player,Motion motion)
+        {
+            if(!ZNetScene.instance)return true;
+            var zone=ZoneSystem.GetZone(player.transform.position);
+            if(!motion.HaveCheckedZone||!motion.CheckedZone.Equals(zone))
+            {motion.HaveCheckedZone=true;motion.CheckedZone=zone;motion.AreaReady=false;motion.NextAreaCheck=0;}
+            if(!motion.AreaReady&&Time.timeAsDouble>=motion.NextAreaCheck)
+            {motion.NextAreaCheck=Time.timeAsDouble+.1;motion.AreaReady=ZNetScene.instance.IsAreaReady(player.transform.position);}
+            return motion.AreaReady;
         }
         private static void Leave(Scope scope)
         {if(scope?.Entered==true){simulating=scope.Previous;GameCombatContext.Current=scope.Frame;}}
@@ -88,7 +113,7 @@ namespace Overhaul.Persistence
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
                 var motion=Remember(player);
-                if(player.m_body&&ZNetScene.instance&&!ZNetScene.instance.IsAreaReady(player.transform.position))
+                if(player.m_body&&!AreaReady(player,motion))
                 {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
                 if(motion.Suspended&&player.m_body){player.m_body.isKinematic=motion.WasKinematic;motion.Suspended=false;}
                 __state=Enter(player,true);
