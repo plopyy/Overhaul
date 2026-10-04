@@ -60,6 +60,8 @@ namespace Overhaul.Persistence
             var eating = !reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Consume;
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
+            if (!reply.Notification && reply.Accepted && (Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Buy || Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Sell))
+                PlayerTradeGame.Feedback(Controller.Pending.Gameplay);
             var gui = InventoryGui.instance;
             if (reply.Notification)
             {
