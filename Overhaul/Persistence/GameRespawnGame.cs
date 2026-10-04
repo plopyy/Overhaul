@@ -18,7 +18,7 @@ namespace Overhaul.Persistence
             if(deadline==null||Convert.ToInt64(deadline.Values[1])>DateTime.UtcNow.Ticks)throw new InvalidOperationException("Respawn delay has not elapsed");
             var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>():null;
             if(!definition)throw new InvalidOperationException("Respawn definition is unavailable");
-            float health=definition.m_baseHP,stamina=definition.m_baseStamina;
+            double health=definition.m_baseHP,stamina=definition.m_baseStamina;
             if(PlayerCraftProgressGame.Passive(state,"vitality"))health+=global::Overhaul.Leveling.LevelingConfig.Current.VitalityHealth;
             var changes=new List<PlayerChange>{new PlayerChange("state",false,GameDeathProgress.Dead,0,null,null,null),new PlayerChange("state",false,After,0L,null,null,null),
                 PlayerResources.Row("health",health),PlayerResources.Row("max_health",health),PlayerResources.Row("stamina",stamina),PlayerResources.Row("max_stamina",stamina),
