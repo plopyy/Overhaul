@@ -152,7 +152,7 @@ namespace Overhaul.Persistence
                 {
                     player.m_grappling=.2f;
                     Visual(__instance);
-                    if(player.m_grapplingStaminaDrain>0&&!player.IsOnGround())InventoryMoveGame.SpendStamina(player.GetZDOID(),Time.deltaTime*player.m_grapplingStaminaDrain,player.m_staminaRegenDelay);
+                    if(player.m_grapplingStaminaDrain>0&&!player.IsOnGround())InventoryMoveGame.SpendStamina(player.GetZDOID(),Time.deltaTime*player.m_grapplingStaminaDrain*Game.m_staminaRate,player.m_staminaRegenDelay);
                 }
                 GameMovementRuntime.Record(player);return false;
             }
@@ -199,6 +199,15 @@ namespace Overhaul.Persistence
         {
             private static bool Prefix(Humanoid __instance,ItemDrop.ItemData item,ref bool __result)
             {if(!GameCombatContext.Matches(__instance))return true;__result=GameCombatContext.Current.Equipment.Any(i=>i.m_shared.m_name==item.m_shared.m_name);return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
+        private static class Stamina
+        {
+            private static bool Prefix(Player __instance,float v,bool __runOriginal)
+            {
+                if(!__runOriginal||!current||current.m_character!=__instance)return true;
+                InventoryMoveGame.SpendStamina(__instance.GetZDOID(),v*Game.m_staminaRate,__instance.m_staminaRegenDelay);return false;
+            }
         }
     }
 }
