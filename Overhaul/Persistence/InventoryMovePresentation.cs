@@ -17,6 +17,7 @@ namespace Overhaul.Persistence
                 return () => { container.m_inventory.Clear(); container.m_inventory.AddRange(update); container.Changed(); };
             }
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
+            var leveling=GameLeveling.Presentation(reply.Player.Changes,player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
             var statuses = GameStatusGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="status"||r.Table=="status_data"),player);
@@ -29,7 +30,7 @@ namespace Overhaul.Persistence
             int rows = resize ? InventoryMoveGame.PlayerRows(reply.Player.Changes) : 0;
             int height = resize ? rows + Slots.ExtraRows + Slots.HiddenRows : playerInventory.m_height;
             var bag = PrepareSized(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
-                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects" && r.Table != "state" && r.Table!="status" && r.Table!="status_data"&&r.Table!="spawn")), reply.Snapshot,null,height);
+                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects" && r.Table != "state" && r.Table!="status" && r.Table!="status_data"&&r.Table!="spawn"&&r.Table!="custom_data")), reply.Snapshot,null,height);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () => PlayerEquipmentGame.Present(() =>
             {
@@ -53,6 +54,7 @@ namespace Overhaul.Persistence
                 playerInventory.m_inventory.Clear(); playerInventory.m_inventory.AddRange(bag);
                 if (chest != null) { container.m_inventory.Clear(); container.m_inventory.AddRange(chest); }
                 progression();
+                leveling();
                 food();
                 potions();
                 statuses();

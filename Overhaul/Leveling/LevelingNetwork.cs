@@ -40,6 +40,7 @@ namespace Overhaul.Leveling
         // Entry point for authenticated admin commands only; never exposed as a player action.
         internal static string AdminReset(ZNetPeer peer)
         {
+            if(Persistence.GameCreatureAuthority.Enabled)return Persistence.GameLeveling.Admin(peer,0,true);
             if(!ZNet.instance || !ZNet.instance.IsServer())return "Overhaul : serveur requis.";
             EnsureWorld();string name;
             if(peer==null)
@@ -61,6 +62,7 @@ namespace Overhaul.Leveling
         }
         internal static string AdminExperience(ZNetPeer peer,long amount)
         {
+            if(Persistence.GameCreatureAuthority.Enabled)return Persistence.GameLeveling.Admin(peer,amount,false);
             if(!ZNet.instance || !ZNet.instance.IsServer())return "Overhaul : serveur requis.";
             if(amount==0)return "Overhaul : montant d'EXP non nul requis.";
             EnsureWorld();OverhaulCharacter state=null;OverhaulCharacterData data;string name;
@@ -89,6 +91,7 @@ namespace Overhaul.Leveling
         { var peer=ZNet.instance.GetServerPeer();if(peer!=null && peer.IsReady())Send(peer.m_rpc,new Packet{Op="hello"}); }
         internal static void Action(string op, Dictionary<string,int> values=null,string passive=null)
         {
+            if(Persistence.PlayerSessionGame.Managed){Persistence.GameLeveling.Action(op,values,passive);return;}
             var state=OverhaulCharacter.Get(Player.m_localPlayer);if(state==null || !state.Ready)return;
             var packet=new Packet{Op=op,Stats=values,Passive=passive};
             if(ZNet.instance.IsServer())
@@ -145,6 +148,14 @@ namespace Overhaul.Leveling
             long reward=LevelingConfig.Reward(prefab.name,victim.GetInt(ZDOVars.s_level,1));
             if(reward<=0)return;
             var ids=new HashSet<ZDOID>((packet.Participants??new List<string>()).Take(100).Select(ParseId));
+            if(Persistence.GameCreatureAuthority.Enabled)
+            {
+                if(owner!=ZNet.GetUID())return;
+                var actors=Persistence.PlayerSessionGame.ActiveActors().Where(a=>ids.Contains(a.m_uid)&&Vector3.Distance(a.GetPosition(),victim.GetPosition())<=LevelingConfig.Current.RewardRange).OrderBy(a=>a.m_uid.UserID).ToArray();
+                if(actors.Length==0)return;Rewarded.Add(victimId);long share=reward/actors.Length,rest=reward%actors.Length;
+                foreach(var actor in actors)Persistence.GameLeveling.Reward(actor,share+(rest-->0?1:0),prefab.GetComponent<Character>()?.m_name??prefab.name,Math.Max(0,victim.GetInt(ZDOVars.s_level,1)-1));
+                return;
+            }
             var targets=ZNet.instance.GetPeers().Where(p=>p.IsReady() && ids.Contains(p.m_characterID) && Sessions.ContainsKey(p.m_uid)
                 && world.GetZDO(p.m_characterID)!=null && Vector3.Distance(world.GetZDO(p.m_characterID).GetPosition(),victim.GetPosition())<=LevelingConfig.Current.RewardRange).ToList();
             Player local=Player.m_localPlayer;
@@ -181,8 +192,10 @@ namespace Overhaul.Leveling
                         if(packet.WeaponSpeeds!=null)Utility.WeaponAttackSpeeds.Current=Utility.WeaponAttackSpeeds.Parse(packet.WeaponSpeeds);
                         if(packet.MobBehaviors!=null)AI.MobBehaviorConfig.Current=AI.MobBehaviorConfig.Parse(packet.MobBehaviors);
                         LevelingConfig.Current=JsonConvert.DeserializeObject<LevelingRules>(packet.Json);
-                        state.Reconcile();Send(rpc,new Packet{Op="profile",Data=state.Data});
+                        if(Persistence.PlayerSessionGame.Managed)Persistence.GameLeveling.Rules();
+                        else{state.Reconcile();Send(rpc,new Packet{Op="profile",Data=state.Data});}
                     }
+                    if(Persistence.PlayerSessionGame.Managed)return;
                     if((packet.Op=="state" || packet.Op=="admin_reset" || packet.Op=="admin_exp") && packet.Data!=null)
                     {
                         int before=state.Level;
@@ -201,6 +214,7 @@ namespace Overhaul.Leveling
                 }
                 ZNetPeer peer=ZNet.instance.GetPeer(rpc);if(peer==null || !peer.IsReady())return;
                 if(packet.Op=="hello"){Send(rpc,new Packet{Op="rules",Json=JsonConvert.SerializeObject(LevelingConfig.Current),WeaponSpeeds=Utility.WeaponAttackSpeeds.Format(Utility.WeaponAttackSpeeds.Current),MobBehaviors=AI.MobBehaviorConfig.Format(AI.MobBehaviorConfig.Current)});return;}
+                if(Persistence.GameCreatureAuthority.Enabled)return;
                 if(packet.Op=="death"){Reward(packet,peer.m_uid);return;}
                 if(packet.Op=="profile" && !Sessions.ContainsKey(peer.m_uid) && packet.Data!=null)
                 {LevelingSystem.Reconcile(packet.Data);Sessions[peer.m_uid]=new Session{Data=packet.Data};Send(rpc,new Packet{Op="state",Data=packet.Data});return;}

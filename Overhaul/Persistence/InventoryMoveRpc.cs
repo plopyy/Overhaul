@@ -77,7 +77,7 @@ namespace Overhaul.Persistence
             BindActor(actor);return canonical;
         }
         private void BindActor(ZDOID actor)
-        {if(actor==knownActor)return;var previous=knownActor;knownActor=actor;if(!previous.IsNone()){GameActorCleanup.Forget(previous);damageClock.Reset();}}
+        {if(actor==knownActor)return;var previous=knownActor;knownActor=actor;if(!previous.IsNone()){GameActorCleanup.Forget(previous);damageClock.Reset();}GameLeveling.Refresh(ZNetScene.instance?ZNetScene.instance.FindInstance(actor)?.GetComponent<Player>():null,canonical);}
         internal bool ActionBusy=>server?.Busy==true || serverActions?.Busy==true;
         internal bool Wear(ZDOID actor,string token,float amount)
         {
@@ -126,6 +126,7 @@ namespace Overhaul.Persistence
             if(wasAlive!=(PlayerResources.Read(canonical,"health")>0) || batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="item_data" || r.Table=="custom_data"))
                 wearRates=GameEquipmentWear.Rates(canonical);
             if(batch.Changes.Any(r=>r.Table=="inventory"))IdentifyItems();
+            if(batch.Changes.Any(r=>r.Table=="custom_data"))GameLeveling.Refresh(ZNetScene.instance.FindInstance(knownActor)?.GetComponent<Player>(),canonical);
             if(batch.Changes.Any(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==GameStaffGuardRules.Id))GameStaffGuardRuntime.Committed(PlayerSessionGame.Actor(rpc)?.m_uid??knownActor,canonical);
         }
         private byte[] deferredRequest;
@@ -207,6 +208,7 @@ namespace Overhaul.Persistence
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,int>("Overhaul_RequestSpawn",(sender,token,epoch)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce&&epoch==spawnGeneration)spawnRequested=true;});
+            rpc.Register<string,string>("Overhaul_LevelIntent",(sender,token,json)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce){try{GameLeveling.Receive(PlayerSessionGame.Actor(rpc),json);}catch(Exception error){Fail(error);}}});
             rpc.Register<string,ZDOID,bool>("Overhaul_ArrivalControl",(sender,token,actor,skip)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce&&PlayerSessionGame.Actor(rpc)?.m_uid==actor)GameArrivalRuntime.Control(rpc,actor,skip);});
             rpc.Register<string,bool>("Overhaul_StaffGuardControl",(sender,token,held)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameStaffGuardRuntime.ControlInput(PlayerSessionGame.Actor(rpc),held);});
             rpc.Register<string,ZPackage>("Overhaul_MovementControl",(sender,token,packet)=>
@@ -267,6 +269,8 @@ namespace Overhaul.Persistence
                 if(GameCharacterView.State==null)throw new InvalidDataException("Confirmed character is unavailable during loading");
                 GameCharacterView.Confirm(reply.Player,false,true);return;
             }
+            if(reply.Player.Changes.All(r=>r.Table=="custom_data"))
+            {GameLeveling.Presentation(reply.Player.Changes,player)();GameCharacterView.Confirm(reply.Player,false,true);return;}
             InventoryMovePresentation.Stage(player.GetInventory(),null,reply,player)();
             var gui=InventoryGui.instance;
             if(!gui)return;
@@ -318,6 +322,7 @@ namespace Overhaul.Persistence
         internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
         internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
         internal void ArrivalControl(ZDOID actor,bool skip){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ArrivalControl",nonce,actor,skip);}
+        internal void Leveling(string json){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_LevelIntent",nonce,json);}
         internal void MapEdit(PlayerChange[] rows){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MapEdit",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
@@ -442,6 +447,7 @@ namespace Overhaul.Persistence
             if(server==null){rpc.Register<string,ZPackage>("Overhaul_MapChanges",(_,__,___)=>{});GameMapView.Clear();}
             else rpc.Register<string,int>("Overhaul_RequestSpawn",(_,__,___)=>{});
             if(server!=null){rpc.Register<string,ZPackage>("Overhaul_MapEdit",(_,__,___)=>{});rpc.Register<string,ZDOID,bool>("Overhaul_ArrivalControl",(_,__,___,____)=>{});}
+            if(server!=null)rpc.Register<string,string>("Overhaul_LevelIntent",(_,__,___)=>{});
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});

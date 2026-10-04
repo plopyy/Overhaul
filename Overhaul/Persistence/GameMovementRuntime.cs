@@ -129,6 +129,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Character __instance,float dt,out Scope __state)
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
+                if(!global::Overhaul.Leveling.OverhaulCharacter.Get(player).Ready)GameLeveling.Refresh(player,InventoryMoveGame.State(player.GetZDOID()));
                 if(GameArrivalRuntime.Active(player.GetZDOID())){Record(player);return false;}
                 GameTeleportAction.Tick(player,dt);
                 GameAttachmentRuntime.Tick(player);

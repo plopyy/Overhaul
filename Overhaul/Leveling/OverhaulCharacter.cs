@@ -36,6 +36,7 @@ namespace Overhaul.Leveling
                 Data=Player.m_customData.TryGetValue(SaveKey,out string json)?JsonConvert.DeserializeObject<OverhaulCharacterData>(json):new OverhaulCharacterData();
                 if(Data==null || Data.Version!=1 || Data.TotalExperience<0)throw new InvalidOperationException("Invalid progression version/data");
                 if(ZNet.instance && ZNet.instance.IsServer()) { Reconcile(); Ready=true; }
+                if(Persistence.PlayerSessionGame.Managed)Persistence.GameLeveling.Refresh(Player,Persistence.GameCharacterView.State);
             }
             catch(Exception error) { InvalidSave=true; Log.LogError("Progression preserved without overwriting unreadable save: "+error); }
         }
@@ -74,7 +75,7 @@ namespace Overhaul.Leveling
                 if(ZNet.instance.IsServer()){Reconcile();Ready=true;Store();}
                 else LevelingNetwork.Hello();
             }
-            if(Ready && HasPassive("vitality") && !Player.IsDead() && Time.time>=nextHeal)
+            if(!Persistence.PlayerSessionGame.Managed&&Ready && HasPassive("vitality") && !Player.IsDead() && Time.time>=nextHeal)
             { nextHeal=Time.time+1;Player.Heal((float)LevelingConfig.Current.VitalityRegen); }
         }
     }
