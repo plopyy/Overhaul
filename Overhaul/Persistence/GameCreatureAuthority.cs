@@ -10,6 +10,7 @@ namespace Overhaul.Persistence
     {
         private static readonly Dictionary<int,bool> prefabs=new Dictionary<int,bool>();
         [ThreadStatic] private static Character localMutation;
+        private struct MutationState {internal Character Previous;internal bool Entered;}
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true && ZNet.instance && ZNet.instance.IsServer();
         internal static void Clear(){prefabs.Clear();localMutation=null;}
         internal static bool Owns(ZDOID id)=>Owns(ZDOMan.instance?.GetZDO(id));
@@ -67,9 +68,9 @@ namespace Overhaul.Persistence
         {
             private static IEnumerable<MethodBase> TargetMethods()
             {yield return AccessTools.Method(typeof(Character),nameof(Character.Heal));yield return AccessTools.Method(typeof(Character),nameof(Character.Stagger));}
-            private static void Prefix(Character __instance,out Character __state)
-            {__state=localMutation;localMutation=__instance.m_nview && __instance.m_nview.IsValid() && Owns(__instance.m_nview.GetZDO())?__instance:null;}
-            private static void Finalizer(Character __state)=>localMutation=__state;
+            private static void Prefix(Character __instance,out MutationState __state)
+            {__state=new MutationState{Previous=localMutation,Entered=true};localMutation=__instance.m_nview && __instance.m_nview.IsValid() && Owns(__instance.m_nview.GetZDO())?__instance:null;}
+            private static void Finalizer(MutationState __state){if(__state.Entered)localMutation=__state.Previous;}
         }
         [HarmonyPatch(typeof(SEMan),"RPC_AddStatusEffect")]
         private static class EffectOrigin

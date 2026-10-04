@@ -7,6 +7,7 @@ namespace Overhaul.Persistence
     internal static class GamePlayerReplication
     {
         [ThreadStatic] private static ZRpc incoming;
+        private struct IncomingState {internal ZRpc Previous;internal bool Entered;}
         private static bool PlayerPrefab(int hash)
         {var prefab=ZNetScene.instance?ZNetScene.instance.GetPrefab(hash):null;return prefab && prefab.GetComponent<Player>();}
         internal static bool Accept(ZNetPeer peer,ZDOID id,long owner,ZPackage body)
@@ -26,9 +27,9 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(ZDOMan),"RPC_ZDOData")]
         private static class Incoming
         {
-            private static void Prefix(ZRpc rpc,out ZRpc __state)
-            {__state=incoming;incoming=GameCreatureAuthority.Enabled?rpc:null;}
-            private static void Finalizer(ZRpc __state)=>incoming=__state;
+            private static void Prefix(ZRpc rpc,out IncomingState __state)
+            {__state=new IncomingState{Previous=incoming,Entered=true};incoming=GameCreatureAuthority.Enabled?rpc:null;}
+            private static void Finalizer(IncomingState __state){if(__state.Entered)incoming=__state.Previous;}
         }
         [HarmonyPatch(typeof(ZDO),nameof(ZDO.Deserialize))]
         private static class CanonicalFields
