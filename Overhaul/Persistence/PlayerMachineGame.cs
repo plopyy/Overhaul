@@ -10,6 +10,7 @@ namespace Overhaul.Persistence
     internal static class PlayerMachineGame
     {
         internal const string Ore = "smelter.ore", Fuel = "smelter.fuel", CookingFuel = "cooking.fuel", FireFuel = "fire.fuel";
+        internal const string ShieldFuel = "shield.fuel", Fireworks = "fire.fireworks";
         internal const string Ferment = "fermenter.input", Tap = "fermenter.output", Processed = "smelter.output";
         private static bool Enabled => PlayerPersistenceConfig.Enabled?.Value == true;
         private static bool Managed(Humanoid user) => user && user == Player.m_localPlayer && PlayerSessionGame.Managed;
@@ -27,6 +28,7 @@ namespace Overhaul.Persistence
                 Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5f) throw new InvalidOperationException("Machine is unavailable");
             if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerRecyclerGame.Interaction) return PlayerRecyclerGame.Prepare(actor,target,request,snapshot);
+            if (command.Definition == Fireworks) return LaunchFireworks(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
@@ -57,6 +59,14 @@ namespace Overhaul.Persistence
                         allowed = Prefab(smelter.m_fuelItem); effects = smelter.m_fuelAddedEffects;
                     }
                     break;
+                case ShieldFuel:
+                    var shield = target.GetComponent<ShieldGenerator>();
+                    if (!shield || !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))
+                        throw new InvalidOperationException("Shield generator is unavailable");
+                    currentFuel = data.GetFloat(ZDOVars.s_fuel,shield.m_defaultFuel);
+                    capacity = Math.Max(0,Mathf.FloorToInt(shield.m_maxFuel-currentFuel));
+                    allowed = shield.m_fuelItems.Where(i => i).Select(i => i.gameObject.name.GetStableHashCode());
+                    effects = shield.m_fuelAddedEffects; break;
                 case CookingFuel:
                     var cooking = target.GetComponent<CookingStation>();
                     if (!cooking || !cooking.m_useFuel) throw new InvalidOperationException("Target does not use cooking fuel");
@@ -114,6 +124,33 @@ namespace Overhaul.Persistence
                     if (smelter && ore) { smelter.m_addedOreTime = Time.time; if (smelter.m_addOreAnimationDuration > 0) smelter.SetAnimation(true); }
                 });
             }
+        }
+        private static PlayerActionPlan LaunchFireworks(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
+        {
+            var fire = target.GetComponent<Fireplace>();
+            if (!fire || !fire.m_canRefill || !fire.IsBurning() || request.Action.Amount != 1 || !request.Gameplay.Alternate ||
+                !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))
+                throw new InvalidOperationException("Fireworks require an accessible burning fire");
+            int slot = request.Action.FromY*256+request.Action.FromX;
+            var selected = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);
+            var definition = (fire.m_fireworkItemList ?? Array.Empty<Fireplace.FireworkItem>()).FirstOrDefault(f => f.m_fireworkItem && f.m_fireworkItem.m_itemData.m_shared.m_name == selected.m_shared.m_name);
+            if (!definition.m_fireworkItem || definition.m_fireworkItemCount < 1 || definition.m_fireworkItemCount > 4096)
+                throw new InvalidOperationException("Item is not a firework ingredient");
+            var consumed = inventory.ConsumeAvailable(new[] { definition.m_fireworkItem.gameObject.name.GetStableHashCode() },definition.m_fireworkItemCount,Game.m_worldLevel,slot,false);
+            if (consumed.Sum(c => c.Count) != definition.m_fireworkItemCount) throw new InvalidOperationException("Not enough firework ingredients");
+            // The effect is transient; its ingredient debit is durable before the network effect is spawned.
+            return new PlayerActionPlan(new PlayerWorldAction(inventory.Delta(request.Action.Operation,snapshot.Revision),new Dictionary<long,ObjectRecord>()),() =>
+            {
+                try
+                {
+                    if (!fire) return;
+                    var rotation = Quaternion.Euler(UnityEngine.Random.Range(-fire.m_fireworksMaxRandomAngle,fire.m_fireworksMaxRandomAngle),0,
+                        UnityEngine.Random.Range(-fire.m_fireworksMaxRandomAngle,fire.m_fireworksMaxRandomAngle));
+                    definition.m_fireworksEffects.Create(fire.transform.position,rotation,null,1,-1,default(ZDOID));
+                    fire.m_fuelAddedEffects.Create(fire.transform.position,fire.transform.rotation,null,1,-1,default(ZDOID));
+                }
+                catch (Exception error) { ZLog.LogWarning("[Overhaul fireworks visual] "+error.Message); }
+            });
         }
         private static IEnumerable<int> Prefab(ItemDrop item) => item ? new[] { item.gameObject.name.GetStableHashCode() } : Array.Empty<int>();
         private static PlayerActionPlan TapFermenter(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
@@ -182,13 +219,14 @@ namespace Overhaul.Persistence
             {
                 yield return AccessTools.Method(typeof(Smelter),"OnAddOre"); yield return AccessTools.Method(typeof(Smelter),"OnAddFuel");
                 yield return AccessTools.Method(typeof(CookingStation),"OnAddFuelSwitch");
+                yield return AccessTools.Method(typeof(ShieldGenerator),"OnAddFuel");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance,Humanoid user,ItemDrop.ItemData item,MethodBase __originalMethod,ref bool __result)
             {
                 if (!Managed(user)) return true;
                 __result = false;
-                string action = __instance is CookingStation ? CookingFuel : __originalMethod.Name == "OnAddOre" ? Ore : Fuel;
+                string action = __instance is ShieldGenerator ? ShieldFuel : __instance is CookingStation ? CookingFuel : __originalMethod.Name == "OnAddOre" ? Ore : Fuel;
                 Send(__instance,user,item,action,Storage.SmelterQuickFill.ShiftHeld()); return false;
             }
         }
@@ -223,8 +261,10 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Fireplace __instance,Humanoid user,ItemDrop.ItemData item,ref bool __result)
             {
-                if (!Managed(user) || item == null || !__instance.m_fuelItem || item.m_shared.m_name != __instance.m_fuelItem.m_itemData.m_shared.m_name) return true;
-                __result = false; Send(__instance,user,item,FireFuel,Storage.SmelterQuickFill.ShiftHeld()); return false;
+                if (!Managed(user)) return true;
+                __result = false; if (item == null) return false;
+                bool fuel = !__instance.m_infiniteFuel && __instance.m_fuelItem && item.m_shared.m_name == __instance.m_fuelItem.m_itemData.m_shared.m_name;
+                Send(__instance,user,item,fuel ? FireFuel : Fireworks,fuel && Storage.SmelterQuickFill.ShiftHeld()); return false;
             }
         }
         [HarmonyPatch(typeof(Fermenter),nameof(Fermenter.Interact))]
@@ -259,6 +299,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
                 yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
                 yield return AccessTools.Method(typeof(Fermenter),"RPC_Tap");
+                yield return AccessTools.Method(typeof(ShieldGenerator),"RPC_AddFuel");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
@@ -275,6 +316,8 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_ToggleOn");
                 yield return AccessTools.Method(typeof(Fermenter),"OnDestroyed");
                 yield return AccessTools.Method(typeof(Fermenter),"DelayedTap");
+                yield return AccessTools.Method(typeof(ShieldGenerator),"RPC_SetFuel");
+                yield return AccessTools.Method(typeof(ShieldGenerator),"RPC_Attack");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance,MethodBase __originalMethod,object[] __args) =>
@@ -289,11 +332,14 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(CookingStation),"UpdateCooking");
                 yield return AccessTools.Method(typeof(Fireplace),"UpdateFireplace");
                 yield return AccessTools.Method(typeof(Fermenter),"SlowUpdate");
+                yield return AccessTools.Method(typeof(ShieldGenerator),"UpdateShield");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Held(__instance);
         }
     }
 }
+
+
 
 
