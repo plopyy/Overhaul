@@ -33,16 +33,7 @@ namespace Overhaul.Persistence
             var existing=ZDOMan.instance.GetZDO(id);
             if(existing!=null){position=existing.GetPosition();return true;}
             var session=PlayerSessionGame.Session(peer.m_rpc);var state=InventoryMoveGame.SessionState(peer.m_rpc)??session?.Snapshot;
-            if(state==null)return false;
-            var spawn=state.Rows.FirstOrDefault(r=>r.Table=="spawn"&&(string)r.Values[0]=="logout")??state.Rows.FirstOrDefault(r=>r.Table=="spawn"&&(string)r.Values[0]=="bed");
-            if(spawn!=null)
-            {
-                position=new Vector3(Convert.ToSingle(spawn.Values[1]),Convert.ToSingle(spawn.Values[2]),Convert.ToSingle(spawn.Values[3]));
-                if((string)spawn.Values[0]=="logout")position.y+=.25f;
-                return true;
-            }
-            if(!Game.instance||!ZoneSystem.instance||!ZoneSystem.instance.GetLocationIcon(Game.instance.m_StartLocation,out position))return false;
-            position+=Vector3.up*2;return true;
+            return GameSpawnPoint.Resolve(peer.m_rpc,state,out position);
         }
         [HarmonyPatch(typeof(ZDOMan),"RPC_ZDOData")]
         private static class Incoming

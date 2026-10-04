@@ -334,7 +334,7 @@ namespace Overhaul.Persistence
             if(!disposed && serverActions!=null)
             {
                 var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)
-                {BindActor(actor.m_uid);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
+                {BindActor(actor.m_uid);GameSpawnPoint.Tick(rpc,actor,serverActions);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
                 CaptureWear();
                 QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}

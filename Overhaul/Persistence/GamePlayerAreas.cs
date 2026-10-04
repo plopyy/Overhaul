@@ -35,6 +35,7 @@ namespace Overhaul.Persistence
             // A host also needs its normal reference area while its own character is spawning.
             if(!ZNet.instance.IsDedicated())Center(ZNet.instance.GetReferencePosition());
             foreach(var actor in PlayerSessionGame.ActiveActors())Center(actor.GetPosition());
+            foreach(var point in GameSpawnPoint.Areas)Center(point);
             // Keep the supporting terrain alive until outstanding actions have published.
             // Keeping only their ZNetViews would let ZoneSystem unload the ground below them.
             if(ZNetScene.instance)foreach(var pair in ZNetScene.instance.m_instances)

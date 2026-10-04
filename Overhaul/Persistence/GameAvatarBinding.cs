@@ -15,8 +15,8 @@ namespace Overhaul.Persistence
         }
         private static readonly Dictionary<ZRpc, Binding> bindings = new Dictionary<ZRpc, Binding>();
         internal static ZDOID Current(ZRpc rpc) => bindings.TryGetValue(rpc, out var binding) ? binding.Current : ZDOID.None;
-        internal static void Forget(ZRpc rpc) => bindings.Remove(rpc);
-        internal static void Clear() => bindings.Clear();
+        internal static void Forget(ZRpc rpc) { bindings.Remove(rpc); GameSpawnPoint.Forget(rpc); }
+        internal static void Clear() { bindings.Clear(); GameSpawnPoint.Clear(); }
 
         internal static bool Accept(ZNetPeer peer, ZDOID id)
         {
@@ -42,6 +42,7 @@ namespace Overhaul.Persistence
 
         internal static void RespawnCommitted(ZRpc rpc, ZDOID previous)
         {
+            GameSpawnPoint.Forget(rpc);
             if (PlayerSessionGame.IsLocal(rpc)) return;
             if (!bindings.TryGetValue(rpc, out var binding) || binding.Current != previous) return;
             binding.Retired = System.Math.Max(binding.Retired, previous.ID);
