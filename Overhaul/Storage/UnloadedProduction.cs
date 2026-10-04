@@ -37,6 +37,7 @@ namespace Overhaul.Storage
             {
                 var smelter=__instance;
                 if(!smelter.m_nview || !smelter.m_nview.IsValid() || !smelter.m_nview.IsOwner())return true;
+                if(Persistence.GamePersistence.ActionReserved(smelter.m_nview.GetZDO().m_uid))return false;
                 // Leave exotic source-free modded producers on their native path.
                 if(smelter.m_maxOre<=0 || smelter.m_secPerProduct<=0)return true;
                 if(!ProductionClock.Ready)return false;

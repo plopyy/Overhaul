@@ -16,6 +16,7 @@ namespace Overhaul.Persistence
         private static readonly HashSet<ZDOID> actionReservations = new HashSet<ZDOID>();
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
+        internal static bool HasReservations => actionReservations.Count != 0 || inventoryReservations.Count != 0;
         internal static ObjectRecord ReserveAction(ZDO data)
         {
             if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid) || InventoryReserved(data.m_uid))

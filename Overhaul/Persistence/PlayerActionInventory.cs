@@ -38,6 +38,40 @@ namespace Overhaul.Persistence
         }
         internal object[] Item(int key) => items.TryGetValue(key,out var row) ? (object[])row.Clone() : throw new InvalidOperationException("Source slot is empty");
         internal Dictionary<string,string> Data(int key) => new Dictionary<string,string>(metadata[key]);
+        internal sealed class Consumed
+        {
+            internal int Prefab, Count;
+            internal bool Cheated;
+        }
+        internal Consumed[] ConsumeAvailable(IEnumerable<int> preference, int maximum, int minimumWorldLevel, int? selectedSlot, bool oneType)
+        {
+            if (maximum < 1 || maximum > 4096) throw new InvalidOperationException("Invalid resource quantity");
+            var allowed = preference.Distinct().ToArray();
+            if (selectedSlot.HasValue)
+            {
+                var selected = Item(selectedSlot.Value); int prefab = Convert.ToInt32(selected[3]);
+                if (!allowed.Contains(prefab) || !layout.Available(selectedSlot.Value) || Convert.ToBoolean(selected[7]) ||
+                    Convert.ToInt32(selected[11]) < minimumWorldLevel) throw new InvalidOperationException("Selected resource is unavailable");
+                allowed = new[] { prefab };
+            }
+            var result = new List<Consumed>(); int remaining = maximum;
+            foreach (int prefab in allowed)
+            {
+                if (layout.IsQuest(prefab)) continue;
+                var candidates = items.Where(p => layout.Available(p.Key) && Convert.ToInt32(p.Value[3]) == prefab &&
+                    !Convert.ToBoolean(p.Value[7]) && Convert.ToInt32(p.Value[11]) >= minimumWorldLevel)
+                    .Select(p => p.Key).OrderBy(k => selectedSlot == k ? 0 : 1).ThenBy(k => k).ToArray();
+                foreach (int key in candidates)
+                {
+                    int take = Math.Min(remaining,Convert.ToInt32(items[key][4]));
+                    result.Add(new Consumed { Prefab = prefab,Count = take,Cheated = Convert.ToBoolean(items[key][13]) });
+                    Remove(key,take); remaining -= take; if (remaining == 0) break;
+                }
+                if (remaining == 0 || oneType && result.Count != 0) break;
+            }
+            if (result.Count == 0) throw new InvalidOperationException("No usable resource in server inventory");
+            return result.ToArray();
+        }
         internal void Remove(int key, int amount, bool allowQuest = false)
         {
             var row = Item(key);

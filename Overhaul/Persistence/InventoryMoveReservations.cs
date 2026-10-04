@@ -17,12 +17,61 @@ namespace Overhaul.Persistence
             internal ZDOID Id;
         }
         private static readonly List<Deferred> deferred = new List<Deferred>();
+        private static readonly HashSet<ZDOID> destroyed = new HashSet<ZDOID>();
+        private static bool Held(ZDOID id) => GamePersistence.ActionReserved(id) || GamePersistence.InventoryReserved(id);
         internal static void Release(ZDOID id)
         {
             var ready = deferred.Where(d => d.Id == id).ToArray(); deferred.RemoveAll(d => d.Id == id);
             foreach (var action in ready) if (action.Target) action.Method.Invoke(action.Target, action.Arguments);
+            if (destroyed.Remove(id)) ZDOMan.instance.HandleDestroyedZDO(id);
         }
-        internal static void Clear() => deferred.Clear();
+        internal static void Clear() { deferred.Clear(); destroyed.Clear(); }
+        [HarmonyPatch(typeof(ZDOMan),"HandleDestroyedZDO")]
+        private static class NetworkDestruction
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(ZDOID uid)
+            { if (!Held(uid)) return true; destroyed.Add(uid); return false; }
+        }
+        [HarmonyPatch]
+        private static class Ownership
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            { yield return AccessTools.Method(typeof(ZDO),nameof(ZDO.SetOwner)); yield return AccessTools.Method(typeof(ZDO),nameof(ZDO.SetOwnerInternal)); }
+            private static void Prefix(ZDO __instance,ref long uid)
+            { if (ZNet.instance && ZNet.instance.IsServer() && Held(__instance.m_uid)) uid = ZNet.GetUID(); }
+        }
+        [HarmonyPatch(typeof(ZDOMan),"RPC_ZDOData")]
+        private static class IncomingWorldData
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(ZDOMan __instance,ZRpc rpc,ref ZPackage pkg)
+            {
+                if (!ZNet.instance || !ZNet.instance.IsServer() || !GamePersistence.HasReservations) return true;
+                var peer = __instance.FindPeer(rpc); if (peer == null) return false;
+                try
+                {
+                    var input = new ZPackage(pkg.GetArray()); input.SetPos(pkg.GetPos()); var output = new ZPackage();
+                    int count = input.ReadInt();
+                    if (count < 0 || count > input.Size()/12) throw new System.IO.InvalidDataException("Invalid sector invalidation count");
+                    var sectors = new List<ZDOID>();
+                    for (int i = 0; i < count; i++) { var id = input.ReadZDOID(); if (!Held(id)) sectors.Add(id); }
+                    output.Write(sectors.Count); foreach (var id in sectors) output.Write(id);
+                    while (true)
+                    {
+                        var id = input.ReadZDOID(); if (id.IsNone()) { output.Write(id); break; }
+                        ushort owner = input.ReadUShort(); uint revision = input.ReadUInt(); long ownerId = input.ReadLong();
+                        var position = input.ReadVector3(); var body = input.ReadPackage();
+                        if (Held(id)) { peer.m_zdos.Remove(id); continue; }
+                        output.Write(id); output.Write(owner); output.Write(revision); output.Write(ownerId); output.Write(position); output.Write(body);
+                    }
+                    if (input.GetPos() != input.Size()) throw new System.IO.InvalidDataException("Unexpected world data suffix");
+                    pkg = new ZPackage(output.GetArray()); return true;
+                }
+                catch (Exception error)
+                { ZLog.LogError("[Overhaul reserved world data] " + error); rpc.GetSocket().Close(); return false; }
+            }
+        }
         [HarmonyPatch]
         private static class Destruction
         {
@@ -32,7 +81,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Component __instance, MethodBase __originalMethod, object[] __args)
             {
                 var view = __instance.GetComponent<ZNetView>();
-                if (!view || !view.IsValid() || !GamePersistence.InventoryReserved(view.GetZDO().m_uid)) return true;
+                if (!view || !view.IsValid() || !GamePersistence.InventoryReserved(view.GetZDO().m_uid) && !GamePersistence.ActionReserved(view.GetZDO().m_uid)) return true;
                 if (!deferred.Any(d => d.Target == __instance && d.Method == __originalMethod))
                     deferred.Add(new Deferred { Target = __instance, Method = __originalMethod, Arguments = (object[])__args.Clone(), Id = view.GetZDO().m_uid });
                 return false;
