@@ -30,7 +30,7 @@ namespace Overhaul.Persistence
                 var source=ZNetScene.instance.FindInstance(new ZDOID(request.Gameplay.TargetUser,request.Gameplay.TargetId));var portal=source?source.GetComponent<TeleportWorld>():null;
                 if(!portal||!portal.m_nview||!portal.m_nview.IsValid()||(actor.GetPosition()-portal.transform.position).sqrMagnitude>25||GamePersistence.ActionReserved(portal.m_nview.GetZDO().m_uid))throw new InvalidOperationException("Portal is unavailable");
                 if(ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoPortals))throw new InvalidOperationException("Portals are disabled");
-                if(ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBossPortals)&&((RandEventSystem.instance&&RandEventSystem.instance.GetBossEvent()!=null)||(ZoneSystem.instance.GetGlobalKey(GlobalKeys.activeBosses,out var bosses)&&bosses>0)))throw new InvalidOperationException("A boss prevents portal travel");
+                if(ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBossPortals)&&((RandEventSystem.instance&&RandEventSystem.instance.GetBossEvent()!=null)||(ZoneSystem.instance.GetGlobalKey(GlobalKeys.activeBosses,out float bosses)&&bosses>0)))throw new InvalidOperationException("A boss prevents portal travel");
                 if(!AllowedItems(state,portal.m_allowAllItems))throw new InvalidOperationException("Inventory prevents portal travel");
                 var destination=ZDOMan.instance.GetZDO(portal.m_nview.GetZDO().GetConnectionZDOID(ZDOExtraData.ConnectionType.Portal));
                 var prefab=destination==null?null:ZNetScene.instance.GetPrefab(destination.GetPrefab());
@@ -109,4 +109,5 @@ namespace Overhaul.Persistence
         internal static void Clear()=>entrances.Clear();
     }
 }
+
 
