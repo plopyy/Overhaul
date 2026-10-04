@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         internal static PlayerChange[] BuildCost(InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
             var tool=PlayerInventoryView.ReadItem(inventory.Item(request.Action.FromY*256+request.Action.FromX),null,true);
+            if(!tool.m_equipped || !tool.m_shared.m_buildPieces || tool.m_shared.m_attack==null)throw new InvalidOperationException("Construction tool is unavailable");
             float stamina=tool.m_shared.m_attack.m_attackStamina,eitr=request.Gameplay.Definition==PlayerBuildGame.Remove?0:tool.m_shared.m_attack.m_attackEitr;
             if(stamina==0 && eitr==0)return Array.Empty<PlayerChange>();
             float equipment=0;
