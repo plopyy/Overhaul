@@ -47,7 +47,7 @@ namespace Overhaul.Persistence
                 foreach (var endpoint in connections.ToArray())if(!endpoint.StorageFailed)endpoint.Tick();
             }
             if(connections.Any(endpoint=>endpoint.StorageFailed))throw new InvalidOperationException("Character storage failed while draining server actions; world recovery is required");
-            connections.Clear(); Client = null; Access.Clear();GameAttackRuntime.Clear();GameBowDraw.Clear();
+            connections.Clear(); Client = null; Access.Clear();GameAttackRuntime.Clear();GameBowDraw.Clear();GameWeaponReload.Clear();
         }
         internal static void Broadcast(Container container, PlayerBatch effect, ZRpc except)
         {

@@ -46,13 +46,14 @@ namespace Overhaul.Persistence
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
             if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
-                attack.m_requiresReload || attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
+                attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
                 throw new InvalidOperationException("Weapon identity has not been confirmed");
             var q=request.Gameplay.Rotation;var rotation=new Quaternion(q[0],q[1],q[2],q[3]);
             if(Mathf.Abs(Quaternion.Dot(rotation,rotation)-1)>.01f)throw new InvalidOperationException("Invalid attack aim");
             var draw=attack.m_bowDraw?GameBowDraw.Prepare(actor.m_uid,snapshot,preview.Weapon,slot):null;
+            var reload=attack.m_requiresReload?GameWeaponReload.Prepare(actor.m_uid,preview.Weapon,slot):null;
             var resourceState=draw==null?snapshot:PlayerProgressService.Overlay(snapshot,draw.Changes);
             GameAttackResources.ValidateStart(resourceState,preview.Weapon,attack);
             var changes=(draw?.Changes??Array.Empty<PlayerChange>()).ToList();
@@ -62,6 +63,7 @@ namespace Overhaul.Persistence
             return new PlayerActionPlan(new PlayerWorldAction(batch,new Dictionary<long,ObjectRecord>()),()=>
             {
                 draw?.Confirm();
+                reload?.Invoke();
                 if(!player || !Managed(player))return;
                 Forget(actor.m_uid);
                 var current=new Running{Player=player,Attack=attack,Weapon=preview.Weapon,Ammo=preview.Ammo,Identity=identity,
@@ -217,6 +219,9 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
         private static class HaveStamina
         {private static bool Prefix(Player __instance,ref bool __result){if(!executing || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
+        [HarmonyPatch(typeof(Player),nameof(Player.IsWeaponLoaded))]
+        private static class LoadedWeapon
+        {private static bool Prefix(Player __instance,ref bool __result){if(!starting || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
         [HarmonyPatch(typeof(Player),nameof(Player.HaveEitr))]
         private static class BurstEitr
         {private static bool Prefix(Player __instance,ref bool __result){if(!executing || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
