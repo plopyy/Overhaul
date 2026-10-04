@@ -61,7 +61,7 @@ namespace Overhaul.Persistence
             foreach (var row in result.EquipmentBefore.Where(r => r.Table == "inventory" && Convert.ToBoolean(r.Values[7])))
             {
                 var values = row.Values; int key = Convert.ToInt32(values[2])*256+Convert.ToInt32(values[1]);
-                if (layout.Equipment(key) != null && result.Player.Changes.Any(r => r.Table == "inventory" &&
+                if (result.Player.Changes.Any(r => r.Table == "inventory" &&
                     Convert.ToInt32(r.Values[2])*256+Convert.ToInt32(r.Values[1]) == key))
                     duration = Math.Max(duration,PlayerInventoryView.ReadItem(values,null,true).m_shared.m_equipDuration);
             }
@@ -88,9 +88,9 @@ namespace Overhaul.Persistence
                 elapsed += dt; return elapsed >= duration;
             };
         }
-        private static bool EquipmentCell(int x,int y) => Slots.GetSlotInGrid(new Vector2i(x,y))?.IsEquipmentSlot == true;
+        private static bool EquipmentCell(int x,int y) => Slots.slots.Any(s => s != null && (s.IsEquipmentSlot || s.IsCosmeticSlot) && s.GridPosition == new Vector2i(x,y));
         private static bool EquipmentRequest(InventoryMoveRequest request) => request?.Gameplay?.Kind == PlayerActionKind.Equip || request?.Gameplay?.Kind == PlayerActionKind.Unequip ||
-            request?.Action.Kind == InventoryMoveKind.Slot && request.Action.From == 0 && request.Action.To == 0 &&
+            (request?.Action.Kind == InventoryMoveKind.Slot || request?.Action.Kind == InventoryMoveKind.Cosmetic) && request.Action.From == 0 && request.Action.To == 0 &&
             (EquipmentCell(request.Action.FromX,request.Action.FromY) || EquipmentCell(request.Action.ToX,request.Action.ToY));
         internal static void MoveAnimation(InventoryMoveRequest request,ItemDrop.ItemData item,Vector2i destination)
         {

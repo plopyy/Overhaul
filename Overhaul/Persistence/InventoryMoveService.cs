@@ -187,8 +187,9 @@ namespace Overhaul.Persistence
         {
             if (request != null && request.Action.Operation == operation && actionCommit == null && move == null &&
                 (request.Gameplay?.Kind == PlayerActionKind.Equip || request.Gameplay?.Kind == PlayerActionKind.Unequip ||
-                request.Action.Kind == InventoryMoveKind.Slot && request.Action.From == 0 && request.Action.To == 0 &&
-                (layout.Equipment(request.Action.FromY*256+request.Action.FromX) != null || layout.Equipment(request.Action.ToY*256+request.Action.ToX) != null))) cancelled = true;
+                (request.Action.Kind == InventoryMoveKind.Slot || request.Action.Kind == InventoryMoveKind.Cosmetic) && request.Action.From == 0 && request.Action.To == 0 &&
+                (layout.Equipment(request.Action.FromY*256+request.Action.FromX) != null || layout.Equipment(request.Action.ToY*256+request.Action.ToX) != null ||
+                layout.Cosmetic(request.Action.FromY*256+request.Action.FromX) || layout.Cosmetic(request.Action.ToY*256+request.Action.ToX)))) cancelled = true;
         }
         private void Fail(Exception error, bool storage)
         {

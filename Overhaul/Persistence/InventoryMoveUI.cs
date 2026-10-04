@@ -20,6 +20,23 @@ namespace Overhaul.Persistence
             if (sent) PlayerEquipmentGame.MoveAnimation(Client.Controller.Pending,item,pos);
             return sent;
         }
+        internal static bool Cosmetic(Player player,Inventory inventory,ItemDrop.ItemData item,bool tab)
+        {
+            if (!player || player != Player.m_localPlayer || inventory != player.GetInventory() || item == null || !inventory.ContainsItem(item)) return false;
+            var slots = EquipmentAndQuickSlots.Slots.slots;
+            var source = System.Array.Find(slots,s => s != null && s.GridPosition == item.m_gridPos);
+            bool removing = source?.IsCosmeticSlot == true;
+            var target = !removing && tab ? System.Array.Find(slots,s => s != null && s.IsCosmeticSlot && s.IsActive && s.ItemFits(item)) : null;
+            if (!removing && target == null) return false;
+            var position = target?.GridPosition ?? new Vector2i(-1,-1);
+            if (removing)
+                for (int y = 0; y < EquipmentAndQuickSlots.Slots.VisibleRows && position.x < 0; y++)
+                    for (int x = 0; x < inventory.GetWidth(); x++)
+                        if (inventory.GetItemAt(x,y) == null) { position = new Vector2i(x,y); break; }
+            if (position.x < 0) { player.Message(MessageHud.MessageType.Center,"$msg_inventoryfull"); return true; }
+            if (Active) Move(InventoryMoveKind.Cosmetic,inventory,inventory,item,position,item.m_stack);
+            return true;
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnSelectedItem))]
         private static class Select

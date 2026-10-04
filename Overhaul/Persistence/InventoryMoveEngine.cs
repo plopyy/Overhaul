@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Overhaul.Persistence
 {
-    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort, Ammo, Gameplay }
+    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort, Ammo, Gameplay, Cosmetic }
 
     // Inventory 0 is the admitted player's bag; inventory 1 is the server-resolved container.
     // No item identity, metadata or claimed player ID is accepted from a client.
@@ -26,8 +26,9 @@ namespace Overhaul.Persistence
                 !Enum.IsDefined(typeof(InventoryMoveKind), kind) || from < 0 || from > 1 || to < 0 || to > 1 ||
                 new[] { fromX, fromY, toX, toY }.Any(v => v < 0 || v > 255) || amount < 1 || amount > ushort.MaxValue ||
                 (kind == InventoryMoveKind.Slot && from == to && fromX == toX && fromY == toY) ||
-                (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && kind != InventoryMoveKind.Ammo && kind != InventoryMoveKind.Gameplay && from == to) ||
+                    (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && kind != InventoryMoveKind.Ammo && kind != InventoryMoveKind.Gameplay && kind != InventoryMoveKind.Cosmetic && from == to) ||
                 (kind == InventoryMoveKind.Gameplay && (from != 0 || to != 0)) ||
+                    (kind == InventoryMoveKind.Cosmetic && (from != 0 || to != 0 || fromX == toX && fromY == toY)) ||
                 (kind == InventoryMoveKind.Ammo && to != 0) || (kind == InventoryMoveKind.Sort && from != to) || this.slotVersions.Count > 4096 ||
                 this.slotVersions.Any(p => p.Key < 0 || p.Key > 65535 || p.Value < 0)) throw new ArgumentException("Invalid inventory movement intent");
             Operation = operation; PlayerRevision = playerRevision; ContainerRevision = containerRevision;
@@ -46,7 +47,14 @@ namespace Overhaul.Persistence
         private readonly HashSet<int> blocked = new HashSet<int>();
         private readonly Dictionary<int,string> order;
         private readonly HashSet<int> ammo;
+        private readonly HashSet<int> cosmetics = new HashSet<int>();
         internal bool Ammo(int key) => ammo.Contains(key);
+        internal bool Cosmetic(int key) => cosmetics.Contains(key);
+        internal InventoryMoveLayout WithCosmetics(IEnumerable<int> keys)
+        {
+            foreach (int key in keys) { if (!cells.ContainsKey(key)) throw new ArgumentException("Unknown cosmetic cell"); cosmetics.Add(key); }
+            return this;
+        }
         internal InventoryMoveLayout(IDictionary<int, IEnumerable<int>> slots, IDictionary<int, int> maxStacks, IEnumerable<int> questItems,
             IDictionary<int, string> equipmentCells = null, IDictionary<int,string> sortOrder = null, IEnumerable<int> ammoCells = null)
         {
@@ -66,7 +74,7 @@ namespace Overhaul.Persistence
         internal InventoryMoveLayout Excluding(IEnumerable<int> keys)
         {
             var copy = new InventoryMoveLayout(cells.ToDictionary(p => p.Key, p => (IEnumerable<int>)p.Value), maximum, quest, equipment, order, ammo);
-            foreach (int key in keys) copy.blocked.Add(key); return copy;
+            copy.WithCosmetics(cosmetics); foreach (int key in keys) copy.blocked.Add(key); return copy;
         }
         internal int Maximum(int prefab) => maximum.TryGetValue(prefab, out int value) ? value : throw new InvalidDataException("Unknown server item prefab");
         internal bool IsQuest(int prefab) => quest.Contains(prefab);
@@ -132,9 +140,10 @@ namespace Overhaul.Persistence
         private static void Position(Item item, int key, int bag, InventoryMoveLayout oldLayout, InventoryMoveLayout newLayout)
         {
             int previous = Key(item.Values);
-            if (bag == 1 || oldLayout.Equipment(previous) != null && oldLayout.Equipment(previous) != newLayout.Equipment(key)) item.Values[7] = false;
+            if (bag == 1 || newLayout.Cosmetic(key) || oldLayout.Equipment(previous) != null && oldLayout.Equipment(previous) != newLayout.Equipment(key)) item.Values[7] = false;
             item.Values[1] = key % 256; item.Values[2] = key / 256;
             item.Data.Remove("eaqs_parked");
+            if (newLayout.Cosmetic(key) || oldLayout.Cosmetic(previous)) { item.Data.Remove("eaqs_player"); item.Data.Remove("eaqs_slot"); }
             string slot = newLayout.Equipment(key);
             if (bag == 0 && slot != null && !Convert.ToBoolean(item.Values[7])) item.Data["eaqs_parked"] = slot;
         }
@@ -204,6 +213,20 @@ namespace Overhaul.Persistence
                     changed[action.From].Add(key); moved++;
                 }
             }
+            else if (action.Kind == InventoryMoveKind.Cosmetic)
+            {
+                int source = action.FromY*256+action.FromX,target = action.ToY*256+action.ToX;
+                if (!from.TryGetValue(source,out var sourceItem) || action.Amount != sourceItem.Count ||
+                    (!playerLayout.Cosmetic(source) && !playerLayout.Cosmetic(target)) ||
+                    !playerLayout.Cosmetic(target) && !playerLayout.Ordinary(target)) throw new InvalidOperationException("Invalid cosmetic movement");
+                if (playerLayout.Cosmetic(target) && to.TryGetValue(target,out var resident) && !playerLayout.Ordinary(source))
+                {
+                    int? free = playerLayout.Slots.Where(k => playerLayout.Ordinary(k) && playerLayout.Accepts(k,resident.Prefab) && !to.ContainsKey(k)).Select(k => (int?)k).FirstOrDefault();
+                    if (!free.HasValue) throw new InvalidOperationException("No room for the previous cosmetic item");
+                    move(target,free.Value,resident.Count,false);
+                }
+                moved = move(source,target,action.Amount,true);
+            }
             else if (action.Kind == InventoryMoveKind.Slot)
             {
                 moved = move(action.FromY * 256 + action.FromX, action.ToY * 256 + action.ToX, action.Amount, true);
@@ -245,8 +268,9 @@ namespace Overhaul.Persistence
                 return rows;
             });
             var result = new InventoryMoveResult(action, effects(0), effects(1), moved);
-            if (action.Kind == InventoryMoveKind.Slot && action.From == 0 && action.To == 0 &&
-                (playerLayout.Equipment(action.FromY*256+action.FromX) != null || playerLayout.Equipment(action.ToY*256+action.ToX) != null))
+            if ((action.Kind == InventoryMoveKind.Slot || action.Kind == InventoryMoveKind.Cosmetic) && action.From == 0 && action.To == 0 &&
+                (playerLayout.Equipment(action.FromY*256+action.FromX) != null || playerLayout.Equipment(action.ToY*256+action.ToX) != null ||
+                playerLayout.Cosmetic(action.FromY*256+action.FromX) || playerLayout.Cosmetic(action.ToY*256+action.ToX)))
             {
                 result.EquipmentBefore = player.ToArray();
                 result.EquipmentAfter = bags[0].Values.SelectMany(item => new[] { new PlayerChange("inventory",false,item.Values) }

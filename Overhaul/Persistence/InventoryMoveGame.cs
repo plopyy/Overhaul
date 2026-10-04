@@ -48,7 +48,7 @@ namespace Overhaul.Persistence
         internal static InventoryMoveLayout PlayerLayout(IEnumerable<PlayerChange> rows)
         {
             int visible = PlayerRows(rows) + Slots.ExtraRows;
-            var items = Prefabs(); var cells = new Dictionary<int, IEnumerable<int>>(); var equipment = new Dictionary<int, string>(); var ammo = new List<int>();
+            var items = Prefabs(); var cells = new Dictionary<int, IEnumerable<int>>(); var equipment = new Dictionary<int, string>(); var ammo = new List<int>(); var cosmetics = new List<int>();
             for (int y = 0; y < visible; y++) for (int x = 0; x < Slots.VanillaInventoryWidth; x++) cells.Add(y * 256 + x, null);
             foreach (var slot in Slots.slots.Where(s => s != null && s.IsActive && !s.IsEmptySlot))
             {
@@ -56,8 +56,9 @@ namespace Overhaul.Persistence
                 cells[key] = items.Where(p => slot.ItemFits(p.Value)).Select(p => p.Key).ToArray();
                 if (slot.IsEquipmentSlot) equipment[key] = slot.ID;
                 if (slot.IsAmmoSlot) ammo.Add(key);
+                if (slot.IsCosmeticSlot) cosmetics.Add(key);
             }
-            return Layout(cells, items, equipment, ammo);
+            return Layout(cells, items, equipment, ammo).WithCosmetics(cosmetics);
         }
         internal static int PlayerRows(IEnumerable<PlayerChange> rows)
         {

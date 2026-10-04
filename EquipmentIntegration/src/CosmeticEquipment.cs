@@ -11,6 +11,7 @@ namespace EquipmentAndQuickSlots
         // removal when the visible bag is full. Never fall through to normal equip.
         internal static bool HandleRightClick(Player player, Inventory inventory, ItemDrop.ItemData item, bool cosmeticTab)
         {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return Overhaul.Persistence.InventoryMoveUI.Cosmetic(player,inventory,item,cosmeticTab);
             if (player == null || player != CurrentPlayer || inventory != player.GetInventory() || item == null || !inventory.ContainsItem(item)) return false;
             var source = GetItemSlot(item);
             bool removing = source?.IsCosmeticSlot == true;
