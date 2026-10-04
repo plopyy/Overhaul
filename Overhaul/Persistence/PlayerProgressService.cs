@@ -10,7 +10,7 @@ namespace Overhaul.Persistence
     {
         internal void CommitProgress(PlayerBatch batch)
         {
-            if(!Complete || batch.Changes.Any(r=>r.Table!="skills" && r.Table!="knowledge"))throw new InvalidDataException("Server progress may not modify inventory or character resources");
+            if(!Complete || batch.Changes.Any(r=>!PlayerProgressService.Allowed(r)))throw new InvalidDataException("Server simulation cannot modify this character table");
             db.Transaction(()=>{if(Revision!=batch.ExpectedRevision)throw new InvalidOperationException("Progress overlapped another player action");ApplyRows(batch.Changes);});
         }
     }
@@ -32,6 +32,7 @@ namespace Overhaul.Persistence
     // They leave the inventory revision unchanged and never read a client snapshot.
     internal sealed class PlayerProgressService
     {
+        internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="state" && !row.Delete && PlayerResources.IsKey((string)row.Values[0]);
         private readonly PlayerIdentity identity;
         private readonly PlayerDatabaseWriter writer;
         private readonly Action<PlayerBatch> publish;
@@ -69,7 +70,7 @@ namespace Overhaul.Persistence
                         var delta=action(new PlayerSnapshot(snapshot.Revision,current)).ToArray();
                         foreach(var row in delta)
                         {
-                            if(row.Table!="skills" && row.Table!="knowledge")throw new InvalidDataException("Invalid server progression table");
+                            if(!Allowed(row))throw new InvalidDataException("Invalid server simulation table");
                             int keys=PlayerDatabase.Tables.Single(t=>t.Name==row.Table).Keys;
                             bool Same(PlayerChange old)=>old.Table==row.Table && (row.Table=="skills"
                                 ? Convert.ToInt32(old.Values[0])==Convert.ToInt32(row.Values[0])

@@ -9,6 +9,47 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerResourceGame
     {
+        internal static IEnumerable<PlayerChange> Advance(PlayerSnapshot snapshot,ZDO actor,double seconds)
+        {
+            var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>():null;
+            var instance=actor==null?null:ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
+            if(!definition || !player || player.IsDead() || player.InIntro() || player.IsTeleporting())return Array.Empty<PlayerChange>();
+            var items=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).ToArray();
+            var equipped=items.Where(i=>i.m_equipped).ToArray();
+            var effects=PlayerPotionGame.Active(snapshot).ToList();
+            foreach(var item in equipped)
+            {
+                if(item.m_shared.m_equipStatusEffect)effects.Add(item.m_shared.m_equipStatusEffect);
+                if(item.m_shared.m_setStatusEffect && equipped.Count(i=>i.m_shared.m_setName==item.m_shared.m_setName)>=item.m_shared.m_setSize)effects.Add(item.m_shared.m_setStatusEffect);
+            }
+            effects=effects.GroupBy(e=>e.NameHash()).Select(g=>g.First()).ToList();
+            float health=definition.m_baseHP,stamina=definition.m_baseStamina,eitr=0,foodHeal=0;
+            float duration=PlayerFoodGame.Multiplier(snapshot.Rows);
+            foreach(var row in snapshot.Rows.Where(r=>r.Table=="food"))
+            {
+                var prefab=ObjectDB.instance.GetItemPrefab((string)row.Values[1]);var item=prefab?prefab.GetComponent<ItemDrop>():null;
+                if(!item)throw new InvalidOperationException("Active food definition is unavailable");
+                var food=item.m_itemData.m_shared;
+                float factor=Mathf.Pow(Mathf.Clamp01(Convert.ToSingle(row.Values[2])/(food.m_foodBurnTime*duration)),.3f);
+                health+=food.m_food*factor;stamina+=food.m_foodStamina*factor;eitr+=food.m_foodEitr*factor;foodHeal+=food.m_foodRegen;
+            }
+            float hpMultiplier=1,staminaMultiplier=1,eitrMultiplier=1,carry=definition.m_maxCarryWeight;
+            foreach(var effect in effects){effect.ModifyHealthRegen(ref hpMultiplier);effect.ModifyStaminaRegen(ref staminaMultiplier);effect.ModifyEitrRegen(ref eitrMultiplier);effect.ModifyMaxCarryWeight(definition.m_maxCarryWeight,ref carry);}
+            carry+=PlayerCraftProgressGame.Bonus(snapshot,"carry");
+            bool encumbered=!PlayerCraftProgressGame.Passive(snapshot,"unburdened") && items.Sum(i=>i.GetWeight())>carry;
+            bool busy=player.InAttack() || player.InDodge();float block=player.IsBlocking()?.8f:1;
+            bool vitality=PlayerCraftProgressGame.Passive(snapshot,"vitality");
+            if(vitality)health+=(float)Overhaul.Leveling.LevelingConfig.Current.VitalityHealth;
+            eitrMultiplier+=equipped.Sum(i=>i.m_shared.m_eitrRegenModifier);
+            return PlayerResources.Regenerate(snapshot,seconds,new PlayerResources.Rates
+            {
+                MaxHealth=health,MaxStamina=stamina,MaxEitr=eitr,FoodHeal=foodHeal*Mathf.Max(0,hpMultiplier)*(1+PlayerCraftProgressGame.Bonus(snapshot,"health_regen")),
+                PassiveHeal=vitality?Overhaul.Leveling.LevelingConfig.Current.VitalityRegen:0,
+                Stamina=busy || encumbered || player.m_wallRunning || player.IsSwimming() && !player.IsOnGround()?0:definition.m_staminaRegen*Mathf.Max(0,staminaMultiplier)*block*Game.m_staminaRegenRate,
+                StaminaShape=definition.m_staminaRegenTimeMultiplier,
+                Eitr=busy?0:definition.m_eiterRegen*Mathf.Max(0,eitrMultiplier)*block*(1+PlayerCraftProgressGame.Bonus(snapshot,"eitr_regen"))
+            });
+        }
         internal static PlayerChange[] BuildCost(InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
             var tool=PlayerInventoryView.ReadItem(inventory.Item(request.Action.FromY*256+request.Action.FromX),null,true);

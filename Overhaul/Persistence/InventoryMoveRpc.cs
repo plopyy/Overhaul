@@ -16,6 +16,16 @@ namespace Overhaul.Persistence
         private byte[] deferredRequest;
         private bool discoveryPending;
         private float nextDiscovery;
+        private int resourceFrame=-1;
+        private double resourceElapsed;
+        private bool resourcePending;
+        private void QueueResources()
+        {
+            if(resourcePending || resourceElapsed<=0 || progress==null)return;
+            var actor=PlayerSessionGame.Actor(rpc);if(actor==null)return;
+            double seconds=resourceElapsed;resourceElapsed=0;resourcePending=true;
+            if(!progress.Enqueue(state=>{resourcePending=false;return PlayerResourceGame.Advance(state,actor,seconds);}))resourcePending=false;
+        }
         private readonly System.Collections.Generic.Dictionary<string,int> observedStations=new System.Collections.Generic.Dictionary<string,int>();
         private void Discover()
         {
@@ -79,8 +89,10 @@ namespace Overhaul.Persistence
                 if(package.Size()>InventoryMoveProtocol.Limit+4)throw new InvalidDataException("Progress response exceeds limit");
                 int length=package.ReadInt();if(length<0 || length!=package.Size()-package.GetPos())throw new InvalidDataException("Invalid progress response length");
                 var reply=InventoryMoveProtocol.Reply(package.ReadByteArray(length));if(reply.Nonce!=nonce)return;
-                if(!reply.Accepted || reply.Snapshot || reply.Notification || reply.ContainerAllowed || reply.Player.Changes.Any(r=>r.Table!="skills" && r.Table!="knowledge"))throw new InvalidDataException("Invalid server progress response");
-                PlayerCraftProgressGame.Presentation(reply.Player.Changes,Player.m_localPlayer)();
+                if(!reply.Accepted || reply.Snapshot || reply.Notification || reply.ContainerAllowed || reply.Player.Changes.Any(r=>!PlayerProgressService.Allowed(r)))throw new InvalidDataException("Invalid server progress response");
+                var progressView=PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r=>r.Table!="state"),Player.m_localPlayer);
+                var resourceView=PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state"),Player.m_localPlayer);
+                progressView();resourceView();
             }
             catch(Exception error){Fail(error);}
         }
@@ -145,6 +157,12 @@ namespace Overhaul.Persistence
         internal void Tick()
         {
             if (!disposed && !rpc.IsConnected()) Dispose();
+            if(!disposed && progress!=null && resourceFrame!=Time.frameCount)
+            {
+                resourceFrame=Time.frameCount;
+                if(PlayerSessionGame.Actor(rpc)!=null)resourceElapsed+=Time.deltaTime;
+                if(resourceElapsed>=.2)QueueResources();
+            }
             if(!disposed && progress!=null && Time.time>=nextDiscovery)
             {
                 nextDiscovery=Time.time+2;
@@ -176,7 +194,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
-            disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
+            QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.Clear();}
             else {var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)PlayerFishingCastGame.Forget(actor.m_uid);}

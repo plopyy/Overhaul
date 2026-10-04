@@ -19,6 +19,13 @@ namespace Overhaul.Persistence
             return Mathf.Clamp01(Mathf.Floor(level)/100f);
         }
         internal static float LootChance(PlayerSnapshot snapshot)=>Mathf.Clamp01(Bonus(snapshot,"bonus_loot"));
+        internal static bool Passive(PlayerSnapshot snapshot,string id)
+        {
+            var row=snapshot.Rows.FirstOrDefault(r=>r.Table=="custom_data" && (string)r.Values[0]==OverhaulCharacter.SaveKey);
+            if(row==null)return false;
+            var data=JsonConvert.DeserializeObject<OverhaulCharacterData>((string)row.Values[1]);LevelingSystem.Reconcile(data);
+            return data.Passive==id && data.Level>=LevelingConfig.Current.PassiveLevel;
+        }
         internal static float Bonus(PlayerSnapshot snapshot,string id)
         {
             var row = snapshot.Rows.FirstOrDefault(r => r.Table == "custom_data" && (string)r.Values[0] == OverhaulCharacter.SaveKey);
