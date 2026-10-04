@@ -15,6 +15,8 @@ namespace Overhaul.Persistence
         private readonly string receiveName;
         private readonly Action<Exception> failed;
         private bool closed;
+        private readonly PlayerAdmission.Session session;
+        private InventoryMoveRpc inventory;
 
         internal PlayerAdmissionRpc(ZRpc authenticatedRpc, PlayerAdmission admission, PlayerAdmission.Session session,
             Func<byte[], IEnumerable<PlayerChange>> decodeImport, Action<Exception> failed)
@@ -22,6 +24,7 @@ namespace Overhaul.Persistence
             if (authenticatedRpc == null || session == null || !ReferenceEquals(authenticatedRpc, session.Connection))
                 throw new ArgumentException("Admission requires the authenticated session connection");
             rpc = authenticatedRpc; this.failed = failed ?? throw new ArgumentNullException(nameof(failed));
+            this.session = session;
             receiveName = Request;
             server = new PlayerAdmissionChannel(admission, session, bytes => Send(Response, bytes), decodeImport, Fail);
             rpc.Register<ZPackage>(Request, Receive);
@@ -59,6 +62,13 @@ namespace Overhaul.Persistence
             if (closed) return;
             if (!rpc.IsConnected()) { Fail(new IOException("Character connection closed")); return; }
             if (server != null) server.Tick(); else client.Tick();
+            if (inventory == null && !closed)
+            {
+                if (session != null && session.State == PlayerAdmission.Phase.Ready && GamePersistence.Active)
+                    inventory = InventoryMoveGame.BindServer(rpc, session);
+                else if (client != null && client.Ready && Player.m_localPlayer)
+                    inventory = InventoryMoveGame.BindClient(rpc, client.Nonce, client.Revision);
+            }
         }
         private void Fail(Exception error)
         {
@@ -69,7 +79,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (closed) return;
-            closed = true; server?.Dispose(); client?.Dispose();
+            closed = true; inventory?.Dispose(); server?.Dispose(); client?.Dispose();
             rpc.Register<ZPackage>(receiveName, Ignore);
         }
     }

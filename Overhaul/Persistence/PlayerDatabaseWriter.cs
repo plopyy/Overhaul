@@ -9,7 +9,7 @@ namespace Overhaul.Persistence
 {
     // One worker for all players. Commands contain managed values, never Player/Inventory/Unity objects.
     // A completed task means the transaction is durable, not merely queued.
-    internal sealed class PlayerDatabaseWriter : IDisposable
+    internal sealed partial class PlayerDatabaseWriter : IDisposable
     {
         private sealed class Entry
         {
@@ -23,10 +23,14 @@ namespace Overhaul.Persistence
         private readonly AutoResetEvent wake = new AutoResetEvent(false);
         private readonly Thread worker;
         private readonly string directory;
+        private readonly ProgressiveWriter shared;
         private bool stopping;
-        internal PlayerDatabaseWriter(string worldDirectory)
+        internal PlayerDatabaseWriter(string worldDirectory) : this(worldDirectory, null) { }
+        internal PlayerDatabaseWriter(string worldDirectory, ProgressiveWriter shared)
         {
             directory = Path.GetFullPath(worldDirectory);
+            this.shared = shared;
+            if (shared != null) return;
             worker = new Thread(Run) { Name = "Overhaul player SQLite", IsBackground = true };
             worker.Start();
         }
@@ -45,6 +49,14 @@ namespace Overhaul.Persistence
         }
         private Task<T> Submit<T>(Func<T> action, bool immediate)
         {
+            if (shared != null)
+            {
+                lock (gate)
+                {
+                    if (stopping) throw new ObjectDisposedException(nameof(PlayerDatabaseWriter));
+                    return shared.Submit(_ => action());
+                }
+            }
             var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (gate)
             {
@@ -58,6 +70,15 @@ namespace Overhaul.Persistence
             }
             if (immediate) wake.Set();
             return completion.Task;
+        }
+        private Task<T> SubmitWorld<T>(Func<SqliteDatabase, T> action)
+        {
+            lock (gate)
+            {
+                if (stopping) throw new ObjectDisposedException(nameof(PlayerDatabaseWriter));
+                if (shared == null) throw new InvalidOperationException("World executor is unavailable");
+                return shared.Submit(action);
+            }
         }
         internal Task<PlayerChange[]> Open(PlayerIdentity identity, bool allowClientMigration,
             IEnumerable<PlayerChange> fresh, IEnumerable<PlayerChange> imported = null)
@@ -114,6 +135,11 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             lock (gate) { if (stopping) return; stopping = true; }
+            if (shared != null)
+            {
+                shared.Submit(_ => { foreach (var entry in open.Values) entry.Database.Dispose(); open.Clear(); return true; }).GetAwaiter().GetResult();
+                wake.Dispose(); return;
+            }
             wake.Set(); worker.Join(); wake.Dispose();
         }
     }

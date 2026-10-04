@@ -49,6 +49,7 @@ namespace Overhaul.Persistence
 
     internal sealed class ObjectRecord
     {
+        internal HashSet<int> ProtectedInventorySlots;
         internal long Id, User;
         internal uint NetworkId;
         internal int Chunk, Prefab, Flags, Order;

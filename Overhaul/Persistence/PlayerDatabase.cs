@@ -267,6 +267,16 @@ namespace Overhaul.Persistence
         }
         internal PlayerChange[] Read() => ReadTables();
         internal PlayerSnapshot InventoryState() => new PlayerSnapshot(Revision, ReadTables("inventory", "item_data"));
+        internal void CommitInventory(PlayerBatch batch)
+        {
+            if (!Complete || batch.Changes.Any(r => r.Table != "inventory" && r.Table != "item_data"))
+                throw new InvalidOperationException("Invalid inventory transaction");
+            db.Transaction(() =>
+            {
+                if (Revision != batch.ExpectedRevision) throw new InvalidOperationException("Stale inventory action revision");
+                ApplyRows(batch.Changes); db.Write("UPDATE identity SET revision=? WHERE id=1", checked(batch.ExpectedRevision + 1));
+            });
+        }
         private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");

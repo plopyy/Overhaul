@@ -9,6 +9,20 @@ namespace Overhaul.Persistence
     // The normalized rows are authoritative for format109; ObjectSql.Read reconstructs native bytes.
     internal static class WorldInventorySlots
     {
+        internal static PlayerChange[] ReadAll(SqliteDatabase db, long objectId)
+        {
+            using (var container = db.Query("SELECT version,decode_status FROM containers WHERE object_id=?", objectId))
+                if (!container.Read() || container.Long(0) != 109 || container.Text(1) != "complete")
+                    throw new InvalidDataException("Container inventory is not decoded");
+            var rows = new List<PlayerChange>();
+            using (var items = db.Query("SELECT x,y,prefab_hash,stack,quality,durability,equipped,variant,crafter_id,crafter_name,world_level,picked_up,cheated FROM inventory WHERE object_id=? ORDER BY y,x", objectId))
+                while (items.Read()) rows.Add(new PlayerChange("inventory", false,
+                    new object[] { "main" }.Concat(Enumerable.Range(0, 13).Select(items.Value)).ToArray()));
+            using (var custom = db.Query("SELECT i.x,i.y,d.key,d.value FROM item_data d JOIN inventory i ON i.id=d.item_id WHERE i.object_id=? ORDER BY i.y,i.x,d.key", objectId))
+                while (custom.Read()) rows.Add(new PlayerChange("item_data", false, "main", custom.Value(0), custom.Value(1), custom.Text(2), custom.Text(3)));
+            return rows.ToArray();
+        }
+
         internal static PlayerChange[] Read(SqliteDatabase db, long objectId, int x, int y)
         {
             ValidateSlot(objectId, x, y);

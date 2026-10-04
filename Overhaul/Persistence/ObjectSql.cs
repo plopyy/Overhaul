@@ -46,7 +46,12 @@ namespace Overhaul.Persistence
                 new DatabaseRow("properties","object_id,type,key_hash,key,integer,real,text,x,y,z,w,blob,raw_value",3,o.Id,p.Type,p.Key,p.Name,integer,real,text,x,y,z,w,blob,raw).Write(db);
                 if (derive)
                 {
-                    if (p.Key == Items) Inventory(db,o.Id,(byte[])p.Value);
+                    if (p.Key == Items)
+                    {
+                        var before = db.InventoryRevisions ? ContainerVersions.Fingerprints(db, o.Id) : null;
+                        Inventory(db,o.Id,(byte[])p.Value,o.ProtectedInventorySlots);
+                        if (before != null) ContainerVersions.RecordChanges(db, o.Id, before);
+                    }
                     else if (p.Key == Rooms) Dungeon(db,o.Id,(byte[])p.Value);
                     else TerrainData(db,o.Id,(byte[])p.Value);
                 }
@@ -74,13 +79,14 @@ namespace Overhaul.Persistence
         }
         private static byte[] FloatBytes(float[] values){var bytes=new byte[values.Length*4];Buffer.BlockCopy(values,0,bytes,0,bytes.Length);return bytes;}
 
-        private static void Inventory(SqliteDatabase db,long id,byte[] data)
+        private static void Inventory(SqliteDatabase db,long id,byte[] data,HashSet<int> protectedSlots=null)
         {
             using(var r=NativeFormat.Reader(data))
             {
                 int version=r.ReadInt32();
                 if(version!=109)
                 {
+                    if (protectedSlots?.Count > 0) throw new InvalidDataException("Reserved inventory changed native format");
                     db.Write("DELETE FROM containers WHERE object_id=?",id);
                     new DatabaseRow("containers","object_id,version,item_count,decode_status",1,id,version,null,"native").Write(db);
                     return; // Unknown versions remain losslessly available in the native property.
@@ -95,6 +101,7 @@ namespace Overhaul.Persistence
                     int prefab=(flags&64)!=0?r.ReadInt32():0,custom=(flags&128)!=0?NativeFormat.Count(r):0;
                     long item=checked(id*65536+x*256+y);if(!present.Add(item))throw new InvalidDataException("Duplicate inventory slot for object " + id);
                     var values=new Dictionary<string,string>();for(int j=0;j<custom;j++)values.Add(r.ReadString(),r.ReadString());int flags2=r.ReadByte();
+                    if (protectedSlots?.Contains(y * 256 + x) == true) continue;
                     new DatabaseRow("inventory","id,object_id,item_order,prefab_hash,prefab,stack,quality,durability,x,y,equipped,picked_up,variant,crafter_id,crafter_name,world_level,cheated,flags,extra_flags",1,
                         item,id,i,prefab,PrefabName(prefab),stack,quality,durability,x,y,(flags&2)!=0,(flags&1)!=0,variant,crafter,crafterName,level,(flags2&1)!=0,flags,flags2).Write(db);
                     foreach(var pair in values)new DatabaseRow("item_data","item_id,key,value",2,item,pair.Key,pair.Value).Write(db);
@@ -102,8 +109,9 @@ namespace Overhaul.Persistence
                     foreach(string key in removed)db.Write("DELETE FROM item_data WHERE item_id=? AND key=?",item,key);
                 }
                 NativeFormat.End(r);
-                var obsolete=new List<long>();using(var old=db.Query("SELECT id FROM inventory WHERE object_id=?",id))while(old.Read())if(!present.Contains(old.Long(0)))obsolete.Add(old.Long(0));
+                var obsolete=new List<long>();using(var old=db.Query("SELECT id,x,y FROM inventory WHERE object_id=?",id))while(old.Read())if(!present.Contains(old.Long(0)) && protectedSlots?.Contains((int)old.Long(2)*256+(int)old.Long(1)) != true)obsolete.Add(old.Long(0));
                 foreach(long item in obsolete)db.Write("DELETE FROM inventory WHERE id=?",item);
+                if (protectedSlots?.Count > 0) db.Write("UPDATE containers SET item_count=(SELECT count(*) FROM inventory WHERE object_id=?) WHERE object_id=?", id, id);
             }
         }
         private static void Dungeon(SqliteDatabase db,long id,byte[] data)

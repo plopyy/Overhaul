@@ -21,6 +21,7 @@ namespace Overhaul.Storage
                 data.Set(UntilKey,0L);data.Set(TokenKey,"");data.Set(PeerKey,0L);return true;
             }
             var actor=ChestAccess.Actor(peer,actorId);
+            if (Persistence.GamePersistence.InventoryReserved(data.m_uid)) return false;
             if(actor==null||actor.GetFloat(ZDOVars.s_health,0)<=0||!PieceRelocation.Near(p,actor.GetPosition())||
                 (Busy(p)&&!matches)||!PieceRelocation.Access(p,actor.GetLong(ZDOVars.s_playerID,0),peer,token))return false;
             data.Set(TokenKey,token);data.Set(PeerKey,peer);data.Set(UntilKey,ChestAccess.Now+TimeSpan.FromSeconds(15).Ticks);return true;

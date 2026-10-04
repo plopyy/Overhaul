@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Overhaul.Persistence
 {
@@ -19,6 +20,12 @@ namespace Overhaul.Persistence
         private long submitted,committed;
         private bool stopping,disposed,backup;
         private Exception failure;
+        private sealed class Command
+        {
+            internal Action<SqliteDatabase> Run;
+            internal Action<Exception> Fail;
+        }
+        private readonly Queue<Command> commands = new Queue<Command>();
         private string failureText;
         internal string LastError { get { lock(gate)return failureText; } }
         internal long Committed { get { lock(gate)return committed; } }
@@ -46,6 +53,21 @@ namespace Overhaul.Persistence
             }
         }
         internal void RequestFlush(bool createBackup=false){lock(gate)backup|=createBackup;wake.Set();}
+        // Inventory/world transactions share this executor. Their callers reserve participating
+        // containers before submission, so later ordinary captures cannot overwrite the result.
+        internal Task<T> Submit<T>(Func<SqliteDatabase,T> action)
+        {
+            var completion = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock(gate)
+            {
+                if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
+                if(commands.Count>=1024)throw new InvalidOperationException("World command queue is full");
+                commands.Enqueue(new Command { Run = db=>{try{completion.SetResult(action(db));}catch(Exception error){completion.SetException(error);}},
+                    Fail = error => completion.TrySetException(new IOException("World snapshot failed before inventory command",error)) });
+                submitted++;
+            }
+            wake.Set();return completion.Task;
+        }
         internal void Flush()
         {
             lock(gate)
@@ -61,6 +83,7 @@ namespace Overhaul.Persistence
         private void Run()
         {
             SqliteDatabase db=null;var batch=new Dictionary<long,ObjectRecord>();WorldRecord metadata=null;
+            var actions = new List<Command>();
             try
             {
                 while(true)
@@ -72,6 +95,7 @@ namespace Overhaul.Persistence
                         else {foreach(var item in pending)batch[item.Key]=item.Value;pending.Clear();}
                         if(world!=null){metadata=world;world=null;}
                         version=submitted;createBackup=backup;backup=false;
+                        while(commands.Count>0)actions.Add(commands.Dequeue());
                     }
                     try
                     {
@@ -83,11 +107,15 @@ namespace Overhaul.Persistence
                             if(metadata!=null)WorldSql.Write(db,metadata);
                         });
                         batch.Clear();metadata=null;
+                        foreach(var action in actions)action.Run(db);
+                        actions.Clear();
                         lock(gate){committed=version;failure=null;failureText=null;Monitor.PulseAll(gate);}
                         if(createBackup)Backup(db);
                     }
                     catch(Exception ex)
                     {
+                        foreach (var action in actions) action.Fail(ex);
+                        actions.Clear();
                         lock(gate){failure=ex;failureText=ex.ToString();backup|=createBackup;Monitor.PulseAll(gate);}
                         db?.Dispose();db=null;
                     }

@@ -68,7 +68,7 @@ namespace Overhaul.Persistence
             return true;
         }
 
-        private static ItemDrop.ItemData ReadItem(object[] values, ItemDrop.ItemData previous, bool allowEquipped)
+        internal static ItemDrop.ItemData ReadItem(object[] values, ItemDrop.ItemData previous, bool allowEquipped)
         {
             int prefabId = Convert.ToInt32(values[3]);
             var prefab = ObjectDB.instance.GetItemPrefab(prefabId);

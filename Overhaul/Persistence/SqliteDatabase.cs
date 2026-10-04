@@ -114,6 +114,7 @@ namespace Overhaul.Persistence
             }
         }
 
+        internal bool InventoryRevisions;
         internal SqliteDatabase(string path, bool readOnly = false)
         {
             LoadLibrary();
@@ -121,6 +122,7 @@ namespace Overhaul.Persistence
             try
             {
                 Check(result);
+                using (var row = Query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='container_revisions'")) InventoryRevisions = row.Read();
                 Execute("PRAGMA busy_timeout=5000");
                 if (!readOnly)
                 {

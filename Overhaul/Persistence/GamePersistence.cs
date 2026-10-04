@@ -11,6 +11,34 @@ namespace Overhaul.Persistence
     internal static class GamePersistence
     {
         private static ProgressiveWriter writer;
+        internal static PlayerDatabaseWriter Players { get; private set; }
+        private static readonly Dictionary<ZDOID,HashSet<int>> inventoryReservations = new Dictionary<ZDOID,HashSet<int>>();
+        internal static bool InventoryReserved(ZDOID id) => inventoryReservations.TryGetValue(id, out var keys) && keys.Count != 0;
+        internal static HashSet<int> ReservedSlots(ZDOID id) => inventoryReservations.TryGetValue(id, out var keys) ? new HashSet<int>(keys) : new HashSet<int>();
+        internal static bool ReserveSlots(ZDOID id, IEnumerable<int> requested)
+        {
+            int[] cells = requested.Distinct().ToArray();
+            if (!inventoryReservations.TryGetValue(id, out var keys)) keys = new HashSet<int>();
+            if (cells.Any(keys.Contains)) return false;
+            foreach (int key in cells) keys.Add(key);
+            if (keys.Count != 0) inventoryReservations[id] = keys;
+            return true;
+        }
+        internal static long SnapshotInventory(ZDO data)
+        {
+            if (!CanSave() || data == null || !data.Persistent) throw new InvalidOperationException("World inventory is unavailable");
+            if (!ids.TryGetValue(data.m_uid, out long id)) { id = checked(++nextId); ids.Add(data.m_uid, id); }
+            var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
+            writer.Enqueue(new[] { snapshot }, null); dirty.Remove(data.m_uid); return id;
+        }
+        internal static void ReleaseSlots(ZDO data, IEnumerable<int> cells)
+        {
+            if (data == null) return;
+            if (inventoryReservations.TryGetValue(data.m_uid, out var keys))
+            { keys.ExceptWith(cells); if (keys.Count == 0) inventoryReservations.Remove(data.m_uid); }
+            if (Active) SnapshotInventory(data);
+            if (!InventoryReserved(data.m_uid)) InventoryMoveReservations.Release(data.m_uid);
+        }
         private static ZNet session;
         private static bool loading;
         private static long nextId;
@@ -80,6 +108,9 @@ namespace Overhaul.Persistence
                     }
                 }
                 writer=new ProgressiveWriter(path,startupOwnership);startupOwnership=null;
+                Players=new PlayerDatabaseWriter(directory,writer);
+                // Recovery completes before publishing any world objects or accepting characters.
+                Players.RecoverTransfers().GetAwaiter().GetResult();
                 var links=new List<ZDOID>();var manager=net.m_zdoMan;manager.ResetBeforeLoad();
                 using(var db=new SqliteDatabase(path,true))
                 {
@@ -103,7 +134,7 @@ namespace Overhaul.Persistence
             }
             catch(Exception ex)
             {
-                ZNet.m_loadError=true;loading=false;writer?.Dispose();writer=null;session=null;ids.Clear();dirty.Clear();
+                ZNet.m_loadError=true;loading=false;Players?.Dispose();Players=null;writer?.Dispose();writer=null;session=null;ids.Clear();dirty.Clear();inventoryReservations.Clear();
                 ZLog.LogError("[Overhaul SQLite] World loading failed; saving disabled. Native files retained. "+ex);
                 throw; // Do not start an empty world or fall back to an old native generation.
             }
@@ -121,7 +152,7 @@ namespace Overhaul.Persistence
                 if(z==null||!z.Persistent)
                 {if(ids.TryGetValue(uid,out long old)){removed.Add(old);ids.Remove(uid);}continue;}
                 if(!ids.TryGetValue(uid,out long id)){id=checked(++nextId);ids.Add(uid,id);}
-                changes.Add(GameSnapshot.Capture(z,id));
+                var snapshot=GameSnapshot.Capture(z,id);snapshot.ProtectedInventorySlots=ReservedSlots(uid);changes.Add(snapshot);
             }
             var metadata=GameSnapshot.CaptureWorld(session);
             writer.Enqueue(changes,removed,metadata);dirty.Clear();
@@ -143,7 +174,7 @@ namespace Overhaul.Persistence
         internal static void Close()
         {
             if(writer==null)return;
-            Capture();writer.Dispose();writer=null;session=null;loading=false;ids.Clear();dirty.Clear();
+            InventoryMoveGame.FinishSession();Capture();Players?.Dispose();Players=null;writer.Dispose();writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();InventoryMoveReservations.Clear();
         }
     }
 
