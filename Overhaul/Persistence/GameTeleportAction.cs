@@ -11,6 +11,17 @@ namespace Overhaul.Persistence
     {
         internal const string Portal="movement.portal",Dungeon="movement.dungeon";
         private static readonly HashSet<Teleport> entrances=new HashSet<Teleport>();
+        internal static void RegisterEntrances(GameObject root)
+        {
+            if(!root||!GameCreatureAuthority.Enabled)return;
+            foreach(var entry in root.GetComponentsInChildren<Teleport>(true))
+            {
+                if(!entrances.Add(entry))continue;
+                var lifetime=entry.gameObject.AddComponent<EntranceLifetime>();lifetime.Entry=entry;
+            }
+        }
+        public sealed class EntranceLifetime:MonoBehaviour
+        {internal Teleport Entry;private void OnDestroy(){entrances.Remove(Entry);}}
         [ThreadStatic] private static bool updating;
         internal static bool CanStart(Player player)=>player&&player.m_body&&!player.IsDead()&&!player.IsTeleporting()&&!player.InIntro()&&player.m_teleportCooldown>=2;
         internal static bool AllowedItems(PlayerSnapshot state,bool all)
@@ -41,7 +52,7 @@ namespace Overhaul.Persistence
             {
                 if(request.Gameplay.Definition!=Dungeon||request.Gameplay.TargetId!=0)throw new InvalidOperationException("Unknown teleport intent");
                 var requested=new Vector3(request.Gameplay.Position[0],request.Gameplay.Position[1],request.Gameplay.Position[2]);
-                Prune();var entry=entrances.FirstOrDefault(candidate=>candidate&&(candidate.transform.position-requested).sqrMagnitude<.0625f&&(candidate.transform.position-actor.GetPosition()).sqrMagnitude<=25);
+                Prune();var entry=entrances.FirstOrDefault(candidate=>candidate&&candidate.gameObject.activeInHierarchy&&(candidate.transform.position-requested).sqrMagnitude<.0625f&&(candidate.transform.position-actor.GetPosition()).sqrMagnitude<=25);
                 if(!entry||!entry.m_targetPoint)throw new InvalidOperationException("Dungeon entrance is unavailable");
                 if(ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBossPortals)&&player.InInterior()&&Location.IsInsideActiveBossDungeon(actor.GetPosition()))throw new InvalidOperationException("A boss prevents dungeon exit");
                 point=entry.m_targetPoint.GetTeleportPoint();rotation=entry.m_targetPoint.transform.rotation;
@@ -101,13 +112,17 @@ namespace Overhaul.Persistence
         // scene object at instantiation, including non-network dungeon children.
         [HarmonyPatch(typeof(ZNetScene),"CreateObject",new[]{typeof(ZDO)})]
         private static class Register
-        {private static void Postfix(GameObject __result){if(__result)foreach(var entry in __result.GetComponentsInChildren<Teleport>(true))entrances.Add(entry);}}
+        {private static void Postfix(GameObject __result)=>RegisterEntrances(__result);}
         [HarmonyPatch(typeof(LocationProxy),"SpawnLocation")]
         private static class RegisterLocation
-        {private static void Postfix(LocationProxy __instance,bool __result){if(__result&&__instance.m_instance)foreach(var entry in __instance.m_instance.GetComponentsInChildren<Teleport>(true))entrances.Add(entry);}}
+        {private static void Postfix(LocationProxy __instance,bool __result){if(__result)RegisterEntrances(__instance.m_instance);}}
+        [HarmonyPatch(typeof(DungeonGenerator),"PlaceRoom",new[]{typeof(DungeonDB.RoomData),typeof(Vector3),typeof(Quaternion),typeof(RoomConnection),typeof(ZoneSystem.SpawnMode)})]
+        private static class RegisterRoom
+        {private static void Postfix(Room __result){if(__result)RegisterEntrances(__result.gameObject);}}
         internal static void Prune()=>entrances.RemoveWhere(entry=>!entry);
         internal static void Clear()=>entrances.Clear();
     }
 }
+
 
 
