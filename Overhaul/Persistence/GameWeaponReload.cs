@@ -140,6 +140,17 @@ namespace Overhaul.Persistence
                 return false;
             }
         }
+        [HarmonyPatch(typeof(Player),"Update")]
+        private static class RemoteCooldown
+        {
+            private static void Postfix(Player __instance)
+            {
+                // Native Player.Update returns early on remote avatars. The
+                // server still owns the cooldown created by their last burst.
+                if(__instance.m_nview && __instance.m_nview.IsValid() && !__instance.m_nview.IsOwner() && InventoryMoveGame.State(__instance.GetZDOID())!=null)
+                    __instance.m_blockReload=Mathf.Max(0,__instance.m_blockReload-Time.deltaTime);
+            }
+        }
         [HarmonyPatch(typeof(Player),"UpdateActionQueue")]
         private static class DrainScope
         {

@@ -151,6 +151,8 @@ namespace Overhaul.Persistence
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,bool,bool,Vector3>("Overhaul_AttackControl",(sender,token,primary,secondary,aim)=>
+            {if(ReferenceEquals(sender,rpc)&&token==nonce)GameAttackRuntime.Control(PlayerSessionGame.Actor(rpc),primary,secondary,aim);});
             rpc.Register<string,int,int,int>("Overhaul_BowControl",(sender,token,mode,x,y)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)GameBowDraw.Control(PlayerSessionGame.Actor(rpc),mode,x,y);});
             rpc.Register<string,bool,int,int>("Overhaul_ReloadControl",(sender,token,cancel,x,y)=>
@@ -224,6 +226,7 @@ namespace Overhaul.Persistence
         { if (!disposed && Controller?.Pending != null) rpc.Invoke(CancelEquipmentRequest,nonce,Controller.Pending.Action.Operation); }
         internal void BeginFishingDraw(int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingDraw",nonce,x,y);}
         internal void BowControl(int mode,int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_BowControl",nonce,mode,x,y);}
+        internal void AttackControl(bool primary,bool secondary,Vector3 aim){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_AttackControl",nonce,primary,secondary,aim);}
         internal void ReloadControl(bool cancel,int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_ReloadControl",nonce,cancel,x,y);}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
@@ -329,11 +332,12 @@ namespace Overhaul.Persistence
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();}
-            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);}}
+            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);}}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
+            if (server != null) rpc.Register<string,bool,bool,Vector3>("Overhaul_AttackControl",(_,__,___,____,_____)=>{ });
             if (server != null) rpc.Register<string,int,int,int>("Overhaul_BowControl",(_,__,___,____,_____)=>{ });
             if (server != null) rpc.Register<string,bool,int,int>("Overhaul_ReloadControl",(_,__,___,____,_____)=>{ });
             if (server == null) rpc.Register<string,int,int,bool>("Overhaul_ReloadReady",(_,__,___,____,_____)=>{ });

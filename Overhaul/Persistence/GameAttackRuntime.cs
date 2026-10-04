@@ -30,6 +30,17 @@ namespace Overhaul.Persistence
             internal string Operation;
         }
         private static ClientIntent clientIntent;
+        private sealed class Hold {internal bool Primary,Secondary;internal double Seen;internal Vector3 Aim;}
+        private static readonly Dictionary<ZDOID,Hold> holds=new Dictionary<ZDOID,Hold>();
+        private static bool sentHold,lastPrimary,lastSecondary;
+        private static double nextHold;
+        internal static void Control(ZDO actor,bool primary,bool secondary,Vector3 aim)
+        {
+            if(actor==null || InventoryMoveGame.State(actor.m_uid)==null || float.IsNaN(aim.sqrMagnitude) || Mathf.Abs(aim.sqrMagnitude-1)>.01f)return;
+            holds[actor.m_uid]=new Hold{Primary=primary,Secondary=secondary,Seen=Time.timeAsDouble,Aim=aim.normalized};
+        }
+        private static bool Holding(ZDOID actor,bool secondary)=>holds.TryGetValue(actor,out var hold)&&Time.timeAsDouble-hold.Seen<=1.5&&(secondary?hold.Secondary:hold.Primary);
+        internal static void ForgetControls(ZDOID actor)=>holds.Remove(actor);
         [ThreadStatic] private static bool executing,starting,firing;
         private static bool Fishing(ItemDrop.ItemData item)=>item!=null && PlayerFishingCastGame.FloatPrefab(item.m_shared.m_attack?.m_attackProjectile);
         private static bool Managed(Player player)=>player && player.m_nview && player.m_nview.IsValid() && InventoryMoveGame.State(player.GetZDOID())!=null;
@@ -43,8 +54,8 @@ namespace Overhaul.Persistence
             {current.Player.m_previousAttack=current.Attack;current.Player.m_currentAttack=null;}
             if(current.Player && current.Player.m_animator)current.Player.m_animator.cullingMode=current.Culling;
         }
-        internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);ClearClient();}
-        internal static void ClearClient()=>clientIntent=null;
+        internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);holds.Clear();ClearClient();}
+        internal static void ClearClient(){clientIntent=null;sentHold=false;}
         internal static void ClientTick()
         {
             var intent=clientIntent;if(intent==null)return;
@@ -77,8 +88,9 @@ namespace Overhaul.Persistence
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
             if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
-                attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
+                attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
+            if(attack.m_loopingAttack && !Holding(actor.m_uid,request.Gameplay.Alternate))throw new InvalidOperationException("Looping attack has no live held control");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
                 throw new InvalidOperationException("Weapon identity has not been confirmed");
             var q=request.Gameplay.Rotation;var rotation=new Quaternion(q[0],q[1],q[2],q[3]);
@@ -108,7 +120,7 @@ namespace Overhaul.Persistence
                     {
                         if(!attack.Start(player,player.m_body,player.m_zanim,player.m_animEvent,player.m_visEquipment,current.Weapon,player.m_previousAttack,player.m_timeSinceLastAttack,draw?.Fraction??0))
                         {Forget(actor.m_uid);return;}
-                        player.m_currentAttack=attack;player.m_lastCombatTimer=0;
+                        player.m_currentAttack=attack;player.m_currentAttackIsSecondary=current.Secondary;player.m_lastCombatTimer=0;
                     }
                     finally{starting=false;}
                 });
@@ -121,13 +133,13 @@ namespace Overhaul.Persistence
         }
         private static void Trigger(Running current)
         {
-            if(current.Pending || current.Triggered || !current.Player || !current.Player.InAttack())return;
-            current.Pending=true;var actor=current.Player.GetZDOID();
+            if(current.Pending || current.BurstPending || current.Triggered&&!current.Attack.m_loopingAttack || !current.Player || !current.Player.InAttack())return;
+            current.Pending=true;var actor=current.Player.GetZDOID();bool triggered=false;
             if(!InventoryMoveGame.ServerAction(actor,state=>
             {
                 try
                 {
-                    if(!current.Player || current.Player.IsStaggering() || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return null;
+                    if(!current.Player || current.Player.IsStaggering() || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return null;
                     int slot=current.WeaponSlot;
                     if(current.Identity!=null)
                     {
@@ -140,13 +152,13 @@ namespace Overhaul.Persistence
                     return new PlayerActionPlan(result.Change,()=>
                     {
                         if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
-                        current.Triggered=true;current.Weapon=result.Weapon;current.Ammo=result.Ammo;
+                        triggered=true;current.Triggered=true;current.Weapon=result.Weapon;current.Ammo=result.Ammo;
                         current.Attack.m_weapon=result.Weapon;
                         InContext(current,state,()=>current.Attack.OnAttackTrigger());
                     });
                 }
                 catch(InvalidOperationException){return null;}
-            },()=>{current.Pending=false;if(!current.Triggered)Forget(actor);}))current.Pending=false;
+            },()=>{current.Pending=false;if(!triggered)Forget(actor);}))current.Pending=false;
         }
         private static bool SameWeapon(ItemDrop.ItemData before,ItemDrop.ItemData after)=>before.m_dropPrefab==after.m_dropPrefab && before.m_quality==after.m_quality &&
             before.m_variant==after.m_variant && before.m_crafterID==after.m_crafterID && before.m_crafterName==after.m_crafterName && before.m_worldLevel==after.m_worldLevel &&
@@ -190,6 +202,19 @@ namespace Overhaul.Persistence
                 return false;
             }
         }
+        [HarmonyPatch(typeof(Player),"PlayerAttackInput")]
+        private static class HeldInput
+        {
+            private static void Prefix(Player __instance)
+            {
+                if(__instance!=Player.m_localPlayer || !PlayerSessionGame.Managed)return;
+                var weapon=__instance.GetCurrentWeapon();bool looping=weapon?.m_shared.m_attack?.m_loopingAttack==true || weapon?.m_shared.m_secondaryAttack?.m_loopingAttack==true;
+                bool primary=looping&&__instance.m_attackHold,secondary=looping&&__instance.m_secondaryAttackHold;
+                if(!looping&&!sentHold)return;
+                if(primary!=lastPrimary || secondary!=lastSecondary || !sentHold || Time.timeAsDouble>=nextHold)
+                {InventoryMoveGame.Client?.AttackControl(primary,secondary,__instance.GetLookDir());lastPrimary=primary;lastSecondary=secondary;sentHold=looping;nextHold=Time.timeAsDouble+.1;}
+            }
+        }
         [HarmonyPatch(typeof(Humanoid),"UpdateAttack")]
         private static class NativeUpdate
         {
@@ -202,8 +227,9 @@ namespace Overhaul.Persistence
             {
                 if(!(__instance is Player player) || !player.m_nview || !player.m_nview.IsValid() || !running.TryGetValue(player.GetZDOID(),out var current) || current.Player!=player)return;
                 var state=InventoryMoveGame.State(player.GetZDOID());
-                if(state==null || player.IsDead() || player.IsTeleporting() || Time.time-current.Began>15 || current.Attack.IsDone())
+                if(state==null || player.IsDead() || player.IsTeleporting() || !current.Attack.m_loopingAttack&&Time.time-current.Began>15 || current.Attack.IsDone() || current.Attack.m_loopingAttack&&!Holding(player.GetZDOID(),current.Secondary))
                 {Forget(player.GetZDOID());return;}
+                if(current.Attack.m_loopingAttack && holds.TryGetValue(player.GetZDOID(),out var held))player.SetLookDir(held.Aim);
                 if(current.Pending || current.BurstPending)return;
                 InContext(current,state,()=>player.UpdateAttack(fixedDeltaTime));
             }
