@@ -57,7 +57,7 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(ZDOMan __instance,ZRpc rpc,ref ZPackage pkg)
             {
-                if (!ZNet.instance || !ZNet.instance.IsServer() || !GamePersistence.HasReservations && !PlayerFishingCastGame.Enabled) return true;
+                if (!ZNet.instance || !ZNet.instance.IsServer() || !GamePersistence.HasReservations && !PlayerFishingCastGame.HasServerLines) return true;
                 var peer = __instance.FindPeer(rpc); if (peer == null) return false;
                 try
                 {
@@ -82,6 +82,26 @@ namespace Overhaul.Persistence
                 { ZLog.LogError("[Overhaul reserved world data] " + error); rpc.GetSocket().Close(); return false; }
             }
         }
+        [HarmonyPatch(typeof(ZDOMan),"RPC_DestroyZDO")]
+        private static class ProtectedDestruction
+        {
+            private static bool Prefix(long sender,ref ZPackage pkg)
+            {
+                if(!PlayerFishingCastGame.Enabled || !ZNet.instance || sender==(ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer()?.m_uid))return true;
+                try
+                {
+                    var input=new ZPackage(pkg.GetArray());input.SetPos(pkg.GetPos());int count=input.ReadInt();
+                    if(count<0 || count>(input.Size()-input.GetPos())/12)throw new System.IO.InvalidDataException("Invalid destroyed object count");
+                    var keep=new List<ZDOID>();for(int i=0;i<count;i++){var id=input.ReadZDOID();if(!PlayerFishingCastGame.ServerOwned(id))keep.Add(id);}
+                    if(input.GetPos()!=input.Size())throw new System.IO.InvalidDataException("Invalid destroyed object suffix");
+                    var output=new ZPackage();output.Write(keep.Count);foreach(var id in keep)output.Write(id);pkg=output;return true;
+                }
+                catch(Exception error){ZLog.LogWarning("[Overhaul protected object deletion] "+error.Message);return false;}
+            }
+        }
+        [HarmonyPatch(typeof(ZDOMan),"HandleDestroyedZDO")]
+        private static class RemoveProtectedLine
+        {private static void Postfix(ZDOMan __instance,ZDOID uid){if(__instance.GetZDO(uid)==null)PlayerFishingCastGame.RemoveLine(uid);}}
         [HarmonyPatch]
         private static class Destruction
         {

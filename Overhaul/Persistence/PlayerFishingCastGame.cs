@@ -14,17 +14,29 @@ namespace Overhaul.Persistence
         private static readonly int Velocity="overhaul_fishing_velocity".GetStableHashCode();
         private sealed class Draw {internal int X,Y;internal float Started;}
         private static readonly Dictionary<ZDOID,Draw> draws=new Dictionary<ZDOID,Draw>();
+        private static readonly HashSet<ZDOID> owned=new HashSet<ZDOID>();
         private static PlayerActionCommand queued;
         private static int queuedX,queuedY;
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
         internal static void Clear(){draws.Clear();queued=null;}
+        internal static void Close(){Clear();owned.Clear();}
+        internal static bool HasServerLines=>Enabled && owned.Count!=0;
+        internal static void TrackRestored(ZDO data){if(data.GetLong(OwnerUser,0)!=0)owned.Add(data.m_uid);}
+        internal static void RemoveLine(ZDOID id)=>owned.Remove(id);
+        internal static void FilterCapture(ZDO data,ObjectRecord record)
+        {
+            if(Enabled && data.GetLong(OwnerUser,0)!=0 && !owned.Contains(data.m_uid))
+                record.Properties.RemoveAll(p=>p.Key==OwnerUser || p.Key==OwnerId || p.Key==BaitData || p.Key==Used || p.Key==Ready || p.Key==Length || p.Key==Velocity);
+        }
         internal static void Forget(ZDOID actor)=>draws.Remove(actor);
         internal static void Begin(ZDO actor,int x,int y)
         {if(actor!=null && x>=0 && x<256 && y>=0 && y<256)draws[actor.m_uid]=new Draw{X=x,Y=y,Started=Time.time};}
-        internal static bool Managed(FishingFloat line)=>line && line.m_nview && line.m_nview.IsValid() && line.m_nview.GetZDO().GetLong(OwnerUser,0)!=0;
+        internal static bool Managed(FishingFloat line)=>line && line.m_nview && line.m_nview.IsValid() && line.m_nview.GetZDO().GetLong(OwnerUser,0)!=0 &&
+            (!ZNet.instance || !ZNet.instance.IsServer() || owned.Contains(line.m_nview.GetZDO().m_uid));
         internal static ZDOID Owner(FishingFloat line)
         {var data=line.m_nview.GetZDO();return new ZDOID(data.GetLong(OwnerUser,0),unchecked((uint)data.GetInt(OwnerId,0)));}
-        internal static bool ServerOwned(ZDOID id)=>Enabled && ZDOMan.instance?.GetZDO(id)?.GetLong(OwnerUser,0)!=0 && ZDOMan.instance?.GetZDO(id)!=null;
+        internal static bool ServerOwned(ZDOID id)
+        {var data=ZDOMan.instance?.GetZDO(id);return Enabled && data!=null && data.GetLong(OwnerUser,0)!=0 && (!ZNet.instance.IsServer() || owned.Contains(id));}
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
             if(request.Gameplay.Definition==Return)return ReturnBait(actor,request,snapshot,inventory);

@@ -25,7 +25,7 @@ namespace Overhaul.Persistence
             if(strings!=null)foreach(var p in strings)Add(p.Key,"string",p.Value);
             if(bytes!=null)foreach(var p in bytes)Add(p.Key,"bytes",(byte[])p.Value.Clone());
             if(connection!=null){o.ConnectionType=(int)connection.m_type;o.TargetUser=connection.m_target.UserID;o.TargetId=connection.m_target.ID;}
-            return o;
+            PlayerFishingCastGame.FilterCapture(z,o);return o;
         }
         internal static ZDO Restore(ZDOMan manager,ObjectRecord o)
         {
@@ -48,7 +48,7 @@ namespace Overhaul.Persistence
                 if(o.TargetUser.HasValue)ZDOExtraData.SetConnection(uid,type,new ZDOID(o.TargetUser.Value,o.TargetId));
                 else ZDOExtraData.SetConnectionData(uid,type,o.ConnectionHash);
             }
-            return z;
+            PlayerFishingCastGame.TrackRestored(z);return z;
         }
         internal static void ApplyHeader(World target,WorldRecord source)
         {

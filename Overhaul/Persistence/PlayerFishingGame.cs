@@ -37,17 +37,19 @@ namespace Overhaul.Persistence
             var item=template.m_itemData.Clone();
             if(drop)ItemDrop.LoadFromZDO(item,data);else{item.m_stack=fish.m_pickupItemStackSize;item.m_dropPrefab=prefab;}
             if(!item.m_dropPrefab)item.m_dropPrefab=ObjectDB.instance.GetItemPrefab(data.GetPrefab());
-            item.m_equipped=false;item.m_pickedUp=true;inventory.Add(PlayerActionGame.Row(item).Values,item.m_customData);
+            item.m_equipped=false;item.m_pickedUp=true;bool stored=true;
+            try{inventory.Add(PlayerActionGame.Row(item).Values,item.m_customData);}
+            catch(PlayerInventoryFullException){if(!caught)throw;stored=false;}
             var outputs=new List<ObjectRecord>();var knowledge=new Dictionary<string,PlayerChange>();
             void Known(ItemDrop.ItemData value)=>knowledge[value.m_shared.m_name]=new PlayerChange("knowledge",false,"materials",value.m_shared.m_name,"");
-            Known(item);
+            if(stored)Known(item);
             if(caught && !fish.m_extraDrops.IsEmpty())foreach(var bonus in fish.m_extraDrops.GetDropListItems())
             {
                 bonus.m_equipped=false;bonus.m_pickedUp=true;
                 try{inventory.Add(PlayerActionGame.Row(bonus).Values,bonus.m_customData);Known(bonus);}
                 catch(PlayerInventoryFullException)
                 {
-                    int count=bonus.m_stack;while(count>0){if(outputs.Count>=127)throw new InvalidOperationException("Fish bonus output exceeds action limit");var part=bonus.Clone();part.m_stack=Math.Min(count,part.m_shared.m_maxStackSize);outputs.Add(PlayerDropGame.Ground(part,fish.transform.position,Quaternion.identity));count-=part.m_stack;}
+                    int count=bonus.m_stack;while(count>0){if(outputs.Count>=126)throw new InvalidOperationException("Fish bonus output exceeds action limit");var part=bonus.Clone();part.m_stack=Math.Min(count,part.m_shared.m_maxStackSize);outputs.Add(PlayerDropGame.Ground(part,fish.transform.position,Quaternion.identity));count-=part.m_stack;}
                 }
             }
             var changes=inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.Concat(knowledge.Values).ToList();
@@ -58,7 +60,10 @@ namespace Overhaul.Persistence
                 if(drop && item.m_quality<=6)changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.FishCaughtTier0+item.m_quality).ToString(CultureInfo.InvariantCulture),1));
             }
             var batch=new PlayerBatch(request.Action.Operation,snapshot.Revision,changes);
-            var fishPlan=PlayerActionGame.RemoveWorldObject(view,batch,outputs);
+            PlayerActionPlan fishPlan;
+            if(stored)fishPlan=PlayerActionGame.RemoveWorldObject(view,batch,outputs);
+            else using(var world=new PlayerActionObjectGame(data))
+            {world.Set(ZDOVars.s_hooked,0);fishPlan=world.FinishWithObjects(batch,outputs,()=>{if(fish)fish.m_fishingFloat=null;});}
             if(!caught || !PlayerFishingCastGame.Managed(line))return fishPlan;
             try
             {
