@@ -226,7 +226,7 @@ namespace Overhaul.Persistence
                 if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce||Time.timeAsDouble<nextJumpNotice)return;
                 nextJumpNotice=Time.timeAsDouble+.25;
                 var actor=PlayerSessionGame.Actor(rpc);var avatar=actor!=null?ZNetScene.instance.FindInstance(actor.m_uid)?.GetComponent<Player>():null;
-                if(avatar)serverActions.Enqueue(state=>GameJumpAction.Observe(avatar,state));
+                if(avatar)progress.Enqueue(state=>GameJumpAction.Observe(avatar,state)?.Change.Player.Changes??Array.Empty<PlayerChange>());
             });
             rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(sender,token,held,forward)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)GameBlockControl.Control(PlayerSessionGame.Actor(rpc),held,forward);});

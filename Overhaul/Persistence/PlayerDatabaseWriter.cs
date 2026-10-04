@@ -134,6 +134,7 @@ namespace Overhaul.Persistence
         }
         public void Dispose()
         {
+            if(!stopping)FlushLiveProgress(true);
             lock (gate) { if (stopping) return; stopping = true; }
             if (shared != null)
             {

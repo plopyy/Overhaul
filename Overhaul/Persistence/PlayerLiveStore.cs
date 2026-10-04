@@ -58,11 +58,23 @@ namespace Overhaul.Persistence
     internal sealed partial class PlayerDatabaseWriter
     {
         internal PlayerLiveStore Live {get;private set;}
+        private sealed class PendingProgress
+        {internal PlayerIdentity Identity;internal long Revision;internal DateTime Due;internal readonly List<PlayerChange> Rows=new List<PlayerChange>();}
+        private readonly Dictionary<string,PendingProgress> pendingProgress=new Dictionary<string,PendingProgress>();
+        internal void FlushLiveProgress(bool force=false)
+        {foreach(var entry in pendingProgress.Values.Where(p=>force||DateTime.UtcNow>=p.Due).ToArray())FlushLiveProgress(entry);}
+        private void FlushLiveProgress(PendingProgress entry)
+        {
+            var batch=new PlayerBatch(Guid.NewGuid().ToString("N"),entry.Revision,entry.Rows);
+            shared.Persist(world=>{PrepareTransfers(world);PlayerTransferJournal.Recover(world,Get);Get(entry.Identity).CommitProgress(batch);});
+            pendingProgress.Remove(entry.Identity.FileName);
+        }
         internal void EnableLiveState(){if(shared==null)throw new InvalidOperationException("Live state requires a world writer");Live=new PlayerLiveStore();}
         internal PlayerBatch AcceptAction(PlayerIdentity identity,PlayerWorldAction action)
         {
             if(Live.Find(identity)?.Revision!=action.Player.ExpectedRevision)throw new InvalidOperationException("Stale live action");
             foreach(var pair in action.Containers)pair.Value.Validate(Live.Chest(pair.Key).Rows);
+            if(pendingProgress.TryGetValue(identity.FileName,out var progress))FlushLiveProgress(progress);
             // Queue immutable values before publication; no worker callback touches Unity or Live.
             PersistAccepted(identity,action);
             foreach(var pair in action.Containers)action.CommittedContainers[pair.Key]=Live.ApplyChest(pair.Key,pair.Value.After);
@@ -102,7 +114,9 @@ namespace Overhaul.Persistence
         {
             if(batch.Changes.Any(r=>!PlayerProgressService.Allowed(r)))throw new InvalidDataException("Invalid progress table");
             if(Live.Find(identity)?.Revision!=batch.ExpectedRevision)throw new InvalidOperationException("Stale live progress");
-            shared.Persist(world=>{PrepareTransfers(world);PlayerTransferJournal.Recover(world,Get);Get(identity).CommitProgress(batch);});
+            if(!pendingProgress.TryGetValue(identity.FileName,out var entry))
+                pendingProgress.Add(identity.FileName,entry=new PendingProgress{Identity=identity,Revision=batch.ExpectedRevision,Due=DateTime.UtcNow.AddSeconds(30)});
+            entry.Rows.AddRange(batch.Changes);
             Live.Apply(identity,batch,false);return true;
         }
     }

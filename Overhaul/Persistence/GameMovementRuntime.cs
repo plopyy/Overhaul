@@ -76,7 +76,7 @@ namespace Overhaul.Persistence
             var view=GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
             view.Write(motion.Player&&motion.Player.InIntro());return view;
         }
-        internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling||GameDodgeAction.Active(player));
+        internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling>0||GameDodgeAction.Active(player));
         internal static void Record(Player player){Remember(player).ForceView=true;if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
         private static Motion Remember(Player player)
         {

@@ -247,6 +247,7 @@ namespace Overhaul.Persistence
                 PlayerFishingCastGame.Tick();
                 PublishDeferredActionObjects(Time.time);
                 if(Time.realtimeSinceStartup>=nextCapture){Capture();writer.RequestFlush();nextCapture=Time.realtimeSinceStartup+5;}
+                Players?.FlushLiveProgress();
                 string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] Write or backup failed; failed operations will be retried: "+error);}
             }
             catch(Exception ex){ZNet.m_loadError=true;ZLog.LogError("[Overhaul SQLite] Snapshot failed; saving disabled: "+ex);}
