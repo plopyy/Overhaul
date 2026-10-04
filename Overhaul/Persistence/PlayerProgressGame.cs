@@ -39,12 +39,12 @@ namespace Overhaul.Persistence
             bool encumbered=!PlayerCraftProgressGame.Passive(snapshot,"unburdened") && items.Sum(i=>i.GetWeight())>carry;
             bool busy=player.InAttack() || player.InDodge();float block=player.IsBlocking()?.8f:1;
             bool vitality=PlayerCraftProgressGame.Passive(snapshot,"vitality");
-            if(vitality)health+=(float)Overhaul.Leveling.LevelingConfig.Current.VitalityHealth;
+            if(vitality)health+=(float)global::Overhaul.Leveling.LevelingConfig.Current.VitalityHealth;
             eitrMultiplier+=equipped.Sum(i=>i.m_shared.m_eitrRegenModifier);
             return PlayerResources.Regenerate(snapshot,seconds,new PlayerResources.Rates
             {
                 MaxHealth=health,MaxStamina=stamina,MaxEitr=eitr,FoodHeal=foodHeal*Mathf.Max(0,hpMultiplier)*(1+PlayerCraftProgressGame.Bonus(snapshot,"health_regen")),
-                PassiveHeal=vitality?Overhaul.Leveling.LevelingConfig.Current.VitalityRegen:0,
+                PassiveHeal=vitality?global::Overhaul.Leveling.LevelingConfig.Current.VitalityRegen:0,
                 Stamina=busy || encumbered || player.m_wallRunning || player.IsSwimming() && !player.IsOnGround()?0:definition.m_staminaRegen*Mathf.Max(0,staminaMultiplier)*block*Game.m_staminaRegenRate,
                 StaminaShape=definition.m_staminaRegenTimeMultiplier,
                 Eitr=busy?0:definition.m_eiterRegen*Mathf.Max(0,eitrMultiplier)*block*(1+PlayerCraftProgressGame.Bonus(snapshot,"eitr_regen"))
