@@ -102,7 +102,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(GrapplingPoint __instance,Character character)
             {
                 if(!GameCreatureAuthority.Enabled||current==__instance)return true;
-                if(!(character is Player player)||!__instance.m_grappledSE||!__instance.m_nview||!__instance.m_nview.IsValid())return false;
+                if(!character||!(character is Player player)||!player.m_nview||!player.m_nview.IsValid()||!__instance.m_grappledSE||!__instance.m_nview||!__instance.m_nview.IsValid())return false;
                 var actor=player.GetZDOID();var state=InventoryMoveGame.State(actor);if(state==null||GameDeathProgress.IsDead(state))return false;
                 if(points.TryGetValue(actor,out var old)&&old&&old!=__instance)old.Break(true);
                 __instance.m_nview.GetZDO().Set(Owner,actor);
@@ -139,7 +139,7 @@ namespace Overhaul.Persistence
                     }
                     return true;
                 }
-                if(!(__instance.m_character is Player player))
+                if(!__instance.m_character||!(__instance.m_character is Player player))
                 {
                     __instance.FindCharacter();
                     if(!__instance.m_character&&__instance.m_nview&&__instance.m_nview.IsValid()&&__instance.m_nview.IsOwner())ZNetScene.instance.Destroy(__instance.gameObject);
@@ -166,12 +166,15 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(GrapplingPoint),nameof(GrapplingPoint.Break))]
         private static class Break
         {
-            private static bool Prefix(GrapplingPoint __instance,bool early)
+            private static bool Prefix(GrapplingPoint __instance,bool early,out bool __state)
             {
+                __state=false;
                 if(!GameCreatureAuthority.Enabled)return true;
-                if(!(__instance.m_character is Player player))return true;
+                if(!__instance.m_character||!(__instance.m_character is Player player))return true;
+                if(!__instance.m_nview||!__instance.m_nview.IsValid()||!__instance.m_nview.IsOwner()||!__instance.m_lineRenderer||!__instance.m_lineRenderer.enabled)return false;
                 if(current==__instance)
                 {
+                    __state=true;
                     var actor=player.GetZDOID();
                     if(points.TryGetValue(actor,out var active)&&active==__instance){points.Remove(actor);player.m_grappling=0;GameMovementRuntime.InvalidateEffects(actor);}
                     return true;
@@ -179,9 +182,9 @@ namespace Overhaul.Persistence
                 var state=InventoryMoveGame.State(player.GetZDOID());if(state==null){Forget(player.GetZDOID());return false;}
                 Run(__instance,player,state,()=>__instance.Break(early));return false;
             }
-            private static void Postfix(GrapplingPoint __instance)
+            private static void Postfix(GrapplingPoint __instance,bool __state)
             {
-                if(!GameCreatureAuthority.Enabled||!(__instance.m_character is Player player))return;
+                if(!__state||!GameCreatureAuthority.Enabled||!(__instance.m_character is Player player))return;
                 var actor=player.GetZDOID();
                 if(points.TryGetValue(actor,out var active)&&active==__instance){points.Remove(actor);player.m_grappling=0;GameMovementRuntime.InvalidateEffects(actor);}
                 if(current!=__instance||!__instance.m_se)return;
