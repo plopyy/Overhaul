@@ -23,6 +23,8 @@ namespace Overhaul.Persistence
             var changes=new List<PlayerChange>();
             if(GameDeathProgress.IsDead(snapshot)||PlayerResources.Read(snapshot,"health")<=0)return changes;
             changes.AddRange(GameDeathProgress.Advance(snapshot,seconds));
+            if(snapshot.Rows.Any(r=>r.Table=="state"&&(string)r.Values[0]=="guardian_cooldown")&&PlayerResources.Read(snapshot,"guardian_cooldown")>0)
+                changes.Add(PlayerResources.Row("guardian_cooldown",Math.Max(0,PlayerResources.Read(snapshot,"guardian_cooldown")-seconds)));
             var foods=snapshot.Rows.Where(r=>r.Table=="food").ToDictionary(r=>Convert.ToInt32(r.Values[0]));
             for(int slot=0;slot<3;slot++)
             {
@@ -124,6 +126,7 @@ namespace Overhaul.Persistence
                 if(values.TryGetValue(PlayerResources.Adrenaline,out var adrenaline))player.m_adrenaline=adrenaline;
                 if(values.TryGetValue(PlayerResources.AdrenalineDelay,out var adrenalineDelay))player.m_adrenalineDegenTimer=adrenalineDelay;
                 if(values.TryGetValue(PlayerResources.AdrenalineLastMaximum,out var adrenalineMax))player.m_lastMaxAdrenaline=adrenalineMax;
+                if(values.TryGetValue("guardian_cooldown",out var guardianCooldown))player.m_guardianPowerCooldown=guardianCooldown;
             };
         }
     }
