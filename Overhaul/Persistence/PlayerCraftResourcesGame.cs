@@ -65,7 +65,7 @@ namespace Overhaul.Persistence
                 Cheated |= Convert.ToBoolean(match.Item3[13]); match.Item1.Bag.Remove(match.Item2,take); amount -= take;
             }
         }
-        internal PlayerActionPlan Finish(PlayerBatch player,Action effects,IEnumerable<ObjectRecord> spawned = null)
+        internal PlayerActionPlan Finish(PlayerBatch player,Action effects,IEnumerable<ObjectRecord> spawned = null,IDictionary<long,ObjectRecord> changedWorld = null,Action publishWorld = null)
         {
             var changes = new Dictionary<long,PlayerContainerAction>();
             foreach (var source in sources.Where(s => s.Chest))
@@ -78,11 +78,14 @@ namespace Overhaul.Persistence
                 if (!GamePersistence.ReserveSlots(data.m_uid,slots)) throw new InvalidOperationException("Crafting slots are busy");
                 source.Reserved = slots; changes.Add(source.Id,new PlayerContainerAction(source.Before,delta));
             }
-            var objects = (spawned ?? Enumerable.Empty<ObjectRecord>()).ToDictionary(o => o.Id);
+            var additions=(spawned ?? Enumerable.Empty<ObjectRecord>()).ToArray();
+            var objects = additions.ToDictionary(o => o.Id);
+            if(changedWorld!=null)foreach(var pair in changedWorld)objects.Add(pair.Key,pair.Value);
             var action = new PlayerWorldAction(player,objects,changes);
             var plan = new PlayerActionPlan(action,() =>
             {
-                foreach (var record in objects.Values) GamePersistence.PublishActionObject(record);
+                foreach (var record in additions) GamePersistence.PublishActionObject(record);
+                publishWorld?.Invoke();
                 foreach (var source in sources.Where(s => s.Reserved != null))
                 {
                     var delta = action.CommittedContainers[source.Id]; var bag = source.Chest.GetInventory();

@@ -19,7 +19,7 @@ namespace Overhaul.Persistence
                 throw new InvalidOperationException("Construction tool is unavailable");
             if(command.Definition==Repair || command.Definition==Remove)return Existing(actor,request,snapshot,inventory,tool);
             var prefab=table.m_pieces.FirstOrDefault(p=>p && p.name==command.Definition);var piece=prefab?prefab.GetComponent<Piece>():null;
-            if(!piece || !piece.m_enabled || piece.m_repairPiece || piece.m_removePiece || piece.m_harvest || prefab.GetComponent<TerrainModifier>() || prefab.GetComponent<TerrainOp>())
+            if(!piece || !piece.m_enabled || piece.m_repairPiece || piece.m_removePiece || piece.m_harvest || prefab.GetComponent<TerrainModifier>())
                 throw new InvalidOperationException("Construction definition is unavailable or requires a terrain action");
             var position=new Vector3(command.Position[0],command.Position[1],command.Position[2]);
             var rotation=new Quaternion(command.Rotation[0],command.Rotation[1],command.Rotation[2],command.Rotation[3]);
@@ -38,6 +38,19 @@ namespace Overhaul.Persistence
                     float factor=tool.m_shared.m_placementDurabilitySkill==Skills.SkillType.None?0:PlayerCraftProgressGame.Factor(snapshot,tool.m_shared.m_placementDurabilitySkill);
                     tool.m_durability=Mathf.Max(0,tool.m_durability-tool.m_shared.m_useDurabilityDrain*(1-tool.m_shared.m_placementDurabilityMax*factor)*Game.m_durabilityRate);
                     inventory.Set(slot,PlayerActionGame.Row(tool,slot%256,slot/256).Values);
+                }
+                var terrain=prefab.GetComponent<TerrainOp>();
+                if(terrain)
+                {
+                    using(var edit=new PlayerTerrainGame())
+                    {
+                        edit.Calculate(terrain,position,rotation,creator);var outputs=new List<ObjectRecord>();
+                        if(terrain.m_spawnOnPlaced && (terrain.m_spawnAtMaxLevelDepth || !Heightmap.AtMaxLevelDepth(position+Vector3.up*terrain.m_settings.m_levelOffset)) && UnityEngine.Random.value<=terrain.m_chanceToSpawn)
+                        {var item=terrain.m_spawnOnPlaced.GetComponent<ItemDrop>()?.m_itemData.Clone();if(item==null || terrain.m_maxSpawned<1 || terrain.m_maxSpawned>100000)throw new InvalidOperationException("Terrain output is invalid");item.m_dropPrefab=terrain.m_spawnOnPlaced;item.m_stack=UnityEngine.Random.Range(1,terrain.m_maxSpawned+1);item.m_worldLevel=Game.m_worldLevel;outputs.AddRange(Drops(new[]{item},null,position+Vector3.up*.5f));}
+                        var rows=inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.Concat(Progress(snapshot,table,false)).ToList();
+                        rows.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.Builds).ToString(),1));rows.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:pieces",piece.m_name,1));
+                        return edit.Finish(resources,new PlayerBatch(request.Action.Operation,snapshot.Revision,rows),terrain,position,outputs);
+                    }
                 }
                 var output=GamePersistence.AllocateActionObject(prefab,position,rotation);
                 void Add(int key,string type,object value)=>output.Properties.Add(new PropertyRecord{Key=key,Type=type,Value=value});
