@@ -18,7 +18,7 @@ namespace Overhaul.Persistence
             internal float Fire,Poison,Spirit,Damage,Stagger;
             internal bool Lethal;
         }
-        private static void Validate(HitData hit,float takenRate)
+        internal static void Validate(HitData hit,float takenRate)
         {
             if(hit==null)throw new ArgumentNullException(nameof(hit));
             var d=hit.m_damage;

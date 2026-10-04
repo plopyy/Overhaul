@@ -19,6 +19,7 @@ namespace Overhaul.Persistence
         }
         internal static PlayerActionPlan Prepare(PlayerSnapshot state,Player player,HitData incoming,bool direct=false)
         {
+            GamePlayerDamageMath.Validate(incoming,Game.m_localDamgeTakenRate);
             if(!player||PlayerResources.Read(state,"health")<=0||GameDeathProgress.IsDead(state)||player.IsTeleporting()||player.InCutscene())return null;
             var hit=incoming.Clone();var attacker=hit.GetAttacker();
             if(!direct&&(hit.HaveAttacker()&&!attacker||hit.m_dodgeable&&player.IsDodgeInvincible()||attacker is Player&&!player.IsPVPEnabled()&&!hit.m_ignorePVP))return null;
@@ -57,7 +58,8 @@ namespace Overhaul.Persistence
             else
             {
                 var weak=player.GetWeakSpot(hit.m_weakSpot);
-                damage=GamePlayerDamageMath.Mitigate(current,hit,weak?weak.m_damageModifiers:player.m_damageModifiers,Game.m_localDamgeTakenRate,UnityEngine.Random.Range(0,int.MaxValue));
+                int armorCount=GameCombatEquipment.Equipped(current).Count(GameCombatEquipment.Armor);
+                damage=GamePlayerDamageMath.Mitigate(current,hit,weak?weak.m_damageModifiers:player.m_damageModifiers,Game.m_localDamgeTakenRate,armorCount==0?0:UnityEngine.Random.Range(0,armorCount));
             }
             Change(damage.Changes);
             Change(new[]{PlayerCraftProgressGame.Increment(current,"statistics:0:values",((int)(attacker is Player?PlayerStatType.HitsTakenPlayers:PlayerStatType.HitsTakenEnemies)).ToString(CultureInfo.InvariantCulture),1)});
