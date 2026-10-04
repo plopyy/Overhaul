@@ -35,7 +35,7 @@ namespace Overhaul.Persistence
             var grave=GameDeathInventory.Tombstone(contents,player.m_tombstone,position,player.transform.rotation,(string)State("player_name",3),Convert.ToInt64(State("player_id",1)),width,height);
             var records=new Dictionary<long,ObjectRecord>();if(grave!=null)records.Add(grave.Id,grave);
             return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,changes),records),
-                ()=>{if(grave!=null)GamePersistence.PublishActionObject(grave);});
+                ()=>{if(grave!=null)GamePersistence.PublishActionObject(grave);GameDeathRuntime.Publish(player,hit);});
         }
     }
 }

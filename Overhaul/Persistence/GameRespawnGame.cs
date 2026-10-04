@@ -29,8 +29,10 @@ namespace Overhaul.Persistence
         {
             if(!Intent(request)||reply.Notification)return;
             if(reply.Accepted){confirmed=true;requested=false;}
-            else if(!reply.Snapshot){requested=false;}
+            else if(!reply.Snapshot||reply.Player.ExpectedRevision<=request.Action.PlayerRevision){requested=false;}
         }
+        internal static void DeathConfirmed(Player player)
+        {if(PlayerSessionGame.Managed&&player==Player.m_localPlayer){requested=false;confirmed=false;Game.instance.RequestRespawn(10,true);}}
         internal static void Tick()
         {
             var controller=InventoryMoveGame.Client?.Controller;

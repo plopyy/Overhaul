@@ -33,7 +33,7 @@ namespace Overhaul.Persistence
                     if((string)v[0]==GameDeathProgress.Dead)
                     {
                         int value=Convert.ToInt32(v[1]);if(value!=0&&value!=1)throw new InvalidDataException("Invalid confirmed death flag");
-                        updates.Add(()=>{player.m_isDead=value==1;if(player.m_nview&&player.m_nview.IsValid())player.m_nview.GetZDO().Set(ZDOVars.s_dead,value==1);if(player.m_visual)player.m_visual.SetActive(value==0);});
+                        updates.Add(()=>{player.m_isDead=value==1;if(player.m_nview&&player.m_nview.IsValid())player.m_nview.GetZDO().Set(ZDOVars.s_dead,value==1);if(player.m_visual)player.m_visual.SetActive(value==0);if(value==1)GameRespawnGame.DeathConfirmed(player);});
                     }
                     else
                     {
