@@ -22,8 +22,15 @@ namespace Overhaul.Persistence
             var hit=incoming.Clone();var result=new Result{Hit=hit,Changes=Array.Empty<PlayerChange>(),Stagger=stagger};
             if(PlayerResources.Read(state,"health")<=0)return result;
             var inventory=new PlayerActionInventory(state.Rows,InventoryMoveGame.PlayerLayout(state.Rows));
-            var row=inventory.Item(slot);var item=PlayerInventoryView.ReadItem(row,null,true);
-            if(!item.m_equipped||inventory.Layout.Cosmetic(slot)||item.m_shared.m_useDurability&&item.m_durability<=0)throw new InvalidOperationException("Canonical blocking item is unavailable");
+            object[] row=null;ItemDrop.ItemData item;
+            if(slot==-1)
+            {
+                var unarmed=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>()?.m_unarmedWeapon:null;
+                if(!unarmed)throw new InvalidOperationException("Unarmed blocking definition is unavailable");
+                item=unarmed.m_itemData.Clone();item.m_equipped=true;
+            }
+            else {row=inventory.Item(slot);item=PlayerInventoryView.ReadItem(row,null,true);}
+            if(!item.m_equipped||slot>=0&&inventory.Layout.Cosmetic(slot)||item.m_shared.m_useDurability&&item.m_durability<=0)throw new InvalidOperationException("Canonical blocking item is unavailable");
             var effects=GameAttackResources.Effects(state);var equipment=GameCombatEquipment.Equipped(state);
             float skill=Mathf.Clamp01(GameAttackResources.SkillLevel(state,Skills.SkillType.Blocking,effects)/100f);
             float power=item.GetBlockPower(skill);timed&=item.m_shared.m_timedBlockBonus>1;
@@ -49,7 +56,7 @@ namespace Overhaul.Persistence
             if(threshold>0){result.Stagger=Mathf.Min(threshold,stagger+added);result.Staggered=result.Stagger>=threshold;}
             result.Attempted=true;result.Timed=timed;result.Blocked=stamina>0&&!result.Staggered;result.Absorbed=absorbed;result.SkillGain=timed?2:1;
             if(result.Blocked){hit.m_statusEffectHash=0;hit.BlockDamage(absorbed);hit.m_pushForce*=fraction;}
-            if(item.m_shared.m_useDurability)GameEquipmentWear.Apply(inventory,slot,row,item.m_shared.m_useDurabilityDrain*(before/power)*Game.m_durabilityRate);
+            if(slot>=0&&item.m_shared.m_useDurability)GameEquipmentWear.Apply(inventory,slot,row,item.m_shared.m_useDurabilityDrain*(before/power)*Game.m_durabilityRate);
             if(hasAttacker&&timed&&result.Blocked)
             {
                 if(item.m_shared.m_perfectBlockStaminaRegen>0)stamina=Math.Min(maximum,stamina+item.m_shared.m_perfectBlockStaminaRegen);
