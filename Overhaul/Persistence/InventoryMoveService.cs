@@ -52,6 +52,7 @@ namespace Overhaul.Persistence
         private DateTime deadline;
         internal bool Busy => request != null;
         internal bool StorageFailed { get; private set; }
+        internal Func<InventoryMoveRequest,bool> CanAct;
 
         internal InventoryMoveService(PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout,
             Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed,
@@ -74,6 +75,7 @@ namespace Overhaul.Persistence
                 request = incoming; deadline = DateTime.UtcNow.AddSeconds(30);
                 try
                 {
+                    if(CanAct!=null&&!CanAct(incoming))throw new InvalidOperationException("Character cannot perform this action");
                     if (incoming.Open || incoming.Action.UsesContainer) lease = reserve(incoming);
                     if ((incoming.Open || incoming.Action.UsesContainer) && lease == null) throw new InvalidOperationException("Container access denied");
                     if (incoming.Gameplay != null)

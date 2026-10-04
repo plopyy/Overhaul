@@ -165,6 +165,7 @@ namespace Overhaul.Persistence
             GameStatusGame.Initial(null);
             GameLifeView.Initial(null);
             GameCharacterView.Initial(null);
+            GameRespawnGame.Clear();
             PlayerResourceGame.Initial(null);
         }
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]

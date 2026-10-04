@@ -28,6 +28,7 @@ namespace Overhaul.Persistence
                 throw new InvalidOperationException("Invalid server death state");
             var changes=new List<PlayerChange>{PlayerResources.Row("health",0),
                 new PlayerChange("state",false,Dead,1,null,null,null),
+                new PlayerChange("state",false,GameRespawnGame.After,DateTime.UtcNow.AddSeconds(10).Ticks,null,null,null),
                 new PlayerChange("state",false,"time_since_death",null,0d,null,null),
                 new PlayerChange("spawn",false,"death",position.x,position.y,position.z),
                 new PlayerChange("spawn",true,"logout")};

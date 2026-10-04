@@ -25,6 +25,8 @@ namespace Overhaul.Persistence
             if (actor == null || actor.GetLong(ZDOVars.s_playerID,0) != PlayerSessionGame.CharacterId(session))
                 throw new InvalidOperationException("Player actor is unavailable");
             var command = request.Gameplay;
+            if(GameRespawnGame.Intent(request))return GameRespawnGame.Prepare(request,snapshot);
+            if(GameDeathProgress.IsDead(snapshot))throw new InvalidOperationException("Dead characters cannot perform inventory actions");
             var inventory = new PlayerActionInventory(snapshot.Rows,InventoryMoveGame.PlayerLayout(snapshot.Rows));
             int slot = request.Action.FromY * 256 + request.Action.FromX;
             switch (command.Kind)

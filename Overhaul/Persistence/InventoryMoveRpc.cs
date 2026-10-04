@@ -147,6 +147,7 @@ namespace Overhaul.Persistence
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
                 batch=>{Committed(batch,true);if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
+            server.CanAct=request=>!GameDeathProgress.IsDead(canonical)||GameRespawnGame.Intent(request);
             foreach(var row in session.Snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations"))observedStations[(string)row.Values[1]]=Convert.ToInt32(row.Values[2]);
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
@@ -240,6 +241,7 @@ namespace Overhaul.Persistence
             if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
             GameAttackRuntime.ClientReply(reply,Controller.Pending);
+            GameRespawnGame.Reply(reply,Controller.Pending);
             if(!reply.Notification)PlayerFishingGame.Confirm(Controller.Pending);
             if(!reply.Notification && reply.Accepted)PlayerBuildGame.Feedback(player,Controller.Pending);
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
@@ -312,7 +314,7 @@ namespace Overhaul.Persistence
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
-            if(Controller!=null){PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();}
+            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();}
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
