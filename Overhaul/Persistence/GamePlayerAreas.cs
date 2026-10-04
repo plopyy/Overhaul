@@ -19,7 +19,7 @@ namespace Overhaul.Persistence
         private static bool spawning;
         private static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true && ZNet.instance && ZNet.instance.IsServer();
         internal static void Clear()
-        {centers.Clear();centerZones.Clear();zones.Clear();nearSet.Clear();distantSet.Clear();scratchNear.Clear();scratchDistant.Clear();candidates.Clear();refreshed=-1;cursor=0;spawning=false;}
+        {centers.Clear();centerZones.Clear();zones.Clear();nearSet.Clear();distantSet.Clear();scratchNear.Clear();scratchDistant.Clear();candidates.Clear();refreshed=-1;cursor=0;spawning=false;GameCreatureAuthority.Clear();}
         internal static void Refresh(bool force=false)
         {
             if(!force && Time.time<refreshed+.1f)return;refreshed=Time.time;
@@ -55,6 +55,7 @@ namespace Overhaul.Persistence
             foreach(var pair in scene.m_instances)
                 if(GamePersistence.ActionReserved(pair.Key.m_uid) || GamePersistence.InventoryReserved(pair.Key.m_uid))nearSet.Add(pair.Key);
             distantSet.ExceptWith(nearSet);
+            foreach(var data in nearSet)GameCreatureAuthority.Claim(data);
             scene.m_tempCurrentObjects.Clear();scene.m_tempCurrentObjects.AddRange(nearSet);
             scene.m_tempCurrentDistantObjects.Clear();scene.m_tempCurrentDistantObjects.AddRange(distantSet);
         }

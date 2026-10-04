@@ -1,0 +1,38 @@
+using System.Collections.Generic;
+using HarmonyLib;
+
+namespace Overhaul.Persistence
+{
+    // Classify from the server prefab registry, never from client-supplied ZDO flags.
+    internal static class GameCreatureAuthority
+    {
+        private static readonly Dictionary<int,bool> prefabs=new Dictionary<int,bool>();
+        internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true && ZNet.instance && ZNet.instance.IsServer();
+        internal static void Clear()=>prefabs.Clear();
+        internal static bool Owns(ZDOID id)=>Owns(ZDOMan.instance?.GetZDO(id));
+        internal static bool Owns(ZDO data)
+        {
+            if(!Enabled || data==null || !ZNetScene.instance)return false;
+            int hash=data.GetPrefab();
+            if(!prefabs.TryGetValue(hash,out bool creature))
+            {
+                var prefab=ZNetScene.instance.GetPrefab(hash);
+                if(!prefab)return false; // Mod registration may still be in progress.
+                creature=!prefab.GetComponent<Player>() && (prefab.GetComponent<Character>() || prefab.GetComponent<Fish>() || prefab.GetComponent<RandomFlyingBird>());
+                prefabs.Add(hash,creature);
+            }
+            return creature;
+        }
+        internal static void Claim(ZDO data)
+        {if(Owns(data) && data.GetOwner()!=ZNet.GetUID())data.SetOwner(ZNet.GetUID());}
+
+        // Native damage messages contain damage amounts; only the server may originate
+        // them for server-simulated creatures. Player attack intents use a separate path.
+        [HarmonyPatch(typeof(Character),"RPC_Damage")]
+        private static class DamageOrigin
+        {
+            private static bool Prefix(Character __instance,long sender)
+            {return !__instance.m_nview || !__instance.m_nview.IsValid() || !Owns(__instance.m_nview.GetZDO()) || sender==ZNet.GetUID();}
+        }
+    }
+}

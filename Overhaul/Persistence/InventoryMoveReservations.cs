@@ -49,7 +49,7 @@ namespace Overhaul.Persistence
             private static IEnumerable<MethodBase> TargetMethods()
             { yield return AccessTools.Method(typeof(ZDO),nameof(ZDO.SetOwner)); yield return AccessTools.Method(typeof(ZDO),nameof(ZDO.SetOwnerInternal)); }
             private static void Prefix(ZDO __instance,ref long uid)
-            { if (ZNet.instance && ZNet.instance.IsServer() && (Held(__instance.m_uid) || PlayerFishingCastGame.ServerOwned(__instance.m_uid))) uid = ZNet.GetUID(); }
+            { if (ZNet.instance && ZNet.instance.IsServer() && (Held(__instance.m_uid) || PlayerFishingCastGame.ServerOwned(__instance.m_uid) || GameCreatureAuthority.Owns(__instance))) uid = ZNet.GetUID(); }
         }
         [HarmonyPatch(typeof(ZDOMan),"RPC_ZDOData")]
         private static class IncomingWorldData
@@ -57,7 +57,7 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(ZDOMan __instance,ZRpc rpc,ref ZPackage pkg)
             {
-                if (!ZNet.instance || !ZNet.instance.IsServer() || !GamePersistence.HasReservations && !PlayerFishingCastGame.HasServerLines) return true;
+                if (!ZNet.instance || !ZNet.instance.IsServer() || !GamePersistence.HasReservations && !PlayerFishingCastGame.HasServerLines && !GameCreatureAuthority.Enabled) return true;
                 var peer = __instance.FindPeer(rpc); if (peer == null) return false;
                 try
                 {
@@ -65,14 +65,14 @@ namespace Overhaul.Persistence
                     int count = input.ReadInt();
                     if (count < 0 || count > input.Size()/12) throw new System.IO.InvalidDataException("Invalid sector invalidation count");
                     var sectors = new List<ZDOID>();
-                    for (int i = 0; i < count; i++) { var id = input.ReadZDOID(); if (!Held(id) && !PlayerFishingCastGame.ServerOwned(id)) sectors.Add(id); }
+                    for (int i = 0; i < count; i++) { var id = input.ReadZDOID(); if (!Held(id) && !PlayerFishingCastGame.ServerOwned(id) && !GameCreatureAuthority.Owns(id)) sectors.Add(id); }
                     output.Write(sectors.Count); foreach (var id in sectors) output.Write(id);
                     while (true)
                     {
                         var id = input.ReadZDOID(); if (id.IsNone()) { output.Write(id); break; }
                         ushort owner = input.ReadUShort(); uint revision = input.ReadUInt(); long ownerId = input.ReadLong();
                         var position = input.ReadVector3(); var body = input.ReadPackage();
-                        if (Held(id) || PlayerFishingCastGame.ServerOwned(id)) { peer.m_zdos.Remove(id); continue; }
+                        if (Held(id) || PlayerFishingCastGame.ServerOwned(id) || GameCreatureAuthority.Owns(id)) { peer.m_zdos.Remove(id); continue; }
                         output.Write(id); output.Write(owner); output.Write(revision); output.Write(ownerId); output.Write(position); output.Write(body);
                     }
                     if (input.GetPos() != input.Size()) throw new System.IO.InvalidDataException("Unexpected world data suffix");
@@ -92,7 +92,7 @@ namespace Overhaul.Persistence
                 {
                     var input=new ZPackage(pkg.GetArray());input.SetPos(pkg.GetPos());int count=input.ReadInt();
                     if(count<0 || count>(input.Size()-input.GetPos())/12)throw new System.IO.InvalidDataException("Invalid destroyed object count");
-                    var keep=new List<ZDOID>();for(int i=0;i<count;i++){var id=input.ReadZDOID();if(!PlayerFishingCastGame.ServerOwned(id))keep.Add(id);}
+                    var keep=new List<ZDOID>();for(int i=0;i<count;i++){var id=input.ReadZDOID();if(!PlayerFishingCastGame.ServerOwned(id) && !GameCreatureAuthority.Owns(id))keep.Add(id);}
                     if(input.GetPos()!=input.Size())throw new System.IO.InvalidDataException("Invalid destroyed object suffix");
                     var output=new ZPackage();output.Write(keep.Count);foreach(var id in keep)output.Write(id);pkg=output;return true;
                 }
