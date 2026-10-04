@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         private static readonly Dictionary<ZDOID,Rope> ropes=new Dictionary<ZDOID,Rope>();
         [ThreadStatic] private static SE_Harpooned updating;
         internal static void Forget(ZDOID actor)=>ropes.Remove(actor);
+        internal static bool Active(ZDOID actor)=>ropes.TryGetValue(actor,out var rope)&&rope.Effect!=null&&!rope.Effect.m_broken;
         internal static bool Broken(SE_Harpooned effect)
         {
             var attacker=effect.m_attacker;var target=effect.m_character;

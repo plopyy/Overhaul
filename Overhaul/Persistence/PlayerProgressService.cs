@@ -80,8 +80,8 @@ namespace Overhaul.Persistence
             if(broken)return;
             try
             {
-                if(commit?.IsCompleted==true)
-                {commit.GetAwaiter().GetResult();commit=null;var confirmed=result;result=null;publish(confirmed);Confirm();}
+                if(!Busy && !playerActionBusy && queued.Count!=0)
+                {active=queued.ToArray();queued.Clear();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
                 if(read?.IsCompleted==true)
                 {
                     var snapshot=read.GetAwaiter().GetResult();read=null;var current=snapshot.Rows.ToList();var changes=new List<PlayerChange>();
@@ -98,8 +98,8 @@ namespace Overhaul.Persistence
                     if(changes.Count==0)Confirm();
                     else{result=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);commit=writer.CommitProgress(identity,result);}
                 }
-                if(!Busy && !playerActionBusy && queued.Count!=0)
-                {active=queued.ToArray();queued.Clear();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
+                if(commit?.IsCompleted==true)
+                {commit.GetAwaiter().GetResult();commit=null;var confirmed=result;result=null;publish(confirmed);Confirm();}
             }
             catch(Exception error){broken=true;failed(error);}
         }

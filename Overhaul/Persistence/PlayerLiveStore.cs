@@ -116,6 +116,11 @@ namespace Overhaul.Persistence
             if(Live.Find(identity)?.Revision!=batch.ExpectedRevision)throw new InvalidOperationException("Stale live progress");
             if(!pendingProgress.TryGetValue(identity.FileName,out var entry))
                 pendingProgress.Add(identity.FileName,entry=new PendingProgress{Identity=identity,Revision=batch.ExpectedRevision,Due=DateTime.UtcNow.AddSeconds(30)});
+            if(entry.Rows.Count+batch.Changes.Count()>65536)
+            {
+                FlushLiveProgress(entry);
+                pendingProgress.Add(identity.FileName,entry=new PendingProgress{Identity=identity,Revision=batch.ExpectedRevision,Due=DateTime.UtcNow.AddSeconds(30)});
+            }
             entry.Rows.AddRange(batch.Changes);
             Live.Apply(identity,batch,false);return true;
         }

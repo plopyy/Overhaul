@@ -77,7 +77,7 @@ namespace Overhaul.Persistence
             var view=GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
             view.Write(motion.Player&&motion.Player.InIntro());return view;
         }
-        internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling>0||GameDodgeAction.Active(player));
+        internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling>0||GameDodgeAction.Active(player)||DynamicCombat.IsDashing(player)||GameHarpoonRuntime.Active(player.GetZDOID()));
         internal static void Record(Player player){var motion=Remember(player);motion.ForceView|=Forced(player);if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
         private static Motion Remember(Player player)
         {
@@ -88,7 +88,12 @@ namespace Overhaul.Persistence
         }
         internal static void Protect(ZDO actor)
         {
-            if(!motions.TryGetValue(actor.m_uid,out var motion)||!Forced(motion.Player))return;
+            if(!motions.TryGetValue(actor.m_uid,out var motion))
+            {
+                actor.SetRotation(Quaternion.identity);
+                actor.Set(ZDOVars.s_velHash,Vector3.zero);actor.Set(ZDOVars.s_bodyVelHash,Vector3.zero);actor.Set(ZDOVars.s_bodyAVelHash,Vector3.zero);return;
+            }
+            if(!Forced(motion.Player))return;
             actor.SetPosition(motion.Position);actor.SetRotation(motion.Rotation);
             actor.Set(ZDOVars.s_velHash,motion.Velocity);actor.Set(ZDOVars.s_bodyVelHash,motion.Velocity);actor.Set(ZDOVars.s_bodyAVelHash,motion.Angular);
         }
@@ -154,23 +159,25 @@ namespace Overhaul.Persistence
                 if(GameCatapultPassengers.Hold(player))return false;
                 GameTeleportAction.Tick(player,dt);
                 GameAttachmentRuntime.Tick(player);
+                GameHarpoonRuntime.Tick(player,dt);
                 // The remote owner's ordinary movement is native client movement.
                 // Observe its replicated pose; do not simulate a second body or correct it.
                 if(player!=Player.m_localPlayer&&!Forced(player))
                 {
-                    var observed=Remember(player);var controls=GameMovementControl.Read(player.GetZDOID());
+                    Remember(player);var controls=GameMovementControl.Read(player.GetZDOID());
                     player.m_moveDir=controls?.Move??Vector3.zero;player.m_run=controls?.Run??false;player.m_walk=controls?.Walk??false;player.m_crouchToggled=controls?.Crouch??false;
                     if(controls!=null)player.SetLookDir(controls.Look);
                     __state=Enter(player,true);
-                        player.UpdateCrouch(dt);
-                        if(StealthSystem.instance)player.UpdateStealth(dt);
-                        if(!player.IsDead()&&!player.InIntro())
-                        {
-                            if(player.InLiquidSwimDepth())player.OnSwimming(player.m_moveDir,dt);
-                            else if(player.m_moveDir.sqrMagnitude>.01f)
-                            {player.m_running=player.CheckRun(player.m_moveDir,dt);if(player.IsCrouching())player.OnSneaking(dt);}
-                        }
-                        player.EdgeOfWorldKill(dt);
+                    player.UpdateCrouch(dt);
+                    if(StealthSystem.instance)player.UpdateStealth(dt);
+                    player.m_running=false;
+                    if(!player.IsDead()&&!player.InIntro())
+                    {
+                        if(player.InLiquidSwimDepth())player.OnSwimming(player.m_moveDir,dt);
+                        else if(player.m_moveDir.sqrMagnitude>.01f)
+                        {player.m_running=player.CheckRun(player.m_moveDir,dt);if(player.IsCrouching())player.OnSneaking(dt);}
+                    }
+                    player.EdgeOfWorldKill(dt);
                     return true;
                 }
                 if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);
@@ -179,7 +186,6 @@ namespace Overhaul.Persistence
                 {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
                 if(motion.Suspended&&player.m_body){player.m_body.isKinematic=motion.WasKinematic;motion.Suspended=false;}
                 __state=Enter(player,true);
-                GameHarpoonRuntime.Tick(player,dt);
                 GameDodgeAction.Tick(player);
                 var input=GameMovementControl.Read(player.GetZDOID());
                 if(player!=Player.m_localPlayer){player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;}

@@ -42,11 +42,8 @@ namespace Overhaul.Persistence
             if(Failed)return;
             try
             {
-                if(commit?.IsCompleted==true)
-                {
-                    var result=commit.GetAwaiter().GetResult();commit=null;
-                    plan.Publish();publish(result);Confirm();
-                }
+                if(!Busy && !otherActionBusy && queued.Count!=0)
+                {active=queued.Dequeue();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
                 if(read?.IsCompleted==true)
                 {
                     var state=read.GetAwaiter().GetResult();read=null;
@@ -59,8 +56,11 @@ namespace Overhaul.Persistence
                         commit=writer.CommitAction(identity,plan.Change);
                     }
                 }
-                if(!Busy && !otherActionBusy && queued.Count!=0)
-                {active=queued.Dequeue();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
+                if(commit?.IsCompleted==true)
+                {
+                    var result=commit.GetAwaiter().GetResult();commit=null;
+                    plan.Publish();publish(result);Confirm();
+                }
             }
             catch(Exception error){Fail(error);}
         }

@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace Overhaul.Persistence
 {
-    // Movement input is transient. Only server-simulated positions will be
-    // persisted; receiving a control packet never writes a client position.
+    // Transient observation for facing, stamina and movement skills. Walking and
+    // jumping run on the client without waiting for an acknowledgement.
     internal static class GameMovementControl
     {
         internal sealed class Input
