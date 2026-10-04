@@ -65,6 +65,7 @@ namespace Overhaul
             Patches.WoodenArrowRecipe.Initialize();
             Storage.ProductionClock.Initialize();
 			StaffShieldVfx.Initialize();
+            Persistence.GameStaffGuardRules.Initialize();
             DoPatching();
             Commands.AdminCommands.Initialize();
 			Log.LogInfo("Create Config values");
@@ -121,6 +122,7 @@ namespace Overhaul
             DashAnimationPlayback.Release();
             DashAnimationPose.Unload();
 			StaffShieldVfx.Unload();
+            Persistence.GameStaffGuardRules.Shutdown();
 			_harmony?.UnpatchSelf();
 		}
 
@@ -135,3 +137,4 @@ namespace Overhaul
 		}
 	}
 }
+
