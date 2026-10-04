@@ -72,7 +72,7 @@ namespace Overhaul.Persistence
                         var id = input.ReadZDOID(); if (id.IsNone()) { output.Write(id); break; }
                         ushort owner = input.ReadUShort(); uint revision = input.ReadUInt(); long ownerId = input.ReadLong();
                         var position = input.ReadVector3(); var body = input.ReadPackage();
-                        if (Held(id) || PlayerFishingCastGame.ServerOwned(id) || GameCreatureAuthority.Owns(id)) { peer.m_zdos.Remove(id); continue; }
+                        if (Held(id) || PlayerFishingCastGame.ServerOwned(id) || GameCreatureAuthority.Owns(id) || GameCreatureAuthority.IncomingCreature(body)) { peer.m_zdos.Remove(id); continue; }
                         output.Write(id); output.Write(owner); output.Write(revision); output.Write(ownerId); output.Write(position); output.Write(body);
                     }
                     if (input.GetPos() != input.Size()) throw new System.IO.InvalidDataException("Unexpected world data suffix");

@@ -12,8 +12,11 @@ namespace Overhaul.Persistence
         internal static bool Owns(ZDOID id)=>Owns(ZDOMan.instance?.GetZDO(id));
         internal static bool Owns(ZDO data)
         {
-            if(!Enabled || data==null || !ZNetScene.instance)return false;
-            int hash=data.GetPrefab();
+            return data!=null && CreaturePrefab(data.GetPrefab());
+        }
+        internal static bool CreaturePrefab(int hash)
+        {
+            if(!Enabled || !ZNetScene.instance)return false;
             if(!prefabs.TryGetValue(hash,out bool creature))
             {
                 var prefab=ZNetScene.instance.GetPrefab(hash);
@@ -22,6 +25,13 @@ namespace Overhaul.Persistence
                 prefabs.Add(hash,creature);
             }
             return creature;
+        }
+        internal static bool IncomingCreature(ZPackage body)
+        {
+            if(!Enabled)return false;
+            int position=body.GetPos();
+            try{body.ReadUShort();return CreaturePrefab(body.ReadInt());}
+            finally{body.SetPos(position);}
         }
         internal static void Claim(ZDO data)
         {if(Owns(data) && data.GetOwner()!=ZNet.GetUID())data.SetOwner(ZNet.GetUID());}
