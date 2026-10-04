@@ -10,7 +10,7 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerHarvestGame
     {
-        internal const string Harvest="harvest.pick";
+        internal const string Harvest="harvest.pick", Honey="harvest.honey", Sap="harvest.sap";
         private static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
         internal static PlayerActionPlan Prepare(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
@@ -20,14 +20,14 @@ namespace Overhaul.Persistence
             {
                 var first=PrepareOne(actor,target,request,snapshot);plans.Add(first);targets.Add(target.GetComponent<ZNetView>().GetZDO().m_uid);foreach(var pair in first.Change.Objects)objects.Add(pair.Key,pair.Value);foreach(var row in first.Change.Player.Changes)updated[Key(row)]=row;
                 var pick=target.GetComponent<Pickable>();
-                float radius=Mathf.Clamp(global::Overhaul.Utility.OverhaulConfig.PickupRange?.Value ?? 0,0,20);
-                if(pick && radius>0)
+                float radius=Mathf.Clamp(global::Overhaul.Utility.OverhaulConfig.PickupRange?.Value ?? 0,0,50);
+                if((pick || hive) && radius>0)
                 {
-                    var candidates=Physics.OverlapSphere(target.transform.position,radius).Select(c=>c.GetComponentInParent<Pickable>()).Where(p=>p && p!=pick && p.m_itemPrefab==pick.m_itemPrefab).Distinct().OrderBy(p=>(p.transform.position-target.transform.position).sqrMagnitude).Take(64);
+                    var candidates=Physics.OverlapSphere(target.transform.position,radius).Select(c=>pick?(Component)c.GetComponentInParent<Pickable>():c.GetComponentInParent<Beehive>()).Where(p=>p && p.gameObject!=target && (!pick || ((Pickable)p).m_itemPrefab==pick.m_itemPrefab)).Distinct().OrderBy(p=>(p.transform.position-target.transform.position).sqrMagnitude).Take(64);
                     foreach(var other in candidates)
                     {
                         if(objects.Count>=127)break;
-                        var view=other.m_nview;if(!view || !view.IsValid() || !view.GetZDO().Persistent || GamePersistence.ActionReserved(view.GetZDO().m_uid))continue;
+                        var view=other.GetComponent<ZNetView>();if(!view || !view.IsValid() || !view.GetZDO().Persistent || GamePersistence.ActionReserved(view.GetZDO().m_uid))continue;
                         var current=new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>!updated.ContainsKey(Key(r))).Concat(updated.Values));
                         PlayerActionPlan next;try{next=PrepareOne(actor,other.gameObject,request,current);}catch(InvalidOperationException){continue;}
                         var additions=next.Change.Objects;
@@ -45,6 +45,7 @@ namespace Overhaul.Persistence
         }
         private static PlayerActionPlan PrepareOne(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
+            if(request.Gameplay.Definition==Honey || request.Gameplay.Definition==Sap)return Stored(actor,target,request,snapshot);
             var view=target.GetComponent<ZNetView>();var data=view.GetZDO();var pick=target.GetComponent<Pickable>();var loose=target.GetComponent<PickableItem>();
             if(request.Action.Amount!=1 || !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))throw new InvalidOperationException("Harvest is unavailable");
             var outputs=new List<ObjectRecord>();var changes=new List<PlayerChange>();
@@ -103,20 +104,27 @@ namespace Overhaul.Persistence
         [HarmonyPatch]
         private static class Intent
         {
-            private static IEnumerable<MethodBase> TargetMethods(){yield return AccessTools.Method(typeof(Pickable),"Interact");yield return AccessTools.Method(typeof(PickableItem),"Interact");}
+            private static IEnumerable<MethodBase> TargetMethods(){yield return AccessTools.Method(typeof(Pickable),"Interact");yield return AccessTools.Method(typeof(PickableItem),"Interact");yield return AccessTools.Method(typeof(Beehive),"Interact");yield return AccessTools.Method(typeof(SapCollector),"Interact");}
             [HarmonyPriority(Priority.First+200)]
             private static bool Prefix(Component __instance,Humanoid character,ref bool __result)
             {
-                if(character!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;__result=false;
+                if(character!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;
+                var hive=__instance as Beehive;if(hive && hive.GetHoneyLevel()==0)return true;__result=false;
                 var view=__instance.GetComponent<ZNetView>();if(!view || !view.IsValid() || character.IsTeleporting())return false;
-                var id=view.GetZDO().m_uid;InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.UseOn,Definition=Harvest,TargetUser=id.UserID,TargetId=id.ID},0,0,1);return false;
+                var id=view.GetZDO().m_uid;InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.UseOn,Definition=__instance is Beehive?Honey:__instance is SapCollector?Sap:Harvest,TargetUser=id.UserID,TargetId=id.ID},0,0,1);return false;
             }
         }
         [HarmonyPatch]
         private static class Legacy
         {
-            private static IEnumerable<MethodBase> TargetMethods(){yield return AccessTools.Method(typeof(Pickable),"RPC_Pick");yield return AccessTools.Method(typeof(PickableItem),"RPC_Pick");}
+            private static IEnumerable<MethodBase> TargetMethods(){yield return AccessTools.Method(typeof(Pickable),"RPC_Pick");yield return AccessTools.Method(typeof(PickableItem),"RPC_Pick");yield return AccessTools.Method(typeof(Beehive),"RPC_Extract");yield return AccessTools.Method(typeof(SapCollector),"RPC_Extract");}
             private static bool Prefix(Component __instance){var v=__instance.GetComponent<ZNetView>();return !Enabled && (!v || !v.IsValid() || !GamePersistence.ActionReserved(v.GetZDO().m_uid));}
+        }
+        [HarmonyPatch]
+        private static class CollectorUpdate
+        {
+            private static IEnumerable<MethodBase> TargetMethods(){yield return AccessTools.Method(typeof(Beehive),"UpdateBees");yield return AccessTools.Method(typeof(SapCollector),"UpdateTick");}
+            private static bool Prefix(Component __instance){var view=__instance.GetComponent<ZNetView>();return !view || !view.IsValid() || !GamePersistence.ActionReserved(view.GetZDO().m_uid);}
         }
         [HarmonyPatch(typeof(Pickable),"UpdateRespawn")]
         private static class Respawn
@@ -129,6 +137,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
 

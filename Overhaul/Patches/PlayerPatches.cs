@@ -381,6 +381,7 @@ namespace Overhaul.Patches
             Beehive beehive = componentInParent as Beehive;
             if (beehive != null)
             {
+                if (global::Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 foreach (Collider collider2 in Physics.OverlapSphere(go.transform.position, OverhaulConfig.PickupRange.Value, __instance.m_interactMask))
                 {
                     Beehive beehive2;
@@ -403,5 +404,6 @@ namespace Overhaul.Patches
         }
     }
 }
+
 
 
