@@ -583,13 +583,17 @@ namespace Overhaul
         internal const string AttackCancelTrigger = "overhaul_attack_cancel";
         internal static readonly int MovementState = Animator.StringToHash("Base Layer.Movement");
 		private static bool sprintWasHeld;
-		private static float dashTimeRemaining;
-		private static Vector3 dashDirection;
-		private static bool dashIsUpward;
-        private static bool dashGroundPropelled;
-
-		private static Player jumpingPlayer;
-		private static float lastJumpTime = float.NegativeInfinity;
+        private sealed class DashState
+        {
+            internal float Remaining,LastJump=float.NegativeInfinity;
+            internal Vector3 Direction;
+            internal bool Upward,GroundPropelled,Jumped;
+            internal GameObject Visual;
+            internal readonly List<KeyValuePair<Collider,Collider>> BushPairs=new List<KeyValuePair<Collider,Collider>>();
+        }
+        private static readonly Dictionary<Player,DashState> dashes=new Dictionary<Player,DashState>();
+        private static DashState Dash(Player player)
+        {if(!dashes.TryGetValue(player,out var state))dashes.Add(player,state=new DashState());return state;}
 		private const float JumpDashWindow = 0.35f;
 		private const float JumpDashAngle = 40f;
         private const float BaseDashAngle = 2f;
@@ -597,7 +601,6 @@ namespace Overhaul
 		private static bool missingDashSoundWasLogged;
 		private static GameObject cachedDashEffectPrefab;
 		private static GameObject cachedDashSoundPrefab;
-		private static GameObject activeJotunDashVisual;
 		private static SE_Shield activeStaffShield;
 		private static bool staffShieldIsActive;
 		private static bool staffShieldBrokenWhileHeld;
@@ -629,13 +632,14 @@ namespace Overhaul
 
 		public static void Update(Player player)
         {
+            if(!player)return; var state=Dash(player);
 			if (player == null || player != Player.m_localPlayer)
             {
                 return;
             }
 
-			if (jumpingPlayer == player && player.IsOnGround() && Time.time - lastJumpTime > JumpDashWindow)
-				jumpingPlayer = null;
+			if (state.Jumped && player.IsOnGround() && Time.time - state.LastJump > JumpDashWindow)
+				state.Jumped = false;
 
 			if (player.m_blocking && player.m_currentAttack != null && player.InAttack()
 				&& player.m_animator != null && player.m_animator.HasState(0, MovementState))
@@ -930,6 +934,7 @@ namespace Overhaul
 
 		private static void StartDash(Player player)
 		{
+            var state=Dash(player);
 			if (IsDashing(player) || !player.CanMove() || player.InAttack() || player.InDodge()
 				|| player.InMinorAction() || player.IsStaggering() || IsDashBlockedByInteraction(player))
 			{
@@ -943,26 +948,26 @@ namespace Overhaul
 				return;
 			}
 
-			dashDirection = player.m_moveDir;
-			dashDirection.y = 0f;
-			if (dashDirection.sqrMagnitude < 0.01f)
+			state.Direction = player.m_moveDir;
+			state.Direction.y = 0f;
+			if (state.Direction.sqrMagnitude < 0.01f)
 			{
-				dashDirection = player.transform.forward;
-				dashDirection.y = 0f;
+				state.Direction = player.transform.forward;
+				state.Direction.y = 0f;
 			}
-			dashDirection.Normalize();
-            dashGroundPropelled = false;
+			state.Direction.Normalize();
+            state.GroundPropelled = false;
 			
-			dashIsUpward = jumpingPlayer == player &&
-				(Time.time - lastJumpTime <= JumpDashWindow || (!player.IsOnGround() && player.m_body.linearVelocity.y > 0.1f));
-            dashDirection = InclineDash(dashDirection, dashIsUpward ? JumpDashAngle : BaseDashAngle);
-			dashTimeRemaining = OverhaulConfig.DashDuration.Value;
+			state.Upward = state.Jumped &&
+				(Time.time - state.LastJump <= JumpDashWindow || (!player.IsOnGround() && player.m_body.linearVelocity.y > 0.1f));
+            state.Direction = InclineDash(state.Direction, state.Upward ? JumpDashAngle : BaseDashAngle);
+			state.Remaining = OverhaulConfig.DashDuration.Value;
 			// Discard the height accumulated before this dash, not subsequent climbing.
 			player.m_maxAirAltitude = player.transform.position.y;
 			player.m_run = false;
 			player.UseStamina(staminaCost);
-			activeJotunDashVisual = PlayDashEffects(player, dashDirection);
-            SendDashVisual(player, dashTimeRemaining);
+			state.Visual = PlayDashEffects(player, state.Direction);
+            SendDashVisual(player, state.Remaining);
 			ApplyDashVelocity(player);
 			Log.LogDebug("Dash started");
 		}
@@ -983,21 +988,23 @@ namespace Overhaul
 
 		public static void OnJump(Player player)
 		{
-			if (player != Player.m_localPlayer) return;
-			jumpingPlayer = player;
-			lastJumpTime = Time.time;
+            if(!player)return; var state=Dash(player);
+			if (player != Player.m_localPlayer && !Persistence.GameMovementRuntime.Managed(player)) return;
+			state.Jumped = true;
+			state.LastJump = Time.time;
 			// Handle jump and dash pressed together, regardless of their update order.
-			if (IsDashing(player) && !dashIsUpward)
+			if (IsDashing(player) && !state.Upward)
 			{
-				dashIsUpward = true;
-				TiltDashUpward();
+				state.Upward = true;
+				TiltDashUpward(player);
 				ApplyDashVelocity(player);
 			}
 		}
 
-		private static void TiltDashUpward()
+		private static void TiltDashUpward(Player player)
 		{
-            dashDirection = InclineDash(dashDirection, JumpDashAngle);
+            var state=Dash(player);
+            state.Direction = InclineDash(state.Direction, JumpDashAngle);
 		}
         internal static Vector3 InclineDash(Vector3 direction, float degrees)
         {
@@ -1009,9 +1016,10 @@ namespace Overhaul
 
         private static void SendDashVisual(Player player, float duration)
         {
-            if (duration > 0f) DashAnimationPlayback.Start(player, dashDirection, duration);
+            var state=Dash(player);
+            if (duration > 0f) DashAnimationPlayback.Start(player, state.Direction, duration);
             if (player.m_nview != null && player.m_nview.IsValid() && player.m_nview.IsOwner())
-                player.m_nview.InvokeRPC(ZNetView.Everybody, DashVisualRpc, dashDirection, duration);
+                player.m_nview.InvokeRPC(ZNetView.Everybody, DashVisualRpc, state.Direction, duration);
         }
 
         [HarmonyPatch(typeof(Player), nameof(Player.Awake))]
@@ -1236,32 +1244,43 @@ namespace Overhaul
 
 		public static bool IsDashing(Player player)
 		{
-			return player != null && player == Player.m_localPlayer && dashTimeRemaining > 0f;
+			return player && dashes.TryGetValue(player,out var state) && state.Remaining > 0f;
 		}
 
 		public static void UpdateDash(Player player, float dt)
 		{
+            if(!player)return; var state=Dash(player);
 			if (!IsDashing(player))
 			{
 				return;
 			}
 
-			dashTimeRemaining = Mathf.Max(0f, dashTimeRemaining - dt);
+			state.Remaining = Mathf.Max(0f, state.Remaining - dt);
             ApplyDashVelocity(player);
 
-			if (dashTimeRemaining <= 0f)
+			if (state.Remaining <= 0f)
 			{
 				StopDashMovement(player);
                 SendDashVisual(player, 0f);
-				if (activeJotunDashVisual != null)
+				if (state.Visual != null)
 				{
-					FreezeJotunDashVisual(activeJotunDashVisual);
-					activeJotunDashVisual.transform.SetParent(null, true);
-					activeJotunDashVisual = null;
+					FreezeJotunDashVisual(state.Visual);
+					state.Visual.transform.SetParent(null, true);
+					state.Visual = null;
 				}
 			}
 		}
 
+        internal static void ForgetDash(Player player)
+        {
+            if(ReferenceEquals(player,null)||!dashes.TryGetValue(player,out var state))return;
+            foreach(var pair in state.BushPairs)if(pair.Key&&pair.Value)Physics.IgnoreCollision(pair.Key,pair.Value,false);
+            if(state.Visual){FreezeJotunDashVisual(state.Visual);state.Visual.transform.SetParent(null,true);UnityEngine.Object.Destroy(state.Visual,5f);}
+            dashes.Remove(player);
+        }
+        [HarmonyPatch(typeof(Player),"OnDestroy")]
+        private static class DashCleanup
+        {private static void Prefix(Player __instance)=>ForgetDash(__instance);}
 		private static void FreezeJotunDashVisual(GameObject visual)
 		{
 			ParticleSystem[] particleSystems = visual.GetComponentsInChildren<ParticleSystem>(true);
@@ -1302,40 +1321,42 @@ namespace Overhaul
 
 		private static void StopDashMovement(Player player)
 		{
-            RestoreDashBushes();
+            var state=Dash(player);
+            RestoreDashBushes(player);
 			Vector3 velocity = player.m_body.linearVelocity;
-			player.m_body.linearVelocity = new Vector3(0f, dashIsUpward ? 0f : RemoveGroundDashLift(velocity.y, dashGroundPropelled), 0f);
-            dashGroundPropelled = false;
+			player.m_body.linearVelocity = new Vector3(0f, state.Upward ? 0f : RemoveGroundDashLift(velocity.y, state.GroundPropelled), 0f);
+            state.GroundPropelled = false;
 			player.m_currentVel = player.m_body.linearVelocity;
 			player.m_lastPos = player.transform.position;
 		}
 
 		private static void ApplyDashVelocity(Player player)
 		{
-			if (dashIsUpward && player.IsOnGround())
+            var state=Dash(player);
+			if (state.Upward && player.IsOnGround())
 			{
 				player.ResetGroundContact();
 				player.m_lastGroundTouch = 1f;
 			}
 			Vector3 velocity = player.m_body.linearVelocity;
-			Vector3 dashVelocity = dashDirection * OverhaulConfig.DashSpeed.Value;
-			Vector3 desired = new Vector3(dashVelocity.x, dashIsUpward ? dashVelocity.y : velocity.y, dashVelocity.z);
+			Vector3 dashVelocity = state.Direction * OverhaulConfig.DashSpeed.Value;
+			Vector3 desired = new Vector3(dashVelocity.x, state.Upward ? dashVelocity.y : velocity.y, dashVelocity.z);
             bool vegetation = IgnoreDashBushes(player);
-            if (!dashIsUpward && !player.IsSwimming())
+            if (!state.Upward && !player.IsSwimming())
             {
-                desired.y = RemoveGroundDashLift(desired.y, dashGroundPropelled);
+                desired.y = RemoveGroundDashLift(desired.y, state.GroundPropelled);
                 if (player.IsOnGround()) TryDashRelief(player.m_body,desired,Time.fixedDeltaTime,player.m_lastGroundNormal);
                 desired = FollowDashGround(player.m_body, desired, Time.fixedDeltaTime,
                     player.IsOnGround() ? player.m_lastGroundNormal : Vector3.zero);
-                if (player.IsOnGround() || desired.y > velocity.y + .001f) dashGroundPropelled = true;
+                if (player.IsOnGround() || desired.y > velocity.y + .001f) state.GroundPropelled = true;
             }
-            if (!dashIsUpward && !player.IsSwimming())
+            if (!state.Upward && !player.IsSwimming())
             {
                 // A fixed small take-off angle, never added to the previous frame's lift.
                 float speed = OverhaulConfig.DashSpeed.Value;
                 float lift = speed * Mathf.Sin(BaseDashAngle * Mathf.Deg2Rad);
                 if (desired.y >= 0f && desired.y < lift)
-                { desired = InclineDash(desired, BaseDashAngle) * speed; dashGroundPropelled = true; }
+                { desired = InclineDash(desired, BaseDashAngle) * speed; state.GroundPropelled = true; }
             }
             if (vegetation) desired *= .8f;
             player.m_body.linearVelocity = LimitDashMotion(player.m_body, desired, Time.fixedDeltaTime, out _);
@@ -1343,11 +1364,11 @@ namespace Overhaul
 			player.m_lastPos = player.transform.position;
 		}
 
-        private static readonly List<KeyValuePair<Collider,Collider>> dashBushPairs=new List<KeyValuePair<Collider,Collider>>();
-        private static void RestoreDashBushes()
+        private static void RestoreDashBushes(Player player)
         {
-            foreach(var pair in dashBushPairs)if(pair.Key&&pair.Value)Physics.IgnoreCollision(pair.Key,pair.Value,false);
-            dashBushPairs.Clear();
+            var state=Dash(player);
+            foreach(var pair in state.BushPairs)if(pair.Key&&pair.Value)Physics.IgnoreCollision(pair.Key,pair.Value,false);
+            state.BushPairs.Clear();
         }
         internal static bool IsDashVegetation(Collider obstacle)
         {
@@ -1361,6 +1382,7 @@ namespace Overhaul
         }
         private static bool IgnoreDashBushes(Player player)
         {
+            var state=Dash(player);
             bool touching=false;
             foreach(var obstacle in Physics.OverlapSphere(player.transform.position,3f,~0,QueryTriggerInteraction.Ignore))
             {
@@ -1370,7 +1392,7 @@ namespace Overhaul
                     if(own.attachedRigidbody!=player.m_body || own.isTrigger || !own.enabled)continue;
                     if(own.bounds.Intersects(obstacle.bounds))touching=true;
                     if(Physics.GetIgnoreCollision(own,obstacle))continue;
-                    Physics.IgnoreCollision(own,obstacle,true);dashBushPairs.Add(new KeyValuePair<Collider,Collider>(own,obstacle));
+                    Physics.IgnoreCollision(own,obstacle,true);state.BushPairs.Add(new KeyValuePair<Collider,Collider>(own,obstacle));
                 }
             }
             return touching;
