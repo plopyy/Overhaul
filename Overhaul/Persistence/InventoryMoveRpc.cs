@@ -21,6 +21,17 @@ namespace Overhaul.Persistence
         private readonly System.Collections.Generic.Dictionary<string,double> wearDebits=new System.Collections.Generic.Dictionary<string,double>();
         private double wearTime=Time.timeAsDouble,nextWear;
         private bool wearPending,identityPending;
+        private readonly GameDamageClock damageClock=new GameDamageClock();
+        private bool damagePending;
+        private void QueueDamage(bool final=false)
+        {
+            if(serverActions==null||damagePending&&!final)return;
+            var actor=PlayerSessionGame.Actor(rpc);var instance=actor==null?null:ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
+            if(!player||!GameDamageClock.Active(canonical)){damageClock.Reset();return;}
+            if(!final&&damageClock.Elapsed<.2)return;
+            damagePending=true;
+            if(!serverActions.Enqueue(state=>damageClock.Prepare(state,player),()=>damagePending=false))damagePending=false;
+        }
         private void CaptureWear()
         {
             double now=Time.timeAsDouble,elapsed=Math.Max(0,now-wearTime);wearTime=now;
@@ -293,6 +304,7 @@ namespace Overhaul.Persistence
             {
                 var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);}
                 CaptureWear();
+                QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
             }
             if(!disposed && progress!=null && resourceFrame!=Time.frameCount)
@@ -333,7 +345,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
-            if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);}
+            if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);QueueDamage(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();}
