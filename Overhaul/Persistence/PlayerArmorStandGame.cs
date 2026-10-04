@@ -130,7 +130,7 @@ namespace Overhaul.Persistence
             private static IEnumerable<MethodBase> TargetMethods()
             { foreach (string name in new[] { "RPC_DropItem","RPC_DropItemByName","RPC_RequestOwn","UpdateAttach" }) yield return AccessTools.Method(typeof(ArmorStand),name); }
             [HarmonyPriority(Priority.First+200)]
-            private static bool Prefix() => !Enabled;
+            private static bool Prefix(ArmorStand __instance) => !Enabled && (!__instance.m_nview || !__instance.m_nview.IsValid() || !GamePersistence.ActionReserved(__instance.m_nview.GetZDO().m_uid));
         }
         [HarmonyPatch]
         private static class Mutation
@@ -150,4 +150,5 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
