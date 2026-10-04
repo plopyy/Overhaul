@@ -74,6 +74,22 @@ namespace Overhaul.Persistence
         }
         internal bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
             =>!disposed && serverActions!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && serverActions.Enqueue(prepare,confirmed);
+        internal bool Damage(Player player,HitData hit,bool direct)
+        {
+            if(!player||State(player.GetZDOID())==null)return false;
+            return ServerAction(player.GetZDOID(),state=>
+            {
+                // Advance old effects first, using the same clock as periodic
+                // writes. A newly applied effect must not inherit prior time.
+                var timed=damageClock.Prepare(state,player,true);
+                var before=timed==null?state:PlayerProgressService.Overlay(state,timed.Change.Player.Changes);
+                if(GameDeathProgress.IsDead(before))return timed;
+                var impact=GamePlayerHit.Prepare(before,player,hit,direct);
+                if(timed==null)return impact;if(impact==null)return timed;
+                var rows=timed.Change.Player.Changes.ToList();GamePlayerHit.Merge(rows,impact.Change.Player.Changes);
+                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),impact.Change.Objects),()=>{timed.Publish();impact.Publish();});
+            });
+        }
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
         internal bool Spending(ZDOID actor,float amount,float delay)
         {

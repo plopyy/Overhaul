@@ -26,6 +26,8 @@ namespace Overhaul.Persistence
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action,confirmed))return true;return false;}
         internal static bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
         {foreach(var endpoint in connections)if(endpoint.ServerAction(actor,prepare,confirmed))return true;return false;}
+        internal static bool Damage(Player player,HitData hit,bool direct)
+        {foreach(var endpoint in connections)if(endpoint.Damage(player,hit,direct))return true;return false;}
         internal static bool Wear(ZDOID actor,string token,float amount)
         {foreach(var endpoint in connections)if(endpoint.Wear(actor,token,amount))return true;return false;}
         internal static PlayerSnapshot State(ZDOID actor)
@@ -47,7 +49,7 @@ namespace Overhaul.Persistence
                 foreach (var endpoint in connections.ToArray())if(!endpoint.StorageFailed)endpoint.Tick();
             }
             if(connections.Any(endpoint=>endpoint.StorageFailed))throw new InvalidOperationException("Character storage failed while draining server actions; world recovery is required");
-            connections.Clear(); Client = null; Access.Clear();GameAttackRuntime.Clear();GameBowDraw.Clear();GameWeaponReload.Clear();GameBlockControl.Clear();
+            connections.Clear(); Client = null; Access.Clear();GameAttackRuntime.Clear();GameBowDraw.Clear();GameWeaponReload.Clear();GameBlockControl.Clear();GameHitFeedback.Clear();
         }
         internal static void Broadcast(Container container, PlayerBatch effect, ZRpc except)
         {

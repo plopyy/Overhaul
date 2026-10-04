@@ -9,6 +9,7 @@ namespace Overhaul.Persistence
             if(!player||!player.m_nview||!player.m_nview.IsValid())return;
             GameAttackRuntime.Forget(player.GetZDOID());GameAttackRuntime.ForgetControls(player.GetZDOID());
             GameBlockControl.Forget(player.GetZDOID());
+            GameHitFeedback.Forget(player.GetZDOID());
             player.m_lastHit=hit.Clone();player.m_isDead=true;
             player.m_nview.GetZDO().Set(ZDOVars.s_dead,true);player.SetHealth(0);
             player.CreateDeathEffects();
