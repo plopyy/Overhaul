@@ -38,6 +38,7 @@ namespace Overhaul.Persistence
                 else if(equipped!=item.m_equipped)
                 {
                     var copy=(object[])values.Clone();copy[7]=equipped;changes.Add(new PlayerChange("inventory",false,copy));
+                    foreach(var entry in item.m_customData)changes.Add(new PlayerChange("item_data",false,values[0],values[1],values[2],entry.Key,entry.Value));
                 }
             }
             result.Changes=changes.ToArray();result.Grave=grave.ToArray();return result;

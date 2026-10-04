@@ -21,7 +21,8 @@ namespace Overhaul.Persistence
         internal static Action Presentation(IEnumerable<PlayerChange> source,Player player)
         {
             var rows=source.ToArray();if(rows.Length==0)return ()=>{};
-            if(!player||!Game.instance||ZNet.m_world==null)throw new InvalidDataException("Player life view is unavailable");
+            if(!player||!Game.instance||rows.Any(r=>r.Table=="spawn")&&ZNet.m_world==null)throw new InvalidDataException("Player life view is unavailable");
+            long worldId=ZNet.m_world?.m_uid??0;
             var profile=Game.instance.GetPlayerProfile();var updates=new List<Action>();
             foreach(var row in rows)
             {
@@ -46,7 +47,7 @@ namespace Overhaul.Persistence
                 if(new[]{point.x,point.y,point.z}.Any(n=>float.IsNaN(n)||float.IsInfinity(n)))throw new InvalidDataException("Invalid spawn position");
                 updates.Add(()=>
                 {
-                    if(!profile.m_worldData.TryGetValue(ZNet.m_world.m_uid,out var world)){world=new PlayerProfile.WorldPlayerData();profile.m_worldData.Add(ZNet.m_world.m_uid,world);}
+                    if(!profile.m_worldData.TryGetValue(worldId,out var world)){world=new PlayerProfile.WorldPlayerData();profile.m_worldData.Add(worldId,world);}
                     if(kind=="bed"){world.m_haveCustomSpawnPoint=!row.Delete;world.m_spawnPoint=point;}
                     if(kind=="logout"){world.m_haveLogoutPoint=!row.Delete;world.m_logoutPoint=point;}
                     if(kind=="death"){world.m_haveDeathPoint=!row.Delete;world.m_deathPoint=point;}

@@ -36,7 +36,7 @@ namespace Overhaul.Persistence
                 changes.Add(age>=Convert.ToDouble(v[4])?new PlayerChange("effects",true,v[0]):new PlayerChange("effects",false,v[0],v[1],v[2],age,v[4]));
             }
             changes.Add(PlayerEffectClock.Anchor(PlayerEffectClock.Read(snapshot.Rows)+seconds));
-            var stepped=new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>r.Table!="food" && r.Table!="effects" && !(r.Table=="state" && ((string)r.Values[0]==PlayerFoodClock.Key || (string)r.Values[0]==PlayerEffectClock.Key))).Concat(changes.Where(r=>!r.Delete)));
+            var stepped=PlayerProgressService.Overlay(snapshot,changes);
             changes.AddRange(Advance(stepped,actor,seconds));
             var regenerated=PlayerProgressService.Overlay(snapshot,changes);
             bool removedFood=false;
