@@ -19,7 +19,7 @@ namespace Overhaul.Persistence
             try
             {
                 var first=PrepareOne(actor,target,request,snapshot);plans.Add(first);targets.Add(target.GetComponent<ZNetView>().GetZDO().m_uid);foreach(var pair in first.Change.Objects)objects.Add(pair.Key,pair.Value);foreach(var row in first.Change.Player.Changes)updated[Key(row)]=row;
-                var pick=target.GetComponent<Pickable>();
+                var pick=target.GetComponent<Pickable>();var hive=target.GetComponent<Beehive>();
                 float radius=Mathf.Clamp(global::Overhaul.Utility.OverhaulConfig.PickupRange?.Value ?? 0,0,50);
                 if((pick || hive) && radius>0)
                 {
@@ -99,6 +99,27 @@ namespace Overhaul.Persistence
             {
                 world.Set(ZDOVars.s_picked,1);if(pick.m_respawnTimeMinutes>0)world.Set(ZDOVars.s_pickedTime,ZNet.instance.GetTime().Ticks);
                 return world.FinishWithObjects(batch,outputs,()=>{pick.m_picked=true;pick.m_pickedTime=data.GetLong(ZDOVars.s_pickedTime,0);view.InvokeRPC(ZNetView.Everybody,"RPC_SetPicked",true);effects();});
+            }
+        }
+        private static PlayerActionPlan Stored(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var hive=target.GetComponent<Beehive>();var sap=target.GetComponent<SapCollector>();var view=target.GetComponent<ZNetView>();var data=view.GetZDO();
+            if(request.Action.Amount!=1 || request.Gameplay.Definition==Honey && !hive || request.Gameplay.Definition==Sap && !sap ||
+                !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))throw new InvalidOperationException("Collector is unavailable");
+            int level=data.GetInt(ZDOVars.s_level,0),maximum=hive?hive.m_maxHoney:sap.m_maxLevel;
+            var template=hive?hive.m_honeyItem:sap.m_spawnItem;var point=hive?hive.m_spawnPoint:sap.m_spawnPoint;var effects=hive?hive.m_spawnEffect:sap.m_spawnEffect;
+            if(level<1 || level>maximum || level>127 || !template || !point)throw new InvalidOperationException("Collector has no available output");
+            var outputs=new List<ObjectRecord>();
+            for(int i=0;i<level;i++)
+            {
+                int count=Game.instance.ScaleDrops(template.m_itemData,1);if(count<0 || count>4096)throw new InvalidOperationException("Invalid collector yield");
+                Vector3 offset;if(hive){var v=UnityEngine.Random.insideUnitCircle*.5f;offset=new Vector3(v.x,.25f*i,v.y);}else offset=UnityEngine.Random.insideUnitSphere*.2f;
+                while(count>0){if(outputs.Count>=127)throw new InvalidOperationException("Collector output exceeds action limit");var item=template.m_itemData.Clone();item.m_dropPrefab=template.gameObject;item.m_stack=Math.Min(count,item.m_shared.m_maxStackSize);item.m_equipped=false;outputs.Add(PlayerDropGame.Ground(item,point.position+offset,Quaternion.identity));count-=item.m_stack;}
+            }
+            var stat=hive?PlayerStatType.BeesHarvested:PlayerStatType.SapHarvested;var changes=new[]{PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)stat).ToString(CultureInfo.InvariantCulture),hive?level:1)};
+            using(var world=new PlayerActionObjectGame(data))
+            {
+                world.Set(ZDOVars.s_level,0);return world.FinishWithObjects(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),outputs,()=>{effects.Create(point.position,Quaternion.identity,null,1,-1,default(ZDOID));if(sap)view.InvokeRPC(ZNetView.Everybody,"RPC_UpdateEffects");});
             }
         }
         [HarmonyPatch]
