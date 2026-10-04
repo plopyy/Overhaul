@@ -35,10 +35,14 @@ namespace Overhaul.Storage
         internal static bool WardAccess(Container c, long player)
         {
             if (!c.m_checkGuardStone) return true;
+            return WardAccessAt(c.transform.position,player);
+        }
+        internal static bool WardAccessAt(Vector3 position,long player)
+        {
             bool inside = false;
             foreach (var area in PrivateArea.m_allAreas)
             {
-                if (!area || !area.IsEnabled() || !area.IsInside(c.transform.position, 0)) continue;
+                if (!area || !area.IsEnabled() || !area.IsInside(position, 0)) continue;
                 inside = true;
                 if (area.m_piece.GetCreator() == player || area.IsPermitted(player)) return true;
             }

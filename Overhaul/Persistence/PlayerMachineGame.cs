@@ -10,6 +10,7 @@ namespace Overhaul.Persistence
     internal static class PlayerMachineGame
     {
         internal const string Ore = "smelter.ore", Fuel = "smelter.fuel", CookingFuel = "cooking.fuel", FireFuel = "fire.fuel";
+        internal const string Ferment = "fermenter.input";
         private static bool Enabled => PlayerPersistenceConfig.Enabled?.Value == true;
         private static bool Managed(Humanoid user) => user && user == Player.m_localPlayer && PlayerSessionGame.Managed;
         private static bool Held(Component component)
@@ -27,6 +28,7 @@ namespace Overhaul.Persistence
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
+            bool ferment = command.Definition == Ferment;
             EffectList effects; Smelter smelter = null;
             switch (command.Definition)
             {
@@ -59,6 +61,18 @@ namespace Overhaul.Persistence
                     capacity = Math.Max(0,Mathf.FloorToInt(fire.m_maxFuel-currentFuel));
                     allowed = Prefab(fire.m_fuelItem); effects = fire.m_fuelAddedEffects;
                     break;
+                case Ferment:
+                    var fermenter = target.GetComponent<Fermenter>();
+                    if (!fermenter || data.GetInt(ZDOVars.s_content,0) != 0 ||
+                        !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))
+                        throw new InvalidOperationException("Fermenter input is unavailable");
+                    if (!selected.HasValue)
+                    {
+                        Cover.GetCoverForPoint(fermenter.m_roofCheckPoint.position,out float cover,out bool roof,0.5f);
+                        if (!roof || cover < 0.7f) throw new InvalidOperationException("Fermenter requires cover");
+                    }
+                    capacity = 1; allowed = fermenter.m_conversion.Where(c => c.m_from).Select(c => c.m_from.gameObject.name.GetStableHashCode());
+                    effects = fermenter.m_addedEffects; break;
                 default: throw new InvalidOperationException("Unknown machine interaction");
             }
             int limit = Math.Min(4096,Math.Min(capacity,request.Action.Amount));
@@ -78,6 +92,11 @@ namespace Overhaul.Persistence
                     world.Set(ZDOVars.s_queued,size);
                     // Preserve an existing cheated input marker when adding an ordinary input.
                     world.Set(ZDOVars.s_cheatedQueued,data.GetBool(ZDOVars.s_cheatedQueued,false) || consumed.Any(c => c.Cheated) ? 1 : 0);
+                }
+                else if (ferment)
+                {
+                    world.Set(ZDOVars.s_content,consumed[0].Prefab); world.Set(ZDOVars.s_startTime,ZNet.instance.GetTime().Ticks);
+                    world.Set(ZDOVars.s_cheatedQueued,consumed[0].Cheated ? 1 : 0);
                 }
                 else world.Set(ZDOVars.s_fuel,currentFuel + consumed.Sum(c => c.Count));
                 return world.Finish(delta,() =>
@@ -139,6 +158,26 @@ namespace Overhaul.Persistence
                 __result = false; Send(__instance,user,item,FireFuel,Storage.SmelterQuickFill.ShiftHeld()); return false;
             }
         }
+        [HarmonyPatch(typeof(Fermenter),nameof(Fermenter.Interact))]
+        private static class FermentInput
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(Fermenter __instance,Humanoid user,bool hold,ref bool __result)
+            {
+                if (!Managed(user) || __instance.GetContent() != 0) return true;
+                __result = false; if (!hold) Send(__instance,user,null,Ferment,false); return false;
+            }
+        }
+        [HarmonyPatch(typeof(Fermenter),nameof(Fermenter.UseItem))]
+        private static class FermentItemInput
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(Fermenter __instance,Humanoid user,ItemDrop.ItemData item,ref bool __result)
+            {
+                if (!Managed(user)) return true;
+                __result = false; if (item != null) Send(__instance,user,item,Ferment,false); return false;
+            }
+        }
         [HarmonyPatch]
         private static class LegacyInput
         {
@@ -146,6 +185,7 @@ namespace Overhaul.Persistence
             {
                 yield return AccessTools.Method(typeof(Smelter),"RPC_AddOre"); yield return AccessTools.Method(typeof(Smelter),"RPC_AddFuel");
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_AddFuel"); yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuel");
+                yield return AccessTools.Method(typeof(Fermenter),"RPC_AddItem");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
@@ -158,6 +198,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Smelter),"UpdateSmelter");
                 yield return AccessTools.Method(typeof(CookingStation),"UpdateCooking");
                 yield return AccessTools.Method(typeof(Fireplace),"UpdateFireplace");
+                yield return AccessTools.Method(typeof(Fermenter),"SlowUpdate");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Held(__instance);

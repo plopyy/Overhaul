@@ -18,6 +18,7 @@ namespace Overhaul.Persistence
         }
         internal void Set(int key,int value) => Set(key,"int",value);
         internal void Set(int key,float value) => Set(key,"float",value);
+        internal void Set(int key,long value) => Set(key,"long",value);
         internal void Set(int key,string value) => Set(key,"string",value);
         private void Set(int key,string type,object value)
         {
@@ -38,6 +39,7 @@ namespace Overhaul.Persistence
                     {
                         case "int": data.Set(property.Key,(int)property.Value); break;
                         case "float": data.Set(property.Key,(float)property.Value); break;
+                        case "long": data.Set(property.Key,(long)property.Value); break;
                         case "string": data.Set(property.Key,(string)property.Value); break;
                     }
                 GamePersistence.ReleaseAction(new[] { uid });
