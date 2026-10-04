@@ -8,6 +8,7 @@ namespace Overhaul.Persistence
     internal sealed class InventoryMoveRpc : IDisposable
     {
         private const string Request = "Overhaul_MoveItems", Response = "Overhaul_ItemsMoved", CloseRequest = "Overhaul_CloseInventory";
+        private const string CancelEquipmentRequest = "Overhaul_CancelEquipment";
         private readonly ZRpc rpc;
         private readonly string nonce;
         private readonly InventoryMoveService server;
@@ -37,6 +38,8 @@ namespace Overhaul.Persistence
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state));
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,string>(CancelEquipmentRequest,(sender,token,operation) =>
+            { if (ReferenceEquals(sender,rpc) && token == nonce) server.CancelEquipment(operation); });
             rpc.Register<string>(CloseRequest, (sender, token) => { if (ReferenceEquals(sender, rpc) && token == nonce) access.Close(); });
         }
         internal InventoryMoveRpc(ZRpc rpc, string nonce, long revision)
@@ -53,11 +56,14 @@ namespace Overhaul.Persistence
         }
         internal void CloseContainer()
         { if (!disposed) rpc.Invoke(CloseRequest, nonce); afterOpen = null; closeAfterMove = false; ViewActive = false; }
+        internal void CancelEquipment()
+        { if (!disposed && Controller?.Pending != null) rpc.Invoke(CancelEquipmentRequest,nonce,Controller.Pending.Action.Operation); }
         private void Apply(InventoryMoveReply reply)
         {
             var player = Player.m_localPlayer;
             if (!player) throw new InvalidDataException("Player disappeared during inventory action");
             var eating = !reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Consume;
+            if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
             if (!reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Trash) PlayerDropGame.TrashFeedback();
@@ -122,6 +128,7 @@ namespace Overhaul.Persistence
             disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
+            if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });
         }
     }
 }

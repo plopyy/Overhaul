@@ -26,6 +26,7 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn: return PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
+                case PlayerActionKind.Equip: case PlayerActionKind.Unequip: return PlayerEquipmentGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Consume: return command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
                 case PlayerActionKind.Buy: case PlayerActionKind.Sell: return PlayerTradeGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Drop: case PlayerActionKind.Trash:

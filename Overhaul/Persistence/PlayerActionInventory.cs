@@ -57,6 +57,30 @@ namespace Overhaul.Persistence
         internal object[] Item(int key) => items.TryGetValue(key,out var row) ? (object[])row.Clone() : throw new InvalidOperationException("Source slot is empty");
         internal Dictionary<string,string> Data(int key) => new Dictionary<string,string>(metadata[key]);
         internal IEnumerable<int> Keys => items.Keys.OrderBy(k => k).ToArray();
+        internal InventoryMoveLayout Layout => layout;
+        internal void Equip(int key,bool equipped)
+        {
+            var row = Item(key); row[7] = equipped; items[key] = row;
+            string cell = layout.Equipment(key);
+            if (!equipped && cell != null) metadata[key]["eaqs_parked"] = cell;
+            else metadata[key].Remove("eaqs_parked");
+        }
+        internal void Swap(int source,int destination)
+        {
+            if (source == destination) return;
+            var item = Item(source); items.TryGetValue(destination,out var resident);
+            if (!layout.Accepts(destination,Convert.ToInt32(item[3])) || resident != null && !layout.Accepts(source,Convert.ToInt32(resident[3])))
+                throw new InvalidOperationException("Equipment does not fit its destination");
+            var data = metadata[source]; items.Remove(source); metadata.Remove(source);
+            var residentData = resident == null ? null : metadata[destination];
+            item[1] = destination%256; item[2] = destination/256; items[destination] = item; metadata[destination] = data;
+            Equip(destination,Convert.ToBoolean(item[7]));
+            if (resident != null)
+            {
+                resident[1] = source%256; resident[2] = source/256; items[source] = resident; metadata[source] = residentData;
+                Equip(source,Convert.ToBoolean(resident[7]));
+            }
+        }
         internal bool Available(int key) => layout.Available(key);
         internal sealed class Consumed
         {

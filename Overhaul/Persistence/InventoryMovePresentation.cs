@@ -26,7 +26,7 @@ namespace Overhaul.Persistence
             var bag = PrepareSized(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
                 reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects")), reply.Snapshot,null,height);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
-            return () =>
+            return () => PlayerEquipmentGame.Present(() =>
             {
                 if (resize) { Slots.SetBaseRowsFromServer(rows); playerInventory.m_height = height; }
                 var preserved = new HashSet<ItemDrop.ItemData>();
@@ -55,7 +55,7 @@ namespace Overhaul.Persistence
                 if (player)
                     foreach (var item in bag.Where(i => i.m_equipped && !player.IsItemEquiped(i)).ToArray()) player.EquipItem(item, false);
                 if (resize && InventoryGui.instance && InventoryGui.instance.m_player) InventoryGui.instance.SetInventorySize(rows+Slots.ExtraRows);
-            };
+            });
         }
         internal static List<ItemDrop.ItemData> Prepare(Inventory inventory, PlayerBatch data, bool snapshot, HashSet<int> preserve = null)
             => PrepareSized(inventory,data,snapshot,preserve,inventory == null ? 0 : inventory.m_height);

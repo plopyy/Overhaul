@@ -39,7 +39,7 @@ namespace Overhaul.Persistence
         private Task<PlayerSnapshot> playerState, containerState;
         private InventoryMoveRequest request;
         private InventoryMoveLease lease;
-        private bool closed, disconnected;
+        private bool closed, disconnected, cancelled;
         private DateTime deadline;
         internal bool Busy => request != null;
         internal bool StorageFailed { get; private set; }
@@ -95,8 +95,16 @@ namespace Overhaul.Persistence
                     {
                         try { actionPlan = prepareAction(request,state); }
                         catch (InvalidOperationException) { Synchronize(); }
-                        if (actionPlan != null) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
                     }
+                }
+                if (actionPlan != null && actionCommit == null)
+                {
+                    try
+                    {
+                        if (actionPlan.Ready != null && (cancelled || disconnected)) throw new InvalidOperationException("Equipment action cancelled");
+                        if (actionPlan.Ready == null || actionPlan.Ready()) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
+                    }
+                    catch (InvalidOperationException) { actionPlan = null; Synchronize(); }
                 }
                 if (actionCommit != null && actionCommit.IsCompleted)
                 {
@@ -145,8 +153,13 @@ namespace Overhaul.Persistence
         private void Complete(InventoryMoveReply reply)
         {
             reply.ContainerUser = request.ContainerUser; reply.ContainerId = request.ContainerId;
-            lease?.Dispose(); lease = null; request = null; playerState = null; containerState = null;
+            lease?.Dispose(); lease = null; request = null; playerState = null; containerState = null; cancelled = false;
             if (!disconnected && session.State == PlayerAdmission.Phase.Ready) send(InventoryMoveProtocol.Encode(reply));
+        }
+        internal void CancelEquipment(string operation)
+        {
+            if (request?.Action.Operation == operation && actionCommit == null &&
+                (request.Gameplay?.Kind == PlayerActionKind.Equip || request.Gameplay?.Kind == PlayerActionKind.Unequip)) cancelled = true;
         }
         private void Fail(Exception error, bool storage)
         {

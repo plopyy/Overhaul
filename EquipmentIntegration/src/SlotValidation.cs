@@ -18,6 +18,7 @@ namespace EquipmentAndQuickSlots {
         public static void ValidateItems() => ItemsValidation.MarkDirty();
 
         public static void Validate() {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
             AmmoSlots.MigrateInvalidSlots();
             ItemsValidation.Validate();
             SlotsValidation.Validate();
@@ -54,6 +55,7 @@ namespace EquipmentAndQuickSlots {
             internal static void MarkDirty() => isDirty = true;
 
             internal static void Validate() {
+                if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 if (!isDirty || !Player.m_localPlayer || Player.m_localPlayer.m_isLoading)
                     return;
 
@@ -136,6 +138,7 @@ namespace EquipmentAndQuickSlots {
             internal static void MarkDirty() => isDirty = true;
 
             internal static void Validate() {
+                if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 if (!isDirty || !Player.m_localPlayer || Player.m_localPlayer.m_isLoading)
                     return;
 
