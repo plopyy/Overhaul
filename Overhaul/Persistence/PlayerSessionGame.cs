@@ -226,6 +226,11 @@ namespace Overhaul.Persistence
         {
             private static bool Prefix() => !Managed;
         }
+        [HarmonyPatch(typeof(ZNet), nameof(ZNet.SaveOtherPlayerProfiles))]
+        private static class SaveRequests
+        {
+            private static bool Prefix(ZNet __instance) => !__instance.IsServer() || !PlayerPersistenceConfig.Enabled.Value;
+        }
         [HarmonyPatch(typeof(ZNet), "RPC_PlayerID")]
         private static class PlayerId
         {

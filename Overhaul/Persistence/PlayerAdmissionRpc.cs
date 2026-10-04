@@ -69,7 +69,8 @@ namespace Overhaul.Persistence
                 {
                     inventory = InventoryMoveGame.BindServer(rpc, session);
                 }
-                else if (client != null && client.Ready && Player.m_localPlayer)
+                // Spawn requests use this channel before the local avatar exists.
+                else if (client != null && client.Ready)
                     inventory = InventoryMoveGame.BindClient(rpc, client.Nonce, client.Revision);
             }
         }
