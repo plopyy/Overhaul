@@ -1287,6 +1287,8 @@ namespace Overhaul
 			}
 		}
 
+        internal static void CancelDash(Player player)
+        {if(!IsDashing(player))return;StopDashMovement(player);Dash(player).Remaining=0;SendDashVisual(player,0);ForgetDash(player);}
         internal static void ForgetDash(Player player)
         {
             if(ReferenceEquals(player,null)||!dashes.TryGetValue(player,out var state))return;

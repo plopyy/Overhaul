@@ -123,6 +123,7 @@ namespace Overhaul.Persistence
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
                 GameTeleportAction.Tick(player,dt);
+                if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);
                 var motion=Remember(player);
                 if(player.m_body&&!AreaReady(player,motion))
                 {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
@@ -170,7 +171,7 @@ namespace Overhaul.Persistence
         }
         [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
         private static class Stamina
-        {private static bool Prefix(Player __instance,float amount,ref bool __result){if(simulating!=__instance&&!GameCombatContext.Matches(__instance))return true;__result=InventoryMoveGame.Stamina(__instance.GetZDOID())>amount;return false;}}
+        {private static bool Prefix(Player __instance,float amount,bool __runOriginal,ref bool __result){if(!__runOriginal)return true;if(simulating==__instance){__result=InventoryMoveGame.Stamina(__instance.GetZDOID())>amount;return false;}if(!GameCombatContext.Matches(__instance))return true;__result=PlayerResources.Read(GameCombatContext.Current.State,"stamina")>amount;return false;}}
         [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
         private static class StaminaUse
         {
@@ -182,5 +183,6 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
