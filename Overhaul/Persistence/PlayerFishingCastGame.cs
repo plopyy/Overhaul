@@ -35,10 +35,10 @@ namespace Overhaul.Persistence
         private static int queuedX,queuedY;
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
         internal static void Clear(){draws.Clear();queued=null;}
-        internal static void Close(){Clear();owned.Clear();landings.Clear();}
+        internal static void Close(){Clear();owned.Clear();landings.Clear();ValidateNibble.Clear();}
         internal static bool HasServerLines=>Enabled && owned.Count!=0;
         internal static void TrackRestored(ZDO data){if(data.GetLong(OwnerUser,0)!=0)owned.Add(data.m_uid);}
-        internal static void RemoveLine(ZDOID id)=>owned.Remove(id);
+        internal static void RemoveLine(ZDOID id){owned.Remove(id);ValidateNibble.Remove(id);}
         internal static void FilterCapture(ZDO data,ObjectRecord record)
         {
             if(Enabled && data.GetLong(OwnerUser,0)!=0 && !owned.Contains(data.m_uid))
@@ -213,6 +213,35 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(FishingFloat),"SetCatch")]
         private static class BaitConsumed
         {private static void Postfix(FishingFloat __instance,Fish fish){if(fish && Managed(__instance) && __instance.m_nview.IsOwner())__instance.m_nview.GetZDO().Set(Used,true);}}
+        [HarmonyPatch(typeof(Fish),"TestBate")]
+        private static class DeferBaitRoll
+        {
+            private static bool Prefix(FishingFloat ff,ref bool __result)
+            {if(!Enabled || !Managed(ff))return true;__result=true;return false;}
+        }
+        [HarmonyPatch(typeof(FishingFloat),nameof(FishingFloat.RPC_Nibble))]
+        private static class ValidateNibble
+        {
+            private static readonly Dictionary<ZDOID,float> attempted=new Dictionary<ZDOID,float>();
+            internal static void Clear()=>attempted.Clear();
+            internal static void Remove(ZDOID id)=>attempted.Remove(id);
+            private static bool Prefix(FishingFloat __instance,long sender,ZDOID fishID,ref bool correctBait)
+            {
+                if(!Enabled || !Managed(__instance))return true;
+                if(!ZNet.instance.IsServer() || !__instance.m_nview.IsOwner())return false;
+                var data=__instance.m_nview.GetZDO();
+                if(GamePersistence.ActionReserved(data.m_uid) || data.GetInt(Ready,0)!=0 || __instance.GetCatch())return false;
+                var target=ZNetScene.instance.FindInstance(fishID);var fish=target?target.GetComponent<Fish>():null;
+                if(!fish || !fish.m_nview || !fish.m_nview.IsValid() || fish.m_nview.GetZDO().GetOwner()!=sender || GamePersistence.ActionReserved(fishID) ||
+                    Vector3.Distance(fish.transform.position,__instance.transform.position)>3 || fish.IsOutOfWater())return false;
+                if(attempted.TryGetValue(data.m_uid,out var last) && Time.time-last<1)return false;
+                attempted[data.m_uid]=Time.time;
+                string bait=__instance.GetBait();correctBait=false;
+                foreach(var rule in fish.m_baits)
+                    if(rule.m_bait && rule.m_bait.name==bait && UnityEngine.Random.value<rule.m_chance){correctBait=true;break;}
+                return true;
+            }
+        }
         [HarmonyPatch(typeof(FishingFloat),"ReturnBait")]
         private static class ReturnIntent
         {
