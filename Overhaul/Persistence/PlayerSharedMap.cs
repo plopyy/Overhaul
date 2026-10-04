@@ -76,7 +76,7 @@ namespace Overhaul.Persistence
         {
             if(Live!=null)
             {
-                var result=PlayerSharedMap.Merge(Live.Find(identity).Rows,previous,write);
+                var result=PlayerSharedMap.Merge(Live.Find(identity).Rows.ToArray(),previous,write);
                 if(result.Changes.Length!=0)CommitMap(identity,result.Changes);
                 return System.Threading.Tasks.Task.FromResult(result);
             }

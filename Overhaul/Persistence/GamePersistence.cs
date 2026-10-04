@@ -105,8 +105,8 @@ namespace Overhaul.Persistence
             var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
             if(Players?.Live!=null)
             {
-                var encoded=data.GetString(ZDOVars.s_items,"");
-                Players.Live.Capture(id,string.IsNullOrEmpty(encoded)?Array.Empty<PlayerChange>():PlayerNativeFormat.DecodeInventory(Convert.FromBase64String(encoded)));
+                var encoded=data.GetByteArray(ZDOVars.s_items,null);
+                Players.Live.Capture(id,encoded==null?Array.Empty<PlayerChange>():PlayerNativeFormat.DecodeInventory(encoded));
             }
             writer.CaptureInventory(snapshot); dirty.Remove(data.m_uid); return id;
         }

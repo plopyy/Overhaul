@@ -31,7 +31,7 @@ namespace Overhaul.Persistence
             if(!PlayerPrefab(prefab))return true;
             if(GameMovementRuntime.Position(id,out var simulated)){position=simulated;return true;}
             var existing=ZDOMan.instance.GetZDO(id);
-            if(existing!=null){position=existing.GetPosition();return true;}
+            if(existing!=null)return !float.IsNaN(position.sqrMagnitude)&&!float.IsInfinity(position.sqrMagnitude);
             var session=PlayerSessionGame.Session(peer.m_rpc);var state=InventoryMoveGame.SessionState(peer.m_rpc)??session?.Snapshot;
             return GameSpawnPoint.Resolve(peer.m_rpc,state,out position);
         }

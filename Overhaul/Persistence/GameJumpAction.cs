@@ -63,9 +63,22 @@ namespace Overhaul.Persistence
             {
                 if(!(__instance is Player player))return true;
                 if(player==Player.m_localPlayer&&PlayerSessionGame.Managed)
-                {InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.UseOn,Definition=Jump});return false;}
+                {return true;}
                 return !GameMovementRuntime.Managed(player);
             }
+        }
+        // This is a notification after the local jump, not a permission request.
+        [HarmonyPatch(typeof(Player),"OnJump")]
+        private static class NotifyJump
+        {
+            private static void Postfix(Player __instance)
+            {if(__instance==Player.m_localPlayer&&PlayerSessionGame.Managed&&publishing!=__instance)InventoryMoveGame.Client?.Jumped();}
+        }
+        internal static PlayerActionPlan Observe(Player player,PlayerSnapshot state)
+        {
+            if(!player||GameDeathProgress.IsDead(state)||player.IsTeleporting()||player.InIntro())return null;
+            var result=Calculate(state,player,Vector3.zero,Vector3.zero);
+            return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,result.Changes),new Dictionary<long,ObjectRecord>()),()=>{});
         }
         [HarmonyPatch(typeof(Player),"OnJump")]
         private static class AlreadyPaid

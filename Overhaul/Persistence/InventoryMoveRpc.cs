@@ -221,6 +221,13 @@ namespace Overhaul.Persistence
             rpc.Register<string,bool>("Overhaul_StaffGuardControl",(sender,token,held)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameStaffGuardRuntime.ControlInput(PlayerSessionGame.Actor(rpc),held);});
             rpc.Register<string,ZPackage>("Overhaul_MovementControl",(sender,token,packet)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementControl.Receive(PlayerSessionGame.Actor(rpc),packet);});
+            rpc.Register<string>("Overhaul_Jumped",(sender,token)=>
+            {
+                if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce||Time.timeAsDouble<nextJumpNotice)return;
+                nextJumpNotice=Time.timeAsDouble+.25;
+                var actor=PlayerSessionGame.Actor(rpc);var avatar=actor!=null?ZNetScene.instance.FindInstance(actor.m_uid)?.GetComponent<Player>():null;
+                if(avatar)serverActions.Enqueue(state=>GameJumpAction.Observe(avatar,state));
+            });
             rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(sender,token,held,forward)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)GameBlockControl.Control(PlayerSessionGame.Actor(rpc),held,forward);});
             rpc.Register<string,bool,bool,Vector3>("Overhaul_AttackControl",(sender,token,primary,secondary,aim)=>
@@ -328,6 +335,8 @@ namespace Overhaul.Persistence
         internal void BlockControl(bool held,Vector3 forward){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_BlockControl",nonce,held,forward);}
         internal void StaffGuardControl(bool held){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_StaffGuardControl",nonce,held);}
         internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
+        private double nextJumpNotice;
+        internal void Jumped(){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_Jumped",nonce);}
         internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
         internal void ArrivalControl(ZDOID actor,bool skip){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ArrivalControl",nonce,actor,skip);}
         internal void Leveling(string json){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_LevelIntent",nonce,json);}

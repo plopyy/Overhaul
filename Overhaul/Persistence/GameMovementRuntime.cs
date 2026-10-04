@@ -23,6 +23,8 @@ namespace Overhaul.Persistence
             internal bool HaveCheckedZone,AreaReady;
             internal double NextAreaCheck;
             internal PlayerChange[] DerivedRows;
+            internal double NextPositionSave;
+            internal bool ForceView;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
         internal static void InvalidateEffects(ZDOID actor)
@@ -42,7 +44,10 @@ namespace Overhaul.Persistence
         {
             if(GameArrivalRuntime.Active(actor))return;
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
-            var point=motion.Position;
+            if(!final&&Time.timeAsDouble<motion.NextPositionSave)return;
+            motion.NextPositionSave=Time.timeAsDouble+30;
+            var data=ZDOMan.instance?.GetZDO(actor);
+            var point=data!=null&&motion.Player!=Player.m_localPlayer&&!Forced(motion.Player)?data.GetPosition():motion.Position;
             if(!motion.PositionPending&&motion.HaveSavedPosition&&motion.SavedPosition==point)return;
             var state=InventoryMoveGame.State(actor);if(state==null||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return;
             // One outstanding position update per actor. Slow disks cannot grow
@@ -65,11 +70,14 @@ namespace Overhaul.Persistence
         internal static ZPackage View(ZDOID actor)
         {
             if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
+            if(!Forced(motion.Player)&&!motion.ForceView)return null;
+            motion.ForceView=false;
             motion.NextView=Time.timeAsDouble+.05;
             var view=GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
             view.Write(motion.Player&&motion.Player.InIntro());return view;
         }
-        internal static void Record(Player player){Remember(player);if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
+        internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling||GameDodgeAction.Active(player));
+        internal static void Record(Player player){Remember(player).ForceView=true;if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
         private static Motion Remember(Player player)
         {
             var id=player.GetZDOID();if(!motions.TryGetValue(id,out var motion))motions.Add(id,motion=new Motion());
@@ -79,6 +87,8 @@ namespace Overhaul.Persistence
         }
         internal static void Protect(ZDO actor)
         {
+            var instance=ZNetScene.instance?ZNetScene.instance.FindInstance(actor.m_uid):null;
+            if(!Forced(instance?instance.GetComponent<Player>():null))return;
             if(!motions.TryGetValue(actor.m_uid,out var motion))
             {
                 actor.SetRotation(Quaternion.identity);
@@ -88,7 +98,7 @@ namespace Overhaul.Persistence
             actor.Set(ZDOVars.s_velHash,motion.Velocity);actor.Set(ZDOVars.s_bodyVelHash,motion.Velocity);actor.Set(ZDOVars.s_bodyAVelHash,motion.Angular);
         }
         internal static bool Position(ZDOID actor,out Vector3 point)
-        {if(motions.TryGetValue(actor,out var motion)){point=motion.Position;return true;}point=Vector3.zero;return false;}
+        {if(motions.TryGetValue(actor,out var motion)&&Forced(motion.Player)){point=motion.Position;return true;}point=Vector3.zero;return false;}
         private static Scope Enter(Player player,bool context)
         {
             var scope=new Scope{Previous=simulating,Frame=GameCombatContext.Current,Entered=true};
@@ -113,6 +123,19 @@ namespace Overhaul.Persistence
             simulating=player;return scope;
         }
         private static bool Derived(PlayerChange row)=>row.Table=="inventory"||row.Table=="item_data"||row.Table=="effects"||row.Table=="status"||row.Table=="status_data";
+        private static void StaminaFlash(Hud hud){if(hud)hud.StaminaBarEmptyFlash();}
+        [HarmonyPatch]
+        private static class HeadlessMovementFeedback
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {yield return AccessTools.Method(typeof(Player),"CheckRun");yield return AccessTools.Method(typeof(Player),"OnSneaking");}
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                var original=AccessTools.Method(typeof(Hud),nameof(Hud.StaminaBarEmptyFlash));
+                foreach(var instruction in instructions)
+                {if(instruction.Calls(original)){instruction.opcode=System.Reflection.Emit.OpCodes.Call;instruction.operand=AccessTools.Method(typeof(GameMovementRuntime),nameof(StaminaFlash));}yield return instruction;}
+            }
+        }
         private static bool AreaReady(Player player,Motion motion)
         {
             if(!ZNetScene.instance)return true;
@@ -136,6 +159,29 @@ namespace Overhaul.Persistence
                 if(GameCatapultPassengers.Hold(player))return false;
                 GameTeleportAction.Tick(player,dt);
                 GameAttachmentRuntime.Tick(player);
+                // The remote owner's ordinary movement is native client movement.
+                // Observe its replicated pose; do not simulate a second body or correct it.
+                if(player!=Player.m_localPlayer&&!Forced(player))
+                {
+                    var observed=Remember(player);var controls=GameMovementControl.Read(player.GetZDOID());
+                    player.m_moveDir=controls?.Move??Vector3.zero;player.m_run=controls?.Run??false;player.m_walk=controls?.Walk??false;player.m_crouchToggled=controls?.Crouch??false;
+                    if(controls!=null)player.SetLookDir(controls.Look);
+                    var scope=Enter(player,true);
+                    try
+                    {
+                        player.UpdateCrouch(dt);
+                        if(StealthSystem.instance)player.UpdateStealth(dt);
+                        if(!player.IsDead()&&!player.InIntro())
+                        {
+                            if(player.InLiquidSwimDepth())player.OnSwimming(player.m_moveDir,dt);
+                            else if(player.m_moveDir.sqrMagnitude>.01f)
+                            {player.m_running=player.CheckRun(player.m_moveDir,dt);if(player.IsCrouching())player.OnSneaking(dt);}
+                        }
+                        player.EdgeOfWorldKill(dt);
+                    }
+                    finally{Leave(scope);}
+                    return true;
+                }
                 if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);
                 var motion=Remember(player);
                 if(player.m_body&&!AreaReady(player,motion))
@@ -145,7 +191,7 @@ namespace Overhaul.Persistence
                 GameHarpoonRuntime.Tick(player,dt);
                 GameDodgeAction.Tick(player);
                 var input=GameMovementControl.Read(player.GetZDOID());
-                player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;
+                if(player!=Player.m_localPlayer){player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;}
                 player.m_debugFly=false;
                 if(input!=null)player.SetLookDir(input.Look);
                 if(player!=Player.m_localPlayer)player.UpdateCrouch(dt);
@@ -164,7 +210,7 @@ namespace Overhaul.Persistence
         {
             private static void Prefix(ZSyncTransform __instance,out Scope __state)
             {
-                __state=null;if(!(__instance.m_character is Player player)||!Managed(player))return;
+                __state=null;if(!(__instance.m_character is Player player)||!Managed(player)||player!=Player.m_localPlayer&&!Forced(player))return;
                 __state=Enter(player,false);
                 // This is a simulation scope, not an ownership handover: never
                 // reset the server body from a peer's last transform packet.
@@ -175,7 +221,7 @@ namespace Overhaul.Persistence
         }
         [HarmonyPatch(typeof(ZSyncTransform),"ClientSync")]
         private static class IgnorePeerTransform
-        {private static bool Prefix(ZSyncTransform __instance)=>!(__instance.m_character is Player player)||!Managed(player);}
+        {private static bool Prefix(ZSyncTransform __instance)=>!(__instance.m_character is Player player)||!Managed(player)||!Forced(player);}
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.Update))]
         private static class EffectClock
         {private static bool Prefix(SEMan __instance)=>!simulating||__instance.m_character!=simulating;}
