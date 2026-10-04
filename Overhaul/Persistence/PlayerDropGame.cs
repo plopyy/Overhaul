@@ -13,7 +13,7 @@ namespace Overhaul.Persistence
             if (!item.m_dropPrefab || item.m_stack < 1 || item.m_stack > item.m_shared.m_maxStackSize || item.m_equipped)
                 throw new InvalidOperationException("Invalid ground item");
             var record = GamePersistence.AllocateActionObject(item.m_dropPrefab,position,rotation);
-            var package = new ZPackage(); package.Write(109); item.Save(package);
+            var package = new ZPackage(); package.Write((byte)109); item.Save(package);
             void Add(int key,string type,object value) => record.Properties.Add(new PropertyRecord { Key = key,Type = type,Name = NameCatalog.Key(key),Value = value });
             Add(ZDOVars.s_itemData,"bytes",package.GetArray()); Add(ZDOVars.s_quality,"int",item.m_quality); Add(ZDOVars.s_variant,"int",item.m_variant);
             Add(ZDOVars.s_spawnTime,"long",ZNet.instance.GetTime().Ticks);
