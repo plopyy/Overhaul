@@ -30,6 +30,7 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerRecyclerGame.Interaction) return PlayerRecyclerGame.Prepare(actor,target,request,snapshot);
             if (command.Definition == Fireworks) return LaunchFireworks(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerDoorGame.Interaction) return PlayerDoorGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerTurretGame.Interaction) return PlayerTurretGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
@@ -340,6 +341,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
 
