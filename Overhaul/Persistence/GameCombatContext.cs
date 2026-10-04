@@ -22,6 +22,15 @@ namespace Overhaul.Persistence
         internal static StatusEffect[] Effects(PlayerSnapshot state,Player player)=>GameGrapplingRuntime.Effects(player,GameAttackResources.Effects(state).Select(effect=>
         {var copy=effect.Clone();copy.m_character=player;copy.m_startEffectInstances=null;return copy;}).ToArray());
         internal static bool Matches(Character player)=>Current!=null && Current.Player==player;
+        [HarmonyPatch(typeof(ZDO),nameof(ZDO.IsOwner))]
+        private static class NativeOwner
+        {
+            private static bool Prefix(ZDO __instance,ref bool __result)
+            {
+                if(!GameCreatureAuthority.Enabled||Current==null||!Current.Player||!Current.Player.m_nview||Current.Player.m_nview.GetZDO()!=__instance)return true;
+                __result=true;return false;
+            }
+        }
         internal static void Run(Player player,PlayerSnapshot snapshot,ItemDrop.ItemData weapon,ItemDrop.ItemData ammo,Action action)
         {
             if(!player || snapshot==null || action==null)throw new ArgumentException("Invalid server combat context");

@@ -81,6 +81,22 @@ namespace Overhaul.Persistence
             private static bool Prefix(SEMan __instance,float baseNoise,ref float noise)
             {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyNoise(baseNoise,ref noise);return false;}
         }
+        [HarmonyPatch(typeof(Character),nameof(Character.AddNoise))]
+        private static class NoiseSource
+        {
+            private static bool Prefix(Character __instance,float range)
+            {
+                if(!(__instance is Player player)||!GameMovementRuntime.Managed(player)||Matches(player))return true;
+                var state=InventoryMoveGame.State(player.GetZDOID());
+                GameCombatContext.Run(player,state,null,null,()=>player.AddNoise(range));return false;
+            }
+        }
+        [HarmonyPatch(typeof(Character),nameof(Character.GetNoiseRange))]
+        private static class NoiseRange
+        {
+            private static bool Prefix(Character __instance,ref float __result)
+            {if(!(__instance is Player player)||!GameMovementRuntime.Managed(player))return true;__result=player.m_noiseRange;return false;}
+        }
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyRunStaminaDrain))]
         private static class MovementRunDrain
         {
