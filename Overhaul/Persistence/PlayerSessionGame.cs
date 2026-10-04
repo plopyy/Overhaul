@@ -93,7 +93,7 @@ namespace Overhaul.Persistence
             var profile = Selected();
             return PlayerLoginData.PackImport(profile.m_playerData, PlayerProfileBridge.Capture(profile, ZNet.m_world.m_uid));
         }
-        private static byte[] Appearance()
+        internal static byte[] Appearance()
         {
             var profile = Selected();
             if (profile.m_playerData != null) return PlayerNativeFormat.Decode(profile.m_playerData).Appearance;
@@ -113,6 +113,7 @@ namespace Overhaul.Persistence
                 PlayerNativeFormat.Encode(rows, Appearance()), PlayerMapFormat.Encode(rows));
             // Swap only after complete reconstruction. The selected file-backed profile is never mutated.
             Game.instance.m_playerProfile = profile;
+            GameCharacterView.Initial(snapshot);
             PlayerPotionGame.Initial(rows);
             GameStatusGame.Initial(rows);
             GameLifeView.Initial(rows);
@@ -163,6 +164,7 @@ namespace Overhaul.Persistence
             PlayerPotionGame.Initial(null);
             GameStatusGame.Initial(null);
             GameLifeView.Initial(null);
+            GameCharacterView.Initial(null);
             PlayerResourceGame.Initial(null);
         }
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]

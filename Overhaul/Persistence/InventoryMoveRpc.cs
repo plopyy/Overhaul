@@ -213,6 +213,7 @@ namespace Overhaul.Persistence
                 var statusView=GameStatusGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="status"||r.Table=="status_data"),Player.m_localPlayer);
                 var lifeView=GameLifeView.Presentation(reply.Player.Changes.Where(r=>r.Table=="state"&&GameLifeView.IsKey((string)r.Values[0])),Player.m_localPlayer);
                 progressView();foodView();effectView();statusView();resourceView();lifeView();
+                GameCharacterView.Confirm(reply.Player);
             }
             catch(Exception error){Fail(error);}
         }

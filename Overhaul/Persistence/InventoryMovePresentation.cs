@@ -60,6 +60,7 @@ namespace Overhaul.Persistence
                 building();
                 resources();
                 life();
+                GameCharacterView.Confirm(reply.Player,reply.Snapshot,!reply.Snapshot);
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)
