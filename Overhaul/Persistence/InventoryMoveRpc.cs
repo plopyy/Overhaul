@@ -17,6 +17,33 @@ namespace Overhaul.Persistence
         private const string ServerActionResponse="Overhaul_ServerItemsChanged";
         private PlayerSnapshot canonical;
         private ZDOID knownActor;
+        private System.Collections.Generic.Dictionary<string,double> wearRates=new System.Collections.Generic.Dictionary<string,double>();
+        private readonly System.Collections.Generic.Dictionary<string,double> wearDebits=new System.Collections.Generic.Dictionary<string,double>();
+        private double wearTime=Time.timeAsDouble,nextWear;
+        private bool wearPending,identityPending;
+        private void CaptureWear()
+        {
+            double now=Time.timeAsDouble,elapsed=Math.Max(0,now-wearTime);wearTime=now;
+            if(disposed || elapsed==0 || PlayerSessionGame.Actor(rpc)==null)return;
+            foreach(var entry in wearRates)
+            {wearDebits.TryGetValue(entry.Key,out double previous);wearDebits[entry.Key]=previous+entry.Value*elapsed;}
+        }
+        private void QueueWear(bool final=false)
+        {
+            if(serverActions==null || wearPending && !final || wearDebits.Count==0)return;
+            wearPending=true;
+            if(!serverActions.Enqueue(state=>
+            {
+                CaptureWear();var debits=new System.Collections.Generic.Dictionary<string,double>(wearDebits);wearDebits.Clear();
+                return GameEquipmentWear.Debit(state,debits);
+            },()=>wearPending=false))wearPending=false;
+        }
+        private void IdentifyItems()
+        {
+            if(disposed || identityPending || serverActions==null || GameEquipmentWear.Identify(canonical)==null)return;
+            identityPending=true;
+            if(!serverActions.Enqueue(GameEquipmentWear.Identify,()=>identityPending=false))identityPending=false;
+        }
         internal PlayerSnapshot SessionState(ZRpc connection)=>!disposed && server!=null && ReferenceEquals(rpc,connection)?canonical:null;
         private double pendingStamina;
         internal PlayerSnapshot State(ZDOID actor)
@@ -38,8 +65,13 @@ namespace Overhaul.Persistence
         }
         private void Committed(PlayerBatch batch,bool advance)
         {
+            CaptureWear();
+            bool wasAlive=PlayerResources.Read(canonical,"health")>0;
             var updated=PlayerProgressService.Overlay(canonical,batch.Changes);
             canonical=new PlayerSnapshot(batch.ExpectedRevision+(advance?1:0),updated.Rows);
+            if(wasAlive!=(PlayerResources.Read(canonical,"health")>0) || batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="item_data" || r.Table=="custom_data"))
+                wearRates=GameEquipmentWear.Rates(canonical);
+            if(batch.Changes.Any(r=>r.Table=="inventory"))IdentifyItems();
         }
         private byte[] deferredRequest;
         private bool discoveryPending;
@@ -107,6 +139,7 @@ namespace Overhaul.Persistence
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
                 batch=>{Committed(batch,true);if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
             foreach(var row in session.Snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations"))observedStations[(string)row.Values[1]]=Convert.ToInt32(row.Values[2]);
+            wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,int,int>("Overhaul_FishingDraw",(sender,token,x,y)=>
@@ -215,6 +248,7 @@ namespace Overhaul.Persistence
                 int length = package.ReadInt();
                 if (length < 0 || length != package.Size() - package.GetPos()) throw new InvalidDataException("Invalid inventory RPC length");
                 byte[] bytes = package.ReadByteArray(length);
+                if(server!=null){CaptureWear();QueueWear();}
                 // Start already accepted simulation events before reading a new action snapshot.
                 if(server!=null && !server.Busy)
                 {serverActions.Tick(progress.Busy);progress.Tick(serverActions.Busy);}
@@ -228,6 +262,11 @@ namespace Overhaul.Persistence
         internal void Tick()
         {
             if (!disposed && !rpc.IsConnected()) Dispose();
+            if(!disposed && serverActions!=null)
+            {
+                CaptureWear();
+                if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
+            }
             if(!disposed && progress!=null && resourceFrame!=Time.frameCount)
             {
                 resourceFrame=Time.frameCount;
@@ -266,6 +305,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
+            if(serverActions!=null){CaptureWear();QueueWear(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
