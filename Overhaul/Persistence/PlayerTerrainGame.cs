@@ -13,6 +13,7 @@ namespace Overhaul.Persistence
         private sealed class Tile
         {internal Heightmap Map;internal TerrainComp Live,Copy;internal ObjectRecord Record;internal byte[] Data;}
         private readonly Dictionary<Heightmap,Tile> tiles=new Dictionary<Heightmap,Tile>();
+        private readonly HashSet<Heightmap> pendingPaint=new HashSet<Heightmap>();
         private static readonly HashSet<Vector3> reserved=new HashSet<Vector3>();
         private static PlayerTerrainGame calculating;
         private bool submitted;
@@ -102,7 +103,15 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(TerrainComp),"Save")]
         private static class CalculationSave {private static bool Prefix()=>calculating==null;}
         [HarmonyPatch(typeof(Heightmap),nameof(Heightmap.Poke))]
-        private static class CalculationPoke {private static bool Prefix()=>calculating==null;}
+        private static class CalculationPoke
+        {private static bool Prefix(Heightmap __instance){if(calculating==null)return true;calculating.pendingPaint.Add(__instance);return false;}}
+        [HarmonyPatch]
+        private static class CalculationMask
+        {
+            private static System.Reflection.MethodBase TargetMethod()=>AccessTools.Method(typeof(TerrainComp),"<PaintCleared>g__getMask|20_0");
+            private static bool Prefix(Heightmap hmap,int index,ref Color __result)
+            {if(calculating==null || !calculating.pendingPaint.Contains(hmap))return true;var copy=calculating.Copy(hmap);__result=copy.m_paintMask[index];return false;}
+        }
         [HarmonyPatch(typeof(TerrainComp),"RPC_ApplyOperation")]
         private static class LegacyOperation {private static bool Prefix()=>PlayerPersistenceConfig.Enabled?.Value!=true;}
         [HarmonyPatch(typeof(TerrainComp),"Update")]
