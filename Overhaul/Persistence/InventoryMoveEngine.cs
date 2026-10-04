@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Overhaul.Persistence
 {
-    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort, Ammo }
+    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort, Ammo, Gameplay }
 
     // Inventory 0 is the admitted player's bag; inventory 1 is the server-resolved container.
     // No item identity, metadata or claimed player ID is accepted from a client.
@@ -26,7 +26,8 @@ namespace Overhaul.Persistence
                 !Enum.IsDefined(typeof(InventoryMoveKind), kind) || from < 0 || from > 1 || to < 0 || to > 1 ||
                 new[] { fromX, fromY, toX, toY }.Any(v => v < 0 || v > 255) || amount < 1 || amount > ushort.MaxValue ||
                 (kind == InventoryMoveKind.Slot && from == to && fromX == toX && fromY == toY) ||
-                (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && kind != InventoryMoveKind.Ammo && from == to) ||
+                (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && kind != InventoryMoveKind.Ammo && kind != InventoryMoveKind.Gameplay && from == to) ||
+                (kind == InventoryMoveKind.Gameplay && (from != 0 || to != 0)) ||
                 (kind == InventoryMoveKind.Ammo && to != 0) || (kind == InventoryMoveKind.Sort && from != to) || this.slotVersions.Count > 4096 ||
                 this.slotVersions.Any(p => p.Key < 0 || p.Key > 65535 || p.Value < 0)) throw new ArgumentException("Invalid inventory movement intent");
             Operation = operation; PlayerRevision = playerRevision; ContainerRevision = containerRevision;
@@ -139,6 +140,7 @@ namespace Overhaul.Persistence
         internal static InventoryMoveResult Prepare(InventoryMoveAction action, IEnumerable<PlayerChange> player,
             InventoryMoveLayout playerLayout, IEnumerable<PlayerChange> container = null, InventoryMoveLayout containerLayout = null)
         {
+            if (action.Kind == InventoryMoveKind.Gameplay) throw new InvalidOperationException("Gameplay action requires its server handler");
             if (action.UsesContainer && (container == null || containerLayout == null)) throw new InvalidOperationException("No authorized container");
             var layouts = new[] { playerLayout, containerLayout };
             var bags = new[] { Read(player, playerLayout), action.UsesContainer ? Read(container, containerLayout) : new Dictionary<int, Item>() };

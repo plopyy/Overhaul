@@ -15,7 +15,11 @@ namespace Overhaul.Persistence
                 var update = Prepare(container, reply.Container, false);
                 return () => { container.m_inventory.Clear(); container.m_inventory.AddRange(update); container.Changed(); };
             }
-            var bag = Prepare(playerInventory, reply.Player, reply.Snapshot);
+            var knowledge = reply.Player.Changes.Where(r => r.Table == "knowledge").ToArray();
+            if (knowledge.Any(r => (string)r.Values[0] != "uniques") || knowledge.Length != 0 && !player)
+                throw new InvalidDataException("Unsupported character knowledge effect");
+            var bag = Prepare(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
+                reply.Player.Changes.Where(r => r.Table != "knowledge")), reply.Snapshot);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () =>
             {
@@ -37,6 +41,8 @@ namespace Overhaul.Persistence
                 }
                 playerInventory.m_inventory.Clear(); playerInventory.m_inventory.AddRange(bag);
                 if (chest != null) { container.m_inventory.Clear(); container.m_inventory.AddRange(chest); }
+                foreach (var change in knowledge)
+                    if (change.Delete) player.m_uniques.Remove((string)change.Values[1]); else player.m_uniques.Add((string)change.Values[1]);
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)

@@ -40,6 +40,12 @@ namespace Overhaul.Persistence
             return Send(new InventoryMoveRequest { Nonce = nonce, ContainerUser = ContainerUser, ContainerId = ContainerId,
                 Action = new InventoryMoveAction(Guid.NewGuid().ToString("N"), PlayerRevision, snapshotRevision, kind, from, to, fromX, fromY, toX, toY, amount, slotRevisions) });
         }
+        internal bool Act(PlayerActionCommand action, int x = 0, int y = 0, int amount = 1)
+        {
+            if (Closed || Busy || action == null) return false;
+            return Send(new InventoryMoveRequest { Nonce = nonce, Gameplay = action,
+                Action = new InventoryMoveAction(Guid.NewGuid().ToString("N"), PlayerRevision, 0, InventoryMoveKind.Gameplay, 0, 0, x, y, 0, 0, amount) });
+        }
         private bool Send(InventoryMoveRequest request)
         {
             pending = request; deadline = DateTime.UtcNow.AddSeconds(30);

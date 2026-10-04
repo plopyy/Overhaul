@@ -30,6 +30,10 @@ namespace Overhaul.Persistence
         private readonly Func<InventoryMoveRequest, InventoryMoveLease> reserve;
         private readonly Action<byte[]> send;
         private readonly Action<Exception> failed;
+        private readonly Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction;
+        private Task<PlayerSnapshot> actionState;
+        private Task<PlayerBatch> actionCommit;
+        private PlayerActionPlan actionPlan;
         private Task<InventoryMoveResult> move;
         private Task<InventoryMoveResult> plan;
         private Task<PlayerSnapshot> playerState, containerState;
@@ -41,10 +45,12 @@ namespace Overhaul.Persistence
         internal bool StorageFailed { get; private set; }
 
         internal InventoryMoveService(PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout,
-            Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed)
+            Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed,
+            Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction = null)
         {
             if (session == null || session.State != PlayerAdmission.Phase.Ready) throw new InvalidOperationException("Character admission is incomplete");
             this.session = session; this.writer = writer; this.layout = layout; this.reserve = reserve; this.send = send; this.failed = failed;
+            this.prepareAction = prepareAction;
         }
         internal void Receive(byte[] bytes)
         {
@@ -58,7 +64,12 @@ namespace Overhaul.Persistence
                 {
                     if (incoming.Open || incoming.Action.UsesContainer) lease = reserve(incoming);
                     if ((incoming.Open || incoming.Action.UsesContainer) && lease == null) throw new InvalidOperationException("Container access denied");
-                    if (incoming.Open) Synchronize();
+                    if (incoming.Gameplay != null)
+                    {
+                        if (prepareAction == null) throw new InvalidOperationException("Player action handler is unavailable");
+                        actionState = writer.ActionState(session.Identity);
+                    }
+                    else if (incoming.Open) Synchronize();
                     else plan = writer.PlanTransfer(session.Identity, incoming.Action, layout, lease?.ObjectId ?? 0, lease?.Layout);
                 }
                 catch (InvalidOperationException) { Synchronize(); }
@@ -76,6 +87,23 @@ namespace Overhaul.Persistence
             if (session.State != PlayerAdmission.Phase.Ready) disconnected = true;
             try
             {
+                if (actionState != null && actionState.IsCompleted)
+                {
+                    var state = actionState.GetAwaiter().GetResult(); actionState = null;
+                    if (state.Revision != request.Action.PlayerRevision) Synchronize();
+                    else
+                    {
+                        try { actionPlan = prepareAction(request,state); }
+                        catch (InvalidOperationException) { Synchronize(); }
+                        if (actionPlan != null) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
+                    }
+                }
+                if (actionCommit != null && actionCommit.IsCompleted)
+                {
+                    var result = actionCommit.GetAwaiter().GetResult(); actionCommit = null;
+                    actionPlan.Publish(); actionPlan = null;
+                    Complete(new InventoryMoveReply { Nonce = session.Nonce, Accepted = true, Player = result });
+                }
                 if (plan != null && plan.IsCompleted)
                 {
                     var task = plan; plan = null;
@@ -125,7 +153,7 @@ namespace Overhaul.Persistence
             // Storage failure after a staged cross-DB operation must retain the reservation.
             // The host shuts down/reloads rather than publishing uncertain inventory contents.
             StorageFailed = storage;
-            Observe(plan); Observe(move); Observe(playerState); Observe(containerState);
+            Observe(plan); Observe(move); Observe(playerState); Observe(containerState); Observe(actionState); Observe(actionCommit);
             disconnected = true; closed = true; failed(error);
         }
         private static void Observe(Task task)

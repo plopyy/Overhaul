@@ -13,10 +13,25 @@ namespace Overhaul.Persistence
         private static ProgressiveWriter writer;
         internal static PlayerDatabaseWriter Players { get; private set; }
         private static readonly Dictionary<ZDOID,HashSet<int>> inventoryReservations = new Dictionary<ZDOID,HashSet<int>>();
+        private static readonly HashSet<ZDOID> actionReservations = new HashSet<ZDOID>();
+        internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
+        internal static bool HasActionReservations => actionReservations.Count != 0;
+        internal static ObjectRecord ReserveAction(ZDO data)
+        {
+            if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid) || InventoryReserved(data.m_uid))
+                throw new InvalidOperationException("World action target is unavailable");
+            if (!ids.TryGetValue(data.m_uid,out long id)) { id = checked(++nextId); ids.Add(data.m_uid,id); }
+            var snapshot = GameSnapshot.Capture(data,id);
+            actionReservations.Add(data.m_uid); dirty.Remove(data.m_uid);
+            return snapshot;
+        }
+        internal static void ReleaseAction(IEnumerable<ZDOID> objects)
+        { foreach (var uid in objects) { actionReservations.Remove(uid); Mark(uid); InventoryMoveReservations.Release(uid); } }
         internal static bool InventoryReserved(ZDOID id) => inventoryReservations.TryGetValue(id, out var keys) && keys.Count != 0;
         internal static HashSet<int> ReservedSlots(ZDOID id) => inventoryReservations.TryGetValue(id, out var keys) ? new HashSet<int>(keys) : new HashSet<int>();
         internal static bool ReserveSlots(ZDOID id, IEnumerable<int> requested)
         {
+            if (ActionReserved(id)) return false;
             int[] cells = requested.Distinct().ToArray();
             if (!inventoryReservations.TryGetValue(id, out var keys)) keys = new HashSet<int>();
             if (cells.Any(keys.Contains)) return false;
@@ -26,7 +41,7 @@ namespace Overhaul.Persistence
         }
         internal static long SnapshotInventory(ZDO data)
         {
-            if (!CanSave() || data == null || !data.Persistent) throw new InvalidOperationException("World inventory is unavailable");
+            if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid)) throw new InvalidOperationException("World inventory is unavailable");
             if (!ids.TryGetValue(data.m_uid, out long id)) { id = checked(++nextId); ids.Add(data.m_uid, id); }
             var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
             writer.Enqueue(new[] { snapshot }, null); dirty.Remove(data.m_uid); return id;
@@ -148,6 +163,7 @@ namespace Overhaul.Persistence
             var changes=new List<ObjectRecord>();var removed=new List<long>();
             foreach(var uid in dirty)
             {
+                if (actionReservations.Contains(uid)) continue;
                 var z=session.m_zdoMan.GetZDO(uid);
                 if(z==null||!z.Persistent)
                 {if(ids.TryGetValue(uid,out long old)){removed.Add(old);ids.Remove(uid);}continue;}
@@ -182,7 +198,7 @@ namespace Overhaul.Persistence
                 {
                     Players=null;
                     try { writer.Dispose(); }
-                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();InventoryMoveReservations.Clear(); }
+                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();InventoryMoveReservations.Clear(); }
                 }
             }
         }

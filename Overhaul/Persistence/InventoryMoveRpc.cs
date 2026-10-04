@@ -34,7 +34,8 @@ namespace Overhaul.Persistence
         {
             if (!ReferenceEquals(rpc, session.Connection)) throw new ArgumentException("Wrong admitted inventory connection");
             this.rpc = rpc; nonce = session.Nonce; access = new InventoryMoveGame.Access(rpc, session);
-            server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail);
+            server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
+                (request,state) => PlayerActionGame.Prepare(rpc,session,request,state));
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string>(CloseRequest, (sender, token) => { if (ReferenceEquals(sender, rpc) && token == nonce) access.Close(); });
         }
@@ -69,7 +70,7 @@ namespace Overhaul.Persistence
             {
                 gui.SetupDragItem(null, null, 1);
                 if (Controller.Pending.Open && reply.Accepted && Container && ViewActive && !afterOpen.HasValue) gui.Show(Container, 1);
-                else if (!reply.ContainerAllowed && gui.m_currentContainer == Container) gui.Hide();
+                else if (!reply.ContainerAllowed && (Controller.Pending.Open || Controller.Pending.Action.UsesContainer) && gui.m_currentContainer == Container) gui.Hide();
                 gui.UpdateCraftingPanel(false);
             }
             if (!reply.Accepted) { afterOpen = null; player.Message(MessageHud.MessageType.Center, "$msg_cantopen"); }

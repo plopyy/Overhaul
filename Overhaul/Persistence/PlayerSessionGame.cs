@@ -18,6 +18,7 @@ namespace Overhaul.Persistence
         private static PlayerProfile originalProfile;
         private static bool failed;
         private static bool awaitingMode;
+        private static DateTime modeDeadline;
         private const string ModeRpc = "Overhaul_CharacterMode";
         internal static bool Managed => client != null;
         internal static bool Ready => !failed && client?.Client?.Ready == true;
@@ -113,6 +114,13 @@ namespace Overhaul.Persistence
         internal static void Tick()
         {
             if (!ZNet.instance || !Game.instance) return;
+            if (awaitingMode && ZNet.m_connectionStatus != ZNet.ConnectionStatus.Connected) modeDeadline = DateTime.UtcNow.AddSeconds(30);
+            if (awaitingMode && DateTime.UtcNow >= modeDeadline)
+            {
+                awaitingMode = false;
+                ClientFailed(new TimeoutException("Server character mode was not received"));
+                ZNet.instance.GetServerRPC()?.GetSocket().Close();
+            }
             if (PlayerPersistenceConfig.Enabled.Value && ZNet.instance.IsServer() && !ZNet.instance.IsDedicated() && client == null && !failed && GamePersistence.Active)
             {
                 try
@@ -145,11 +153,13 @@ namespace Overhaul.Persistence
             private static void Postfix(ZNet __instance, ZNetPeer peer)
             {
                 if (__instance.IsServer() || !peer.m_server) return;
-                awaitingMode = true;
+                awaitingMode = true; modeDeadline = DateTime.UtcNow.AddSeconds(30);
                 peer.m_rpc.Register<bool>(ModeRpc, (sender, enabled) =>
                 {
                     if (!ReferenceEquals(sender, peer.m_rpc) || !awaitingMode) return;
-                    awaitingMode = false; if (enabled) BeginClient(peer.m_rpc);
+                    awaitingMode = false;
+                    try { if (enabled) BeginClient(peer.m_rpc); }
+                    catch (Exception error) { ClientFailed(error); peer.m_rpc.GetSocket().Close(); }
                 });
             }
         }
@@ -174,7 +184,7 @@ namespace Overhaul.Persistence
         private static class SpawnGate
         {
             private static bool Prefix() => !ZNet.instance || ZNet.instance.IsDedicated() ||
-                !awaitingMode && (ZNet.instance.IsServer() && !PlayerPersistenceConfig.Enabled.Value || !ZNet.instance.IsServer() && !Managed || Ready);
+                !failed && !awaitingMode && (ZNet.instance.IsServer() && !PlayerPersistenceConfig.Enabled.Value || !ZNet.instance.IsServer() && !Managed || Ready);
         }
         [HarmonyPatch(typeof(Game), nameof(Game.SavePlayerProfile))]
         private static class Save

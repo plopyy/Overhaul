@@ -271,12 +271,18 @@ namespace Overhaul.Persistence
         {
             if (!Complete || batch.Changes.Any(r => r.Table != "inventory" && r.Table != "item_data"))
                 throw new InvalidOperationException("Invalid inventory transaction");
+            CommitDelta(batch);
+        }
+        internal void CommitDelta(PlayerBatch batch)
+        {
+            if (!Complete) throw new InvalidOperationException("Incomplete character transaction");
             db.Transaction(() =>
             {
                 if (Revision != batch.ExpectedRevision) throw new InvalidOperationException("Stale inventory action revision");
                 ApplyRows(batch.Changes); db.Write("UPDATE identity SET revision=? WHERE id=1", checked(batch.ExpectedRevision + 1));
             });
         }
+        internal PlayerChange[] ActionState() => ReadTables("inventory", "item_data", "state", "food", "skills", "custom_data", "knowledge", "spawn");
         private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");

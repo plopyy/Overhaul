@@ -157,5 +157,11 @@ namespace Overhaul.Persistence
             private static void Prefix()
             { foreach (var endpoint in connections) endpoint.Dispose(); Client = null; }
         }
+        [HarmonyPatch(typeof(ZNetScene), "Shutdown")]
+        private static class DrainBeforeSceneDestruction
+        {
+            [HarmonyPriority(Priority.First + 100)]
+            private static void Prefix() => FinishSession();
+        }
     }
 }

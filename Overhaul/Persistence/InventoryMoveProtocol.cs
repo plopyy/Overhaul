@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         internal long ContainerUser;
         internal uint ContainerId;
         internal InventoryMoveAction Action;
+        internal PlayerActionCommand Gameplay;
     }
     internal sealed class InventoryMoveReply
     {
@@ -35,6 +36,7 @@ namespace Overhaul.Persistence
                 w.Write((int)a.Kind); w.Write(a.From); w.Write(a.To); w.Write(a.FromX); w.Write(a.FromY); w.Write(a.ToX); w.Write(a.ToY); w.Write(a.Amount);
                 var slots = a.SlotVersions.ToArray(); w.Write(slots.Length);
                 foreach (var slot in slots) { w.Write((ushort)slot.Key); w.Write(slot.Value); }
+                w.Write(request.Gameplay != null); request.Gameplay?.Write(w);
                 return stream.ToArray();
             }
         }
@@ -49,6 +51,9 @@ namespace Overhaul.Persistence
                 int count = r.ReadInt32(); if (count < 0 || count > 4096) throw new InvalidDataException("Too many slot revisions");
                 var slots = new Dictionary<int,long>(); for (int i = 0; i < count; i++) slots.Add(r.ReadUInt16(), r.ReadInt64());
                 value.Action = new InventoryMoveAction(operation, player, container, kind, from, to, fx, fy, tx, ty, amount, slots);
+                if (r.ReadBoolean()) value.Gameplay = PlayerActionCommand.Read(r);
+                if ((kind == InventoryMoveKind.Gameplay) != (value.Gameplay != null) || value.Open && value.Gameplay != null)
+                    throw new InvalidDataException("Player action envelope mismatch");
                 NativeFormat.End(r); return value;
             }
         }
@@ -82,10 +87,10 @@ namespace Overhaul.Persistence
         }
         private static void Blob(BinaryWriter w, byte[] value) { w.Write(value.Length); w.Write(value); }
         private static void Header(BinaryWriter w, string nonce)
-        { if (!Guid.TryParseExact(nonce, "N", out _)) throw new ArgumentException("Invalid session nonce"); w.Write(2); w.Write(nonce); }
+        { if (!Guid.TryParseExact(nonce, "N", out _)) throw new ArgumentException("Invalid session nonce"); w.Write(3); w.Write(nonce); }
         private static string Header(BinaryReader r)
         {
-            if (r.ReadInt32() != 2) throw new InvalidDataException("Unsupported inventory protocol");
+            if (r.ReadInt32() != 3) throw new InvalidDataException("Unsupported inventory protocol");
             string value = r.ReadString(); if (!Guid.TryParseExact(value, "N", out _)) throw new InvalidDataException("Invalid inventory session"); return value;
         }
     }
