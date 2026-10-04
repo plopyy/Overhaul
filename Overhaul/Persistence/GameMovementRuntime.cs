@@ -34,8 +34,8 @@ namespace Overhaul.Persistence
         }
         internal static bool Managed(Player player)=>GameCreatureAuthority.Enabled&&player&&player.m_nview&&player.m_nview.IsValid()&&InventoryMoveGame.State(player.GetZDOID())!=null;
         internal static void Forget(ZDOID actor)
-        {if(motions.TryGetValue(actor,out var motion)&&motion.Suspended&&motion.Player&&motion.Player.m_body)motion.Player.m_body.isKinematic=motion.WasKinematic;motions.Remove(actor);GameDodgeAction.Forget(actor);}
-        internal static void Clear(){foreach(var actor in motions.Keys.ToArray())Forget(actor);simulating=null;GameDodgeAction.Clear();}
+        {if(motions.TryGetValue(actor,out var motion)&&motion.Suspended&&motion.Player&&motion.Player.m_body)motion.Player.m_body.isKinematic=motion.WasKinematic;motions.Remove(actor);GameDodgeAction.Forget(actor);GameEnvironmentRuntime.Forget(actor);}
+        internal static void Clear(){foreach(var actor in motions.Keys.ToArray())Forget(actor);simulating=null;GameDodgeAction.Clear();GameEnvironmentRuntime.Clear();}
         internal static void SavePosition(ZDOID actor,bool final=false)
         {
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
