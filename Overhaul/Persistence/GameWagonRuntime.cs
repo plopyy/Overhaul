@@ -71,12 +71,13 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Vagon),"Detach")]
         private static class Detached
         {
-            private static void Prefix(Vagon __instance)
+            private static bool Prefix(Vagon __instance)
             {
-                if(!GameCreatureAuthority.Enabled)return;
+                if(!GameCreatureAuthority.Enabled)return !PlayerSessionGame.Managed||__instance.m_attachJoin||__instance.m_attachedObject;
                 var player=__instance.m_attachedObject?__instance.m_attachedObject.GetComponent<Player>():null;
                 if(player&&wagons.TryGetValue(player.GetZDOID(),out var current)&&current==__instance)wagons.Remove(player.GetZDOID());
                 if(__instance.m_nview&&__instance.m_nview.IsValid())__instance.m_nview.GetZDO().Set(Puller,ZDOID.None);
+                return true;
             }
         }
         [HarmonyPatch(typeof(Vagon),"OnDestroy")]

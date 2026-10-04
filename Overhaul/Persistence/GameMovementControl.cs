@@ -15,6 +15,7 @@ namespace Overhaul.Persistence
             internal Vector3 Move,Look;
             internal bool Run,Walk,Crouch;
             internal double Seen;
+            internal Input Stopped;
         }
         private static readonly Dictionary<ZDOID,Input> inputs=new Dictionary<ZDOID,Input>();
         private static long sequence;
@@ -31,7 +32,8 @@ namespace Overhaul.Persistence
         {
             if(!inputs.TryGetValue(actor,out var value))return null;
             bool stale=Time.timeAsDouble-value.Seen>.5;
-            return new Input{Sequence=value.Sequence,Move=stale?Vector3.zero:value.Move,Look=value.Look,Run=!stale&&value.Run,Walk=value.Walk,Crouch=value.Crouch,Seen=value.Seen};
+            if(!stale)return value;
+            return value.Stopped??(value.Stopped=new Input{Sequence=value.Sequence,Move=Vector3.zero,Look=value.Look,Run=false,Walk=value.Walk,Crouch=value.Crouch,Seen=value.Seen});
         }
         internal static bool Receive(ZDO actor,ZPackage packet)
         {

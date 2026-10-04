@@ -9,12 +9,13 @@ namespace Overhaul.Persistence
     {
         private const string SignRpc="Overhaul_SignText";
         private const string LadderRpc="Overhaul_UseLadder";
-        private static bool climbing;
+        private const string RopeRpc="Overhaul_UseRope";
+        private static bool climbing,pulling;
         internal static void Register(GameObject root)
         {
             if(!root)return;var view=root.GetComponent<ZNetView>();
-            if(!view||!view.IsValid()||root.GetComponentInChildren<Ladder>(true)==null)return;
-            view.Register<int>(LadderRpc,(sender,index)=>
+            if(!view||!view.IsValid())return;
+            if(root.GetComponentInChildren<Ladder>(true))view.Register<int>(LadderRpc,(sender,index)=>
             {
                 if(!GameCreatureAuthority.Enabled)return;
                 var ladders=view.GetComponentsInChildren<Ladder>(true);
@@ -25,6 +26,36 @@ namespace Overhaul.Persistence
                 bool previous=climbing;climbing=true;
                 try{ladder.Interact(player,false,false);GameMovementRuntime.Record(player);}finally{climbing=previous;}
             });
+            if(root.GetComponentInChildren<RopeAttachment>(true))view.Register<int>(RopeRpc,(sender,index)=>
+            {
+                if(!GameCreatureAuthority.Enabled)return;
+                var ropes=view.GetComponentsInChildren<RopeAttachment>(true);if(index<0||index>=ropes.Length)return;
+                var rope=ropes[index];var actor=Nearby(rope,sender);if(actor==null||!rope.gameObject.activeInHierarchy)return;
+                var player=ZNetScene.instance.FindInstance(actor.m_uid)?.GetComponent<Player>();
+                if(!GameMovementRuntime.Managed(player)||player.IsTeleporting()||player.InIntro()||rope.m_puller&&rope.m_puller!=player)return;
+                bool previous=pulling;pulling=true;try{rope.Interact(player,false,false);}finally{pulling=previous;}
+            });
+        }
+        [HarmonyPatch(typeof(RopeAttachment),nameof(RopeAttachment.Interact))]
+        private static class RopeIntent
+        {
+            private static bool Prefix(RopeAttachment __instance,Humanoid character,bool hold,ref bool __result)
+            {
+                if(pulling||!PlayerSessionGame.Managed||character!=Player.m_localPlayer)return true;
+                __result=false;var view=__instance.GetComponentInParent<ZNetView>();
+                if(!hold&&view&&view.IsValid())view.InvokeRPC(RopeRpc,System.Array.IndexOf(view.GetComponentsInChildren<RopeAttachment>(true),__instance));return false;
+            }
+        }
+        [HarmonyPatch(typeof(RopeAttachment),"FixedUpdate")]
+        private static class RopePhysics
+        {
+            private static bool Prefix(RopeAttachment __instance)
+            {
+                if(!GameCreatureAuthority.Enabled)return !PlayerSessionGame.Managed;
+                var player=__instance.m_puller as Player;
+                if(player&&(player.IsDead()||player.IsTeleporting()||!GameMovementRuntime.Managed(player)))__instance.m_puller=null;
+                return true;
+            }
         }
         [HarmonyPatch(typeof(Ladder),nameof(Ladder.Interact))]
         private static class LadderIntent
