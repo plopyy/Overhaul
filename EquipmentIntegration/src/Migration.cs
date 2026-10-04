@@ -24,6 +24,7 @@ namespace EquipmentAndQuickSlots {
         private const int LegacyEquipSlotCount = 5;
 
         public static void MigrateLegacyData(Player player) {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
             loadedPlayer = player;
             try {
                 bool migrated = false;
@@ -130,6 +131,7 @@ namespace EquipmentAndQuickSlots {
         // slot item, and the validation sweep settles an overlap by list order -- whichever of the
         // two happens to come first keeps the cell.
         internal static void MigrateSlotRegionRows(Player player, int previousVisibleRows) {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
             int delta = VisibleRows - previousVisibleRows;
             Inventory inventory = player.GetInventory();
             if (delta == 0 || inventory == null)

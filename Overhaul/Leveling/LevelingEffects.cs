@@ -144,7 +144,12 @@ namespace Overhaul.Leveling
         {
             Player attacker=__instance.m_character?.m_lastHit?.GetAttacker() as Player;if(!attacker || __instance.m_character.IsTamed())return;
             double chance=LevelingEffects.Bonus(attacker,"bonus_loot");
-            if(attacker!=Player.m_localPlayer && attacker.m_nview?.GetZDO()!=null)chance=attacker.m_nview.GetZDO().GetFloat("overhaul_loot_chance",0);
+            if(Persistence.GameCreatureAuthority.Enabled)
+            {
+                var state=Persistence.InventoryMoveGame.State(attacker.GetZDOID());
+                chance=state==null?0:Persistence.PlayerCraftProgressGame.LootChance(state);
+            }
+            else if(attacker!=Player.m_localPlayer && attacker.m_nview?.GetZDO()!=null)chance=attacker.m_nview.GetZDO().GetFloat("overhaul_loot_chance",0);
             for(int i=0;i<__result.Count;i++)
             {var entry=__result[i];var item=entry.Key.GetComponent<ItemDrop>();if(item && item.m_itemData.m_shared.m_maxStackSize>1 && UnityEngine.Random.value<Math.Min(1,chance))__result[i]=new KeyValuePair<GameObject,int>(entry.Key,checked(entry.Value+1));}
         }

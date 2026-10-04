@@ -98,6 +98,7 @@ namespace EquipmentAndQuickSlots {
         }
 
         private static bool PlayerCanRestoreBackup(Player player) {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return false;
             // Server-synced character profiles resolve conflicts on their own; a local restore
             // could duplicate items the server still knows about.
             if (Chainloader.PluginInfos.ContainsKey(ServerCharactersGUID))
@@ -110,6 +111,7 @@ namespace EquipmentAndQuickSlots {
         }
 
         internal static bool TryRestoreBackup(Player player) {
+            if (Overhaul.Persistence.PlayerSessionGame.Managed) return false;
             if (!TryGetBackup(player, out BackupEnvelope envelope))
                 return false;
 
@@ -172,6 +174,7 @@ namespace EquipmentAndQuickSlots {
         private static class Player_Save_WriteBackup {
             [HarmonyPriority(Priority.Last)]
             private static void Prefix(Player __instance) {
+                if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 if (ValConfig.BackupEnabled.Value && __instance == CurrentPlayer)
                     __instance.m_customData[customKeyBackupID] = SerializeBackup(__instance.GetInventory());
             }
