@@ -94,7 +94,7 @@ namespace Overhaul.Persistence
                     var relevant=state.Rows.Where(Derived);
                     if(motion.DerivedRows==null||!relevant.SequenceEqual(motion.DerivedRows))
                     {
-                        motion.DerivedRows=relevant.ToArray();motion.Frame.Equipment=GameCombatEquipment.Equipped(state);motion.Frame.Effects=GameAttackResources.Effects(state);
+                        motion.DerivedRows=relevant.ToArray();motion.Frame.Equipment=GameCombatEquipment.Equipped(state);motion.Frame.Effects=GameCombatContext.Effects(state,player);
                         motion.Frame.InventoryWeight=null;motion.Frame.Weapon=motion.Frame.Equipment.FirstOrDefault(item=>item.IsWeapon());
                     }
                     motion.Frame.State=state;

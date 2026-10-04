@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 
@@ -15,7 +16,7 @@ namespace Overhaul.Persistence
             if(id==0||PlayerResources.Read(state,"health")<=0)return Array.Empty<PlayerChange>();
             var definition=ObjectDB.instance.GetStatusEffect(id);if(!definition)return Array.Empty<PlayerChange>();
             var type=definition.GetType();
-            if(type!=typeof(StatusEffect)&&type!=typeof(SE_Stats)&&type!=typeof(SE_Shield)&&type!=typeof(SE_React)&&type!=typeof(SE_Frost)&&type!=typeof(SE_Burning)&&type!=typeof(SE_Poison)&&type!=typeof(SE_Wet)&&type!=typeof(SE_Smoke))
+            if(type!=typeof(StatusEffect)&&type!=typeof(SE_Stats)&&type!=typeof(SE_Shield)&&type!=typeof(SE_React)&&type!=typeof(SE_Frost)&&type!=typeof(SE_Burning)&&type!=typeof(SE_Poison)&&type!=typeof(SE_Wet)&&type!=typeof(SE_Smoke)&&type!=typeof(SE_Cozy)&&type!=typeof(SE_Rested))
                 throw new InvalidOperationException("Server impact status is not implemented: "+definition.name);
             var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id).ToArray();
             bool existing=rows.Any(r=>r.Table=="status");var effect=existing?GameStatusCodec.Restore(rows,player):definition.Clone();
@@ -48,6 +49,12 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Terminal),nameof(Terminal.Log))]
         private static class Logging
         {private static bool Prefix()=>current==null;}
+        [HarmonyPatch]
+        private static class Messages
+        {
+            private static IEnumerable<MethodBase> TargetMethods()=>typeof(Character).GetMethods(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.DeclaredOnly).Where(method=>method.Name==nameof(Character.Message));
+            private static bool Prefix()=>current==null;
+        }
         [HarmonyPatch(typeof(SE_Stats),nameof(SE_Stats.StartupEffects))]
         private static class Startup
         {

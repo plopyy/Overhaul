@@ -19,11 +19,13 @@ namespace Overhaul.Persistence
             internal float? InventoryWeight;
         }
         [ThreadStatic] internal static Frame Current;
+        internal static StatusEffect[] Effects(PlayerSnapshot state,Player player)=>GameAttackResources.Effects(state).Select(effect=>
+        {var copy=effect.Clone();copy.m_character=player;copy.m_startEffectInstances=null;return copy;}).ToArray();
         internal static bool Matches(Character player)=>Current!=null && Current.Player==player;
         internal static void Run(Player player,PlayerSnapshot snapshot,ItemDrop.ItemData weapon,ItemDrop.ItemData ammo,Action action)
         {
             if(!player || snapshot==null || action==null)throw new ArgumentException("Invalid server combat context");
-            var frame=new Frame{Player=player,State=snapshot,Weapon=weapon,Ammo=ammo,Effects=GameAttackResources.Effects(snapshot),
+            var frame=new Frame{Player=player,State=snapshot,Weapon=weapon,Ammo=ammo,Effects=Effects(snapshot,player),
                 Equipment=GameCombatEquipment.Equipped(snapshot)};
             var previous=Current;Current=frame;try{action();}finally{Current=previous;}
         }

@@ -29,7 +29,7 @@ namespace Overhaul.Persistence
             internal readonly List<Action> Publish=new List<Action>();
         }
         [ThreadStatic] private static Frame current;
-        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React));
+        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React) || effect.GetType()==typeof(SE_Cozy) || effect.GetType()==typeof(SE_Rested));
         private static void Change(Frame frame,IEnumerable<PlayerChange> rows)
         {
             var changes=rows.ToArray();
@@ -46,9 +46,12 @@ namespace Overhaul.Persistence
             {
                 GameCombatContext.Run(player,state,null,null,()=>GameStatusGame.Simulate(()=>
                 {
-                    foreach(var header in state.Rows.Where(r=>r.Table=="status"))
+                    // Resting refreshes Rested after its own age has advanced.
+                    // Process it last so a stale pre-refresh copy cannot win.
+                    foreach(var header in state.Rows.Where(r=>r.Table=="status").OrderBy(r=>ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])) is SE_Cozy?1:0))
                     {
-                        int id=Convert.ToInt32(header.Values[0]);var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id);
+                        int id=Convert.ToInt32(header.Values[0]);var rows=frame.State.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id);
+                        if(!rows.Any(r=>r.Table=="status"))continue;
                         var effect=GameStatusCodec.Restore(rows,player);
                         if(!Supported(effect))continue;
                         if(!(effect is SE_Burning) && !(effect is SE_Poison) && !(effect is SE_Stats) && !(effect is SE_Smoke))
@@ -97,6 +100,19 @@ namespace Overhaul.Persistence
                 return new Result{Changes=frame.Changes.ToArray(),LastHit=frame.LastHit,Damage=frame.Damage,Lethal=PlayerResources.Read(frame.State,"health")<=0,Death=frame.Death,Publish=()=>{foreach(var action in frame.Publish)action();}};
             }
             finally{current=previous;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.AddStatusEffect),new[]{typeof(int),typeof(bool),typeof(int),typeof(float),typeof(short)})]
+        private static class NestedStatus
+        {
+            [HarmonyPriority(Priority.First+400)]
+            private static bool Prefix(SEMan __instance,int nameHash,bool resetTime,int itemLevel,float skillLevel,short variant,ref StatusEffect __result)
+            {
+                if(current==null||__instance.m_character!=current.Player)return true;
+                bool existing=current.State.Rows.Any(row=>row.Table=="status"&&Convert.ToInt32(row.Values[0])==nameHash);
+                if(!existing||resetTime)Change(current,GameStatusImpact.Prepare(current.State,current.Player,nameHash,itemLevel,skillLevel,variant,ZDOID.None));
+                var rows=current.State.Rows.Where(row=>(row.Table=="status"||row.Table=="status_data")&&Convert.ToInt32(row.Values[0])==nameHash);
+                __result=rows.Any(row=>row.Table=="status")?GameStatusCodec.Restore(rows,current.Player):null;return false;
+            }
         }
         [HarmonyPatch(typeof(Character),nameof(Character.Damage))]
         private static class Impact

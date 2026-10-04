@@ -46,8 +46,9 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.AddStatusEffect),new[]{typeof(int),typeof(bool),typeof(int),typeof(float),typeof(short)})]
         private static class AddId
         {
-            private static bool Prefix(SEMan __instance,int nameHash,bool resetTime,int itemLevel,float skillLevel,short variant,ref StatusEffect __result)
+            private static bool Prefix(SEMan __instance,int nameHash,bool resetTime,int itemLevel,float skillLevel,short variant,ref StatusEffect __result,bool __runOriginal)
             {
+                if(!__runOriginal)return true;
                 if(!(__instance.m_character is Player player)||Presentation(player))return true;
                 if(GameCreatureAuthority.Enabled){__result=Add(player,nameHash,resetTime,itemLevel,skillLevel,variant);return false;}
                 return !PlayerSessionGame.Managed;
@@ -56,8 +57,9 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.AddStatusEffect),new[]{typeof(StatusEffect),typeof(bool),typeof(int),typeof(float),typeof(short)})]
         private static class AddDefinition
         {
-            private static bool Prefix(SEMan __instance,StatusEffect statusEffect,bool resetTime,int itemLevel,float skillLevel,short variant,ref StatusEffect __result)
+            private static bool Prefix(SEMan __instance,StatusEffect statusEffect,bool resetTime,int itemLevel,float skillLevel,short variant,ref StatusEffect __result,bool __runOriginal)
             {
+                if(!__runOriginal)return true;
                 if(!(__instance.m_character is Player player)||Presentation(player))return true;
                 if(GameCreatureAuthority.Enabled){__result=statusEffect?Add(player,statusEffect.NameHash(),resetTime,itemLevel,skillLevel,variant):null;return false;}
                 return !PlayerSessionGame.Managed;
