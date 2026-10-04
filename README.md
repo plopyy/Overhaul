@@ -47,13 +47,30 @@ Les mondes locaux au format natif 41 sont migrés automatiquement vers `<dossier
 
 Après migration, SQLite sert au chargement et à la sauvegarde du monde. Les objets modifiés et les données globales sont enregistrés en arrière-plan, environ toutes les cinq secondes. Un arrêt normal vide les écritures en attente. Une interruption brutale peut perdre les modifications encore en attente. Le timer automatique du jeu ne déclenche plus de capture supplémentaire ni de copie complète de la base SQLite, même si son intervalle est réduit. Les autres demandes de sauvegarde du monde, notamment la commande de sauvegarde manuelle, créent des copies autonomes dans `sqlite-backups` (trois conservées).
 
-Les profils des personnages conservent leur sauvegarde native côté client. Les inventaires des coffres et les autres inventaires du monde sont dans `inventory`, avec une ligne par emplacement occupé. Le nom personnalisé d'un coffre est dans `properties`, clé `Overhaul.ChestName`.
+Par défaut, les profils des personnages conservent leur sauvegarde native côté client. Le mode expérimental décrit ci-dessous utilise une sauvegarde par personnage et par monde. Les inventaires des coffres et les autres inventaires du monde sont dans `inventory`, avec une ligne par emplacement occupé. Le nom personnalisé d'un coffre est dans `properties`, clé `Overhaul.ChestName`.
 
 SQLite utilise temporairement des fichiers `.db-wal` et `.db-shm` pendant son fonctionnement. Pour copier un monde actif, demander une sauvegarde manuelle et utiliser la nouvelle copie une fois créée dans `sqlite-backups`. Pour copier son fichier `.db` directement, arrêter normalement le serveur au préalable. Le fichier `.owner` empêche deux instances Overhaul d'écrire simultanément dans le même monde.
 
 Cette intégration cible les mondes locaux. Les mondes cloud gardent le fonctionnement natif. Les anciennes sauvegardes non découpées doivent d'abord être converties par la version compatible de Valheim. Windows x64 embarque SQLite 3.53.4 ; Linux nécessite `libsqlite3.so.0` version 3.52.0 ou supérieure et n'a pas été validé dans cet environnement.
 
 Tests effectués sur une copie de monde : migration et reconstruction de 556 403 objets, reprise après interruption, écritures et suppressions, chargement dans les classes natives puis redémarrage. Les transferts personnage/coffre, les piles partielles et le refus quand l'inventaire est plein sont vérifiés après sauvegarde et rechargement natifs du personnage et du monde. Les compétences et données personnalisées sont conservées dans ces tests. Un essai multijoueur sur serveur réel reste nécessaire.
+
+### Personnages et autorité serveur — expérimental
+
+La section `[PlayerPersistence]` de `plopyy.valheim.Overhaul.cfg` contient deux paramètres serveur :
+
+| Paramètre | Défaut | Fonction |
+|---|---|---|
+| `Enabled` | `false` | Active les personnages propres au monde et le traitement des actions par le serveur. Réservé aux mondes de test tant que les essais multijoueurs réels ne sont pas terminés. |
+| `AllowClientCharacterMigration` | `false` | Autorise l'import initial du personnage local lorsqu'aucun personnage serveur n'existe pour ce compte dans ce monde. Une sauvegarde serveur existante reste prioritaire. |
+
+Dans ce mode, les personnages sont enregistrés dans `<dossier du monde>/players/`, avec une base `.db` par compte authentifié. Les comptes Steam numériques utilisent `steam_<identifiant>.db` ; les identifiants non numériques sont encodés par empreinte avec le préfixe de leur fournisseur. Un même compte possède une progression distincte dans chaque monde, y compris en solo.
+
+Le serveur conserve en mémoire l'état de référence du joueur connecté. Le client transmet des demandes d'action ; le serveur les vérifie, applique les changements et transmet le résultat. Les écritures SQLite s'effectuent en arrière-plan au fil des changements, sans demander un nouvel inventaire complet au client pour chaque action. Les transferts entre personnage et coffre utilisent un journal de reprise commun aux deux bases. Pour sauvegarder ou restaurer cet ensemble, conserver le monde et son dossier `players` ensemble après un arrêt normal.
+
+Les connexions, transferts, actions de jeu et reprises sont couverts par des tests automatisés utilisant aussi les classes natives de Valheim. Le démarrage et le rechargement ont été vérifiés sur une copie isolée du serveur dédié. Les essais avec plusieurs clients réels, le rendu et les FPS restent à effectuer ; le mode reste désactivé par défaut.
+
+### Installer le package
 
 Le dépôt contient les sources ; il ne constitue pas un package prêt à installer.
 

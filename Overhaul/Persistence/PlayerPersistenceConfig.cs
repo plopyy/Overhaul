@@ -10,10 +10,10 @@ namespace Overhaul.Persistence
         internal static void Bind(ConfigFile config)
         {
             Enabled = config.Bind("PlayerPersistence", "Enabled", false,
-                new ConfigDescription("Development switch for authoritative player persistence. Keep disabled until gameplay action integration is validated.",
+                new ConfigDescription("Experimental server-authoritative gameplay and per-world player SQLite saves. Disabled by default pending real multiplayer validation. Enable only on a test world with matching Overhaul clients.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             AllowClientCharacterMigration = config.Bind("PlayerPersistence", "AllowClientCharacterMigration", false,
-                new ConfigDescription("Server policy for the player SQLite system under development: permit a one-time client character import only when no server character exists. False starts fresh. Never replaces an existing server character. The login/gameplay integration is not enabled yet.",
+                new ConfigDescription("When PlayerPersistence.Enabled is true, permit a one-time client character import only when no server character exists for this account in this world. False starts fresh. Never replaces an existing server character. Enable only for trusted initial imports.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
         }
     }
