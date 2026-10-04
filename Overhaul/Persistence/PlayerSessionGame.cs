@@ -24,6 +24,15 @@ namespace Overhaul.Persistence
         internal static bool Ready => !failed && client?.Client?.Ready == true;
         internal static bool IsLocal(ZRpc rpc) => rpc != null && ReferenceEquals(rpc, localServer);
         internal static PlayerAdmission.Session Session(ZRpc rpc) => sessions.TryGetValue(rpc, out var session) ? session : null;
+        internal static IEnumerable<ZDO> ActiveActors()
+        {
+            foreach(var pair in sessions)
+            {
+                if(pair.Value.State!=PlayerAdmission.Phase.Ready || !pair.Key.IsConnected())continue;
+                var actor=Actor(pair.Key);
+                if(actor!=null && actor.GetLong(ZDOVars.s_playerID,0)==CharacterId(pair.Value))yield return actor;
+            }
+        }
         internal static long CharacterId(PlayerAdmission.Session session)
         {
             var row = session?.Snapshot?.Rows.SingleOrDefault(r => r.Table == "state" && (string)r.Values[0] == "player_id");
@@ -143,6 +152,7 @@ namespace Overhaul.Persistence
         }
         internal static void Stop()
         {
+            GamePlayerAreas.Clear();
             client?.Dispose(); client = null;
             foreach (var endpoint in servers.Values) endpoint.Dispose(); servers.Clear(); sessions.Clear(); admission = null;
             localClient?.Dispose(); localServer?.Dispose(); localClient = localServer = null;
