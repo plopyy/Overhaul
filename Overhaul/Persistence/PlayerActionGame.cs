@@ -27,7 +27,7 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.UseOn: return PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Equip: case PlayerActionKind.Unequip: return PlayerEquipmentGame.Prepare(actor,request,snapshot,inventory);
-                case PlayerActionKind.Consume: return command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
+                case PlayerActionKind.Consume: return command.Definition == PlayerFoodGame.Placed ? PlayerFoodGame.FromWorld(actor,request,snapshot) : command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
                 case PlayerActionKind.Buy: case PlayerActionKind.Sell: return PlayerTradeGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Drop: case PlayerActionKind.Trash:
                     return command.TargetId == 0 ? PlayerDropGame.Prepare(actor,request,snapshot,inventory) : PlayerDropGame.FromContainer(rpc,actor,request,snapshot);
@@ -63,13 +63,18 @@ namespace Overhaul.Persistence
             var changes = inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.ToList();
             changes.Add(new PlayerChange("knowledge",false,"materials",item.m_shared.m_name,""));
             if (item.m_shared.m_questItem) changes.Add(new PlayerChange("knowledge",false,"uniques",item.m_shared.m_name,""));
+            return RemoveWorldItem(drop,new PlayerBatch(request.Action.Operation,snapshot.Revision,changes));
+        }
+        internal static PlayerActionPlan RemoveWorldItem(ItemDrop drop,PlayerBatch player)
+        {
+            var view = drop.m_nview; var data = view.GetZDO(); var target = drop.gameObject;
             var uid = data.m_uid;
             var record = GamePersistence.ReserveAction(data);
             try
             {
                 // Reserve before submitting; native inventory/world mutations happen only after the commit.
                 data.SetOwner(ZNet.GetUID());
-                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),
+                return new PlayerActionPlan(new PlayerWorldAction(player,
                     new Dictionary<long,ObjectRecord> { [record.Id] = null }), () =>
                     {
                         if (!drop || !view.IsValid()) throw new IOException("Reserved ground item disappeared before publication");
@@ -77,6 +82,7 @@ namespace Overhaul.Persistence
                         // Native Destroy queues the network notification. Remove the local ZDO now so
                         // an intervening world snapshot cannot resurrect the committed pickup.
                         ZDOMan.instance.HandleDestroyedZDO(uid);
+                        InventoryMoveReservations.DiscardMutations(uid);
                         GamePersistence.ReleaseAction(new[] { uid });
                     });
             }
@@ -142,3 +148,5 @@ namespace Overhaul.Persistence
         private static class PickupGuard { private static void Postfix(ItemDrop __instance,ref bool __result) { if (Held(__instance)) __result = false; } }
     }
 }
+
+

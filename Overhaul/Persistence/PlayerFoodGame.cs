@@ -12,6 +12,28 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerFoodGame
     {
+        internal const string Placed = "food.placed";
+        internal static PlayerActionPlan FromWorld(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var command = request.Gameplay;
+            var target = ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
+            var drop = target ? target.GetComponent<ItemDrop>() : null;
+            var data = drop && drop.m_nview && drop.m_nview.IsValid() ? drop.m_nview.GetZDO() : null;
+            if (data == null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) || !drop.IsPiece() || drop.InTar() ||
+                request.Action.Amount != 1 || request.Action.FromX != 0 || request.Action.FromY != 0 || Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5 ||
+                !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))
+                throw new InvalidOperationException("Placed food is unavailable");
+            var item = drop.m_itemData.Clone(); ItemDrop.LoadFromZDO(item,data);
+            if (!item.m_dropPrefab) item.m_dropPrefab = ObjectDB.instance.GetItemPrefab(data.GetPrefab());
+            if (!item.m_dropPrefab || item.m_stack != 1) throw new InvalidOperationException("Invalid placed food serving");
+            int prefab = item.m_dropPrefab.name.GetStableHashCode();
+            var layout = new InventoryMoveLayout(new Dictionary<int,IEnumerable<int>> { [0] = new[] { prefab } },
+                new Dictionary<int,int> { [prefab] = Math.Max(1,item.m_shared.m_maxStackSize) },Array.Empty<int>());
+            var serving = new PlayerActionInventory(new[] { PlayerActionGame.Row(item) },layout);
+            var consumed = Prepare(request,snapshot,serving).Change.Player;
+            return PlayerActionGame.RemoveWorldItem(drop,new PlayerBatch(consumed.Operation,consumed.ExpectedRevision,
+                consumed.Changes.Where(r => r.Table != "inventory" && r.Table != "item_data")));
+        }
         internal static float Multiplier(IEnumerable<PlayerChange> rows)
         {
             var row = rows.FirstOrDefault(r => r.Table == "custom_data" && (string)r.Values[0] == NutritionDuration.SaveKey);
@@ -119,6 +141,20 @@ namespace Overhaul.Persistence
                 player.SetMaxHealth(health,true); player.SetMaxStamina(stamina,true); player.SetMaxEitr(eitr,true);
             };
         }
+        [HarmonyPatch(typeof(ItemDrop),nameof(ItemDrop.Eat))]
+        private static class PlacedIntent
+        {
+            [HarmonyPriority(Priority.First+200)]
+            private static bool Prefix(ItemDrop __instance,ref bool __result)
+            {
+                if (!PlayerSessionGame.Managed || !Player.m_localPlayer) return true;
+                __result = false;
+                if (!__instance.m_nview || !__instance.m_nview.IsValid() || Player.m_localPlayer.IsTeleporting()) return false;
+                var id = __instance.m_nview.GetZDO().m_uid;
+                InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Consume,Definition = Placed,TargetUser = id.UserID,TargetId = id.ID },0,0,1);
+                return false;
+            }
+        }
         [HarmonyPatch(typeof(Player),nameof(Player.ConsumeItem))]
         private static class ConsumeIntent
         {
@@ -171,3 +207,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

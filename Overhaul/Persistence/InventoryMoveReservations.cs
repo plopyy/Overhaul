@@ -33,6 +33,8 @@ namespace Overhaul.Persistence
             foreach (var action in ready) if (action.Target) action.Method.Invoke(action.Target, action.Arguments);
             if (destroyed.Remove(id)) ZDOMan.instance.HandleDestroyedZDO(id);
         }
+        // A committed deletion supersedes delayed component callbacks (including resource drops).
+        internal static void DiscardMutations(ZDOID id) => deferred.RemoveAll(d => d.Id == id);
         internal static void Clear() { deferred.Clear(); destroyed.Clear(); }
         [HarmonyPatch(typeof(ZDOMan),"HandleDestroyedZDO")]
         private static class NetworkDestruction
@@ -93,3 +95,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+
