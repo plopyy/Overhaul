@@ -8,9 +8,8 @@ namespace Overhaul.Persistence
     internal static class GameAttackResources
     {
         internal sealed class Costs { internal double Stamina,Eitr,Health; }
-        internal static Costs Calculate(PlayerSnapshot snapshot,ItemDrop.ItemData weapon,Attack attack)
+        internal static StatusEffect[] Effects(PlayerSnapshot snapshot)
         {
-            if(weapon==null || attack==null)throw new InvalidOperationException("Attack resource definition is unavailable");
             var equipped=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).Where(i=>i.m_equipped).ToArray();
             var effects=PlayerPotionGame.Active(snapshot).ToList();
             foreach(var item in equipped)
@@ -18,10 +17,21 @@ namespace Overhaul.Persistence
                 if(item.m_shared.m_equipStatusEffect)effects.Add(item.m_shared.m_equipStatusEffect);
                 if(item.m_shared.m_setStatusEffect && equipped.Count(i=>i.m_shared.m_setName==item.m_shared.m_setName)>=item.m_shared.m_setSize)effects.Add(item.m_shared.m_setStatusEffect);
             }
-            effects=effects.GroupBy(e=>e.NameHash()).Select(g=>g.First()).ToList();
-            var skill=snapshot.Rows.FirstOrDefault(r=>r.Table=="skills" && Convert.ToInt32(r.Values[0])==(int)weapon.m_shared.m_skillType);
-            float level=skill==null?0:Convert.ToSingle(skill.Values[1]);foreach(var effect in effects)effect.ModifySkillLevel(weapon.m_shared.m_skillType,ref level);
-            float factor=weapon.m_shared.m_skillType==Skills.SkillType.None?0:Mathf.Clamp01(Mathf.Floor(level)/100f);
+            return effects.GroupBy(e=>e.NameHash()).Select(g=>g.First()).ToArray();
+        }
+        internal static float SkillLevel(PlayerSnapshot snapshot,Skills.SkillType type,IEnumerable<StatusEffect> effects)
+        {
+            if(type==Skills.SkillType.None)return 0;
+            var row=snapshot.Rows.FirstOrDefault(r=>r.Table=="skills" && Convert.ToInt32(r.Values[0])==(int)type);
+            float level=row==null?0:Convert.ToSingle(row.Values[1]);foreach(var effect in effects)effect.ModifySkillLevel(type,ref level);
+            return Mathf.Floor(level);
+        }
+        internal static Costs Calculate(PlayerSnapshot snapshot,ItemDrop.ItemData weapon,Attack attack)
+        {
+            if(weapon==null || attack==null)throw new InvalidOperationException("Attack resource definition is unavailable");
+            var equipped=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).Where(i=>i.m_equipped).ToArray();
+            var effects=Effects(snapshot);
+            float factor=Mathf.Clamp01(SkillLevel(snapshot,weapon.m_shared.m_skillType,effects)/100f);
             float stamina=0;
             if(attack.m_attackStamina>0)
             {
