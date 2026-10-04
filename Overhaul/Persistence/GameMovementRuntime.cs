@@ -70,14 +70,15 @@ namespace Overhaul.Persistence
         internal static ZPackage View(ZDOID actor)
         {
             if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
-            if(!Forced(motion.Player)&&!motion.ForceView)return null;
-            motion.ForceView=false;
+            bool forced=Forced(motion.Player);
+            if(!forced&&!motion.ForceView)return null;
+            motion.ForceView=forced;
             motion.NextView=Time.timeAsDouble+.05;
             var view=GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
             view.Write(motion.Player&&motion.Player.InIntro());return view;
         }
         internal static bool Forced(Player player)=>player&&(GameArrivalRuntime.Active(player.GetZDOID())||player.IsTeleporting()||player.m_attached||player.m_grappling>0||GameDodgeAction.Active(player));
-        internal static void Record(Player player){Remember(player).ForceView=true;if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
+        internal static void Record(Player player){var motion=Remember(player);motion.ForceView|=Forced(player);if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
         private static Motion Remember(Player player)
         {
             var id=player.GetZDOID();if(!motions.TryGetValue(id,out var motion))motions.Add(id,motion=new Motion());
@@ -87,13 +88,7 @@ namespace Overhaul.Persistence
         }
         internal static void Protect(ZDO actor)
         {
-            var instance=ZNetScene.instance?ZNetScene.instance.FindInstance(actor.m_uid):null;
-            if(!Forced(instance?instance.GetComponent<Player>():null))return;
-            if(!motions.TryGetValue(actor.m_uid,out var motion))
-            {
-                actor.SetRotation(Quaternion.identity);
-                actor.Set(ZDOVars.s_velHash,Vector3.zero);actor.Set(ZDOVars.s_bodyVelHash,Vector3.zero);actor.Set(ZDOVars.s_bodyAVelHash,Vector3.zero);return;
-            }
+            if(!motions.TryGetValue(actor.m_uid,out var motion)||!Forced(motion.Player))return;
             actor.SetPosition(motion.Position);actor.SetRotation(motion.Rotation);
             actor.Set(ZDOVars.s_velHash,motion.Velocity);actor.Set(ZDOVars.s_bodyVelHash,motion.Velocity);actor.Set(ZDOVars.s_bodyAVelHash,motion.Angular);
         }
@@ -166,9 +161,7 @@ namespace Overhaul.Persistence
                     var observed=Remember(player);var controls=GameMovementControl.Read(player.GetZDOID());
                     player.m_moveDir=controls?.Move??Vector3.zero;player.m_run=controls?.Run??false;player.m_walk=controls?.Walk??false;player.m_crouchToggled=controls?.Crouch??false;
                     if(controls!=null)player.SetLookDir(controls.Look);
-                    var scope=Enter(player,true);
-                    try
-                    {
+                    __state=Enter(player,true);
                         player.UpdateCrouch(dt);
                         if(StealthSystem.instance)player.UpdateStealth(dt);
                         if(!player.IsDead()&&!player.InIntro())
@@ -178,8 +171,6 @@ namespace Overhaul.Persistence
                             {player.m_running=player.CheckRun(player.m_moveDir,dt);if(player.IsCrouching())player.OnSneaking(dt);}
                         }
                         player.EdgeOfWorldKill(dt);
-                    }
-                    finally{Leave(scope);}
                     return true;
                 }
                 if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);
@@ -193,7 +184,7 @@ namespace Overhaul.Persistence
                 var input=GameMovementControl.Read(player.GetZDOID());
                 if(player!=Player.m_localPlayer){player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;}
                 player.m_debugFly=false;
-                if(input!=null)player.SetLookDir(input.Look);
+                if(input!=null&&player!=Player.m_localPlayer)player.SetLookDir(input.Look);
                 if(player!=Player.m_localPlayer)player.UpdateCrouch(dt);
                 if(StealthSystem.instance)player.UpdateStealth(dt);
                 player.EdgeOfWorldKill(dt);
@@ -205,6 +196,27 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(ZDO),nameof(ZDO.IsOwner))]
         private static class Owner
         {private static bool Prefix(ZDO __instance,ref bool __result){if(!simulating||simulating.GetZDOID()!=__instance.m_uid)return true;__result=true;return false;}}
+        [HarmonyPatch(typeof(Character),"UpdateMotion")]
+        private static class ClientLocomotion
+        {
+            private static bool Prefix(Character __instance,float dt)
+            {
+                if(!(__instance is Player player)||simulating!=player||player==Player.m_localPlayer||Forced(player))return true;
+                if(!player.InLiquidSwimDepth()&&!player.IsOnGround())player.m_maxAirAltitude=Mathf.Max(player.m_maxAirAltitude,player.transform.position.y);
+                player.m_lastGroundTouch+=dt;player.m_jumpTimer+=dt;
+                return false;
+            }
+        }
+        [HarmonyPatch(typeof(Character),"SyncVelocity")]
+        private static class ClientVelocity
+        {private static bool Prefix(Character __instance)=>!(__instance is Player player)||simulating!=player||player==Player.m_localPlayer||Forced(player);}
+        [HarmonyPatch(typeof(Character),"OnCollisionStay")]
+        private static class ObserveGround
+        {
+            private static void Prefix(Character __instance,out Scope __state)
+            {__state=__instance is Player player&&Managed(player)&&player!=Player.m_localPlayer?Enter(player,true):null;}
+            private static void Finalizer(Scope __state){Leave(__state);}
+        }
         [HarmonyPatch(typeof(ZSyncTransform),"OwnerSync")]
         private static class Sync
         {
