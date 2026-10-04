@@ -72,23 +72,76 @@ namespace Overhaul.Persistence
             if(!piece.m_canBeRemoved || !piece.CanBeRemoved() || (feast?!tool.m_shared.m_buildPieces.m_canRemoveFeasts:!tool.m_shared.m_buildPieces.m_canRemovePieces))throw new InvalidOperationException("Piece cannot be dismantled");
             // These components have their own stored payloads; never delete one until its
             // complete refund has been incorporated into the same transaction.
-            if(target.GetComponent<IRemoved>()!=null || target.GetComponent<Smelter>() || target.GetComponent<CookingStation>() || target.GetComponent<Fermenter>() || target.GetComponent<ItemStand>() || target.GetComponent<ArmorStand>() || target.GetComponent<Turret>() || target.GetComponent<Catapult>() || piece.m_destroyedLootPrefab)
+            if(target.GetComponent<IRemoved>()!=null)
                 throw new InvalidOperationException("Dismantling this machine requires its stored contents handler");
             var outputs=new List<ObjectRecord>();var chest=target.GetComponentInChildren<Container>();
             if(chest)
             {
                 if(!chest.CheckAccess(creator) || Storage.MoveReservation.Busy(chest) || Storage.ChestAccess.Leased(chest) || GamePersistence.ReservedSlots(data.m_uid).Any())throw new InvalidOperationException("Container is in use");
-                chest.Load();foreach(var item in chest.GetInventory().GetAllItems())outputs.Add(PlayerDropGame.Ground(item.Clone(),target.transform.position+Vector3.up,Quaternion.identity));
+                chest.Load();outputs.AddRange(Drops(chest.GetInventory().GetAllItems().Select(i=>i.Clone()),chest.m_destroyedLootPrefab,target.transform.position+Vector3.up));
             }
+            outputs.AddRange(Drops(Contents(target,data),null,target.transform.position+Vector3.up));
+            var refunds=new List<ItemDrop.ItemData>();
             if(!ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()))foreach(var requirement in piece.m_resources.Where(r=>r.m_resItem && r.m_recover && r.m_amount>0))
             {
                 int count=requirement.m_amount;var food=target.GetComponent<Feast>();if(food)count=Mathf.FloorToInt(count*food.GetStackPercentige());
                 if(data.GetLong(ZDOVars.s_creator,0)==0 && count>0)count=Mathf.Max(1,count/3);
                 while(count>0)
-                {var item=requirement.m_resItem.m_itemData.Clone();item.m_dropPrefab=requirement.m_resItem.gameObject;item.m_stack=Math.Min(count,item.m_shared.m_maxStackSize);item.m_equipped=false;item.m_cheated|=data.GetBool(ZDOVars.s_cheated,false)&&!PlayerProfile.s_bypassCheatChecks;count-=item.m_stack;outputs.Add(PlayerDropGame.Ground(item,target.transform.position+Vector3.up*piece.m_returnResourceHeightOffset,Quaternion.identity));}
+                {var item=requirement.m_resItem.m_itemData.Clone();item.m_dropPrefab=requirement.m_resItem.gameObject;item.m_stack=Math.Min(count,item.m_shared.m_maxStackSize);item.m_equipped=false;item.m_cheated|=data.GetBool(ZDOVars.s_cheated,false)&&!PlayerProfile.s_bypassCheatChecks;count-=item.m_stack;refunds.Add(item);}
             }
+            outputs.AddRange(Drops(refunds,piece.m_destroyedLootPrefab,target.transform.position+Vector3.up*piece.m_returnResourceHeightOffset));
             if(outputs.Count>127)throw new InvalidOperationException("Dismantling output exceeds one transaction");
             return PlayerActionGame.RemoveWorldObject(view,inventory.Delta(request.Action.Operation,snapshot.Revision),outputs);
+        }
+        internal static IEnumerable<ObjectRecord> Drops(IEnumerable<ItemDrop.ItemData> source,GameObject lootPrefab,Vector3 position)
+        {
+            var items=new List<ItemDrop.ItemData>();
+            foreach(var input in source)
+            {
+                if(input.m_stack<0 || input.m_stack>100000 || input.m_shared.m_maxStackSize<1)throw new InvalidOperationException("Invalid dismantling quantity");
+                for(int left=input.m_stack;left>0;){var item=input.Clone();item.m_stack=Math.Min(left,item.m_shared.m_maxStackSize);item.m_equipped=false;left-=item.m_stack;items.Add(item);if(items.Count>4096)throw new InvalidOperationException("Dismantling contents are too large");}
+            }
+            if(!lootPrefab){foreach(var item in items)yield return PlayerDropGame.Ground(item,position,Quaternion.identity);yield break;}
+            var chest=lootPrefab.GetComponent<Container>();if(!chest || chest.m_width<1 || chest.m_height<1)throw new InvalidOperationException("Dismantling loot container is unavailable");
+            int capacity=checked(chest.m_width*chest.m_height);
+            for(int start=0;start<items.Count;start+=capacity)
+            {
+                var bag=new Inventory("Dismantling",null,chest.m_width,chest.m_height);
+                for(int i=0;i<capacity && start+i<items.Count;i++){var item=items[start+i];item.m_gridPos=new Vector2i(i%chest.m_width,i/chest.m_width);bag.m_inventory.Add(item);}
+                var package=new ZPackage();bag.Save(package);var output=GamePersistence.AllocateActionObject(lootPrefab,position,Quaternion.identity);
+                output.Properties.Add(new PropertyRecord{Key=ZDOVars.s_items,Type="bytes",Value=package.GetArray()});
+                output.Properties.Add(new PropertyRecord{Key=ZDOVars.s_addedDefaultItems,Type="int",Value=1});yield return output;
+            }
+        }
+        internal static IEnumerable<ItemDrop.ItemData> Contents(GameObject target,ZDO data)
+        {
+            var items=new List<ItemDrop.ItemData>();
+            void Add(ItemDrop prefab,int count,bool cheated=false)
+            {if(count<=0)return;if(!prefab || count>100000)throw new InvalidOperationException("Dismantling content definition is unavailable");var item=prefab.m_itemData.Clone();item.m_dropPrefab=prefab.gameObject;item.m_stack=count;item.m_cheated|=cheated;item.m_worldLevel=Game.m_worldLevel;items.Add(item);}
+            var smelter=target.GetComponent<Smelter>();
+            if(smelter)
+            {
+                Add(smelter.m_fuelItem,Mathf.FloorToInt(smelter.GetFuel()));
+                int queued=smelter.GetQueueSize();if(queued<0 || queued>smelter.m_maxOre)throw new InvalidOperationException("Invalid smelter queue");
+                for(int i=0;i<queued;i++)Add(smelter.GetItemConversion(data.GetString("item"+i,""))?.m_from,1);
+                int produced=data.GetInt(ZDOVars.s_spawnAmount,0);if(produced>0)Add(smelter.GetItemConversion(data.GetString(ZDOVars.s_spawnOre,""))?.m_to,produced,data.GetBool(ZDOVars.s_cheatedQueued,false)||data.GetBool(ZDOVars.s_cheated,false));
+            }
+            var cooking=target.GetComponent<CookingStation>();
+            if(cooking)
+            {
+                Add(cooking.m_fuelItem,Mathf.FloorToInt(cooking.GetFuel()),data.GetBool(ZDOVars.s_cheated,false));
+                for(int i=0;i<cooking.m_slots.Length;i++){cooking.GetSlot(i,out string name,out _,out _,out bool cheated);if(name.Length!=0)Add(ObjectDB.instance.GetItemPrefab(name)?.GetComponent<ItemDrop>(),1,cheated);}
+            }
+            var stand=target.GetComponent<ItemStand>();
+            if(stand && data.GetInt(ZDOVars.s_item,0)!=0)
+            {var prefab=ObjectDB.instance.GetItemPrefab(data.GetInt(ZDOVars.s_item,0));var item=prefab?prefab.GetComponent<ItemDrop>()?.m_itemData.Clone():null;if(item==null)throw new InvalidOperationException("Stand item is unavailable");item.m_dropPrefab=prefab;ItemDrop.LoadFromZDO(item,data);items.Add(item);}
+            var armor=target.GetComponent<ArmorStand>();
+            if(armor)for(int i=0;i<armor.m_slots.Count;i++)
+            {int hash=data.GetInt((i+"_item").GetStableHashCode(),0);if(hash==0)continue;var prefab=ObjectDB.instance.GetItemPrefab(hash);var item=prefab?prefab.GetComponent<ItemDrop>()?.m_itemData.Clone():null;if(item==null)throw new InvalidOperationException("Armor stand item is unavailable");item.m_dropPrefab=prefab;ItemDrop.LoadFromZDO(item,data,i);items.Add(item);}
+            var turret=target.GetComponent<Turret>();if(turret && turret.m_returnAmmoOnDestroy && turret.GetAmmo()>0)Add(ObjectDB.instance.GetItemPrefab(turret.GetAmmoType())?.GetComponent<ItemDrop>(),turret.GetAmmo());
+            // Native fermenters and catapults do not refund their active contents on destruction.
+            // Pending production/catapult transactions reserve the ZDO and reject this action.
+            return items;
         }
         internal static void Validate(ZDO actor,Piece piece,Vector3 point,Quaternion rotation,long creator)
         {
