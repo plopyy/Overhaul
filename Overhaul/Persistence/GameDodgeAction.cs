@@ -9,7 +9,7 @@ namespace Overhaul.Persistence
     internal static class GameDodgeAction
     {
         internal const string Dodge="movement.dodge";
-        private sealed class Roll{internal Player Player;internal double Started;internal bool Animated;internal AnimatorCullingMode Culling;}
+        private sealed class Roll{internal Player Player;internal double Started;internal bool Animated,Rewarded;internal AnimatorCullingMode Culling;}
         private static readonly Dictionary<ZDOID,Roll> rolls=new Dictionary<ZDOID,Roll>();
         internal static void Forget(ZDOID actor)
         {
@@ -38,6 +38,21 @@ namespace Overhaul.Persistence
             var changes=PlayerCraftProgressGame.Raise(state,Skills.SkillType.Dodge,.1f).ToList();
             if(cost>0){changes.Add(PlayerResources.Row("stamina",Math.Max(0,PlayerResources.Read(state,"stamina")-cost*Game.m_staminaRate)));changes.Add(PlayerResources.Row(PlayerResources.StaminaDelay,player.m_staminaRegenDelay));}
             return changes.ToArray();
+        }
+        internal static void Perfect(Player player)
+        {
+            if(!player||!rolls.TryGetValue(player.GetZDOID(),out var roll)||roll.Rewarded||!player.m_dodgeInvincibleCached)return;
+            roll.Rewarded=true;
+            if(!InventoryMoveGame.TimedAction(player,state=>
+            {
+                if(GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return null;
+                float cost=0;GameCombatContext.Run(player,state,null,null,()=>cost=player.GetDodgeStaminaUse());
+                var changes=PlayerResources.Restore(state,0,cost*player.m_perfectDodgeStaminaReturnMultiplier,0).ToList();
+                GamePlayerHit.Merge(changes,GameAdrenaline.Change(PlayerProgressService.Overlay(state,changes),player,player.m_perfectDodgeAdrenaline));
+                GamePlayerHit.Merge(changes,PlayerCraftProgressGame.Raise(PlayerProgressService.Overlay(state,changes),Skills.SkillType.Dodge,1));
+                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,changes),new Dictionary<long,ObjectRecord>()),()=>
+                {if(player){player.m_beenHitWhileDodging=true;player.m_perfectDodgeEffects.Create(player.transform.position,Quaternion.identity,player.transform,1,-1,player.GetZDOID());}});
+            }))roll.Rewarded=false;
         }
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot state)
         {
@@ -83,6 +98,18 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Player),nameof(Player.IsDodgeInvincible))]
         private static class Invincibility
         {private static bool Prefix(Player __instance,ref bool __result){if(!GameMovementRuntime.Managed(__instance))return true;__result=Active(__instance)&&__instance.m_dodgeInvincibleCached;return false;}}
+        [HarmonyPatch(typeof(Player),nameof(Player.HitWhileDodging))]
+        private static class PerfectHit
+        {
+            private static bool Prefix(Player __instance)
+            {if(GameMovementRuntime.Managed(__instance)){Perfect(__instance);return false;}return !PlayerSessionGame.Managed;}
+        }
+        [HarmonyPatch(typeof(Player),"RPC_HitWhileDodging")]
+        private static class PerfectOrigin
+        {
+            private static bool Prefix(Player __instance,long sender)
+            {if(GameMovementRuntime.Managed(__instance)){if(sender==ZNet.GetUID())Perfect(__instance);return false;}return !PlayerSessionGame.Managed;}
+        }
         [HarmonyPatch(typeof(CharacterAnimEvent),"OnAnimatorMove")]
         private static class RootMotion
         {
