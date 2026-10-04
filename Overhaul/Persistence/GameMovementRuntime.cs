@@ -17,6 +17,8 @@ namespace Overhaul.Persistence
             internal Vector3 SavedPosition;
             internal double NextView;
             internal long ViewSequence;
+            internal Player Player;
+            internal bool Suspended,WasKinematic;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
         [ThreadStatic] private static Player simulating;
@@ -27,8 +29,9 @@ namespace Overhaul.Persistence
             internal bool Entered;
         }
         internal static bool Managed(Player player)=>GameCreatureAuthority.Enabled&&player&&player.m_nview&&player.m_nview.IsValid()&&InventoryMoveGame.State(player.GetZDOID())!=null;
-        internal static void Forget(ZDOID actor){motions.Remove(actor);GameDodgeAction.Forget(actor);}
-        internal static void Clear(){motions.Clear();simulating=null;GameDodgeAction.Clear();}
+        internal static void Forget(ZDOID actor)
+        {if(motions.TryGetValue(actor,out var motion)&&motion.Suspended&&motion.Player&&motion.Player.m_body)motion.Player.m_body.isKinematic=motion.WasKinematic;motions.Remove(actor);GameDodgeAction.Forget(actor);}
+        internal static void Clear(){foreach(var actor in motions.Keys.ToArray())Forget(actor);simulating=null;GameDodgeAction.Clear();}
         internal static void SavePosition(ZDOID actor,bool final=false)
         {
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
@@ -51,6 +54,7 @@ namespace Overhaul.Persistence
         private static Motion Remember(Player player)
         {
             var id=player.GetZDOID();if(!motions.TryGetValue(id,out var motion))motions.Add(id,motion=new Motion());
+            motion.Player=player;
             motion.Position=player.m_body?player.m_body.position:player.transform.position;motion.Rotation=player.m_body?player.m_body.rotation:player.transform.rotation;
             motion.Velocity=player.m_body?player.m_body.linearVelocity:Vector3.zero;motion.Angular=player.m_body?player.m_body.angularVelocity:Vector3.zero;return motion;
         }
@@ -60,6 +64,8 @@ namespace Overhaul.Persistence
             actor.SetPosition(motion.Position);actor.SetRotation(motion.Rotation);
             actor.Set(ZDOVars.s_velHash,motion.Velocity);actor.Set(ZDOVars.s_bodyVelHash,motion.Velocity);actor.Set(ZDOVars.s_bodyAVelHash,motion.Angular);
         }
+        internal static bool Position(ZDOID actor,out Vector3 point)
+        {if(motions.TryGetValue(actor,out var motion)){point=motion.Position;return true;}point=Vector3.zero;return false;}
         private static Scope Enter(Player player,bool context)
         {
             var scope=new Scope{Previous=simulating,Frame=GameCombatContext.Current,Entered=true};
@@ -78,9 +84,13 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Character),nameof(Character.CustomFixedUpdate))]
         private static class PhysicsStep
         {
-            private static void Prefix(Character __instance,float dt,out Scope __state)
+            private static bool Prefix(Character __instance,float dt,out Scope __state)
             {
-                __state=null;if(!(__instance is Player player)||!Managed(player))return;
+                __state=null;if(!(__instance is Player player)||!Managed(player))return true;
+                var motion=Remember(player);
+                if(player.m_body&&ZNetScene.instance&&!ZNetScene.instance.IsAreaReady(player.transform.position))
+                {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
+                if(motion.Suspended&&player.m_body){player.m_body.isKinematic=motion.WasKinematic;motion.Suspended=false;}
                 __state=Enter(player,true);
                 GameDodgeAction.Tick(player);
                 var input=GameMovementControl.Read(player.GetZDOID());
@@ -88,6 +98,7 @@ namespace Overhaul.Persistence
                 player.m_debugFly=false;
                 if(input!=null)player.SetLookDir(input.Look);
                 if(player!=Player.m_localPlayer)player.UpdateCrouch(dt);
+                return true;
             }
             private static void Finalizer(Character __instance,Scope __state)
             {try{if(__state?.Entered==true)Remember((Player)__instance);}finally{Leave(__state);}}

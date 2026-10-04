@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using HarmonyLib;
+using UnityEngine;
 
 namespace Overhaul.Persistence
 {
@@ -21,8 +22,28 @@ namespace Overhaul.Persistence
             if(!player || peer==null || owner!=peer.m_uid)return false;
             var session=PlayerSessionGame.Session(peer.m_rpc);
             if(session==null || session.State!=PlayerAdmission.Phase.Ready)return false;
-            if(existing==null)return id.UserID==peer.m_uid;
+            if(existing==null)return id.UserID==peer.m_uid&&(peer.m_characterID.IsNone()||peer.m_characterID==id);
             return wasPlayer && existing.GetOwner()==peer.m_uid && (peer.m_characterID.IsNone() || peer.m_characterID==id);
+        }
+        internal static bool Position(ZNetPeer peer,ZDOID id,ZPackage body,ref Vector3 position)
+        {
+            if(!GameCreatureAuthority.Enabled)return true;
+            int offset=body.GetPos();int prefab;try{body.ReadUShort();prefab=body.ReadInt();}finally{body.SetPos(offset);}
+            if(!PlayerPrefab(prefab))return true;
+            if(GameMovementRuntime.Position(id,out var simulated)){position=simulated;return true;}
+            var existing=ZDOMan.instance.GetZDO(id);
+            if(existing!=null){position=existing.GetPosition();return true;}
+            var session=PlayerSessionGame.Session(peer.m_rpc);var state=InventoryMoveGame.SessionState(peer.m_rpc)??session?.Snapshot;
+            if(state==null)return false;
+            var spawn=state.Rows.FirstOrDefault(r=>r.Table=="spawn"&&(string)r.Values[0]=="logout")??state.Rows.FirstOrDefault(r=>r.Table=="spawn"&&(string)r.Values[0]=="bed");
+            if(spawn!=null)
+            {
+                position=new Vector3(Convert.ToSingle(spawn.Values[1]),Convert.ToSingle(spawn.Values[2]),Convert.ToSingle(spawn.Values[3]));
+                if((string)spawn.Values[0]=="logout")position.y+=.25f;
+                return true;
+            }
+            if(!Game.instance||!ZoneSystem.instance||!ZoneSystem.instance.GetLocationIcon(Game.instance.m_StartLocation,out position))return false;
+            position+=Vector3.up*2;return true;
         }
         [HarmonyPatch(typeof(ZDOMan),"RPC_ZDOData")]
         private static class Incoming

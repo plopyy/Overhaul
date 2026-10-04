@@ -74,6 +74,7 @@ namespace Overhaul.Persistence
                         var position = input.ReadVector3(); var body = input.ReadPackage();
                         if (Held(id) || PlayerFishingCastGame.ServerOwned(id) || GameCreatureAuthority.Owns(id) || GameWorldAuthority.Owns(id) || GameCreatureAuthority.IncomingCreature(body) || GameWorldAuthority.Incoming(body)) { peer.m_zdos.Remove(id); continue; }
                         if(!GamePlayerReplication.Accept(peer.m_peer,id,ownerId,body)){peer.m_zdos.Remove(id);continue;}
+                        if(!GamePlayerReplication.Position(peer.m_peer,id,body,ref position)){peer.m_zdos.Remove(id);continue;}
                         output.Write(id); output.Write(owner); output.Write(revision); output.Write(ownerId); output.Write(position); output.Write(body);
                     }
                     if (input.GetPos() != input.Size()) throw new System.IO.InvalidDataException("Unexpected world data suffix");
