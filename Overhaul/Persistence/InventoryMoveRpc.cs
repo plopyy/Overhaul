@@ -57,7 +57,9 @@ namespace Overhaul.Persistence
         {
             var player = Player.m_localPlayer;
             if (!player) throw new InvalidDataException("Player disappeared during inventory action");
+            var eating = !reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Consume;
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
+            if (eating) PlayerFoodGame.Feedback(player,reply.Player);
             var gui = InventoryGui.instance;
             if (reply.Notification)
             {

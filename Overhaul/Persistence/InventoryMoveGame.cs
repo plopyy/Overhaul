@@ -13,6 +13,14 @@ namespace Overhaul.Persistence
     {
         internal static InventoryMoveRpc Client;
         internal static bool SharedView(Container container) => Access.HasViewers(container);
+        internal static InventoryMoveLease Source(ZRpc rpc,InventoryMoveRequest request,out Container chest)
+        {
+            var command = request.Gameplay; var target = ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
+            chest = target ? target.GetComponent<Container>() : null; var access = Access.Viewer(rpc,chest);
+            if (access == null) throw new InvalidOperationException("Source inventory is not open");
+            return access.Reserve(new InventoryMoveRequest { ContainerUser = command.TargetUser,ContainerId = command.TargetId,
+                Action = request.Action,Gameplay = command });
+        }
         private static readonly List<InventoryMoveRpc> connections = new List<InventoryMoveRpc>();
         internal static void FinishSession()
         {

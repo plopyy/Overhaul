@@ -43,11 +43,7 @@ namespace Overhaul.Persistence
         }
         internal static PlayerActionPlan FromContainer(ZRpc rpc,ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
-            var command = request.Gameplay; var target = ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
-            var chest = target ? target.GetComponent<Container>() : null; var access = InventoryMoveGame.Access.Viewer(rpc,chest);
-            if (access == null) throw new InvalidOperationException("Drop source inventory is not open");
-            var lease = access.Reserve(new InventoryMoveRequest { ContainerUser = command.TargetUser,ContainerId = command.TargetId,
-                Action = request.Action,Gameplay = command });
+            var lease = InventoryMoveGame.Source(rpc,request,out var chest);
             try
             {
                 var package = new ZPackage(); chest.GetInventory().Save(package); var before = PlayerNativeFormat.DecodeInventory(package.GetArray());

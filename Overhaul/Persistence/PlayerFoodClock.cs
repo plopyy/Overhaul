@@ -35,7 +35,10 @@ namespace Overhaul.Persistence
     }
     internal sealed partial class PlayerDatabase
     {
-        internal double FoodClock => PlayerFoodClock.Read(ReadTables("state"));
+        internal double FoodClock
+        {
+            get { using (var row = db.Query("SELECT real FROM state WHERE key=?",PlayerFoodClock.Key)) return row.Read() ? Convert.ToDouble(row.Value(0)) : 0; }
+        }
         internal void AdvanceFood(double seconds)
         {
             if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0) throw new ArgumentOutOfRangeException(nameof(seconds));
@@ -51,7 +54,17 @@ namespace Overhaul.Persistence
     }
     internal sealed partial class PlayerDatabaseWriter
     {
-        internal Task<bool> AdvanceFood(PlayerIdentity identity,double seconds) => Submit(() =>
-        { Get(identity).AdvanceFood(seconds); return true; },true);
+        internal Task<bool> AdvanceFood(PlayerIdentity identity,double seconds)
+        {
+            if (shared == null) return Submit(() => { Get(identity).AdvanceFood(seconds); return true; },true);
+            return SubmitWorld(world =>
+            {
+                PrepareTransfers(world);
+                // A failed cross-database meal must recover before another timer checkpoint.
+                using (var pending = world.Query("SELECT 1 FROM player_transfers WHERE provider=? AND account=? AND complete=0",identity.Provider,identity.Account))
+                    if (pending.Read()) throw new InvalidOperationException("Food timer is waiting for transfer recovery");
+                Get(identity).AdvanceFood(seconds); return true;
+            });
+        }
     }
 }

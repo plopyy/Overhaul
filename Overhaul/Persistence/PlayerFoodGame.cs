@@ -28,7 +28,7 @@ namespace Overhaul.Persistence
         }
         internal static PlayerActionPlan Prepare(InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
-            if (request.Gameplay.TargetId != 0 || request.Action.Amount != 1) throw new InvalidOperationException("Invalid meal source or quantity");
+            if (request.Action.Amount != 1) throw new InvalidOperationException("Invalid meal quantity");
             int slot = request.Action.FromY * 256 + request.Action.FromX;
             var item = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);
             if (item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Consumable || item.m_shared.m_food <= 0 ||
@@ -66,6 +66,38 @@ namespace Overhaul.Persistence
             changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:food",item.m_shared.m_name,1));
             return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),new Dictionary<long,ObjectRecord>()),() => { });
         }
+        internal static PlayerActionPlan FromContainer(ZRpc rpc,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var lease = InventoryMoveGame.Source(rpc,request,out var chest);
+            try
+            {
+                var package = new ZPackage(); chest.GetInventory().Save(package); var before = PlayerNativeFormat.DecodeInventory(package.GetArray());
+                var bag = new PlayerActionInventory(before,lease.Layout);
+                var planned = Prepare(request,snapshot,bag).Change.Player;
+                var delta = bag.Delta(request.Action.Operation,0);
+                if (!lease.Reserve(ContainerVersions.Slots(delta))) throw new InvalidOperationException("Food source slot is busy");
+                var player = new PlayerBatch(planned.Operation,planned.ExpectedRevision,planned.Changes.Where(r => r.Table != "inventory" && r.Table != "item_data"));
+                var action = new PlayerWorldAction(player,new Dictionary<long,ObjectRecord>(),
+                    new Dictionary<long,PlayerContainerAction> { [lease.ObjectId] = new PlayerContainerAction(before,delta) });
+                return new PlayerActionPlan(action,() => { lease.Publish(action.CommittedContainers[lease.ObjectId]); lease.Dispose(); });
+            }
+            catch { lease.Dispose(); throw; }
+        }
+        internal static void Feedback(Player player,PlayerBatch confirmed)
+        {
+            try
+            {
+                var stat = confirmed.Changes.FirstOrDefault(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "statistics:0:food");
+                if (stat == null) return;
+                var item = confirmed.Changes.Where(r => r.Table == "food" && !r.Delete).Select(r => Meal((string)r.Values[1],1))
+                    .FirstOrDefault(i => i.m_shared.m_name == (string)stat.Values[1]);
+                if (item == null) return;
+                player.m_consumeItemEffects.Create(player.transform.position,Quaternion.identity,null,1f,-1,player.GetZDOID());
+                if (player.m_zanim) player.m_zanim.SetTrigger("eat");
+                player.SetUseHandVisual(item.m_dropPrefab,item.m_shared.m_foodEatAnimTime);
+            }
+            catch (Exception error) { ZLog.LogWarning("[Overhaul food visual] " + error.Message); }
+        }
         internal static Action Presentation(IEnumerable<PlayerChange> source,Player player)
         {
             var rows = source.ToArray(); if (rows.Length == 0) return () => { };
@@ -95,8 +127,16 @@ namespace Overhaul.Persistence
             {
                 if (__instance != Player.m_localPlayer || !PlayerSessionGame.Managed) return true;
                 __result = false;
-                if (inventory != __instance.GetInventory() || item == null || !inventory.ContainsItem(item)) return false;
-                InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Consume },item.m_gridPos.x,item.m_gridPos.y,1);
+                inventory = inventory ?? __instance.GetInventory();
+                if (item == null || !inventory.ContainsItem(item)) return false;
+                var endpoint = InventoryMoveGame.Client; var id = ZDOID.None;
+                if (inventory != __instance.GetInventory())
+                {
+                    var chest = endpoint?.Container;
+                    if (!chest || !endpoint.ManagedView(chest) || inventory != chest.GetInventory() || !chest.m_nview || !chest.m_nview.IsValid()) return false;
+                    id = chest.m_nview.GetZDO().m_uid;
+                }
+                endpoint?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Consume,TargetUser = id.UserID,TargetId = id.ID },item.m_gridPos.x,item.m_gridPos.y,1);
                 return false;
             }
         }
