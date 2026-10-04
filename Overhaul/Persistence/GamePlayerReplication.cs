@@ -51,6 +51,8 @@ namespace Overhaul.Persistence
                 __instance.Set(ZDOVars.s_eitr,(float)PlayerResources.Read(state,"eitr"));
                 __instance.Set(ZDOVars.s_adrenaline,(float)GameAdrenaline.Read(state,PlayerResources.Adrenaline));
                 GameMovementRuntime.Protect(__instance);
+                var avatar=ZNetScene.instance.FindInstance(__instance.m_uid)?.GetComponent<Player>();
+                if(avatar)__instance.Set(ZDOVars.s_dodgeinv,GameDodgeAction.Active(avatar)&&avatar.m_dodgeInvincibleCached);
             }
         }
     }

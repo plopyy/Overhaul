@@ -27,8 +27,8 @@ namespace Overhaul.Persistence
             internal bool Entered;
         }
         internal static bool Managed(Player player)=>GameCreatureAuthority.Enabled&&player&&player.m_nview&&player.m_nview.IsValid()&&InventoryMoveGame.State(player.GetZDOID())!=null;
-        internal static void Forget(ZDOID actor)=>motions.Remove(actor);
-        internal static void Clear(){motions.Clear();simulating=null;}
+        internal static void Forget(ZDOID actor){motions.Remove(actor);GameDodgeAction.Forget(actor);}
+        internal static void Clear(){motions.Clear();simulating=null;GameDodgeAction.Clear();}
         internal static void SavePosition(ZDOID actor,bool final=false)
         {
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
@@ -82,6 +82,7 @@ namespace Overhaul.Persistence
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return;
                 __state=Enter(player,true);
+                GameDodgeAction.Tick(player);
                 var input=GameMovementControl.Read(player.GetZDOID());
                 player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;
                 player.m_debugFly=false;
@@ -130,24 +131,6 @@ namespace Overhaul.Persistence
             {
                 if(!__runOriginal||simulating!=__instance)return true;
                 InventoryMoveGame.SpendStamina(__instance.GetZDOID(),v*Game.m_staminaRate,__instance.m_staminaRegenDelay);return false;
-            }
-        }
-        [HarmonyPatch(typeof(Player),"CheckRun")]
-        private static class Running
-        {
-            private static bool Prefix(Player __instance,Vector3 moveDir,float dt,ref bool __result)
-            {
-                if(simulating!=__instance)return true;
-                __result=false;
-                if(!__instance.m_run||moveDir.magnitude<.1f||__instance.IsCrouching()||__instance.IsEncumbered()||__instance.InDodge())return false;
-                float drain=__instance.m_runStaminaDrain*Mathf.Lerp(1,.5f,__instance.GetSkillFactor(Skills.SkillType.Run));
-                drain*=1-__instance.GetEquipmentMovementModifier()+__instance.GetEquipmentRunStaminaModifier();
-                __instance.m_seman.ModifyRunStaminaDrain(drain,ref drain,moveDir,true);
-                __instance.UseStamina(dt*drain*Game.m_moveStaminaRate);
-                if(!__instance.HaveStamina(0))return false;
-                __instance.m_runSkillImproveTimer+=dt;
-                if(__instance.m_runSkillImproveTimer>1){__instance.m_runSkillImproveTimer=0;__instance.RaiseSkill(Skills.SkillType.Run,1);}
-                __instance.ClearActionQueue();__result=true;return false;
             }
         }
     }

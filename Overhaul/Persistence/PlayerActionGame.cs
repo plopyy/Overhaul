@@ -39,6 +39,7 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn:
                     if(command.Definition==GameJumpAction.Jump)return GameJumpAction.Prepare(actor,request,snapshot);
+                    if(command.Definition==GameDodgeAction.Dodge)return GameDodgeAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameGuardianPower.Start)return GameGuardianPower.Prepare(actor,request,snapshot);
                     if(command.Definition==PlayerFishingCastGame.Return)return PlayerFishingCastGame.Prepare(actor,request,snapshot,inventory);
                     if(command.Definition==PlayerFishingGame.Catch || command.Definition==PlayerFishingGame.Pickup)return PlayerFishingGame.Prepare(actor,request,snapshot,inventory);

@@ -28,7 +28,8 @@ namespace Overhaul.Persistence
                 player.m_seman.ApplyStatusEffectJumpMods(ref velocity);
                 if(float.IsNaN(velocity.sqrMagnitude)||float.IsInfinity(velocity.sqrMagnitude))throw new InvalidOperationException("Invalid server jump velocity");
                 if(velocity.x<=0&&velocity.y<=0&&velocity.z<=0)throw new InvalidOperationException("Jump is prevented by status effects");
-                float cost=player.m_jumpStaminaUsage*(1-player.GetEquipmentMovementModifier()+player.GetEquipmentJumpStaminaModifier());
+                float baseCost=global::Overhaul.Utility.OverhaulConfig.JumpUseStamina?.Value==false?0:global::Overhaul.Utility.OverhaulConfig.JumpStaminaDrain?.Value??player.m_jumpStaminaUsage;
+                float cost=baseCost*(1-player.GetEquipmentMovementModifier()+player.GetEquipmentJumpStaminaModifier());
                 player.m_seman.ModifyJumpStaminaUsage(cost,ref cost,true);cost*=Game.m_moveStaminaRate*Game.m_staminaRate;
                 var changes=new List<PlayerChange>();
                 if(cost>0){changes.Add(PlayerResources.Row("stamina",Math.Max(0,PlayerResources.Read(state,"stamina")-cost)));changes.Add(PlayerResources.Row(PlayerResources.StaminaDelay,player.m_staminaRegenDelay));}
