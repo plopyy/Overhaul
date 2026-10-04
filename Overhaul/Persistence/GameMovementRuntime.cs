@@ -15,6 +15,8 @@ namespace Overhaul.Persistence
             internal GameCombatContext.Frame Frame;
             internal bool PositionPending,HaveSavedPosition;
             internal Vector3 SavedPosition;
+            internal double NextView;
+            internal long ViewSequence;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
         [ThreadStatic] private static Player simulating;
@@ -31,7 +33,7 @@ namespace Overhaul.Persistence
         {
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
             var point=motion.Position;
-            if(motion.HaveSavedPosition&&motion.SavedPosition==point)return;
+            if(!motion.PositionPending&&motion.HaveSavedPosition&&motion.SavedPosition==point)return;
             var state=InventoryMoveGame.State(actor);if(state==null||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return;
             // One outstanding position update per actor. Slow disks cannot grow
             // an unbounded queue of intermediate physics coordinates.
@@ -39,6 +41,12 @@ namespace Overhaul.Persistence
             if(!InventoryMoveGame.Progress(actor,current=>GameDeathProgress.IsDead(current)||PlayerResources.Read(current,"health")<=0?Array.Empty<PlayerChange>():
                 new[]{new PlayerChange("spawn",false,"logout",(double)point.x,(double)point.y,(double)point.z)},()=>
                 {motion.PositionPending=false;motion.HaveSavedPosition=true;motion.SavedPosition=point;}))motion.PositionPending=false;
+        }
+        internal static ZPackage View(ZDOID actor)
+        {
+            if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
+            motion.NextView=Time.timeAsDouble+.05;
+            return GameMovementView.Encode(++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity);
         }
         private static Motion Remember(Player player)
         {

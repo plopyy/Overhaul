@@ -207,6 +207,8 @@ namespace Overhaul.Persistence
             rpc.Register<ZPackage>(Response, Receive);
             rpc.Register<ZPackage>(ProgressResponse,ReceiveProgress);
             rpc.Register<ZPackage>(ServerActionResponse,ReceiveServerAction);
+            rpc.Register<string,ZPackage>("Overhaul_MovementView",(sender,token,packet)=>
+            {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementView.Receive(packet);});
             rpc.Register<string,int,int,bool>("Overhaul_ReloadReady",(sender,token,x,y,ready)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameWeaponReload.Receive(x,y,ready);});
         }
@@ -326,7 +328,8 @@ namespace Overhaul.Persistence
             if (!disposed && !rpc.IsConnected()) Dispose();
             if(!disposed && serverActions!=null)
             {
-                var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);}
+                var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)
+                {GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
                 CaptureWear();
                 QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
@@ -350,7 +353,7 @@ namespace Overhaul.Persistence
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
-            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();GameMovementControl.ClientTick();}
+            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();GameMovementView.Tick();GameMovementControl.ClientTick();}
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
@@ -378,6 +381,7 @@ namespace Overhaul.Persistence
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
+            if(server==null)rpc.Register<string,ZPackage>("Overhaul_MovementView",(_,__,___)=>{});
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});

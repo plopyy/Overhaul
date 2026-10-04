@@ -20,8 +20,12 @@ namespace Overhaul.Persistence
         private static long sequence;
         private static double next;
         private static Input last;
+        private static readonly long[] sentSequence=new long[64];
+        private static readonly double[] sentTime=new double[64];
+        internal static double Age(long number)
+        {int slot=(int)(number&63);return number>0&&sentSequence[slot]==number?Math.Max(0,Time.timeAsDouble-sentTime[slot]):0;}
         internal static void Forget(ZDOID actor){inputs.Remove(actor);GameMovementRuntime.Forget(actor);}
-        internal static void ClearClient(){sequence=0;next=0;last=null;}
+        internal static void ClearClient(){sequence=0;next=0;last=null;Array.Clear(sentSequence,0,64);GameMovementView.Clear();}
         internal static void Clear(){inputs.Clear();ClearClient();GameMovementRuntime.Clear();}
         internal static Input Read(ZDOID actor)
         {
@@ -53,7 +57,8 @@ namespace Overhaul.Persistence
             // not turn this heartbeat into one packet per rendered frame.
             if(last!=null&&Time.timeAsDouble<next)return;
             last=new Input{Move=move,Look=look,Run=run,Walk=walk,Crouch=crouch};
-            InventoryMoveGame.Client.MovementControl(Encode(++sequence,move,look,run,walk,crouch));next=Time.timeAsDouble+.05;
+            ++sequence;int slot=(int)(sequence&63);sentSequence[slot]=sequence;sentTime[slot]=Time.timeAsDouble;
+            InventoryMoveGame.Client.MovementControl(Encode(sequence,move,look,run,walk,crouch));next=Time.timeAsDouble+.05;
         }
         [HarmonyPatch(typeof(Player),nameof(Player.SetControls))]
         private static class Capture
