@@ -20,7 +20,7 @@ namespace Overhaul.Persistence
             {
                 var first=PrepareOne(actor,target,request,snapshot);plans.Add(first);targets.Add(target.GetComponent<ZNetView>().GetZDO().m_uid);foreach(var pair in first.Change.Objects)objects.Add(pair.Key,pair.Value);foreach(var row in first.Change.Player.Changes)updated[Key(row)]=row;
                 var pick=target.GetComponent<Pickable>();
-                float radius=Mathf.Clamp(OverhaulConfig.PickupRange?.Value ?? 0,0,20);
+                float radius=Mathf.Clamp(global::Overhaul.Utility.OverhaulConfig.PickupRange?.Value ?? 0,0,20);
                 if(pick && radius>0)
                 {
                     var candidates=Physics.OverlapSphere(target.transform.position,radius).Select(c=>c.GetComponentInParent<Pickable>()).Where(p=>p && p!=pick && p.m_itemPrefab==pick.m_itemPrefab).Distinct().OrderBy(p=>(p.transform.position-target.transform.position).sqrMagnitude).Take(64);
@@ -129,6 +129,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
 

@@ -357,7 +357,7 @@ namespace Overhaul.Patches
             Pickable pickable = componentInParent as Pickable;
             if (pickable != null)
             {
-                if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
+                if (global::Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 foreach (Collider collider in Physics.OverlapSphere(go.transform.position, OverhaulConfig.PickupRange.Value, __instance.m_interactMask))
                 {
                     Pickable pickable2;
@@ -403,4 +403,5 @@ namespace Overhaul.Patches
         }
     }
 }
+
 
