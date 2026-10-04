@@ -20,7 +20,9 @@ namespace Overhaul.Persistence
         internal static PlayerActionPlan Prepare(PlayerSnapshot state,Player player,HitData incoming,bool direct=false)
         {
             GamePlayerDamageMath.Validate(incoming,Game.m_localDamgeTakenRate);
-            if(!player||PlayerResources.Read(state,"health")<=0||GameDeathProgress.IsDead(state)||player.IsTeleporting()||player.InCutscene())return null;
+            // Dedicated servers have no CinematicsManager/video player. Player's
+            // native InCutscene dereferences that client-only singleton.
+            if(!player||PlayerResources.Read(state,"health")<=0||GameDeathProgress.IsDead(state)||player.IsTeleporting()||player.InIntro()||player.m_sleeping||player.GetCurrentAnimHash()==Player.s_animatorTagCutscene)return null;
             var hit=incoming.Clone();var attacker=hit.GetAttacker();
             if(!direct&&(hit.HaveAttacker()&&!attacker||hit.m_dodgeable&&player.IsDodgeInvincible()||attacker is Player&&!player.IsPVPEnabled()&&!hit.m_ignorePVP))return null;
             var changes=new List<PlayerChange>();var current=state;var publish=new List<Action>();
