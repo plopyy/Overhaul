@@ -25,14 +25,24 @@ namespace Overhaul.Persistence
     {
         private readonly PlayerDatabaseWriter writer;
         private readonly PlayerIdentity identity;
-        private readonly Action<PlayerChange[]> publish;
+        private readonly Action<PlayerChange[],bool> publish;
         private readonly Dictionary<int,byte[]> blocks=new Dictionary<int,byte[]>();
         private readonly List<PlayerChange> edits=new List<PlayerChange>();
         private Task<bool> pending;
         private PlayerChange[] changes;
         private int size,lastX=int.MinValue,lastY=int.MinValue;
         private double next;
-        internal bool Finished=>pending==null&&edits.Count==0;
+        private MapTable shareTable;
+        private ZDOID shareId;
+        private bool shareWrite,shareQueued;
+        private Task<PlayerSharedMap.Result> sharing;
+        internal bool Finished=>pending==null&&edits.Count==0&&!shareQueued&&sharing==null;
+        internal void Share(MapTable table,bool write)
+        {
+            if(!table||shareQueued||sharing!=null||size==0||!GameCartographyRuntime.Reserve(table.m_nview.GetZDO().m_uid))return;
+            shareTable=table;shareId=table.m_nview.GetZDO().m_uid;shareWrite=write;shareQueued=true;
+        }
+        internal void AbortShare(){GameCartographyRuntime.Release(shareId);shareTable=null;shareQueued=false;sharing=null;}
         internal void Edit(PlayerChange[] rows)
         {
             if(rows.Length>64)throw new InvalidOperationException("Map edit exceeds limit");
@@ -51,7 +61,7 @@ namespace Overhaul.Persistence
             }
             if(edits.Count>1024)throw new InvalidOperationException("Too many queued map edits");
         }
-        internal GameMapSession(PlayerDatabaseWriter writer,PlayerIdentity identity,PlayerSnapshot state,Action<PlayerChange[]> publish)
+        internal GameMapSession(PlayerDatabaseWriter writer,PlayerIdentity identity,PlayerSnapshot state,Action<PlayerChange[],bool> publish)
         {
             this.writer=writer;this.identity=identity;this.publish=publish;
             var dimension=state.Rows.FirstOrDefault(r=>r.Table=="state"&&(string)r.Values[0]=="map_size");size=dimension==null?0:Convert.ToInt32(dimension.Values[1]);
@@ -79,13 +89,30 @@ namespace Overhaul.Persistence
         }
         internal void Tick(ZDO actor,bool final=false)
         {
+            if(sharing!=null)
+            {
+                if(!sharing.IsCompleted)return;
+                try
+                {
+                    var result=sharing.GetAwaiter().GetResult();
+                    if(shareWrite&&shareTable&&shareTable.m_nview&&shareTable.m_nview.IsValid()&&shareTable.m_nview.GetZDO().m_uid==shareId)
+                    {shareTable.m_nview.GetZDO().Set(ZDOVars.s_data,result.Shared);shareTable.m_writeEffects.Create(shareTable.transform.position,shareTable.transform.rotation);}
+                    publish(result.Changes,true);
+                }
+                finally{AbortShare();}
+            }
             if(pending!=null)
             {
                 if(!pending.IsCompleted)return;pending.GetAwaiter().GetResult();pending=null;
                 foreach(var row in changes.Where(r=>r.Table=="map")){var values=row.Values;blocks[Convert.ToInt32(values[1])]=(byte[])values[2];}
-                publish(changes);changes=null;
+                publish(changes,false);changes=null;
             }
             if(edits.Count!=0){changes=edits.ToArray();edits.Clear();pending=writer.CommitMap(identity,changes);return;}
+            if(shareQueued)
+            {
+                if(!shareTable||!shareTable.m_nview||!shareTable.m_nview.IsValid()){AbortShare();return;}
+                var data=shareTable.m_nview.GetZDO().GetByteArray(ZDOVars.s_data,null);sharing=writer.ShareMap(identity,data==null?null:(byte[])data.Clone(),shareWrite);shareQueued=false;return;
+            }
             var map=Minimap.instance;if(actor==null||!map||!final&&Time.timeAsDouble<next)return;next=Time.timeAsDouble+1;
             if(map.m_textureSize<1||map.m_textureSize>4096||map.m_pixelSize<=0||float.IsNaN(map.m_pixelSize)||float.IsInfinity(map.m_pixelSize))return;
             if(size!=0&&size!=map.m_textureSize)throw new InvalidOperationException("Saved map dimensions differ from the server map");
@@ -101,16 +128,17 @@ namespace Overhaul.Persistence
     }
     internal static class GameMapView
     {
-        private static readonly Dictionary<int,PlayerChange> received=new Dictionary<int,PlayerChange>();
+        private static readonly Dictionary<string,PlayerChange> received=new Dictionary<string,PlayerChange>();
         internal static void Clear()=>received.Clear();
-        internal static void Receive(PlayerChange[] rows)
+        internal static void Receive(PlayerChange[] rows,bool shared=false)
         {
             GameMapPins.Confirm(rows);
+            if(shared)GameMapPins.ApplyShared(rows);
             foreach(var row in rows)
             {
                 if(row.Table!="map"||row.Delete)continue;var values=row.Values;
-                if((string)values[0]!="self")throw new InvalidOperationException("Invalid exploration layer");
-                received[Convert.ToInt32(values[1])]=row;
+                if((string)values[0]!="self"&&(string)values[0]!="others")throw new InvalidOperationException("Invalid exploration layer");
+                received[(string)values[0]+":"+Convert.ToInt32(values[1])]=row;
             }
             Apply(rows.Where(r=>r.Table=="map"&&!r.Delete));
         }
@@ -121,9 +149,10 @@ namespace Overhaul.Persistence
             foreach(var row in rows)
             {
                 var values=row.Values;var bits=(byte[])values[2];int start=Convert.ToInt32(values[1])*PlayerMapFormat.CellsPerBlock;
+                bool shared=(string)values[0]=="others";var explored=shared?map.m_exploredOthers:map.m_explored;
                 if(start<0||start>=map.m_explored.Length||bits.Length!=PlayerMapFormat.BytesPerBlock)throw new InvalidOperationException("Invalid exploration block");
                 for(int i=0;i<PlayerMapFormat.CellsPerBlock&&start+i<map.m_explored.Length;i++)
-                    if((bits[i/8]&(1<<(i%8)))!=0&&!map.m_explored[start+i])changed|=map.Explore((start+i)%map.m_textureSize,(start+i)/map.m_textureSize);
+                    if((bits[i/8]&(1<<(i%8)))!=0&&!explored[start+i])changed|=shared?map.ExploreOthers((start+i)%map.m_textureSize,(start+i)/map.m_textureSize):map.Explore((start+i)%map.m_textureSize,(start+i)/map.m_textureSize);
             }
             if(changed)map.m_fogTexture.Apply();
         }

@@ -28,6 +28,22 @@ namespace Overhaul.Persistence
                 else if(row.Table=="knowledge"&&(string)v[0]=="map_pin_author"){string id=(string)v[1];if(row.Delete)authors.Remove(id);else authors[id]=(string)v[2];}
             }
         }
+        internal static void ApplyShared(PlayerChange[] rows)
+        {
+            var map=Minimap.instance;if(!map)return;loading++;
+            try
+            {
+                foreach(var row in rows.Where(r=>r.Table=="pins"))
+                {
+                    var v=row.Values;var pin=ids.FirstOrDefault(p=>p.Value==(string)v[0]).Key;
+                    if(row.Delete){if(pin!=null){map.RemovePin(pin);ids.Remove(pin);}continue;}
+                    if(pin!=null)continue;
+                    authors.TryGetValue((string)v[0],out string author);
+                    pin=map.AddPin(new Vector3(Convert.ToSingle(v[3]),Convert.ToSingle(v[4]),Convert.ToSingle(v[5])),(Minimap.PinType)Convert.ToInt32(v[1]),(string)v[2],true,Convert.ToBoolean(v[6]),Convert.ToInt64(v[7]),string.IsNullOrEmpty(author)?default(PlatformUserID):new PlatformUserID(author));ids[pin]=(string)v[0];
+                }
+            }
+            finally{loading--;}
+        }
         private static void Add(PlayerChange row){pending.RemoveAll(old=>old.SameKey(row));pending.Add(row);}
         internal static void Changed(Minimap.PinData pin)
         {

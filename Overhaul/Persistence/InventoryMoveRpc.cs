@@ -183,8 +183,9 @@ namespace Overhaul.Persistence
             // Map blocks belong to admission/persistence, not the frequently updated
             // action view. Avoid copying the explored map on every resource tick.
             canonical=new PlayerSnapshot(session.Snapshot.Revision,session.Snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));
-            mapSession=new GameMapSession(writer,session.Identity,session.Snapshot,rows=>
-            {if(!disposed)rpc.Invoke("Overhaul_MapChanges",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));});
+            mapSession=new GameMapSession(writer,session.Identity,session.Snapshot,(rows,shared)=>
+            {if(!disposed)rpc.Invoke("Overhaul_MapChanges",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Snapshot=shared,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));});
+            rpc.Register<string,ZDOID,bool>("Overhaul_ShareMap",(sender,token,id,write)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)mapSession.Share(GameCartographyRuntime.Resolve(PlayerSessionGame.Actor(rpc),id),write);});
             rpc.Register<string,ZPackage>("Overhaul_MapEdit",(sender,token,packet)=>
             {
                 if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce)return;
@@ -241,7 +242,7 @@ namespace Overhaul.Persistence
             rpc.Register<string,ZPackage>("Overhaul_MapChanges",(sender,token,packet)=>
             {
                 if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce)return;
-                try{var reply=InventoryMoveProtocol.Reply(packet.GetArray());if(reply.Nonce!=nonce||!reply.Accepted||reply.Player==null)throw new InvalidDataException("Invalid map confirmation");GameMapView.Receive(reply.Player.Changes.ToArray());}
+                try{var reply=InventoryMoveProtocol.Reply(packet.GetArray());if(reply.Nonce!=nonce||!reply.Accepted||reply.Player==null)throw new InvalidDataException("Invalid map confirmation");GameMapView.Receive(reply.Player.Changes.ToArray(),reply.Snapshot);}
                 catch(Exception error){Fail(error);}
             });
             rpc.Register<string,ZPackage>("Overhaul_SpawnPoint",(sender,token,packet)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameSpawnControl.Receive(packet);});
@@ -323,6 +324,7 @@ namespace Overhaul.Persistence
         internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
         internal void ArrivalControl(ZDOID actor,bool skip){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ArrivalControl",nonce,actor,skip);}
         internal void Leveling(string json){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_LevelIntent",nonce,json);}
+        internal void ShareMap(ZDOID table,bool write){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ShareMap",nonce,table,write);}
         internal void MapEdit(PlayerChange[] rows){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MapEdit",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
@@ -382,7 +384,7 @@ namespace Overhaul.Persistence
         {
             if (!disposed && !rpc.IsConnected()) Dispose();
             if(mapSession!=null&&!mapFailed)
-            {try{mapSession.Tick(disposed?null:PlayerSessionGame.Actor(rpc));}catch(Exception error){mapFailed=true;ZNet.m_loadError=true;Fail(error);}}
+            {try{mapSession.Tick(disposed?null:PlayerSessionGame.Actor(rpc));}catch(Exception error){mapSession.AbortShare();mapFailed=true;ZNet.m_loadError=true;Fail(error);}}
             if(!disposed && serverActions!=null)
             {
                 QueueSpawn();
@@ -448,6 +450,7 @@ namespace Overhaul.Persistence
             else rpc.Register<string,int>("Overhaul_RequestSpawn",(_,__,___)=>{});
             if(server!=null){rpc.Register<string,ZPackage>("Overhaul_MapEdit",(_,__,___)=>{});rpc.Register<string,ZDOID,bool>("Overhaul_ArrivalControl",(_,__,___,____)=>{});}
             if(server!=null)rpc.Register<string,string>("Overhaul_LevelIntent",(_,__,___)=>{});
+            if(server!=null)rpc.Register<string,ZDOID,bool>("Overhaul_ShareMap",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});
