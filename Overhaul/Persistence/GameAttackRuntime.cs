@@ -46,16 +46,22 @@ namespace Overhaul.Persistence
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
             if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
-                attack.m_bowDraw || attack.m_requiresReload || attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
+                attack.m_requiresReload || attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
                 throw new InvalidOperationException("Weapon identity has not been confirmed");
             var q=request.Gameplay.Rotation;var rotation=new Quaternion(q[0],q[1],q[2],q[3]);
             if(Mathf.Abs(Quaternion.Dot(rotation,rotation)-1)>.01f)throw new InvalidOperationException("Invalid attack aim");
-            GameAttackResources.ValidateStart(snapshot,preview.Weapon,attack);
-            var batch=new PlayerBatch(request.Action.Operation,snapshot.Revision,GameAttackResources.Spend(snapshot,preview.Weapon,attack,false));
+            var draw=attack.m_bowDraw?GameBowDraw.Prepare(actor.m_uid,snapshot,preview.Weapon,slot):null;
+            var resourceState=draw==null?snapshot:PlayerProgressService.Overlay(snapshot,draw.Changes);
+            GameAttackResources.ValidateStart(resourceState,preview.Weapon,attack);
+            var changes=(draw?.Changes??Array.Empty<PlayerChange>()).ToList();
+            foreach(var change in GameAttackResources.Spend(resourceState,preview.Weapon,attack,false))
+            {changes.RemoveAll(row=>PlayerProgressService.SameKey(row,change));changes.Add(change);}
+            var batch=new PlayerBatch(request.Action.Operation,snapshot.Revision,changes);
             return new PlayerActionPlan(new PlayerWorldAction(batch,new Dictionary<long,ObjectRecord>()),()=>
             {
+                draw?.Confirm();
                 if(!player || !Managed(player))return;
                 Forget(actor.m_uid);
                 var current=new Running{Player=player,Attack=attack,Weapon=preview.Weapon,Ammo=preview.Ammo,Identity=identity,
@@ -67,7 +73,7 @@ namespace Overhaul.Persistence
                     starting=true;
                     try
                     {
-                        if(!attack.Start(player,player.m_body,player.m_zanim,player.m_animEvent,player.m_visEquipment,current.Weapon,player.m_previousAttack,player.m_timeSinceLastAttack,0))
+                        if(!attack.Start(player,player.m_body,player.m_zanim,player.m_animEvent,player.m_visEquipment,current.Weapon,player.m_previousAttack,player.m_timeSinceLastAttack,draw?.Fraction??0))
                         {Forget(actor.m_uid);return;}
                         player.m_currentAttack=attack;player.m_lastCombatTimer=0;
                     }

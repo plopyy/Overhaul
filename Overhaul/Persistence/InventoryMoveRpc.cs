@@ -112,8 +112,8 @@ namespace Overhaul.Persistence
         private bool disposed;
         internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished) && (serverActions==null || serverActions.Finished);
         internal bool StorageFailed=>server?.StorageFailed==true || progress?.Failed==true || serverActions?.Failed==true;
-        internal bool Progress(ZDOID actor,Func<PlayerSnapshot,System.Collections.Generic.IEnumerable<PlayerChange>> action)
-        {return !disposed && progress!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && progress.Enqueue(action);}
+        internal bool Progress(ZDOID actor,Func<PlayerSnapshot,System.Collections.Generic.IEnumerable<PlayerChange>> action,Action confirmed=null)
+        {return !disposed && progress!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && progress.Enqueue(action,confirmed);}
         internal Container Container { get; private set; }
         private Inventory containerInventory;
         private InventoryMoveKind? afterOpen;
@@ -151,6 +151,8 @@ namespace Overhaul.Persistence
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,int,int,int>("Overhaul_BowControl",(sender,token,mode,x,y)=>
+            {if(ReferenceEquals(sender,rpc)&&token==nonce)GameBowDraw.Control(PlayerSessionGame.Actor(rpc),mode,x,y);});
             rpc.Register<string,int,int>("Overhaul_FishingDraw",(sender,token,x,y)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)PlayerFishingCastGame.Begin(PlayerSessionGame.Actor(rpc),x,y);});
             rpc.Register<string,bool,bool>("Overhaul_FishingControl",(sender,token,reel,cancel)=>
@@ -216,6 +218,7 @@ namespace Overhaul.Persistence
         internal void CancelEquipment()
         { if (!disposed && Controller?.Pending != null) rpc.Invoke(CancelEquipmentRequest,nonce,Controller.Pending.Action.Operation); }
         internal void BeginFishingDraw(int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingDraw",nonce,x,y);}
+        internal void BowControl(int mode,int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_BowControl",nonce,mode,x,y);}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
@@ -273,6 +276,7 @@ namespace Overhaul.Persistence
             if (!disposed && !rpc.IsConnected()) Dispose();
             if(!disposed && serverActions!=null)
             {
+                var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)GameBowDraw.Tick(actor);
                 CaptureWear();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
             }
@@ -314,7 +318,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (disposed) return;
-            if(serverActions!=null){CaptureWear();QueueWear(true);}
+            if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)GameBowDraw.Close(actor);CaptureWear();QueueWear(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
@@ -323,6 +327,7 @@ namespace Overhaul.Persistence
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
+            if (server != null) rpc.Register<string,int,int,int>("Overhaul_BowControl",(_,__,___,____,_____)=>{ });
             if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });
             if (server != null) rpc.Register<string,int,int>("Overhaul_FishingDraw",(_,__,___,____)=>{ });
             if (server != null) rpc.Register<string,bool,bool>("Overhaul_FishingControl",(_,__,___,____)=>{ });
