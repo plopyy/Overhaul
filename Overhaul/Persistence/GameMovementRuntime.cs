@@ -25,6 +25,8 @@ namespace Overhaul.Persistence
             internal PlayerChange[] DerivedRows;
         }
         private static readonly Dictionary<ZDOID,Motion> motions=new Dictionary<ZDOID,Motion>();
+        internal static void InvalidateEffects(ZDOID actor)
+        {if(motions.TryGetValue(actor,out var motion)){motion.DerivedRows=null;if(motion.Frame!=null)motion.Frame.State=null;}}
         [ThreadStatic] private static Player simulating;
         private sealed class Scope
         {

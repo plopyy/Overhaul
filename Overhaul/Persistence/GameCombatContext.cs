@@ -19,8 +19,8 @@ namespace Overhaul.Persistence
             internal float? InventoryWeight;
         }
         [ThreadStatic] internal static Frame Current;
-        internal static StatusEffect[] Effects(PlayerSnapshot state,Player player)=>GameAttackResources.Effects(state).Select(effect=>
-        {var copy=effect.Clone();copy.m_character=player;copy.m_startEffectInstances=null;return copy;}).ToArray();
+        internal static StatusEffect[] Effects(PlayerSnapshot state,Player player)=>GameGrapplingRuntime.Effects(player,GameAttackResources.Effects(state).Select(effect=>
+        {var copy=effect.Clone();copy.m_character=player;copy.m_startEffectInstances=null;return copy;}).ToArray());
         internal static bool Matches(Character player)=>Current!=null && Current.Player==player;
         internal static void Run(Player player,PlayerSnapshot snapshot,ItemDrop.ItemData weapon,ItemDrop.ItemData ammo,Action action)
         {

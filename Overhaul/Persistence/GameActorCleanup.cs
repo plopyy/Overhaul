@@ -9,6 +9,7 @@ namespace Overhaul.Persistence
             GameHarpoonRuntime.Forget(actor);
             GameCatapultPassengers.Forget(actor);
             GameWagonRuntime.Forget(actor);
+            GameGrapplingRuntime.Forget(actor);
             GameAttachmentRuntime.Forget(actor);
             PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);
             GameBowDraw.Forget(actor);GameWeaponReload.Forget(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);

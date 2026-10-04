@@ -438,6 +438,7 @@ namespace Overhaul.Persistence
         {
             if (disposed) return;
             if(Controller!=null)GameMapPins.Flush();
+            if(server!=null)GameGrapplingRuntime.Close(PlayerSessionGame.Actor(rpc)?.m_uid??knownActor);
             if(mapSession!=null&&!mapFailed){try{mapSession.Tick(PlayerSessionGame.Actor(rpc),true);}catch(Exception error){mapFailed=true;ZNet.m_loadError=true;Debug.LogException(error);}}
             if(server!=null)GameMovementRuntime.SavePosition(PlayerSessionGame.Actor(rpc)?.m_uid??knownActor,true);
             if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);damageClock.Freeze();QueueDamage(true);}

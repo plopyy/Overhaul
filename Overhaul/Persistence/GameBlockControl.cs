@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         private static readonly Dictionary<ZDOID,Hold> controls=new Dictionary<ZDOID,Hold>();
         private static bool sent,lastHeld;
         private static double next;
+        internal static bool Held(ZDOID actor)=>controls.TryGetValue(actor,out var input)&&input.Held&&Time.timeAsDouble-input.Seen<=1.5;
         internal static void Control(ZDO actor,bool held,Vector3 forward)
         {
             if(actor==null||InventoryMoveGame.State(actor.m_uid)==null||float.IsNaN(forward.sqrMagnitude)||Mathf.Abs(forward.sqrMagnitude-1)>.01f)return;
