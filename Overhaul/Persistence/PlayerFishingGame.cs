@@ -28,6 +28,8 @@ namespace Overhaul.Persistence
                 line=FishingFloat.FindFloat(fish);var owner=line?line.GetOwner():null;
                 if(!line || !owner || owner.GetZDOID()!=actor.m_uid || Vector3.Distance(actor.GetPosition(),line.transform.position)>5)
                     throw new InvalidOperationException("Fish is not caught by this player");
+                if(Enabled && (!PlayerFishingCastGame.Managed(line) || line.m_nview.GetZDO().GetInt(PlayerFishingCastGame.Ready,0)!=1 || !line.m_nview.GetZDO().GetBool(PlayerFishingCastGame.Used,false)))
+                    throw new InvalidOperationException("Server fishing line is not ready");
             }
             else if(request.Gameplay.Definition!=Pickup || !fish.IsOutOfWater())throw new InvalidOperationException("Fish must be out of water for manual pickup");
             var drop=target.GetComponent<ItemDrop>();var prefab=drop?target:fish.m_pickupItem;var template=prefab?prefab.GetComponent<ItemDrop>():null;
@@ -63,7 +65,7 @@ namespace Overhaul.Persistence
                 var linePlan=PlayerActionGame.RemoveWorldObject(line.m_nview,batch,Array.Empty<ObjectRecord>());
                 return new PlayerActionPlan(new PlayerWorldAction(batch,fishPlan.Change.Objects.Concat(linePlan.Change.Objects).ToDictionary(p=>p.Key,p=>p.Value)),()=>{fishPlan.Publish();linePlan.Publish();});
             }
-            catch{GamePersistence.ReleaseAction(new[]{data.m_uid});throw;}
+            catch{GamePersistence.ReleaseAction(new[]{data.m_uid,line.m_nview.GetZDO().m_uid});throw;}
         }
         private static void SendCatch()
         {

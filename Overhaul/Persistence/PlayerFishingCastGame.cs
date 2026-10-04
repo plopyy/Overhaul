@@ -24,6 +24,7 @@ namespace Overhaul.Persistence
         internal static bool Managed(FishingFloat line)=>line && line.m_nview && line.m_nview.IsValid() && line.m_nview.GetZDO().GetLong(OwnerUser,0)!=0;
         internal static ZDOID Owner(FishingFloat line)
         {var data=line.m_nview.GetZDO();return new ZDOID(data.GetLong(OwnerUser,0),unchecked((uint)data.GetInt(OwnerId,0)));}
+        internal static bool ServerOwned(ZDOID id)=>Enabled && ZDOMan.instance?.GetZDO(id)?.GetLong(OwnerUser,0)!=0 && ZDOMan.instance?.GetZDO(id)!=null;
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
             if(request.Gameplay.Definition==Return)return ReturnBait(actor,request,snapshot,inventory);
@@ -37,7 +38,7 @@ namespace Overhaul.Persistence
             if(aim.sqrMagnitude<.9f || aim.sqrMagnitude>1.1f)throw new InvalidOperationException("Invalid fishing aim");aim.Normalize();
             var ammo=inventory.Keys.Select(k=>new{Key=k,Item=PlayerInventoryView.ReadItem(inventory.Item(k),null,true)}).Where(p=>p.Item.m_shared.m_ammoType==rod.m_shared.m_ammoType &&
                 (p.Item.m_shared.m_itemType==ItemDrop.ItemData.ItemType.Ammo || p.Item.m_shared.m_itemType==ItemDrop.ItemData.ItemType.AmmoNonEquipable) && p.Item.m_worldLevel>=Game.m_worldLevel).OrderByDescending(p=>p.Item.m_equipped).ThenBy(p=>p.Key).FirstOrDefault();
-            if(ammo==null)throw new InvalidOperationException("Fishing bait is unavailable");
+            if(ammo==null || string.IsNullOrEmpty(rod.m_shared.m_ammoType))throw new InvalidOperationException("Fishing bait is unavailable");
             var bait=ammo.Item;bait.m_customData=inventory.Data(ammo.Key);bait.m_stack=1;bait.m_equipped=false;
             float skill=PlayerCraftProgressGame.Factor(snapshot,rod.m_shared.m_skillType);float duration=Mathf.Lerp(attack.m_drawDurationMin,attack.m_drawDurationMin*.2f,skill);
             float fraction=duration<=0?1:Mathf.Clamp01((Time.time-draw.Started)/duration);
@@ -131,6 +132,8 @@ namespace Overhaul.Persistence
                 if(!Managed(__instance))return true;var data=__instance.m_nview.GetZDO();int ready=data.GetInt(Ready,0);
                 if(GamePersistence.ActionReserved(data.m_uid))return false;
                 if(ready==0)return true;
+                if(ZNet.instance.IsServer() && !__instance.GetOwner())
+                {data.Set(Ready,0);__instance.m_nview.Destroy();return false;}
                 if(PlayerSessionGame.Managed && Player.m_localPlayer && Owner(__instance)==Player.m_localPlayer.GetZDOID())
                 {
                     if(ready==1){var fish=__instance.GetCatch();if(fish)PlayerFishingGame.RequestCatch(__instance,fish);}
