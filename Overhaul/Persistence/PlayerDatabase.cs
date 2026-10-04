@@ -42,6 +42,8 @@ namespace Overhaul.Persistence
         internal bool SameInventorySlot(PlayerChange other)
             =>other!=null && (Table=="inventory" || Table=="item_data") && (other.Table=="inventory" || other.Table=="item_data") &&
                 Equals(values[0],other.values[0]) && Convert.ToInt32(values[1])==Convert.ToInt32(other.values[1]) && Convert.ToInt32(values[2])==Convert.ToInt32(other.values[2]);
+        internal bool SameStatus(PlayerChange other)=>other!=null && (Table=="status" || Table=="status_data") &&
+            (other.Table=="status" || other.Table=="status_data") && Convert.ToInt32(values[0])==Convert.ToInt32(other.values[0]);
         internal bool SameKey(PlayerChange other)
         {
             if(other==null || Table!=other.Table)return false;
@@ -138,13 +140,17 @@ namespace Overhaul.Persistence
                 "slot INTEGER PRIMARY KEY CHECK(slot>=0),prefab TEXT NOT NULL,remaining REAL NOT NULL CHECK(remaining>=0)"),
             new Table("effects", "id,prefab,category,elapsed,duration", 1,
                 "id INTEGER PRIMARY KEY,prefab TEXT NOT NULL,category TEXT NOT NULL,elapsed REAL NOT NULL CHECK(elapsed>=0),duration REAL NOT NULL CHECK(duration>0)"),
+            new Table("status", "id,name,elapsed,duration,attacker_user,attacker_id,variant", 1,
+                "id INTEGER PRIMARY KEY,name TEXT NOT NULL,elapsed REAL NOT NULL CHECK(elapsed>=0),duration REAL NOT NULL CHECK(duration>=0),attacker_user INTEGER NOT NULL,attacker_id INTEGER NOT NULL,variant INTEGER NOT NULL"),
+            new Table("status_data", "id,key,value", 2,
+                "id INTEGER NOT NULL,key TEXT NOT NULL,value REAL NOT NULL,PRIMARY KEY(id,key),FOREIGN KEY(id) REFERENCES status(id) ON DELETE CASCADE"),
             new Table("custom_data", "key,value", 1, "key TEXT PRIMARY KEY,value TEXT NOT NULL"),
             new Table("map", "layer,chunk,data", 2, "layer TEXT NOT NULL,chunk INTEGER NOT NULL,data BLOB NOT NULL,PRIMARY KEY(layer,chunk)"),
             new Table("pins", "id,type,label,x,y,z,checked,owner", 1,
                 "id TEXT PRIMARY KEY,type INTEGER NOT NULL,label TEXT NOT NULL,x REAL NOT NULL,y REAL NOT NULL,z REAL NOT NULL,checked INTEGER NOT NULL,owner INTEGER NOT NULL"),
             new Table("spawn", "kind,x,y,z", 1, "kind TEXT PRIMARY KEY,x REAL NOT NULL,y REAL NOT NULL,z REAL NOT NULL")
         };
-        private const int ApplicationId = 0x4F564850, Format = 2;
+        private const int ApplicationId = 0x4F564850, Format = 3;
         private readonly SqliteDatabase db;
         private readonly FileStream ownership;
         private readonly PlayerIdentity identity;
@@ -171,10 +177,10 @@ namespace Overhaul.Persistence
                 {
                     VerifyIdentity();
                     long version; using (var row = db.Query("SELECT format FROM identity WHERE id=1")) { row.Read(); version = row.Long(0); }
-                    if (version == 1 && Complete) db.Transaction(() =>
+                    if (version < Format && Complete) db.Transaction(() =>
                     {
-                        var effects = Tables.Single(t => t.Name == "effects");
-                        db.Execute("CREATE TABLE effects(" + effects.Ddl + ")");
+                        foreach(var name in version==1?new[]{"effects","status","status_data"}:new[]{"status","status_data"})
+                        {var table=Tables.Single(t=>t.Name==name);db.Execute("CREATE TABLE \""+name+"\"("+table.Ddl+")");}
                         db.Write("UPDATE identity SET format=? WHERE id=1",Format);
                         db.Execute("PRAGMA user_version=" + Format);
                     });
@@ -188,7 +194,7 @@ namespace Overhaul.Persistence
         {
             using (var row = db.Query("SELECT world,provider,account,format FROM identity WHERE id=1"))
                 if (!row.Read() || row.Long(0) != identity.World || row.Text(1) != identity.Provider ||
-                    row.Text(2) != identity.Account || (row.Long(3) != Format && row.Long(3) != 1))
+                    row.Text(2) != identity.Account || row.Long(3)<1 || row.Long(3)>Format)
                     throw new InvalidDataException("Player database identity or format mismatch");
         }
         internal bool Complete
@@ -312,7 +318,7 @@ namespace Overhaul.Persistence
                 ApplyRows(batch.Changes); db.Write("UPDATE identity SET revision=? WHERE id=1", checked(batch.ExpectedRevision + 1));
             });
         }
-        private static readonly string[] actionTables={"inventory", "item_data", "state", "food", "effects", "skills", "custom_data", "knowledge", "spawn"};
+        private static readonly string[] actionTables={"inventory", "item_data", "state", "food", "effects", "status", "status_data", "skills", "custom_data", "knowledge", "spawn"};
         internal static bool IsActionTable(string table)=>Array.IndexOf(actionTables,table)>=0;
         internal PlayerChange[] ActionState() => ReadTables(actionTables);
         private PlayerChange[] ReadTables(params string[] tables)

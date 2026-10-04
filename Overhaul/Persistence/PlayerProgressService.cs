@@ -38,12 +38,13 @@ namespace Overhaul.Persistence
             var rows=snapshot.Rows.ToList();
             foreach(var change in changes)
             {
-                rows.RemoveAll(r=>SameKey(r,change) || change.Delete && change.Table=="inventory" && r.Table=="item_data" && r.SameInventorySlot(change));
+                rows.RemoveAll(r=>SameKey(r,change) || change.Delete && change.Table=="inventory" && r.Table=="item_data" && r.SameInventorySlot(change) ||
+                    change.Delete && change.Table=="status" && r.Table=="status_data" && r.SameStatus(change));
                 if(!change.Delete)rows.Add(change);
             }
             return new PlayerSnapshot(snapshot.Revision,rows);
         }
-        internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" ||
+        internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" || row.Table=="status" || row.Table=="status_data" ||
             row.Table=="state" && !row.Delete && (PlayerResources.IsKey((string)row.Values[0]) || (string)row.Values[0]==PlayerFoodClock.Key || (string)row.Values[0]==PlayerEffectClock.Key);
         private readonly PlayerIdentity identity;
         private readonly PlayerDatabaseWriter writer;
