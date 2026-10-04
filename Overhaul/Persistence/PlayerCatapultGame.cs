@@ -63,7 +63,8 @@ namespace Overhaul.Persistence
             if(!drop)throw new InvalidOperationException("Saved catapult ammunition is unavailable");
             var item=drop.m_itemData.Clone();item.m_dropPrefab=prefab;var bytes=data.GetByteArray(Payload);
             if(bytes==null || bytes.Length==0)throw new InvalidOperationException("Saved catapult ammunition is incomplete");
-            var package=new ZPackage(bytes);int version=package.ReadByte();item.Load(package,(global::Version.Item)version);
+            var package=new ZPackage(bytes);int version=package.ReadByte();int prefabHash=ItemDrop.ItemData.Load(package,item,(global::Version.Item)version);
+            if(prefabHash!=data.GetInt(Ammo,0))throw new InvalidOperationException("Saved catapult ammunition identity mismatch");
             if(item.m_stack<1 || item.m_stack>128 || item.m_stack>item.m_shared.m_maxStackSize)throw new InvalidOperationException("Invalid saved catapult stack");
             item.m_equipped=false;return item;
         }
@@ -71,7 +72,7 @@ namespace Overhaul.Persistence
         {
             var data=machine.m_nview.GetZDO();if(data.GetInt(Ammo,0)==0 || machine.m_loadedItem!=null)return;
             var item=Read(data);
-            machine.RPC_SetLoadedVisual(ZNet.GetUID(),item.m_dropPrefab.name);
+            machine.RPC_SetLoadedVisual(ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer().m_uid,item.m_dropPrefab.name);
             machine.m_loadStack=item.m_stack;item.m_stack=1;machine.m_loadedItem=item;
         }
         internal static void Advance(Catapult machine)
@@ -130,4 +131,5 @@ namespace Overhaul.Persistence
         private static class LegacyShoot {private static bool Prefix()=>!Enabled;}
     }
 }
+
 
