@@ -201,6 +201,24 @@ namespace Overhaul.Persistence
     internal static class PlayerProgressGame
     {
         private static Character actor;
+        [HarmonyPatch(typeof(Player),nameof(Player.GetSkillFactor))]
+        private static class SkillFactor
+        {
+            private static bool Prefix(Player __instance,Skills.SkillType skill,ref float __result)
+            {if(!actor || actor!=__instance)return true;var state=InventoryMoveGame.State(actor.GetZDOID());__result=state==null?0:PlayerCraftProgressGame.Factor(state,skill);return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
+        private static class HaveStamina
+        {
+            private static bool Prefix(Player __instance,float amount,ref bool __result)
+            {if(!actor || actor!=__instance)return true;__result=InventoryMoveGame.Stamina(actor.GetZDOID())>amount;return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
+        private static class UseStamina
+        {
+            private static bool Prefix(Player __instance,float v)
+            {if(!actor || actor!=__instance)return true;InventoryMoveGame.SpendStamina(actor.GetZDOID(),v*Game.m_staminaRate,__instance.m_staminaRegenDelay);return false;}
+        }
         [HarmonyPatch(typeof(FishingFloat),"FixedUpdate")]
         private static class FishingSimulation
         {

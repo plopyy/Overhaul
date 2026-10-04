@@ -24,6 +24,12 @@ namespace Overhaul.Persistence
         private static readonly List<InventoryMoveRpc> connections = new List<InventoryMoveRpc>();
         internal static bool Progress(ZDOID actor,Func<PlayerSnapshot,IEnumerable<PlayerChange>> action)
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action))return true;return false;}
+        internal static PlayerSnapshot State(ZDOID actor)
+        {foreach(var endpoint in connections){var state=endpoint.State(actor);if(state!=null)return state;}return null;}
+        internal static double Stamina(ZDOID actor)
+        {foreach(var endpoint in connections)if(endpoint.State(actor)!=null)return endpoint.Stamina(actor);return 0;}
+        internal static bool SpendStamina(ZDOID actor,float amount,float delay)
+        {foreach(var endpoint in connections)if(endpoint.State(actor)!=null)return endpoint.Spending(actor,amount,delay);return false;}
         internal static void FinishSession()
         {
             foreach (var endpoint in connections) endpoint.Dispose();

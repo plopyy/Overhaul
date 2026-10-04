@@ -13,6 +13,23 @@ namespace Overhaul.Persistence
         private readonly string nonce;
         private readonly InventoryMoveService server;
         private readonly PlayerProgressService progress;
+        private PlayerSnapshot canonical;
+        private double pendingStamina;
+        internal PlayerSnapshot State(ZDOID actor)=>!disposed && canonical!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor?canonical:null;
+        internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
+        internal bool Spending(ZDOID actor,float amount,float delay)
+        {
+            if(State(actor)==null || float.IsNaN(amount) || float.IsInfinity(amount) || amount<0)return false;
+            double debit=Math.Min(Stamina(actor),amount);if(debit==0)return true;
+            pendingStamina+=debit;
+            if(progress.Enqueue(state=>new[]{PlayerResources.Row("stamina",Math.Max(0,PlayerResources.Read(state,"stamina")-debit)),PlayerResources.Row(PlayerResources.StaminaDelay,delay)},()=>pendingStamina=Math.Max(0,pendingStamina-debit)))return true;
+            pendingStamina-=debit;return false;
+        }
+        private void Committed(PlayerBatch batch,bool advance)
+        {
+            var updated=PlayerProgressService.Overlay(canonical,batch.Changes);
+            canonical=new PlayerSnapshot(batch.ExpectedRevision+(advance?1:0),updated.Rows);
+        }
         private byte[] deferredRequest;
         private bool discoveryPending;
         private float nextDiscovery;
@@ -63,12 +80,13 @@ namespace Overhaul.Persistence
         {
             if (!ReferenceEquals(rpc, session.Connection)) throw new ArgumentException("Wrong admitted inventory connection");
             this.rpc = rpc; nonce = session.Nonce; access = new InventoryMoveGame.Access(rpc, session);
+            canonical=session.Snapshot;
             progress=new PlayerProgressService(session.Identity,writer,batch=>
-            {if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
+            {Committed(batch,false);if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
-                batch=>{if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
+                batch=>{Committed(batch,true);if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
             foreach(var row in session.Snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations"))observedStations[(string)row.Values[1]]=Convert.ToInt32(row.Values[2]);
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
@@ -153,6 +171,8 @@ namespace Overhaul.Persistence
                 int length = package.ReadInt();
                 if (length < 0 || length != package.Size() - package.GetPos()) throw new InvalidDataException("Invalid inventory RPC length");
                 byte[] bytes = package.ReadByteArray(length);
+                // Start already accepted simulation events before reading a new action snapshot.
+                if(server!=null && !server.Busy)progress.Tick(false);
                 if(server!=null && progress.Busy)
                 {if(deferredRequest!=null)throw new InvalidDataException("Multiple requests during server progress update");deferredRequest=bytes;}
                 else if (server != null) server.Receive(bytes); else Controller.Receive(bytes);

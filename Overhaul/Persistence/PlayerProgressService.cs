@@ -45,8 +45,10 @@ namespace Overhaul.Persistence
         private readonly PlayerDatabaseWriter writer;
         private readonly Action<PlayerBatch> publish;
         private readonly Action<Exception> failed;
-        private readonly Queue<Func<PlayerSnapshot,IEnumerable<PlayerChange>>> queued=new Queue<Func<PlayerSnapshot,IEnumerable<PlayerChange>>>();
-        private Func<PlayerSnapshot,IEnumerable<PlayerChange>>[] active;
+        private sealed class Event
+        {internal Func<PlayerSnapshot,IEnumerable<PlayerChange>> Prepare;internal Action Confirm;}
+        private readonly Queue<Event> queued=new Queue<Event>();
+        private Event[] active;
         private Task<PlayerSnapshot> read;
         private Task<bool> commit;
         private PlayerBatch result;
@@ -56,26 +58,28 @@ namespace Overhaul.Persistence
         internal bool Finished=>!Busy && queued.Count==0;
         internal PlayerProgressService(PlayerIdentity identity,PlayerDatabaseWriter writer,Action<PlayerBatch> publish,Action<Exception> failed)
         {this.identity=identity;this.writer=writer;this.publish=publish;this.failed=failed;}
-        internal bool Enqueue(Func<PlayerSnapshot,IEnumerable<PlayerChange>> action)
+        internal bool Enqueue(Func<PlayerSnapshot,IEnumerable<PlayerChange>> action,Action confirmed=null)
         {
             if(closing || broken)return false;
             if(queued.Count>=256){broken=true;failed(new InvalidOperationException("Server progress queue exceeded"));return false;}
-            queued.Enqueue(action??throw new ArgumentNullException(nameof(action)));return true;
+            queued.Enqueue(new Event{Prepare=action??throw new ArgumentNullException(nameof(action)),Confirm=confirmed});return true;
         }
         internal void Close()=>closing=true;
+        private void Confirm()
+        {var events=active;active=null;foreach(var item in events)item.Confirm?.Invoke();}
         internal void Tick(bool playerActionBusy)
         {
             if(broken)return;
             try
             {
                 if(commit?.IsCompleted==true)
-                {commit.GetAwaiter().GetResult();commit=null;var confirmed=result;result=null;active=null;publish(confirmed);}
+                {commit.GetAwaiter().GetResult();commit=null;var confirmed=result;result=null;publish(confirmed);Confirm();}
                 if(read?.IsCompleted==true)
                 {
                     var snapshot=read.GetAwaiter().GetResult();read=null;var current=snapshot.Rows.ToList();var changes=new List<PlayerChange>();
                     foreach(var action in active)
                     {
-                        var delta=action(new PlayerSnapshot(snapshot.Revision,current)).ToArray();
+                        var delta=action.Prepare(new PlayerSnapshot(snapshot.Revision,current)).ToArray();
                         foreach(var row in delta)
                         {
                             if(!Allowed(row))throw new InvalidDataException("Invalid server simulation table");
@@ -83,7 +87,7 @@ namespace Overhaul.Persistence
                             changes.RemoveAll(old=>SameKey(old,row));changes.Add(row);
                         }
                     }
-                    if(changes.Count==0)active=null;
+                    if(changes.Count==0)Confirm();
                     else{result=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);commit=writer.CommitProgress(identity,result);}
                 }
                 if(!Busy && !playerActionBusy && queued.Count!=0)
