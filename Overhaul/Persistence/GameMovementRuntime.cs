@@ -147,6 +147,8 @@ namespace Overhaul.Persistence
                 player.m_debugFly=false;
                 if(input!=null)player.SetLookDir(input.Look);
                 if(player!=Player.m_localPlayer)player.UpdateCrouch(dt);
+                if(StealthSystem.instance)player.UpdateStealth(dt);
+                player.EdgeOfWorldKill(dt);
                 return true;
             }
             private static void Finalizer(Character __instance,Scope __state)
@@ -181,6 +183,12 @@ namespace Overhaul.Persistence
             private static bool Prefix(Player __instance,ref bool __result)
             {if(simulating!=__instance&&!GameCombatContext.Matches(__instance))return true;__result=__instance.GetCurrentAnimHash()==Player.s_animatorTagCutscene||__instance.InIntro()||__instance.m_sleeping;return false;}
         }
+        [HarmonyPatch(typeof(Player),"UpdateStealth")]
+        private static class StealthClock
+        {private static bool Prefix(Player __instance)=>simulating==__instance||!Managed(__instance);}
+        [HarmonyPatch(typeof(Player),"EdgeOfWorldKill")]
+        private static class WorldEdge
+        {private static bool Prefix(Player __instance)=>simulating==__instance||!Managed(__instance);}
         [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
         private static class Stamina
         {private static bool Prefix(Player __instance,float amount,bool __runOriginal,ref bool __result){if(!__runOriginal)return true;if(simulating==__instance){__result=InventoryMoveGame.Stamina(__instance.GetZDOID())>amount;return false;}if(!GameCombatContext.Matches(__instance))return true;__result=PlayerResources.Read(GameCombatContext.Current.State,"stamina")>amount;return false;}}

@@ -25,9 +25,9 @@ namespace Overhaul.Persistence
         private static readonly Dictionary<ZDOID,Flight> actors=new Dictionary<ZDOID,Flight>();
         [ThreadStatic] private static Flight creating;
         private static double nextControl;
-        private static bool clientSkip;
+        private static bool clientSkip,clientStarted;
         internal static IEnumerable<Vector3> Areas=>flights.Values.Where(f=>!f.Finished).Select(f=>f.Landing);
-        internal static void ClearClient(){nextControl=0;clientSkip=false;}
+        internal static void ClearClient(){nextControl=0;clientSkip=false;clientStarted=false;}
         internal static void Clear(){foreach(var rpc in flights.Keys.ToArray())Forget(rpc);ClearClient();}
         internal static bool First(PlayerSnapshot state)=>state!=null&&!GameDeathProgress.IsDead(state)&&state.Rows.Any(r=>r.Table=="state"&&(string)r.Values[0]=="first_spawn"&&Convert.ToBoolean(r.Values[1]));
         internal static void Grant(ZRpc rpc,Vector3 point)
@@ -100,7 +100,10 @@ namespace Overhaul.Persistence
         internal static void ClientTick()
         {
             var player=Player.m_localPlayer;
-            if(!PlayerSessionGame.Managed||!player||!player.InIntro()||TextViewer.IsShowingIntro()||Time.timeAsDouble<nextControl)return;
+            if(!PlayerSessionGame.Managed||!player)return;
+            if(!player.InIntro())
+            {if(!clientStarted&&ZNet.instance){clientStarted=true;ZNet.instance.SetMultiplayerUsageStart();}return;}
+            if(TextViewer.IsShowingIntro()||Time.timeAsDouble<nextControl)return;
             nextControl=Time.timeAsDouble+.25;InventoryMoveGame.Client?.ArrivalControl(player.GetZDOID(),clientSkip);
         }
         [HarmonyPatch(typeof(Player),"SpawnValkyrie")]

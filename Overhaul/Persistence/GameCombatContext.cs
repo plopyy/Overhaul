@@ -35,6 +35,18 @@ namespace Overhaul.Persistence
             private static bool Prefix(Player __instance,Skills.SkillType skill,ref float __result)
             {if(!Matches(__instance))return true;__result=Mathf.Clamp01(GameAttackResources.SkillLevel(Current.State,skill,Current.Effects)/100f);return false;}
         }
+        [HarmonyPatch(typeof(Skills),nameof(Skills.GetSkillFactor))]
+        private static class NativeSkillFactor
+        {
+            private static bool Prefix(Skills __instance,Skills.SkillType skillType,ref float __result)
+            {if(Current?.Player==null||Current.Player.m_skills!=__instance)return true;__result=Mathf.Clamp01(GameAttackResources.SkillLevel(Current.State,skillType,Current.Effects)/100f);return false;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyStealth))]
+        private static class StealthEffects
+        {
+            private static bool Prefix(SEMan __instance,float baseStealth,ref float stealth)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyStealth(baseStealth,ref stealth);return false;}
+        }
         [HarmonyPatch(typeof(Character),nameof(Character.GetSkillLevel))]
         private static class Level
         {
