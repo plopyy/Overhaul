@@ -11,6 +11,7 @@ namespace Overhaul.Persistence
         internal const string Use="tame.pet";
         private static readonly int Next="overhaul_next_pet".GetStableHashCode();
         private static readonly int FollowId="overhaul_follow_player".GetStableHashCode();
+        private const string FeedbackRpc="Overhaul_TameFeedback";
         internal static PlayerActionPlan Prepare(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
             var tame=target.GetComponent<Tameable>();
@@ -46,7 +47,7 @@ namespace Overhaul.Persistence
                         tame.m_unsummonTime=0;
                         int maximum=data.GetInt(ZDOVars.s_maxInstances,0);if(follow && maximum>0)tame.UnsummonMaxInstances(maximum);
                     }
-                    tame.m_lastPetTime=Time.time;tame.m_petEffect.Create(target.transform.position,target.transform.rotation);
+                    tame.m_lastPetTime=Time.time;tame.m_nview.InvokeRPC(ZNetView.Everybody,FeedbackRpc,actor.m_uid,command,follow);
                 });
             }
         }
@@ -67,6 +68,32 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Tameable),"RPC_Command")]
         private static class LegacyCommand
         {private static bool Prefix()=>!GameCreatureAuthority.Enabled;}
+
+        [HarmonyPatch(typeof(Tameable),"Awake")]
+        private static class FeedbackRegistration
+        {
+            private static void Postfix(Tameable __instance)
+            {
+                if(!__instance.m_nview || !__instance.m_nview.IsValid())return;
+                __instance.m_nview.Register<ZDOID,bool,bool>(FeedbackRpc,(sender,actor,command,follow)=>Feedback(__instance,sender,actor,command,follow));
+            }
+        }
+        internal static void Feedback(Tameable tame,long sender,ZDOID actor,bool command,bool follow)
+        {
+            if(!ZNet.instance || (!PlayerSessionGame.Managed && !GameCreatureAuthority.Enabled))return;
+            long server=ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer()?.m_uid??0;
+            if(server==0 || sender!=server)return;
+            tame.m_petEffect.Create(tame.transform.position,tame.transform.rotation);
+            var player=Player.m_localPlayer;if(!player || player.GetZDOID()!=actor)return;
+            string message;
+            if(command)message=tame.GetHoverName()+" "+(follow?"$hud_tamefollow":"$hud_tamestay");
+            else
+            {
+                message=tame.m_tameTextGetter?.Invoke();
+                if(string.IsNullOrEmpty(message))message=tame.m_nameBeforeText?tame.GetHoverName()+" "+tame.m_tameText:tame.m_tameText;
+            }
+            player.Message(MessageHud.MessageType.Center,message);
+        }
 
         internal static void RestoreFollow(Tameable tame)
         {
