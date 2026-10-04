@@ -130,8 +130,9 @@ namespace Overhaul.Persistence
                 var v = row.Values;
                 if (Convert.ToInt32(v[0]) < 0 || Convert.ToInt32(v[0]) >= 3 || Convert.ToSingle(v[2]) <= 0) throw new InvalidDataException("Invalid confirmed food");
                 var item = Meal((string)v[1],NutritionDuration.Multiplier(player));
+                float factor=Mathf.Pow(Mathf.Clamp01(Convert.ToSingle(v[2])/item.m_shared.m_foodBurnTime),.3f);
                 foods.Add(new Player.Food { m_name = (string)v[1],m_item = item,m_time = Convert.ToSingle(v[2]),
-                    m_health = item.m_shared.m_food,m_stamina = item.m_shared.m_foodStamina,m_eitr = item.m_shared.m_foodEitr });
+                    m_health = item.m_shared.m_food*factor,m_stamina = item.m_shared.m_foodStamina*factor,m_eitr = item.m_shared.m_foodEitr*factor });
             }
             if (rows.Length != 3 || rows.Select(r => Convert.ToInt32(r.Values[0])).Distinct().Count() != 3) throw new InvalidDataException("Incomplete food confirmation");
             return () =>

@@ -17,7 +17,6 @@ namespace Overhaul.Persistence
         private bool closed;
         private readonly PlayerAdmission.Session session;
         private InventoryMoveRpc inventory;
-        private PlayerFoodClockGame foodClock;
 
         internal PlayerAdmissionRpc(ZRpc authenticatedRpc, PlayerAdmission admission, PlayerAdmission.Session session,
             Func<byte[], IEnumerable<PlayerChange>> decodeImport, Action<Exception> failed)
@@ -69,13 +68,10 @@ namespace Overhaul.Persistence
                 if (session != null && session.State == PlayerAdmission.Phase.Ready && GamePersistence.Active)
                 {
                     inventory = InventoryMoveGame.BindServer(rpc, session);
-                    foodClock = new PlayerFoodClockGame(session.Identity,GamePersistence.Players);
                 }
                 else if (client != null && client.Ready && Player.m_localPlayer)
                     inventory = InventoryMoveGame.BindClient(rpc, client.Nonce, client.Revision);
             }
-            try { foodClock?.Tick(session?.State == PlayerAdmission.Phase.Ready && PlayerSessionGame.Actor(rpc) != null); }
-            catch (Exception error) { Fail(error); }
         }
         private void Fail(Exception error)
         {
@@ -86,7 +82,7 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (closed) return;
-            closed = true; foodClock?.Close(); foodClock = null; inventory?.Dispose(); server?.Dispose(); client?.Dispose();
+            closed = true; inventory?.Dispose(); server?.Dispose(); client?.Dispose();
             rpc.Register<ZPackage>(receiveName, Ignore);
         }
     }

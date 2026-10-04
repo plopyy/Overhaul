@@ -9,6 +9,26 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerResourceGame
     {
+        internal static IEnumerable<PlayerChange> Simulate(PlayerSnapshot snapshot,ZDO actor,double seconds)
+        {
+            if(actor==null || seconds<=0)return Array.Empty<PlayerChange>();
+            var changes=new List<PlayerChange>();
+            var foods=snapshot.Rows.Where(r=>r.Table=="food").ToDictionary(r=>Convert.ToInt32(r.Values[0]));
+            for(int slot=0;slot<3;slot++)
+            {
+                double remaining=foods.TryGetValue(slot,out var food)?Convert.ToDouble(food.Values[2])-seconds*Game.m_foodRate:0;
+                changes.Add(remaining>0?new PlayerChange("food",false,slot,food.Values[1],remaining):new PlayerChange("food",true,slot));
+            }
+            changes.Add(PlayerFoodClock.Anchor(PlayerFoodClock.Read(snapshot.Rows)+seconds*Game.m_foodRate));
+            foreach(var effect in snapshot.Rows.Where(r=>r.Table=="effects"))
+            {
+                var v=effect.Values;double age=Convert.ToDouble(v[3])+seconds;
+                changes.Add(age>=Convert.ToDouble(v[4])?new PlayerChange("effects",true,v[0]):new PlayerChange("effects",false,v[0],v[1],v[2],age,v[4]));
+            }
+            changes.Add(PlayerEffectClock.Anchor(PlayerEffectClock.Read(snapshot.Rows)+seconds));
+            var stepped=new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>r.Table!="food" && r.Table!="effects" && !(r.Table=="state" && ((string)r.Values[0]==PlayerFoodClock.Key || (string)r.Values[0]==PlayerEffectClock.Key))).Concat(changes.Where(r=>!r.Delete)));
+            changes.AddRange(Advance(stepped,actor,seconds));return changes;
+        }
         internal static IEnumerable<PlayerChange> Advance(PlayerSnapshot snapshot,ZDO actor,double seconds)
         {
             var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>():null;

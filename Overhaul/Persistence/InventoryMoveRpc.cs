@@ -24,7 +24,7 @@ namespace Overhaul.Persistence
             if(resourcePending || resourceElapsed<=0 || progress==null)return;
             var actor=PlayerSessionGame.Actor(rpc);if(actor==null)return;
             double seconds=resourceElapsed;resourceElapsed=0;resourcePending=true;
-            if(!progress.Enqueue(state=>{resourcePending=false;return PlayerResourceGame.Advance(state,actor,seconds);}))resourcePending=false;
+            if(!progress.Enqueue(state=>{resourcePending=false;return PlayerResourceGame.Simulate(state,actor,seconds);}))resourcePending=false;
         }
         private readonly System.Collections.Generic.Dictionary<string,int> observedStations=new System.Collections.Generic.Dictionary<string,int>();
         private void Discover()
@@ -90,9 +90,11 @@ namespace Overhaul.Persistence
                 int length=package.ReadInt();if(length<0 || length!=package.Size()-package.GetPos())throw new InvalidDataException("Invalid progress response length");
                 var reply=InventoryMoveProtocol.Reply(package.ReadByteArray(length));if(reply.Nonce!=nonce)return;
                 if(!reply.Accepted || reply.Snapshot || reply.Notification || reply.ContainerAllowed || reply.Player.Changes.Any(r=>!PlayerProgressService.Allowed(r)))throw new InvalidDataException("Invalid server progress response");
-                var progressView=PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r=>r.Table!="state"),Player.m_localPlayer);
-                var resourceView=PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state"),Player.m_localPlayer);
-                progressView();resourceView();
+                var progressView=PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="skills" || r.Table=="knowledge"),Player.m_localPlayer);
+                var resourceView=PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])),Player.m_localPlayer);
+                var foodView=PlayerFoodGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="food"),Player.m_localPlayer);
+                var effectView=PlayerPotionGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="effects"),Player.m_localPlayer);
+                progressView();foodView();effectView();resourceView();
             }
             catch(Exception error){Fail(error);}
         }

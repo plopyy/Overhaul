@@ -32,7 +32,8 @@ namespace Overhaul.Persistence
     // They leave the inventory revision unchanged and never read a client snapshot.
     internal sealed class PlayerProgressService
     {
-        internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="state" && !row.Delete && PlayerResources.IsKey((string)row.Values[0]);
+        internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" ||
+            row.Table=="state" && !row.Delete && (PlayerResources.IsKey((string)row.Values[0]) || (string)row.Values[0]==PlayerFoodClock.Key || (string)row.Values[0]==PlayerEffectClock.Key);
         private readonly PlayerIdentity identity;
         private readonly PlayerDatabaseWriter writer;
         private readonly Action<PlayerBatch> publish;
@@ -72,7 +73,7 @@ namespace Overhaul.Persistence
                         {
                             if(!Allowed(row))throw new InvalidDataException("Invalid server simulation table");
                             int keys=PlayerDatabase.Tables.Single(t=>t.Name==row.Table).Keys;
-                            bool Same(PlayerChange old)=>old.Table==row.Table && (row.Table=="skills"
+                            bool Same(PlayerChange old)=>old.Table==row.Table && (row.Table=="skills" || row.Table=="food" || row.Table=="effects"
                                 ? Convert.ToInt32(old.Values[0])==Convert.ToInt32(row.Values[0])
                                 : old.Values.Take(keys).SequenceEqual(row.Values.Take(keys)));
                             current.RemoveAll(old=>Same(old));if(!row.Delete)current.Add(row);
