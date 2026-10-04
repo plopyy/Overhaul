@@ -13,6 +13,7 @@ namespace Overhaul.Persistence
         private static bool initial;
         [ThreadStatic] private static int presenting,simulating;
         internal static bool Presenting=>presenting>0;
+        internal static bool Visual(StatusEffect effect)=>effect is SE_Finder||effect is SE_Demister;
         internal static void Simulate(Action action){simulating++;try{action();}finally{simulating--;}}
         internal static void Initial(IEnumerable<PlayerChange> rows)
         {view=rows?.Where(r=>r.Table=="status"||r.Table=="status_data").ToArray()??Array.Empty<PlayerChange>();confirmed.Clear();initial=rows!=null;}
@@ -52,7 +53,11 @@ namespace Overhaul.Persistence
             private static IEnumerable<MethodBase> TargetMethods()=>typeof(StatusEffect).Assembly.GetTypes()
                 .Where(t=>typeof(StatusEffect).IsAssignableFrom(t)).Select(t=>t.GetMethod(nameof(StatusEffect.UpdateStatusEffect),BindingFlags.Instance|BindingFlags.Public|BindingFlags.DeclaredOnly))
                 .Where(m=>m!=null&&!m.IsAbstract);
-            private static bool Prefix(StatusEffect __instance)=>simulating>0 || !PlayerSessionGame.Managed || __instance.m_character!=Player.m_localPlayer || !confirmed.Contains(__instance.NameHash());
+            private static bool Prefix(StatusEffect __instance)
+            {
+                if(simulating>0||!PlayerSessionGame.Managed||__instance.m_character!=Player.m_localPlayer||!confirmed.Contains(__instance.NameHash())||Visual(__instance))return true;
+                if(__instance is SE_Harpooned rope)GameHarpoonRuntime.Visual(rope);return false;
+            }
         }
         [HarmonyPatch]
         private static class SetupResources

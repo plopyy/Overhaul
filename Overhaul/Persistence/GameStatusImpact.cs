@@ -16,7 +16,7 @@ namespace Overhaul.Persistence
             if(id==0||PlayerResources.Read(state,"health")<=0)return Array.Empty<PlayerChange>();
             var definition=ObjectDB.instance.GetStatusEffect(id);if(!definition)return Array.Empty<PlayerChange>();
             var type=definition.GetType();
-            if(type!=typeof(StatusEffect)&&type!=typeof(SE_Stats)&&type!=typeof(SE_Shield)&&type!=typeof(SE_React)&&type!=typeof(SE_Frost)&&type!=typeof(SE_Burning)&&type!=typeof(SE_Poison)&&type!=typeof(SE_Wet)&&type!=typeof(SE_Smoke)&&type!=typeof(SE_Cozy)&&type!=typeof(SE_Rested))
+            if(!GameDamageOverTime.Supported(definition))
                 throw new InvalidOperationException("Server impact status is not implemented: "+definition.name);
             var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id).ToArray();
             bool existing=rows.Any(r=>r.Table=="status");var effect=existing?GameStatusCodec.Restore(rows,player):definition.Clone();
@@ -32,9 +32,15 @@ namespace Overhaul.Persistence
             {
                 GameCombatContext.Run(player,state,null,null,()=>
                 {
-                    if(!existing)effect.Setup(player);
+                    if(!existing&&!(effect is SE_Crowned))effect.Setup(player);
                     if(frost>0&&effect is SE_Frost frozen)frozen.AddDamage(frost);
                     else {if(existing)effect.ResetTime();effect.SetLevel(level,skill);}
+                    if(effect is SE_Harpooned harpoon)
+                    {
+                        var instance=ZNetScene.instance.FindInstance(attacker);harpoon.m_attacker=instance?instance.GetComponent<Character>():null;
+                        harpoon.m_baseDistance=harpoon.m_attacker?Vector3.Distance(harpoon.m_attacker.transform.position,player.transform.position):0;
+                        harpoon.m_broken=!harpoon.m_attacker||player.IsBoss()||harpoon.m_baseDistance>harpoon.m_maxDistance;
+                    }
                 });
                 frame.Changes.AddRange(GameStatusCodec.Delta(frame.State,effect,attacker));return frame.Changes.ToArray();
             }

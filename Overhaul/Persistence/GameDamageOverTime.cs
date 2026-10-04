@@ -29,7 +29,7 @@ namespace Overhaul.Persistence
             internal readonly List<Action> Publish=new List<Action>();
         }
         [ThreadStatic] private static Frame current;
-        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_StaffGuard || effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React) || effect.GetType()==typeof(SE_Cozy) || effect.GetType()==typeof(SE_Rested));
+        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_StaffGuard || effect is SE_Burning || effect is SE_Poison || effect is SE_Harpooned || effect is SE_Finder || effect is SE_Demister || effect is SE_Crowned || effect is SE_Spawn || effect is SE_HealthUpgrade || effect is SE_Puke || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React) || effect.GetType()==typeof(SE_Cozy) || effect.GetType()==typeof(SE_Rested));
         private static void Change(Frame frame,IEnumerable<PlayerChange> rows)
         {
             var changes=rows.ToArray();
@@ -55,6 +55,17 @@ namespace Overhaul.Persistence
                         if(!rows.Any(r=>r.Table=="status"))continue;
                         var effect=GameStatusCodec.Restore(rows,player);
                         if(!Supported(effect))continue;
+                        if(effect is SE_Harpooned harpoon)
+                        {
+                            harpoon.m_time+=(float)seconds;
+                            bool ended=GameHarpoonRuntime.Broken(harpoon)||harpoon.m_ttl>0&&harpoon.m_time>harpoon.m_ttl;
+                            Change(frame,ended?new[]{new PlayerChange("status",true,id)}:GameStatusCodec.Delta(frame.State,harpoon,harpoon.m_attacker.GetZDOID()));continue;
+                        }
+                        if(effect is SE_Spawn spawn&&!spawn.m_spawned&&spawn.m_time+seconds>spawn.m_delay)
+                        {
+                            spawn.m_spawned=true;
+                            frame.Publish.Add(()=>{if(!player||!spawn.m_prefab)return;var instance=UnityEngine.Object.Instantiate(spawn.m_prefab,player.transform.TransformVector(spawn.m_spawnOffset),Quaternion.identity);var projectile=instance.GetComponent<Projectile>();if(projectile)projectile.Setup(player,Vector3.zero,-1,null,null,null);spawn.m_spawnEffect.Create(instance.transform.position,instance.transform.rotation);});
+                        }
                         if(effect is SE_StaffGuard guard)
                         {
                             bool held=GameStaffGuardRuntime.CanHold(frame.State,player);
@@ -67,7 +78,14 @@ namespace Overhaul.Persistence
                             // IsDone on shields: it raises skills and emits FX.
                             effect.m_time+=(float)seconds;
                             if(effect.m_ttl>0&&effect.m_time>effect.m_ttl)
+                            {
+                                if(effect is SE_HealthUpgrade upgrade)
+                                {
+                                    if(upgrade.m_moreHealth>0){double maximum=PlayerResources.Read(frame.State,"max_health")+upgrade.m_moreHealth;Change(frame,new[]{PlayerResources.Row("max_health",maximum),PlayerResources.Row("health",maximum)});}
+                                    if(upgrade.m_moreStamina>0)Change(frame,new[]{PlayerResources.Row("max_stamina",PlayerResources.Read(frame.State,"max_stamina")+upgrade.m_moreStamina)});
+                                }
                                 Change(frame,new[]{new PlayerChange("status",true,id)});
+                            }
                             else Change(frame,GameStatusCodec.Delta(frame.State,effect,new ZDOID(Convert.ToInt64(header.Values[4]),checked((uint)Convert.ToInt64(header.Values[5])))));
                             continue;
                         }
@@ -95,6 +113,8 @@ namespace Overhaul.Persistence
                                 if(stats.m_staminaOverTime!=0&&stats.m_time<stats.m_staminaOverTimeDuration)step=Math.Min(step,stats.m_staminaOverTimeDuration-stats.m_time);
                                 if(stats.m_eitrOverTime!=0&&stats.m_time<stats.m_eitrOverTimeDuration)step=Math.Min(step,stats.m_eitrOverTimeDuration-stats.m_time);
                             }
+                            if(effect is SE_Puke puke)
+                            {if(puke.m_removeInterval<=0||float.IsNaN(puke.m_removeInterval)||float.IsInfinity(puke.m_removeInterval))throw new InvalidOperationException("Invalid vomit interval");Event(puke.m_removeInterval-puke.m_removeTimer);}
                             if(effect is SE_Wet water&&!player.m_tolerateWater&&water.m_damageInterval>0)Event(water.m_damageInterval-water.m_timer);
                             if(effect is SE_Smoke smoke&&smoke.m_damageInterval>0)Event(smoke.m_damageInterval-smoke.m_timer);
                             effect.UpdateStatusEffect((float)step);remaining=Math.Max(0,remaining-step);
@@ -107,6 +127,20 @@ namespace Overhaul.Persistence
                 return new Result{Changes=frame.Changes.ToArray(),LastHit=frame.LastHit,Damage=frame.Damage,Lethal=PlayerResources.Read(frame.State,"health")<=0,Death=frame.Death,Publish=()=>{foreach(var action in frame.Publish)action();}};
             }
             finally{current=previous;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.RemoveOneFood))]
+        private static class Vomit
+        {
+            [HarmonyPriority(Priority.First+400)]
+            private static bool Prefix(Player __instance,ref bool __result)
+            {
+                if(current==null||current.Player!=__instance)return true;
+                var foods=current.State.Rows.Where(r=>r.Table=="food").ToArray();
+                if(foods.Length!=0)Change(current,new[]{new PlayerChange("food",true,foods[UnityEngine.Random.Range(0,foods.Length)].Values[0])});
+                // Native SE_Puke only uses this return value to flash a local HUD.
+                // Dedicated servers have none; the food rows supply the client view.
+                __result=false;return false;
+            }
         }
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.AddStatusEffect),new[]{typeof(int),typeof(bool),typeof(int),typeof(float),typeof(short)})]
         private static class NestedStatus

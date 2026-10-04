@@ -6,6 +6,7 @@ namespace Overhaul.Persistence
         {
             if(actor.IsNone())return;
             GameArrivalRuntime.ForgetActor(actor);
+            GameHarpoonRuntime.Forget(actor);
             GameAttachmentRuntime.Forget(actor);
             PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);
             GameBowDraw.Forget(actor);GameWeaponReload.Forget(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);

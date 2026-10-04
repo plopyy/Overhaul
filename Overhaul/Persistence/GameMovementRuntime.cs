@@ -139,6 +139,7 @@ namespace Overhaul.Persistence
                 {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
                 if(motion.Suspended&&player.m_body){player.m_body.isKinematic=motion.WasKinematic;motion.Suspended=false;}
                 __state=Enter(player,true);
+                GameHarpoonRuntime.Tick(player,dt);
                 GameDodgeAction.Tick(player);
                 var input=GameMovementControl.Read(player.GetZDOID());
                 player.m_moveDir=input?.Move??Vector3.zero;player.m_run=input?.Run??false;player.m_walk=input?.Walk??false;player.m_crouchToggled=input?.Crouch??false;

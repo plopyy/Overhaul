@@ -74,7 +74,7 @@ namespace Overhaul.Persistence
                 field.SetValue(effect,type.IsEnum?Enum.ToObject(type,checked((int)number)):Convert.ChangeType(number,type,CultureInfo.InvariantCulture));
             }
             if(restoreAttacker&&instance!=0)
-            {var go=ZNetScene.instance?ZNetScene.instance.FindInstance(new ZDOID(owner,(uint)instance)):null;var attacker=go?go.GetComponent<Character>():null;if(attacker)effect.SetAttacker(attacker);}
+            {var go=ZNetScene.instance?ZNetScene.instance.FindInstance(new ZDOID(owner,(uint)instance)):null;var attacker=go?go.GetComponent<Character>():null;if(effect is SE_Harpooned harpoon)harpoon.m_attacker=attacker;else if(attacker)effect.SetAttacker(attacker);}
             return effect;
         }
         internal static PlayerChange[] Delta(PlayerSnapshot state,StatusEffect effect,ZDOID attacker)
@@ -90,7 +90,9 @@ namespace Overhaul.Persistence
         internal static void Apply(StatusEffect source,StatusEffect target)
         {
             if(source.GetType()!=target.GetType() || source.NameHash()!=target.NameHash())throw new InvalidDataException("Status presentation type mismatch");
-            foreach(var field in Fields(source.GetType()).Values)field.SetValue(target,field.GetValue(source));
+            foreach(var field in Fields(source.GetType()).Values)
+                if(!GameStatusGame.Visual(source)||field.DeclaringType==typeof(StatusEffect))field.SetValue(target,field.GetValue(source));
+            if(source is SE_Harpooned harpoon&&target is SE_Harpooned rope){rope.m_attacker=harpoon.m_attacker;GameHarpoonRuntime.Visual(rope);}
             target.m_time=source.m_time;target.m_ttl=source.m_ttl;target.m_hitVariant=source.m_hitVariant;
         }
     }
