@@ -188,6 +188,16 @@ namespace Overhaul.Persistence
                 });
             }
         }
+        [HarmonyPatch(typeof(ZNet), nameof(ZNet.Disconnect))]
+        private static class Disconnect
+        {
+            // Capture while native peer lookup and avatar binding still work.
+            // The normal update pump completes queued SQL writes asynchronously.
+            private static void Prefix(ZNetPeer peer)
+            {
+                if(peer!=null&&servers.TryGetValue(peer.m_rpc,out var endpoint))endpoint.Dispose();
+            }
+        }
         [HarmonyPatch(typeof(ZNet), "RPC_PeerInfo")]
         private static class Admit
         {
