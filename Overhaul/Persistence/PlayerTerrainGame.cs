@@ -108,7 +108,7 @@ namespace Overhaul.Persistence
         [HarmonyPatch]
         private static class CalculationMask
         {
-            private static System.Reflection.MethodBase TargetMethod()=>AccessTools.Method(typeof(TerrainComp),"<PaintCleared>g__getMask|20_0");
+            private static System.Reflection.MethodBase TargetMethod()=>typeof(TerrainComp).GetMethods(AccessTools.all).Single(m=>m.Name.StartsWith("<PaintCleared>g__getMask|",StringComparison.Ordinal) && m.IsStatic && m.ReturnType==typeof(Color));
             private static bool Prefix(Heightmap hmap,int index,ref Color __result)
             {if(calculating==null || !calculating.pendingPaint.Contains(hmap))return true;var copy=calculating.Copy(hmap);__result=copy.m_paintMask[index];return false;}
         }
