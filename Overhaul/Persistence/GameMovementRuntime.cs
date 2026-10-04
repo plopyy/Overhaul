@@ -34,7 +34,7 @@ namespace Overhaul.Persistence
         }
         internal static bool Managed(Player player)=>GameCreatureAuthority.Enabled&&player&&player.m_nview&&player.m_nview.IsValid()&&InventoryMoveGame.State(player.GetZDOID())!=null;
         internal static void Forget(ZDOID actor)
-        {if(motions.TryGetValue(actor,out var motion)&&motion.Suspended&&motion.Player&&motion.Player.m_body)motion.Player.m_body.isKinematic=motion.WasKinematic;motions.Remove(actor);GameDodgeAction.Forget(actor);GameEnvironmentRuntime.Forget(actor);}
+        {if(motions.TryGetValue(actor,out var motion)&&motion.Suspended&&motion.Player&&motion.Player.m_body)motion.Player.m_body.isKinematic=motion.WasKinematic;motions.Remove(actor);if(motion?.Player)DynamicCombat.ForgetDash(motion.Player);GameDodgeAction.Forget(actor);GameEnvironmentRuntime.Forget(actor);}
         internal static void Clear(){foreach(var actor in motions.Keys.ToArray())Forget(actor);simulating=null;GameDodgeAction.Clear();GameEnvironmentRuntime.Clear();}
         internal static void SavePosition(ZDOID actor,bool final=false)
         {
@@ -166,11 +166,11 @@ namespace Overhaul.Persistence
         private static class Cutscene
         {
             private static bool Prefix(Player __instance,ref bool __result)
-            {if(simulating!=__instance)return true;__result=__instance.GetCurrentAnimHash()==Player.s_animatorTagCutscene||__instance.InIntro()||__instance.m_sleeping;return false;}
+            {if(simulating!=__instance&&!GameCombatContext.Matches(__instance))return true;__result=__instance.GetCurrentAnimHash()==Player.s_animatorTagCutscene||__instance.InIntro()||__instance.m_sleeping;return false;}
         }
         [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
         private static class Stamina
-        {private static bool Prefix(Player __instance,float amount,ref bool __result){if(simulating!=__instance)return true;__result=InventoryMoveGame.Stamina(__instance.GetZDOID())>amount;return false;}}
+        {private static bool Prefix(Player __instance,float amount,ref bool __result){if(simulating!=__instance&&!GameCombatContext.Matches(__instance))return true;__result=InventoryMoveGame.Stamina(__instance.GetZDOID())>amount;return false;}}
         [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
         private static class StaminaUse
         {
@@ -182,4 +182,5 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 

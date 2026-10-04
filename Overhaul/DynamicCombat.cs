@@ -934,6 +934,8 @@ namespace Overhaul
 
 		private static void StartDash(Player player)
 		{
+            if(Persistence.PlayerSessionGame.Managed&&player==Player.m_localPlayer)
+            {if(!IsDashBlockedByInteraction(player))Persistence.GameDashAction.Send(player);return;}
             var state=Dash(player);
 			if (IsDashing(player) || !player.CanMove() || player.InAttack() || player.InDodge()
 				|| player.InMinorAction() || player.IsStaggering() || IsDashBlockedByInteraction(player))
@@ -948,7 +950,15 @@ namespace Overhaul
 				return;
 			}
 
-			state.Direction = player.m_moveDir;
+            player.UseStamina(staminaCost);
+            BeginDash(player,player.m_moveDir);
+        }
+
+        internal static void BeginDash(Player player,Vector3 direction)
+        {
+            var state=Dash(player);
+            if(player.IsOnGround()&&Time.time-state.LastJump>JumpDashWindow)state.Jumped=false;
+			state.Direction = direction;
 			state.Direction.y = 0f;
 			if (state.Direction.sqrMagnitude < 0.01f)
 			{
@@ -961,11 +971,10 @@ namespace Overhaul
 			state.Upward = state.Jumped &&
 				(Time.time - state.LastJump <= JumpDashWindow || (!player.IsOnGround() && player.m_body.linearVelocity.y > 0.1f));
             state.Direction = InclineDash(state.Direction, state.Upward ? JumpDashAngle : BaseDashAngle);
-			state.Remaining = OverhaulConfig.DashDuration.Value;
+			state.Remaining = (OverhaulConfig.DashDuration?.Value??.2f);
 			// Discard the height accumulated before this dash, not subsequent climbing.
 			player.m_maxAirAltitude = player.transform.position.y;
 			player.m_run = false;
-			player.UseStamina(staminaCost);
 			state.Visual = PlayDashEffects(player, state.Direction);
             SendDashVisual(player, state.Remaining);
 			ApplyDashVelocity(player);
@@ -1018,7 +1027,7 @@ namespace Overhaul
         {
             var state=Dash(player);
             if (duration > 0f) DashAnimationPlayback.Start(player, state.Direction, duration);
-            if (player.m_nview != null && player.m_nview.IsValid() && player.m_nview.IsOwner())
+            if (player.m_nview != null && player.m_nview.IsValid() && (player.m_nview.IsOwner()||Persistence.GameMovementRuntime.Managed(player)))
                 player.m_nview.InvokeRPC(ZNetView.Everybody, DashVisualRpc, state.Direction, duration);
         }
 
@@ -1073,16 +1082,23 @@ namespace Overhaul
 
             internal void Receive(long sender, Vector3 direction, float duration)
             {
-                if (player == null || player.m_nview == null || !player.m_nview.IsValid()
-                    || player.m_nview.IsOwner() || sender != player.m_nview.GetZDO().GetOwner()) return;
+                if (player == null || player.m_nview == null || !player.m_nview.IsValid()) return;
+                bool managed=Persistence.PlayerSessionGame.Managed||Persistence.GameMovementRuntime.Managed(player);
+                if(managed)
+                {
+                    long server=ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer()?.m_uid??0;
+                    if(sender!=server||Persistence.GameCreatureAuthority.Enabled)return;
+                }
+                else if(player.m_nview.IsOwner()||sender!=player.m_nview.GetZDO().GetOwner())return;
                 if (float.IsNaN(duration) || float.IsInfinity(duration)) return;
-                if (duration <= 0f) { StopVisual(); return; }
+                if (duration <= 0f) { if(managed&&player==Player.m_localPlayer){if(IsDashing(player))StopDashMovement(player);ForgetDash(player);}StopVisual(); return; }
                 float magnitude = direction.sqrMagnitude;
                 if (float.IsNaN(magnitude) || float.IsInfinity(magnitude) || magnitude < 0.001f) return;
                 StopVisual();
                 visual = PlayDashEffects(player, direction.normalized);
                 // Expire even if the owner disconnects before sending the stop message.
                 remaining = Mathf.Clamp(duration, 0.01f, 10f);
+                if(managed&&player==Player.m_localPlayer){var state=Dash(player);state.Direction=direction.normalized;state.Remaining=remaining;state.Upward=state.Direction.y>.3f;state.GroundPropelled=false;player.m_maxAirAltitude=player.transform.position.y;}
                 DashAnimationPlayback.Start(player, direction.normalized, remaining);
             }
 
@@ -1339,7 +1355,7 @@ namespace Overhaul
 				player.m_lastGroundTouch = 1f;
 			}
 			Vector3 velocity = player.m_body.linearVelocity;
-			Vector3 dashVelocity = state.Direction * OverhaulConfig.DashSpeed.Value;
+			Vector3 dashVelocity = state.Direction * (OverhaulConfig.DashSpeed?.Value??20f);
 			Vector3 desired = new Vector3(dashVelocity.x, state.Upward ? dashVelocity.y : velocity.y, dashVelocity.z);
             bool vegetation = IgnoreDashBushes(player);
             if (!state.Upward && !player.IsSwimming())
@@ -1353,7 +1369,7 @@ namespace Overhaul
             if (!state.Upward && !player.IsSwimming())
             {
                 // A fixed small take-off angle, never added to the previous frame's lift.
-                float speed = OverhaulConfig.DashSpeed.Value;
+                float speed = (OverhaulConfig.DashSpeed?.Value??20f);
                 float lift = speed * Mathf.Sin(BaseDashAngle * Mathf.Deg2Rad);
                 if (desired.y >= 0f && desired.y < lift)
                 { desired = InclineDash(desired, BaseDashAngle) * speed; state.GroundPropelled = true; }
