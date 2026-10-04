@@ -15,6 +15,7 @@ namespace Overhaul.Persistence
         internal double Time;
         internal float EventTimer,EventTime;
         internal float[] EventPosition=new float[3];
+        internal HashSet<string> ProtectedKeys;
         internal readonly List<string> InitialKeys=new List<string>(),Keys=new List<string>();
         internal readonly List<string[]> Players=new List<string[]>();
         internal readonly List<int[]> Zones=new List<int[]>();
@@ -62,7 +63,8 @@ namespace Overhaul.Persistence
                 1,state.Name,state.SeedName,state.Seed,state.Uid,state.Generation,state.NeedsData,state.Time,state.LocationVersion,state.LocationsGenerated).Write(db);
             Replace(db,"zones","x,z",2,state.Zones.Select(z=>new DatabaseRow("zones","x,z",2,z[0],z[1])));
             Replace(db,"locations","id",1,state.Locations.Select(l=>new DatabaseRow("locations","id,prefab_hash,prefab,x,y,z,placed",1,l.Id,l.Prefab,NameCatalog.Prefab(l.Prefab),l.X,l.Y,l.Z,l.Placed)));
-            Replace(db,"world_keys","source,key",2,state.InitialKeys.Select(k=>new DatabaseRow("world_keys","source,key",2,"initial",k)).Concat(state.Keys.Select(k=>new DatabaseRow("world_keys","source,key",2,"progress",k))));
+            Replace(db,"world_keys","source,key",2,state.InitialKeys.Select(k=>new DatabaseRow("world_keys","source,key",2,"initial",k)).Concat(state.Keys.Select(k=>new DatabaseRow("world_keys","source,key",2,"progress",k))),
+                v => state.ProtectedKeys != null && (string)v[0] == "progress" && state.ProtectedKeys.Contains((string)v[1]));
             Replace(db,"player_history","id",1,state.Players.Select((p,i)=>new DatabaseRow("player_history","id,platform_id,name,server_name,playfab_id",1,i+1,p[0],p[1],p[2],p[3])));
             new DatabaseRow("events","id,type,name,time,x,y,z,json",1,1,"raid_timer","",state.EventTimer,null,null,null,null).Write(db);
             new DatabaseRow("events","id,type,name,time,x,y,z,json",1,2,"raid",state.EventName,state.EventTime,state.EventPosition[0],state.EventPosition[1],state.EventPosition[2],null).Write(db);
@@ -74,13 +76,13 @@ namespace Overhaul.Persistence
             db.Write("DELETE FROM world_keys WHERE source='initial'");
             foreach(string key in state.InitialKeys)db.Write("INSERT INTO world_keys(source,key) VALUES ('initial',?)",key);
         }
-        private static void Replace(SqliteDatabase db,string table,string keys,int keyCount,IEnumerable<DatabaseRow> data)
+        private static void Replace(SqliteDatabase db,string table,string keys,int keyCount,IEnumerable<DatabaseRow> data,Func<object[],bool> protect=null)
         {
             var previous=new Dictionary<string,object[]>();string[] columns=keys.Split(',').Select(k=>"\""+k+"\"").ToArray();
             using(var rows=db.Query("SELECT "+string.Join(",",columns)+" FROM \""+table+"\""))
                 while(rows.Read()){var values=new object[keyCount];for(int i=0;i<keyCount;i++)values[i]=rows.Value(i);previous.Add(string.Join(":",values),values);}
-            foreach(var row in data){row.Write(db);previous.Remove(string.Join(":",row.Values.Take(keyCount)));}
-            foreach(var values in previous.Values)db.Write("DELETE FROM \""+table+"\" WHERE "+string.Join(" AND ",columns.Select(k=>k+"=?")),values);
+            foreach(var row in data){if(protect?.Invoke(row.Values)==true)continue;row.Write(db);previous.Remove(string.Join(":",row.Values.Take(keyCount)));}
+            foreach(var values in previous.Values.Where(v=>protect?.Invoke(v)!=true))db.Write("DELETE FROM \""+table+"\" WHERE "+string.Join(" AND ",columns.Select(k=>k+"=?")),values);
         }
         internal static WorldRecord Read(SqliteDatabase db)
         {
@@ -104,3 +106,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

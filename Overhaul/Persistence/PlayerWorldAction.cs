@@ -12,17 +12,24 @@ namespace Overhaul.Persistence
         internal readonly PlayerBatch Player;
         private readonly Dictionary<long, ObjectRecord> objects;
         private readonly Dictionary<long, PlayerContainerAction> containers;
+        private readonly string[] worldKeys;
+        internal string[] WorldKeys => (string[])worldKeys.Clone();
         internal readonly Dictionary<long,PlayerBatch> CommittedContainers = new Dictionary<long,PlayerBatch>();
         internal IDictionary<long,PlayerContainerAction> Containers => new Dictionary<long,PlayerContainerAction>(containers);
         internal IDictionary<long, ObjectRecord> Objects => objects.ToDictionary(p => p.Key, p => Copy(p.Value));
         internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects) : this(player,objects,null) { }
-        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects, IDictionary<long,PlayerContainerAction> containers)
+        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects, IDictionary<long,PlayerContainerAction> containers) : this(player,objects,containers,Array.Empty<string>()) { }
+        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects, IDictionary<long,PlayerContainerAction> containers, IEnumerable<string> keys)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
             if (objects == null || objects.Count > 128 || objects.Any(p => p.Key <= 0 || p.Value != null && p.Value.Id != p.Key))
                 throw new InvalidDataException("Invalid world objects in player action");
             this.objects = objects.ToDictionary(p => p.Key, p => Copy(p.Value));
+            worldKeys = (keys ?? throw new ArgumentNullException(nameof(keys))).Distinct(StringComparer.Ordinal).OrderBy(k => k,StringComparer.Ordinal).ToArray();
+            if (worldKeys.Length > 16 || worldKeys.Any(k => string.IsNullOrEmpty(k) || k.Length > 256 || k.Any(char.IsWhiteSpace) || k != k.ToLowerInvariant()))
+                throw new InvalidDataException("Invalid world progress key");
             this.containers = containers == null ? new Dictionary<long,PlayerContainerAction>() : new Dictionary<long,PlayerContainerAction>(containers);
+            if (worldKeys.Length != 0 && objects.Count + this.containers.Count == 0) throw new InvalidDataException("World progress requires a reserved target");
             if (this.containers.Count > 128 || this.containers.Any(p => p.Key <= 0 || p.Value == null || objects.ContainsKey(p.Key)))
                 throw new InvalidDataException("Invalid crafting containers");
         }
@@ -70,6 +77,7 @@ namespace Overhaul.Persistence
                 }
                 foreach (var pair in containers.OrderBy(p => p.Key))
                 { writer.Write(pair.Key); writer.Write(pair.Value.Before.Digest()); writer.Write(pair.Value.After.Digest()); }
+                foreach (string key in worldKeys) writer.Write(key);
                 writer.Flush(); using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(stream.ToArray())).Replace("-", "");
             }
         }
@@ -85,6 +93,9 @@ namespace Overhaul.Persistence
             PrepareTransfers(world); var player = Get(identity);
             if (player.Revision != action.Player.ExpectedRevision) throw new InvalidOperationException("Stale player action revision");
             var changes = action.Objects; var containers = action.Containers;
+            foreach (string key in action.WorldKeys)
+                using (var row = world.Query("SELECT 1 FROM world_keys WHERE source=? AND key=?","progress",key))
+                    if (row.Read()) throw new InvalidOperationException("World progress key already exists");
             foreach (var pair in containers) pair.Value.Validate(world,pair.Key);
             var batch = action.Player.Changes.Any(r => r.Table == "food") ? PlayerFoodClock.Rebase(action.Player,player.FoodClock) : action.Player;
             if (batch.Changes.Any(r => r.Table == "effects")) batch = PlayerEffectClock.Rebase(batch,player.EffectClock);
@@ -93,6 +104,7 @@ namespace Overhaul.Persistence
             {
                 PlayerTransferJournal.Stage(world, player, identity, batch, action.Digest(), changes.Keys.Concat(containers.Keys), db =>
                 {
+                    foreach (string key in action.WorldKeys) db.Write("INSERT INTO world_keys(source,key) VALUES(?,?)","progress",key);
                     foreach (var pair in changes)
                         if (pair.Value == null) ObjectSql.Delete(db, pair.Key); else ObjectSql.Write(db, pair.Value);
                     foreach (var pair in containers)
@@ -104,3 +116,5 @@ namespace Overhaul.Persistence
         });
     }
 }
+
+

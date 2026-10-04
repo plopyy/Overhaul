@@ -63,6 +63,7 @@ namespace Overhaul.Persistence
             var r=new WorldRecord{Name=w.m_name,SeedName=w.m_seedName,Seed=w.m_seed,Uid=w.m_uid,Generation=w.m_worldGenVersion,NeedsData=true,Time=net.m_netTime,
                 LocationVersion=zones.m_locationVersion,LocationsGenerated=zones.m_locationsGenerated,EventTimer=events.m_eventTimer,
                 PersistentEvents=JsonUtility.ToJson(PersistentEventSystem.instance.m_activePersistentEvents)};
+            r.ProtectedKeys = PlayerWorldKeyGame.Protected;
             r.InitialKeys.AddRange(w.m_startingGlobalKeys);
             foreach(var key in zones.GetGlobalKeys()){ZoneSystem.GetKeyValue(key,out _,out var type);if(type>=GlobalKeys.NonServerOption)r.Keys.Add(key);}
             foreach(var p in w.m_playerHistory)r.Players.Add(new[]{p.m_id.ToString(),p.m_displayName??"",p.m_serverAssignedDisplayName??"",p.m_playfabId??""});
@@ -98,3 +99,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

@@ -33,6 +33,7 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerTurretGame.Interaction) return PlayerTurretGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerSaddleGame.Attach || command.Definition == PlayerSaddleGame.Remove) return PlayerSaddleGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerPetGame.Feed) return PlayerPetGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerTradeGame.Give) return PlayerTradeGame.GiveItem(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
@@ -343,6 +344,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
 

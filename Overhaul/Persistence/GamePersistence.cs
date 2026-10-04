@@ -251,7 +251,7 @@ namespace Overhaul.Persistence
                 {
                     Players=null;
                     try { writer.Dispose(); }
-                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();deferredOutputs.Clear();InventoryMoveReservations.Clear(); }
+                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();deferredOutputs.Clear();InventoryMoveReservations.Clear();PlayerWorldKeyGame.Clear(); }
                 }
             }
         }
@@ -339,3 +339,4 @@ namespace Overhaul.Persistence
         static void Postfix(ZDOID __0)=>GamePersistence.Mark(__0);
     }
 }
+

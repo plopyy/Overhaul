@@ -9,6 +9,40 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerTradeGame
     {
+        internal const string Give = "trader.give";
+        internal static PlayerActionPlan GiveItem(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
+        {
+            var trader = target.GetComponent<Trader>(); var view = target.GetComponent<ZNetView>();
+            if (!trader || !view || !view.IsValid() || request.Action.Amount != 1 || !request.Gameplay.Alternate)
+                throw new InvalidOperationException("Trader gift is unavailable");
+            int slot = request.Action.FromY*256+request.Action.FromX;
+            var item = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);
+            var offer = trader.m_useItems.FirstOrDefault(o => o.m_prefab && o.m_prefab.m_itemData.m_shared.m_name == item.m_shared.m_name);
+            if (offer == null || item.m_worldLevel < Game.m_worldLevel || !inventory.Available(slot)) throw new InvalidOperationException("Trader does not accept this item");
+            if (offer.m_removesItem) inventory.Remove(slot,1,true);
+            using (var key = string.IsNullOrEmpty(offer.m_setsGlobalKey) ? null : new PlayerWorldKeyGame.Reservation(offer.m_setsGlobalKey))
+            using (var world = new PlayerActionObjectGame(view.GetZDO()))
+            {
+                var plan = world.Finish(inventory.Delta(request.Action.Operation,snapshot.Revision),() =>
+                { if (!string.IsNullOrEmpty(offer.m_dialog)) trader.Say(offer.m_dialog,"Talk"); });
+                return key == null ? plan : key.Finish(plan);
+            }
+        }
+        [HarmonyPatch(typeof(Trader),nameof(Trader.UseItem))]
+        private static class GiftIntent
+        {
+            [HarmonyPriority(Priority.First+200)]
+            private static bool Prefix(Trader __instance,Humanoid user,ItemDrop.ItemData item,ref bool __result)
+            {
+                if (user != Player.m_localPlayer || !PlayerSessionGame.Managed) return true;
+                __result = false;
+                var view = __instance.GetComponent<ZNetView>();
+                if (!view || !view.IsValid() || item == null || user.IsTeleporting() || !user.GetInventory().ContainsItem(item)) return false;
+                var id = view.GetZDO().m_uid;
+                InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.UseOn,Definition = Give,TargetUser = id.UserID,TargetId = id.ID,Alternate = true },item.m_gridPos.x,item.m_gridPos.y,1);
+                return false;
+            }
+        }
         private static ItemDrop Coins()
         {
             if (StoreGui.instance && StoreGui.instance.m_coinPrefab) return StoreGui.instance.m_coinPrefab;
@@ -131,3 +165,4 @@ namespace Overhaul.Persistence
         private static class Sell { [HarmonyPriority(Priority.First + 200)] private static bool Prefix(StoreGui __instance) => Intent(__instance,false); }
     }
 }
+
