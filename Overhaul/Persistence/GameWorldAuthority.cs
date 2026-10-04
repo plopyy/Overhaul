@@ -38,6 +38,9 @@ namespace Overhaul.Persistence
         {if(Owns(data) && data.GetOwner()!=ZNet.GetUID())data.SetOwner(ZNet.GetUID());}
         internal static bool Allowed(Component target,long sender)
         {var view=target.GetComponent<ZNetView>();return !view || !view.IsValid() || !Owns(view.GetZDO()) || sender==ZNet.GetUID();}
+        [HarmonyPatch(typeof(ItemDrop),"RPC_RequestOwn")]
+        private static class GroundOwnership
+        {private static bool Prefix(ItemDrop __instance,long uid)=>Allowed(__instance,uid);}
         [HarmonyPatch]
         private static class Mutation
         {

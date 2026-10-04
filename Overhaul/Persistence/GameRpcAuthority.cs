@@ -24,7 +24,7 @@ namespace Overhaul.Persistence
                 if(targetPeer!=ZNet.GetUID() && (GameCreatureAuthority.Owns(target) || GameWorldAuthority.Owns(target) || PlayerFishingCastGame.ServerOwned(target)))return false;
                 var data=ZDOMan.instance?.GetZDO(target);
                 var prefab=data!=null && ZNetScene.instance?ZNetScene.instance.GetPrefab(data.GetPrefab()):null;
-                if(prefab && prefab.GetComponent<Player>() && target!=peer.m_characterID)return false;
+                if(prefab && prefab.GetComponent<Player>() && (target!=peer.m_characterID || data.GetOwner()!=peer.m_uid))return false;
                 return true;
             }
             catch(Exception){return false;}
