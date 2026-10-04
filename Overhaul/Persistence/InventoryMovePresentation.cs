@@ -20,7 +20,8 @@ namespace Overhaul.Persistence
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
             var statuses = GameStatusGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="status"||r.Table=="status_data"),player);
-            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]!=PlayerBuildGame.Debt && !PlayerResources.IsKey((string)r.Values[0])),player);
+            var life=GameLifeView.Presentation(reply.Player.Changes.Where(r=>r.Table=="spawn"||r.Table=="state"&&GameLifeView.IsKey((string)r.Values[0])),player);
+            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]!=PlayerBuildGame.Debt && !PlayerResources.IsKey((string)r.Values[0])&&!GameLifeView.IsKey((string)r.Values[0])),player);
             var resources = PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])),player);
             var building = PlayerBuildGame.Presentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]==PlayerBuildGame.Debt),player);
             bool resize = reply.Player.Changes.Any(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "uniques" &&
@@ -28,7 +29,7 @@ namespace Overhaul.Persistence
             int rows = resize ? InventoryMoveGame.PlayerRows(reply.Player.Changes) : 0;
             int height = resize ? rows + Slots.ExtraRows + Slots.HiddenRows : playerInventory.m_height;
             var bag = PrepareSized(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
-                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects" && r.Table != "state" && r.Table!="status" && r.Table!="status_data")), reply.Snapshot,null,height);
+                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects" && r.Table != "state" && r.Table!="status" && r.Table!="status_data"&&r.Table!="spawn")), reply.Snapshot,null,height);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () => PlayerEquipmentGame.Present(() =>
             {
@@ -58,6 +59,7 @@ namespace Overhaul.Persistence
                 guardian();
                 building();
                 resources();
+                life();
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)

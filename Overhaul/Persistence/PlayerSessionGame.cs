@@ -115,6 +115,7 @@ namespace Overhaul.Persistence
             Game.instance.m_playerProfile = profile;
             PlayerPotionGame.Initial(rows);
             GameStatusGame.Initial(rows);
+            GameLifeView.Initial(rows);
             PlayerResourceGame.Initial(rows);
             if (!ZNet.instance.IsServer()) ZNet.instance.GetServerRPC().Invoke("PlayerID", profile.m_playerID);
         }
@@ -161,6 +162,7 @@ namespace Overhaul.Persistence
             originalProfile = null; failed = false; awaitingMode = false;
             PlayerPotionGame.Initial(null);
             GameStatusGame.Initial(null);
+            GameLifeView.Initial(null);
             PlayerResourceGame.Initial(null);
         }
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]
