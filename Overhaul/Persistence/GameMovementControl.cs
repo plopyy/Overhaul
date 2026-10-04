@@ -20,9 +20,9 @@ namespace Overhaul.Persistence
         private static long sequence;
         private static double next;
         private static Input last;
-        internal static void Forget(ZDOID actor)=>inputs.Remove(actor);
+        internal static void Forget(ZDOID actor){inputs.Remove(actor);GameMovementRuntime.Forget(actor);}
         internal static void ClearClient(){sequence=0;next=0;last=null;}
-        internal static void Clear(){inputs.Clear();ClearClient();}
+        internal static void Clear(){inputs.Clear();ClearClient();GameMovementRuntime.Clear();}
         internal static Input Read(ZDOID actor)
         {
             if(!inputs.TryGetValue(actor,out var value))return null;

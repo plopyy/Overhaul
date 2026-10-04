@@ -9,6 +9,22 @@ namespace Overhaul.Persistence
 {
     internal static partial class GameCombatContext
     {
+        [HarmonyPatch(typeof(Player),nameof(Player.IsEncumbered))]
+        private static class MovementWeight
+        {
+            private static bool Prefix(Player __instance,ref bool __result)
+            {
+                if(!Matches(__instance))return true;
+                if(!Current.InventoryWeight.HasValue)Current.InventoryWeight=Current.State.Rows.Where(r=>r.Table=="inventory").Sum(row=>PlayerInventoryView.ReadItem(row.Values,null,true).GetWeight());
+                __result=Current.InventoryWeight.Value>__instance.GetMaxCarryWeight();return false;
+            }
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyMaxCarryWeight))]
+        private static class MovementCarry
+        {
+            private static bool Prefix(SEMan __instance,float baseLimit,ref float limit)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyMaxCarryWeight(baseLimit,ref limit);return false;}
+        }
         // Native movement often reads Skills directly rather than Player's wrapper.
         [HarmonyPatch(typeof(Skills),nameof(Skills.GetSkillLevel))]
         private static class NativeSkill

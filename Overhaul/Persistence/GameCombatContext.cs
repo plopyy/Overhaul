@@ -16,6 +16,7 @@ namespace Overhaul.Persistence
             internal ItemDrop.ItemData Weapon,Ammo;
             internal ItemDrop.ItemData[] Equipment;
             internal StatusEffect[] Effects;
+            internal float? InventoryWeight;
         }
         [ThreadStatic] internal static Frame Current;
         internal static bool Matches(Character player)=>Current!=null && Current.Player==player;

@@ -50,6 +50,7 @@ namespace Overhaul.Persistence
                 __instance.Set(ZDOVars.s_stamina,(float)PlayerResources.Read(state,"stamina"));
                 __instance.Set(ZDOVars.s_eitr,(float)PlayerResources.Read(state,"eitr"));
                 __instance.Set(ZDOVars.s_adrenaline,(float)GameAdrenaline.Read(state,PlayerResources.Adrenaline));
+                GameMovementRuntime.Protect(__instance);
             }
         }
     }
