@@ -30,6 +30,8 @@ namespace Overhaul.Persistence
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
                 return PlayerStandGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerArmorStandGame.Attach || command.Definition == PlayerArmorStandGame.Drop || command.Definition == PlayerArmorStandGame.Pose)
+                return PlayerArmorStandGame.Prepare(actor,target,request,snapshot,inventory);
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
@@ -292,3 +294,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+
