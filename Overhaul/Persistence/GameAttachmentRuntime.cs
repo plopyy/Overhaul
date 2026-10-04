@@ -31,7 +31,7 @@ namespace Overhaul.Persistence
             bool previous=applying;applying=true;
             try{player.AttachStop();player.AttachStart(point,colliders,hide,kind==1,ship,animation,offset);}
             finally{applying=previous;}
-            var link=new Link{Player=player,Target=target,Point=point,Kind=kind,Index=index};links[player.GetZDOID()]=link;cooldowns[player.GetZDOID()]=Time.timeAsDouble+2;
+            var link=new Link{Player=player,Target=target,Point=point,Kind=kind,Index=index};links[player.GetZDOID()]=link;if(GameCreatureAuthority.Enabled)cooldowns[player.GetZDOID()]=Time.timeAsDouble+2;
             Animation(player,animation,true);Publish(player,link);
         }
         internal static void Detach(Player player)

@@ -17,6 +17,8 @@ namespace Overhaul.Persistence
             internal float Absorbed,Stagger,SkillGain;
             internal float Fraction;
             internal ItemDrop.ItemData Item;
+            internal int ChargeEffect;
+            internal bool Discharge;
         }
         internal static Result Prepare(PlayerSnapshot state,Player definition,HitData incoming,int slot,bool timed,float stagger,bool hasAttacker)
         {
@@ -67,6 +69,13 @@ namespace Overhaul.Persistence
                 else Cost(definition.m_perfectBlockStaminaDrain*(1-modifier));
             }
             var changes=inventory.Delta(Guid.NewGuid().ToString("N"),state.Revision).Changes.ToList();
+            if(item.m_shared.m_buildBlockCharges)
+            {
+                result.ChargeEffect=checked((int)GameAdrenaline.Read(state,PlayerResources.BlockCharges)+1);
+                result.Discharge=result.ChargeEffect>=item.m_shared.m_maxBlockCharges;
+                changes.Add(PlayerResources.Row(PlayerResources.BlockCharges,result.Discharge?0:result.ChargeEffect));
+                changes.Add(PlayerResources.Row(PlayerResources.BlockChargeAge,0));
+            }
             changes.Add(PlayerResources.Row("stamina",stamina));if(spent)changes.Add(PlayerResources.Row(PlayerResources.StaminaDelay,definition.m_staminaRegenDelay));
             result.Changes=changes.ToArray();return result;
         }

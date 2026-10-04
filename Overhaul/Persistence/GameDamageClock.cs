@@ -14,8 +14,8 @@ namespace Overhaul.Persistence
         internal double Elapsed=>Math.Max(0,(stopped??Time.timeAsDouble)-advanced);
         internal void Reset()=>advanced=stopped??Time.timeAsDouble;
         internal void Freeze(){if(!stopped.HasValue)stopped=Time.timeAsDouble;}
-        internal static bool Active(PlayerSnapshot state)=>state!=null&&PlayerResources.Read(state,"health")>0&&state.Rows.Any(r=>r.Table=="status"&&
-            GameDamageOverTime.Supported(ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0]))));
+        internal static bool Active(PlayerSnapshot state)=>state!=null&&PlayerResources.Read(state,"health")>0&&(GameAdrenaline.Read(state,PlayerResources.BlockCharges)>0||state.Rows.Any(r=>r.Table=="status"&&
+            GameDamageOverTime.Supported(ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])))));
         internal PlayerActionPlan Prepare(PlayerSnapshot state,Player player,bool final=false)
         {
             if(!player||!Active(state)){Reset();return null;}

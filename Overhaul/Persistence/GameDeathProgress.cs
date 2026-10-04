@@ -27,6 +27,7 @@ namespace Overhaul.Persistence
                 new[]{position.x,position.y,position.z}.Any(v=>float.IsNaN(v)||float.IsInfinity(v)))
                 throw new InvalidOperationException("Invalid server death state");
             var changes=new List<PlayerChange>{PlayerResources.Row("health",0),PlayerResources.Row(PlayerResources.Adrenaline,0),PlayerResources.Row(PlayerResources.AdrenalineDelay,0),
+                PlayerResources.Row(PlayerResources.BlockCharges,0),PlayerResources.Row(PlayerResources.BlockChargeAge,0),
                 new PlayerChange("state",false,Dead,1,null,null,null),
                 new PlayerChange("state",false,GameRespawnGame.After,DateTime.UtcNow.AddSeconds(10).Ticks,null,null,null),
                 new PlayerChange("state",false,"time_since_death",null,0d,null,null),

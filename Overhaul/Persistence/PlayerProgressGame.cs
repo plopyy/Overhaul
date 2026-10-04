@@ -126,6 +126,8 @@ namespace Overhaul.Persistence
                 if(values.TryGetValue(PlayerResources.Adrenaline,out var adrenaline))player.m_adrenaline=adrenaline;
                 if(values.TryGetValue(PlayerResources.AdrenalineDelay,out var adrenalineDelay))player.m_adrenalineDegenTimer=adrenalineDelay;
                 if(values.TryGetValue(PlayerResources.AdrenalineLastMaximum,out var adrenalineMax))player.m_lastMaxAdrenaline=adrenalineMax;
+                if(values.TryGetValue(PlayerResources.BlockCharges,out var charges))player.m_blockCharges=(int)charges;
+                if(values.TryGetValue(PlayerResources.BlockChargeAge,out var chargeAge))player.m_blockChargeRemoveTimer=chargeAge;
                 if(values.TryGetValue("guardian_cooldown",out var guardianCooldown))player.m_guardianPowerCooldown=guardianCooldown;
             };
         }

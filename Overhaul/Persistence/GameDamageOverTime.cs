@@ -44,6 +44,7 @@ namespace Overhaul.Persistence
             var frame=new Frame{Player=player,State=state};var previous=current;current=frame;
             try
             {
+                Change(frame,GameBlockCharges.Advance(state,player,seconds));
                 GameCombatContext.Run(player,state,null,null,()=>GameStatusGame.Simulate(()=>
                 {
                     // Resting refreshes Rested after its own age has advanced.
@@ -56,7 +57,7 @@ namespace Overhaul.Persistence
                         if(!Supported(effect))continue;
                         if(effect is SE_StaffGuard guard)
                         {
-                            bool held=GameStaffGuardRuntime.Held(player)&&GameCombatEquipment.Equipped(frame.State).Any(GameStaffGuardRuntime.IsStaff)&&!player.IsTeleporting()&&!player.InDodge()&&!DynamicCombat.IsDashing(player);
+                            bool held=GameStaffGuardRuntime.CanHold(frame.State,player);
                             GameStaffGuardRules.Advance(guard,held,seconds,global::Overhaul.Utility.OverhaulConfig.StaffShieldRegenerationPerSecond?.Value??5f);
                             Change(frame,guard.IsDone()?new[]{new PlayerChange("status",true,id)}:GameStatusCodec.Delta(frame.State,guard,ZDOID.None));continue;
                         }

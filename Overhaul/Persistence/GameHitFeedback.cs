@@ -36,6 +36,7 @@ namespace Overhaul.Persistence
             }
             var attacker=impact.GetAttacker();
             if(block?.Attempted==true)block.Item.m_shared.m_blockEffect.Create(impact.m_point,Quaternion.identity,null,1,-1,player.GetZDOID());
+            if(block?.ChargeEffect>0)GameBlockCharges.Publish(player,state,block);
             if(block?.Blocked==true)
             {
                 if(DamageText.instance)DamageText.instance.ShowText(DamageText.TextType.Blocked,impact.m_point+Vector3.up*.5f,block.Absorbed,false);

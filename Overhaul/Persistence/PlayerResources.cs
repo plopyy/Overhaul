@@ -10,7 +10,8 @@ namespace Overhaul.Persistence
     {
         internal const string StaminaDelay="overhaul_stamina_delay",EitrDelay="overhaul_eitr_delay",FoodRegen="overhaul_food_regen";
         internal const string Adrenaline="adrenaline",AdrenalineDelay="adrenaline_delay",AdrenalineMaximum="max_adrenaline",AdrenalineLastMaximum="adrenaline_last_max";
-        internal static bool IsKey(string key)=>key=="health" || key=="stamina" || key=="eitr" || key=="max_health" || key=="max_stamina" || key=="max_eitr" || key=="guardian_cooldown" || key==StaminaDelay || key==EitrDelay || key==FoodRegen || key==Adrenaline || key==AdrenalineDelay || key==AdrenalineMaximum || key==AdrenalineLastMaximum;
+        internal const string BlockCharges="block_charges",BlockChargeAge="block_charge_age";
+        internal static bool IsKey(string key)=>key=="health" || key=="stamina" || key=="eitr" || key=="max_health" || key=="max_stamina" || key=="max_eitr" || key=="guardian_cooldown" || key==StaminaDelay || key==EitrDelay || key==FoodRegen || key==Adrenaline || key==AdrenalineDelay || key==AdrenalineMaximum || key==AdrenalineLastMaximum || key==BlockCharges || key==BlockChargeAge;
         internal static double Read(PlayerSnapshot snapshot,string key)
         {
             var row=snapshot.Rows.SingleOrDefault(r=>r.Table=="state" && (string)r.Values[0]==key);

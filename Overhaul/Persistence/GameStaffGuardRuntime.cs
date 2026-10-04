@@ -16,6 +16,9 @@ namespace Overhaul.Persistence
         internal static void ControlInput(ZDO actor,bool held)
         {if(actor==null||InventoryMoveGame.State(actor.m_uid)==null)return;var input=Get(actor.m_uid);input.Held=held;input.Seen=Time.timeAsDouble;}
         internal static bool Held(Player player)=>player&&controls.TryGetValue(player.GetZDOID(),out var input)&&input.Held&&Time.timeAsDouble-input.Seen<1.5;
+        internal static bool CanHold(PlayerSnapshot state,Player player)
+            =>Held(player)&&PlayerResources.Read(state,"health")>0&&!GameDeathProgress.IsDead(state)&&!player.IsTeleporting()&&!player.InIntro()&&
+              !player.IsAttached()&&!player.InDodge()&&!DynamicCombat.IsDashing(player)&&!player.IsStaggering()&&GameCombatEquipment.Equipped(state).Any(IsStaff);
         internal static SE_StaffGuard Restore(PlayerSnapshot state,Player player)
         {
             var rows=state.Rows.Where(row=>(row.Table=="status"||row.Table=="status_data")&&Convert.ToInt32(row.Values[0])==GameStaffGuardRules.Id).ToArray();
@@ -52,9 +55,9 @@ namespace Overhaul.Persistence
             if(!InventoryMoveGame.TimedAction(player,state=>
             {
                 var saved=Restore(state,player);var staff=GameCombatEquipment.Equipped(state).FirstOrDefault(IsStaff);
-                bool held=Held(player)&&staff!=null&&!player.IsDead()&&!player.IsTeleporting()&&!player.InIntro()&&!player.InDodge()&&!DynamicCombat.IsDashing(player)&&!player.IsStaggering();
+                bool held=CanHold(state,player);
                 SE_StaffGuard changed=null;bool casting=false;
-                if(held&&!player.InAttack()&&(saved==null||!saved.m_guardActive&&saved.m_guardCast<=0&&saved.m_guardStun<=0&&!saved.m_guardBroken))
+                if(held&&(saved==null||!saved.m_guardActive&&saved.m_guardCast<=0&&saved.m_guardStun<=0&&!saved.m_guardBroken))
                 {
                     var template=ObjectDB.instance.GetStatusEffect(GameStaffGuardRules.Id) as SE_StaffGuard;
                     if(template){changed=GameStaffGuardRules.Begin(saved,template,staff);casting=true;}
@@ -64,7 +67,14 @@ namespace Overhaul.Persistence
                 if(changed==null){input.Pending=false;return null;}
                 var rows=changed.IsDone()?new[]{new PlayerChange("status",true,GameStaffGuardRules.Id)}:GameStatusCodec.Delta(state,changed,ZDOID.None);
                 return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>
-                {input.Pending=false;if(casting&&player&&player.m_zanim)player.m_zanim.SetTrigger("staff_shield");});
+                {
+                    input.Pending=false;
+                    if(casting&&player)
+                    {
+                        GameAttackRuntime.Forget(player.GetZDOID());GameAttackRuntime.ForgetControls(player.GetZDOID());
+                        if(player.m_zanim)player.m_zanim.SetTrigger("staff_shield");
+                    }
+                });
             }))input.Pending=false;
         }
         [HarmonyPatch(typeof(Player),nameof(Player.CanMove))]

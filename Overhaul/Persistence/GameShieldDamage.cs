@@ -24,7 +24,7 @@ namespace Overhaul.Persistence
                 int id=Convert.ToInt32(header.Values[0]);
                 if(!(ObjectDB.instance.GetStatusEffect(id) is SE_Shield))continue;
                 var shield=(SE_Shield)GameStatusCodec.Restore(state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id),player);
-                if(shield is SE_StaffGuard inactive&&(!inactive.m_guardActive||!GameStaffGuardRuntime.Held(player)))continue;
+                if(shield is SE_StaffGuard inactive&&(!inactive.m_guardActive||!GameStaffGuardRuntime.CanHold(current,player)))continue;
                 bool expired=shield.m_ttl>0&&shield.m_time>shield.m_ttl;
                 bool broken=shield.m_damage>shield.m_totalAbsorbDamage;
                 if(!expired&&!broken)
