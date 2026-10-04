@@ -87,8 +87,7 @@ namespace Overhaul.Persistence
                 throw new InvalidOperationException("Previous server attack is still active");
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
-            if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
-                attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
+            if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile && attack.m_attackType!=Attack.AttackType.None)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
             if(attack.m_loopingAttack && !Holding(actor.m_uid,request.Gameplay.Alternate))throw new InvalidOperationException("Looping attack has no live held control");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
@@ -149,12 +148,20 @@ namespace Overhaul.Persistence
                     }
                     var result=GameAttackInventory.Trigger(state,slot,current.Secondary,Guid.NewGuid().ToString("N"));
                     if(!SameWeapon(current.Weapon,result.Weapon))return null;
-                    return new PlayerActionPlan(result.Change,()=>
+                    var rows=result.Change.Player.Changes.ToList();
+                    if(current.Attack.m_attackUseAdrenaline>0)GamePlayerHit.Merge(rows,GameAdrenaline.Change(PlayerProgressService.Overlay(state,rows),current.Player,current.Attack.m_attackUseAdrenaline));
+                    if(current.Attack.m_attackType==Attack.AttackType.None&&result.Weapon.m_shared.m_consumeStatusEffect)
+                        GamePlayerHit.Merge(rows,GameStatusImpact.Prepare(PlayerProgressService.Overlay(state,rows),current.Player,result.Weapon.m_shared.m_consumeStatusEffect.NameHash(),0,0,-1,ZDOID.None));
+                    var confirmed=PlayerProgressService.Overlay(state,rows);
+                    var change=new PlayerWorldAction(new PlayerBatch(result.Change.Player.Operation,state.Revision,rows),result.Change.Objects,result.Change.Containers,result.Change.WorldKeys);
+                    return new PlayerActionPlan(change,()=>
                     {
                         if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return;
                         triggered=true;current.Triggered=true;current.Weapon=result.Weapon;current.Ammo=result.Ammo;
                         current.Attack.m_weapon=result.Weapon;
-                        InContext(current,state,()=>current.Attack.OnAttackTrigger());
+                        float adrenaline=current.Attack.m_attackUseAdrenaline;current.Attack.m_attackUseAdrenaline=0;
+                        try{InContext(current,confirmed,()=>current.Attack.OnAttackTrigger());}
+                        finally{current.Attack.m_attackUseAdrenaline=adrenaline;}
                     });
                 }
                 catch(InvalidOperationException){return null;}
@@ -177,8 +184,9 @@ namespace Overhaul.Persistence
                     {
                         if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return;
                         bool previous=firing;firing=true;
-                        try{InContext(current,state,()=>current.Attack.FireProjectileBurst());fired=true;}
-                        finally{firing=previous;}
+                        float adrenaline=current.Attack.m_attackUseAdrenaline;current.Attack.m_attackUseAdrenaline=0;
+                        try{InContext(current,PlayerProgressService.Overlay(state,costs),()=>current.Attack.FireProjectileBurst());fired=true;}
+                        finally{firing=previous;current.Attack.m_attackUseAdrenaline=adrenaline;}
                     });
                 }
                 catch(InvalidOperationException){return null;}
@@ -267,6 +275,18 @@ namespace Overhaul.Persistence
                 return false;
             }
         }
+        [HarmonyPatch(typeof(Attack),"DoNonAttack")]
+        private static class NonAttack
+        {
+            private static bool Prefix(Attack __instance)
+            {
+                if(!Active(__instance))return true;
+                var origin=__instance.GetAttackOrigin();var player=__instance.m_character;
+                __instance.m_weapon.m_shared.m_triggerEffect.Create(origin.position,player.transform.rotation,origin,1,-1,player.GetZDOID());
+                __instance.m_triggerEffect.Create(origin.position,player.transform.rotation,origin,1,-1,player.GetZDOID());
+                player.AddNoise(__instance.m_attackHitNoise);return false;
+            }
+        }
         [HarmonyPatch(typeof(Attack),"HaveAmmo")]
         private static class HaveAmmo
         {
@@ -291,12 +311,6 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Character),nameof(Character.TryUseEitr))]
         private static class HaveEitr
         {private static bool Prefix(Character __instance,ref bool __result){if(!starting || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
-        [HarmonyPatch(typeof(Player),nameof(Player.AddAdrenaline))]
-        private static class AdrenalineDebit
-        {
-            [HarmonyPriority(Priority.First+250)]
-            private static bool Prefix(Player __instance)=>!GameCombatContext.Matches(__instance)||!starting&&!firing;
-        }
         [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
         private static class StaminaDebit {private static bool Prefix(Player __instance)=>!executing || !GameCombatContext.Matches(__instance);}
         [HarmonyPatch(typeof(Player),nameof(Player.UseEitr))]
