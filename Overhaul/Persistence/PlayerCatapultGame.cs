@@ -63,7 +63,7 @@ namespace Overhaul.Persistence
             if(!drop)throw new InvalidOperationException("Saved catapult ammunition is unavailable");
             var item=drop.m_itemData.Clone();item.m_dropPrefab=prefab;var bytes=data.GetByteArray(Payload);
             if(bytes==null || bytes.Length==0)throw new InvalidOperationException("Saved catapult ammunition is incomplete");
-            var package=new ZPackage(bytes);int version=package.ReadByte();item.Load(package,version);
+            var package=new ZPackage(bytes);int version=package.ReadByte();item.Load(package,(global::Version.Item)version);
             if(item.m_stack<1 || item.m_stack>128 || item.m_stack>item.m_shared.m_maxStackSize)throw new InvalidOperationException("Invalid saved catapult stack");
             item.m_equipped=false;return item;
         }
@@ -130,3 +130,4 @@ namespace Overhaul.Persistence
         private static class LegacyShoot {private static bool Prefix()=>!Enabled;}
     }
 }
+

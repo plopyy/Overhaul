@@ -46,7 +46,7 @@ namespace Overhaul.Persistence
         }
         internal static System.Threading.Tasks.Task<bool> CommitWorldObjects(PlayerWorldAction action)
         {
-            if(!Active || action.Player.Changes.Length!=0 || action.Containers.Count!=0 || action.WorldKeys.Length!=0)throw new InvalidOperationException("Invalid autonomous world action");
+            if(!Active || action.Player.Changes.Any() || action.Containers.Count!=0 || action.WorldKeys.Length!=0)throw new InvalidOperationException("Invalid autonomous world action");
             var records=action.Objects;
             return writer.Submit(db=>{db.Transaction(()=>{foreach(var pair in records){if(pair.Value==null)ObjectSql.Delete(db,pair.Key);else ObjectSql.Write(db,pair.Value);}});return true;});
         }
@@ -346,5 +346,6 @@ namespace Overhaul.Persistence
         static void Postfix(ZDOID __0)=>GamePersistence.Mark(__0);
     }
 }
+
 
 
