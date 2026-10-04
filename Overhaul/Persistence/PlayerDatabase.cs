@@ -282,7 +282,8 @@ namespace Overhaul.Persistence
         internal PlayerSnapshot InventoryState() => new PlayerSnapshot(Revision, ReadTables("inventory", "item_data"));
         internal void CommitInventory(PlayerBatch batch)
         {
-            if (!Complete || batch.Changes.Any(r => r.Table != "inventory" && r.Table != "item_data"))
+            if (!Complete || batch.Changes.Any(r => r.Table != "inventory" && r.Table != "item_data" &&
+                !(r.Table=="knowledge" && !r.Delete && ((string)r.Values[0]=="materials" || (string)r.Values[0]=="trophies") && (string)r.Values[2]=="")))
                 throw new InvalidOperationException("Invalid inventory transaction");
             CommitDelta(batch);
         }

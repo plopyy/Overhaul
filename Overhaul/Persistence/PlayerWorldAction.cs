@@ -9,7 +9,12 @@ namespace Overhaul.Persistence
 {
     internal sealed class PlayerWorldAction
     {
-        internal readonly PlayerBatch Player;
+        internal PlayerBatch Player { get; private set; }
+        internal void Discover(PlayerBatch enriched)
+        {
+            if(enriched.Operation!=Player.Operation || enriched.ExpectedRevision!=Player.ExpectedRevision)throw new InvalidDataException("Discovery belongs to another action");
+            Player=enriched;
+        }
         private readonly Dictionary<long, ObjectRecord> objects;
         private readonly Dictionary<long, PlayerContainerAction> containers;
         private readonly string[] worldKeys;

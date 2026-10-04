@@ -78,7 +78,8 @@ namespace Overhaul.Persistence
                             changes.RemoveAll(old=>Same(old));changes.Add(row);
                         }
                     }
-                    result=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);commit=writer.CommitProgress(identity,result);
+                    if(changes.Count==0)active=null;
+                    else{result=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);commit=writer.CommitProgress(identity,result);}
                 }
                 if(!Busy && !playerActionBusy && queued.Count!=0)
                 {active=queued.ToArray();queued.Clear();read=writer.ActionState(identity);}

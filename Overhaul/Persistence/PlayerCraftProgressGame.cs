@@ -97,6 +97,8 @@ namespace Overhaul.Persistence
                     string category = (string)v[0], key = (string)v[1];
                     HashSet<string> set = category == "uniques" ? player.m_uniques : category == "recipes" ? player.m_knownRecipes : category == "materials" ? player.m_knownMaterial : null;
                     if (set != null) { effects.Add(() => { if (row.Delete) set.Remove(key); else set.Add(key); }); continue; }
+                    if(category=="trophies")
+                    {effects.Add(()=>{if(row.Delete)player.m_trophies.Remove(key);else if(!player.m_trophies.Contains(key))player.m_trophies.Add(key);});continue;}
                     if(category=="stations")
                     {int level=row.Delete?0:int.Parse((string)v[2],CultureInfo.InvariantCulture);if(level<0)throw new System.IO.InvalidDataException("Invalid station level");effects.Add(()=>{if(row.Delete)player.m_knownStations.Remove(key);else player.m_knownStations[key]=level;});continue;}
                     float value = row.Delete ? 0 : float.Parse((string)v[2],CultureInfo.InvariantCulture);

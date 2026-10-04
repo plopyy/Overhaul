@@ -55,6 +55,12 @@ namespace Overhaul.Persistence
         }
         internal static InventoryMovePlan PrepareMove(ZDO actor,InventoryMoveRequest request,InventoryMoveResult result,InventoryMoveLayout layout)
         {
+            var plan=PrepareMoveCore(actor,request,result,layout);var move=plan.Result;
+            plan.Result=new InventoryMoveResult(PlayerDiscoveryGame.Acquired(move.Player),move.Container,move.Moved);
+            return plan;
+        }
+        private static InventoryMovePlan PrepareMoveCore(ZDO actor,InventoryMoveRequest request,InventoryMoveResult result,InventoryMoveLayout layout)
+        {
             if (result.EquipmentBefore == null) return new InventoryMovePlan(result);
             if (actor == null) throw new InvalidOperationException("Equipment actor is unavailable");
             var bag = new PlayerActionInventory(result.EquipmentAfter,layout); float duration = 0;

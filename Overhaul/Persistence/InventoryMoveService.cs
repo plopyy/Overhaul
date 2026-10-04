@@ -38,6 +38,7 @@ namespace Overhaul.Persistence
         private readonly Action<Exception> failed;
         private readonly Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction;
         private readonly Func<InventoryMoveRequest,InventoryMoveResult,InventoryMoveLayout,InventoryMovePlan> prepareMove;
+        private readonly Action<PlayerBatch> committed;
         private InventoryMovePlan preparedMove;
         private Task<PlayerSnapshot> actionState;
         private Task<PlayerBatch> actionCommit;
@@ -55,12 +56,13 @@ namespace Overhaul.Persistence
         internal InventoryMoveService(PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout,
             Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed,
             Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction = null,
-            Func<InventoryMoveRequest,InventoryMoveResult,InventoryMoveLayout,InventoryMovePlan> prepareMove = null)
+            Func<InventoryMoveRequest,InventoryMoveResult,InventoryMoveLayout,InventoryMovePlan> prepareMove = null,Action<PlayerBatch> committed = null)
         {
             if (session == null || session.State != PlayerAdmission.Phase.Ready) throw new InvalidOperationException("Character admission is incomplete");
             this.session = session; this.writer = writer; this.layout = layout; this.reserve = reserve; this.send = send; this.failed = failed;
             this.prepareAction = prepareAction;
             this.prepareMove = prepareMove;
+            this.committed = committed;
         }
         internal void Receive(byte[] bytes)
         {
@@ -181,6 +183,7 @@ namespace Overhaul.Persistence
         {
             reply.ContainerUser = request.ContainerUser; reply.ContainerId = request.ContainerId;
             lease?.Dispose(); lease = null; request = null; playerState = null; containerState = null; cancelled = false;
+            if(reply.Accepted && !reply.Snapshot)committed?.Invoke(reply.Player);
             if (!disconnected && session.State == PlayerAdmission.Phase.Ready) send(InventoryMoveProtocol.Encode(reply));
         }
         internal void CancelEquipment(string operation)

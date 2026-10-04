@@ -15,6 +15,12 @@ namespace Overhaul.Persistence
 
         internal static PlayerActionPlan Prepare(ZRpc rpc, PlayerAdmission.Session session, InventoryMoveRequest request, PlayerSnapshot snapshot)
         {
+            var plan=PrepareCore(rpc,session,request,snapshot);
+            plan.Change.Discover(PlayerDiscoveryGame.Acquired(plan.Change.Player));
+            return plan;
+        }
+        private static PlayerActionPlan PrepareCore(ZRpc rpc, PlayerAdmission.Session session, InventoryMoveRequest request, PlayerSnapshot snapshot)
+        {
             var actor = PlayerSessionGame.Actor(rpc);
             if (actor == null || actor.GetLong(ZDOVars.s_playerID,0) != PlayerSessionGame.CharacterId(session))
                 throw new InvalidOperationException("Player actor is unavailable");

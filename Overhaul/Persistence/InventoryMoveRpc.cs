@@ -14,6 +14,15 @@ namespace Overhaul.Persistence
         private readonly InventoryMoveService server;
         private readonly PlayerProgressService progress;
         private byte[] deferredRequest;
+        private bool discoveryPending;
+        private float nextDiscovery;
+        private readonly System.Collections.Generic.Dictionary<string,int> observedStations=new System.Collections.Generic.Dictionary<string,int>();
+        private void Discover()
+        {
+            if(disposed || discoveryPending)return;
+            discoveryPending=true;
+            if(!progress.Enqueue(state=>{discoveryPending=false;return PlayerDiscoveryGame.Refresh(state);}))discoveryPending=false;
+        }
         private const string ProgressResponse="Overhaul_ProgressChanged";
         private readonly InventoryMoveGame.Access access;
         internal readonly InventoryMoveController Controller;
@@ -44,7 +53,10 @@ namespace Overhaul.Persistence
             {if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
-                (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout));
+                (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
+                batch=>{if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
+            foreach(var row in session.Snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations"))observedStations[(string)row.Values[1]]=Convert.ToInt32(row.Values[2]);
+            Discover();
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,int,int>("Overhaul_FishingDraw",(sender,token,x,y)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)PlayerFishingCastGame.Begin(PlayerSessionGame.Actor(rpc),x,y);});
@@ -133,6 +145,12 @@ namespace Overhaul.Persistence
         internal void Tick()
         {
             if (!disposed && !rpc.IsConnected()) Dispose();
+            if(!disposed && progress!=null && Time.time>=nextDiscovery)
+            {
+                nextDiscovery=Time.time+2;
+                var stations=PlayerDiscoveryGame.Nearby(PlayerSessionGame.Actor(rpc),observedStations);
+                if(stations.Length!=0)progress.Enqueue(state=>PlayerDiscoveryGame.Refresh(state,stations));
+            }
             server?.Tick();
             progress?.Tick(server?.Busy==true || deferredRequest!=null);
             if(!disposed && deferredRequest!=null && !progress.Busy)
