@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         private static PlayerChange[] initial;
         private static readonly HashSet<int> confirmedEffects=new HashSet<int>();
         private static int suppressResources;
+        internal static bool Presenting=>suppressResources>0;
         internal static void Initial(IEnumerable<PlayerChange> rows)
         {initial=rows?.Where(r=>r.Table=="effects").ToArray();if(rows==null)confirmedEffects.Clear();}
         internal static bool Supported(StatusEffect effect)
@@ -129,6 +130,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Player),nameof(Player.AddEitr));
                 yield return AccessTools.Method(typeof(Player),nameof(Player.UseStamina));
             }
+            [HarmonyPriority(Priority.First+300)]
             private static bool Prefix()=>suppressResources==0;
         }
         [HarmonyPatch(typeof(Player),nameof(Player.RemoveOneFood))]

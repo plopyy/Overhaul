@@ -12,6 +12,7 @@ namespace Overhaul.Persistence
         private static readonly HashSet<int> confirmed=new HashSet<int>();
         private static bool initial;
         [ThreadStatic] private static int presenting,simulating;
+        internal static bool Presenting=>presenting>0;
         internal static void Simulate(Action action){simulating++;try{action();}finally{simulating--;}}
         internal static void Initial(IEnumerable<PlayerChange> rows)
         {view=rows?.Where(r=>r.Table=="status"||r.Table=="status_data").ToArray()??Array.Empty<PlayerChange>();confirmed.Clear();initial=rows!=null;}
@@ -60,8 +61,9 @@ namespace Overhaul.Persistence
             {
                 foreach(var type in new[]{typeof(Character),typeof(Player)})
                     foreach(var method in type.GetMethods(BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.DeclaredOnly))
-                        if(new[]{"Heal","AddEitr","UseHealth","UseEitr","UseStamina","AddStamina","SetHealth"}.Contains(method.Name))yield return method;
+                        if(new[]{"Heal","AddEitr","UseHealth","UseEitr","UseStamina","AddStamina","AddAdrenaline","SetHealth"}.Contains(method.Name))yield return method;
             }
+            [HarmonyPriority(Priority.First+300)]
             private static bool Prefix(Character __instance)=>presenting==0 || __instance!=Player.m_localPlayer;
         }
     }

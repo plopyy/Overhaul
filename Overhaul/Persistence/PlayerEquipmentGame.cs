@@ -10,6 +10,7 @@ namespace Overhaul.Persistence
     internal static class PlayerEquipmentGame
     {
         private static int applying;
+        internal static bool Presenting=>applying>0;
         internal static void Present(Action action) { applying++; try { action(); } finally { applying--; } }
         private static bool Managed(Humanoid player) => player && applying == 0 && player == Player.m_localPlayer &&
             PlayerSessionGame.Managed && !Player.m_localPlayer.m_isLoading;

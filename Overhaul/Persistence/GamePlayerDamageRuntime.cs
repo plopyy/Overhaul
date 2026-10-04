@@ -53,6 +53,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Character __instance,float hp,bool __runOriginal)
             {
                 if(!__runOriginal)return false;if(!(__instance is Player player))return true;
+                if(GameStatusGame.Presenting||PlayerPotionGame.Presenting)return false;
                 if(GameCreatureAuthority.Enabled){Heal(player,hp);return false;}
                 return !PlayerSessionGame.Managed;
             }

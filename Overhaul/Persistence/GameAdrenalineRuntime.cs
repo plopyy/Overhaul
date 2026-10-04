@@ -22,6 +22,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Player __instance,float v,bool __runOriginal)
             {
                 if(!__runOriginal)return false;
+                if(GameStatusGame.Presenting||PlayerPotionGame.Presenting)return false;
                 if(GameCreatureAuthority.Enabled){Queue(__instance,v);return false;}
                 return !PlayerSessionGame.Managed;
             }
