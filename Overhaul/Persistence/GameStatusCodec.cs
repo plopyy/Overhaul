@@ -84,5 +84,11 @@ namespace Overhaul.Persistence
                 changes.Add(new PlayerChange("status_data",true,row.Values[0],row.Values[1]));
             return changes.ToArray();
         }
+        internal static void Apply(StatusEffect source,StatusEffect target)
+        {
+            if(source.GetType()!=target.GetType() || source.NameHash()!=target.NameHash())throw new InvalidDataException("Status presentation type mismatch");
+            foreach(var field in Fields(source.GetType()).Values)field.SetValue(target,field.GetValue(source));
+            target.m_time=source.m_time;target.m_ttl=source.m_ttl;target.m_hitVariant=source.m_hitVariant;
+        }
     }
 }

@@ -210,7 +210,8 @@ namespace Overhaul.Persistence
                 var resourceView=PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])),Player.m_localPlayer);
                 var foodView=PlayerFoodGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="food"),Player.m_localPlayer);
                 var effectView=PlayerPotionGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="effects"),Player.m_localPlayer);
-                progressView();foodView();effectView();resourceView();
+                var statusView=GameStatusGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="status"||r.Table=="status_data"),Player.m_localPlayer);
+                progressView();foodView();effectView();statusView();resourceView();
             }
             catch(Exception error){Fail(error);}
         }
