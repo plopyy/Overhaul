@@ -10,7 +10,8 @@ namespace Overhaul.Persistence
         private static readonly int Dropper = "Overhaul.Dropper".GetStableHashCode();
         internal static ObjectRecord Ground(ItemDrop.ItemData item,Vector3 position,Quaternion rotation,long dropper = 0,Vector3 velocity = default(Vector3))
         {
-            if (!item.m_dropPrefab || item.m_stack < 1 || item.m_stack > item.m_shared.m_maxStackSize || item.m_equipped)
+            if (!item.m_dropPrefab || !ZNetScene.instance.GetPrefab(item.m_dropPrefab.name.GetStableHashCode()) ||
+                item.m_stack < 1 || item.m_stack > item.m_shared.m_maxStackSize || item.m_equipped)
                 throw new InvalidOperationException("Invalid ground item");
             var record = GamePersistence.AllocateActionObject(item.m_dropPrefab,position,rotation);
             var package = new ZPackage(); package.Write((byte)109); item.Save(package);
@@ -90,7 +91,8 @@ namespace Overhaul.Persistence
             private static void Postfix(ItemDrop __instance)
             {
                 var view = __instance.m_nview; var player = Player.m_localPlayer;
-                if (player && view && view.IsValid() && view.GetZDO().GetLong(Dropper,0) == player.GetPlayerID()) __instance.OnPlayerDrop();
+                long dropper = view && view.IsValid() ? view.GetZDO().GetLong(Dropper,0) : 0;
+                if (player && dropper != 0 && dropper == player.GetPlayerID()) __instance.OnPlayerDrop();
             }
         }
     }

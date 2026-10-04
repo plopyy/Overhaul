@@ -64,7 +64,15 @@ namespace Overhaul.Persistence
                     if (!free) resources.Consume(selected.m_resItem,checked(selected.GetAmount(quality)*count),selectedQuality);
                 }
                 else if (!free)
-                    foreach (var requirement in requirements) resources.Consume(requirement.m_resItem,checked(requirement.GetAmount(quality)*count));
+                    foreach (var requirement in requirements)
+                    {
+                        int needed = checked(requirement.GetAmount(quality)*count);
+                        // Native discovery accepts different qualities, but an actual recipe requires
+                        // enough of at least one quality before its ordinary resource removal.
+                        if (needed > 0 && !Enumerable.Range(1,requirement.m_resItem.m_itemData.m_shared.m_maxQuality)
+                            .Any(q => resources.Count(requirement.m_resItem,q) >= needed)) throw new InvalidOperationException("Insufficient resources of matching quality");
+                        resources.Consume(requirement.m_resItem,needed);
+                    }
                 var extra = new List<PlayerChange>();
                 var spawned = new List<ObjectRecord>();
                 if (station && station.m_craftingSkill != Skills.SkillType.None && recipe.m_item.m_itemData.m_shared.m_maxStackSize > 1)
@@ -74,6 +82,8 @@ namespace Overhaul.Persistence
                     for (int i = 0; i < count; i++) if (UnityEngine.Random.value < factor*chance) { bonus += amount; produced = checked(produced+bonus); }
                 }
                 bool cheated = (resources.Cheated || station && station.GetComponent<ZNetView>().GetZDO().GetBool(ZDOVars.s_cheated,false)) && !PlayerProfile.s_bypassCheatChecks;
+                if (!upgrade)
+                    Add(new PlayerActionInventory(snapshot.Rows,InventoryMoveGame.PlayerLayout(snapshot.Rows)),recipe.m_item,produced,quality,command.Variant,playerId,playerName,cheated);
                 bool success = true, broken = false;
                 if (upgrader)
                 {
