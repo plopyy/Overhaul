@@ -25,6 +25,7 @@ namespace Overhaul.Persistence
             var view = target ? target.GetComponent<ZNetView>() : null; var data = view && view.IsValid() ? view.GetZDO() : null;
             if (data == null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) ||
                 Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5f) throw new InvalidOperationException("Machine is unavailable");
+            if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
@@ -186,6 +187,8 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Smelter),"RPC_AddOre"); yield return AccessTools.Method(typeof(Smelter),"RPC_AddFuel");
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_AddFuel"); yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuel");
                 yield return AccessTools.Method(typeof(Fermenter),"RPC_AddItem");
+                yield return AccessTools.Method(typeof(CookingStation),"RPC_AddItem");
+                yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
@@ -196,8 +199,7 @@ namespace Overhaul.Persistence
             private static IEnumerable<MethodBase> TargetMethods()
             {
                 yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
-                yield return AccessTools.Method(typeof(CookingStation),"RPC_AddItem");
-                yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
+                yield return AccessTools.Method(typeof(CookingStation),"DropAllItems");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuelAmount");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_SetFuelAmount");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_ToggleOn");

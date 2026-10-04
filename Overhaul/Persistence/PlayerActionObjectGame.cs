@@ -27,8 +27,12 @@ namespace Overhaul.Persistence
             changed.RemoveAll(p => p.Key == key && p.Type == type); changed.Add(property);
         }
         internal PlayerActionPlan Finish(PlayerBatch player, Action effects = null)
+            => FinishWithObjects(player,Array.Empty<ObjectRecord>(),effects);
+        internal PlayerActionPlan FinishWithObjects(PlayerBatch player,IEnumerable<ObjectRecord> additions,Action effects = null)
         {
-            var change = new PlayerWorldAction(player,new Dictionary<long,ObjectRecord> { [record.Id] = record });
+            var spawned = additions.ToArray(); var objects = new Dictionary<long,ObjectRecord> { [record.Id] = record };
+            foreach (var addition in spawned) objects.Add(addition.Id,addition);
+            var change = new PlayerWorldAction(player,objects);
             var properties = changed.ToArray();
             var plan = new PlayerActionPlan(change,() =>
             {
@@ -42,6 +46,7 @@ namespace Overhaul.Persistence
                         case "long": data.Set(property.Key,(long)property.Value); break;
                         case "string": data.Set(property.Key,(string)property.Value); break;
                     }
+                foreach (var addition in spawned) GamePersistence.PublishActionObject(addition);
                 GamePersistence.ReleaseAction(new[] { uid });
                 // A missing visual must not turn an already committed inventory change into a storage failure.
                 try { effects?.Invoke(); } catch (Exception error) { ZLog.LogError("[Overhaul interaction effects] " + error); }

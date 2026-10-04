@@ -136,7 +136,7 @@ namespace Overhaul.Persistence
                 },spawned);
             }
         }
-        private static InventoryGui CraftGui() => InventoryGui.instance ? InventoryGui.instance :
+        internal static InventoryGui CraftGui() => InventoryGui.instance ? InventoryGui.instance :
             Resources.FindObjectsOfTypeAll<InventoryGui>().FirstOrDefault();
         private static void Add(PlayerActionInventory bag,ItemDrop prefab,int amount,int quality,int variant,long id,string name,bool cheated)
         {
