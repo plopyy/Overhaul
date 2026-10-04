@@ -12,8 +12,9 @@ namespace Overhaul.Persistence
         private static bool ready, consumed;
         private static Vector3 position;
         private static int kind;
+        internal static bool Arrival;
         private static double nextRequest;
-        internal static void Clear() { generation=0;ready=false;consumed=false;nextRequest=0; }
+        internal static void Clear() { generation=0;ready=false;consumed=false;nextRequest=0;Arrival=false;GameArrivalRuntime.ClearClient(); }
         internal static void Respawn() { generation=checked(generation+1);ready=false;consumed=false;nextRequest=0; }
         internal static ZPackage Encode(int epoch,Vector3 point,int source)
         {var packet=new ZPackage();packet.Write(epoch);packet.Write(point);packet.Write((byte)source);return packet;}
@@ -21,8 +22,8 @@ namespace Overhaul.Persistence
         {
             if(packet.Size()!=17)return false;
             int epoch=packet.ReadInt();var point=packet.ReadVector3();int source=packet.ReadByte();
-            if(consumed||epoch!=generation||source>2||!Finite(point.x)||!Finite(point.y)||!Finite(point.z))return false;
-            position=point;kind=source;ready=true;return true;
+            if(consumed||epoch!=generation||(source&127)>2||!Finite(point.x)||!Finite(point.y)||!Finite(point.z))return false;
+            position=point;kind=source&127;Arrival=(source&128)!=0;ready=true;return true;
         }
         private static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value)&&Math.Abs(value)<=1000000;
 
@@ -50,5 +51,8 @@ namespace Overhaul.Persistence
             private static void Prefix(){if(PlayerSessionGame.Managed){GameCharacterView.PrepareSpawn();GameMovementControl.ClearClient();}}
             private static void Postfix(){if(PlayerSessionGame.Managed){consumed=true;ready=false;}}
         }
+        [HarmonyPatch(typeof(Player),nameof(Player.OnSpawned))]
+        private static class ArrivalPresentation
+        {private static void Prefix(Player __instance,ref bool spawnValkyrie){if(PlayerSessionGame.Managed&&__instance==Player.m_localPlayer)spawnValkyrie=Arrival;}}
     }
 }

@@ -36,6 +36,7 @@ namespace Overhaul.Persistence
             if(!ZNet.instance.IsDedicated())Center(ZNet.instance.GetReferencePosition());
             foreach(var actor in PlayerSessionGame.ActiveActors())Center(actor.GetPosition());
             foreach(var point in GameSpawnPoint.Areas)Center(point);
+            foreach(var point in GameArrivalRuntime.Areas)Center(point);
             // Keep the supporting terrain alive until outstanding actions have published.
             // Keeping only their ZNetViews would let ZoneSystem unload the ground below them.
             if(ZNetScene.instance)foreach(var pair in ZNetScene.instance.m_instances)

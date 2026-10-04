@@ -19,8 +19,8 @@ namespace Overhaul.Persistence
         }
         private static readonly Dictionary<ZRpc, Resolution> pending = new Dictionary<ZRpc, Resolution>();
         internal static IEnumerable<Vector3> Areas => pending.Values.Where(r => r.HavePoint).Select(r => r.Point);
-        internal static void Forget(ZRpc rpc) => pending.Remove(rpc);
-        internal static void Clear() => pending.Clear();
+        internal static void Forget(ZRpc rpc) {pending.Remove(rpc);GameArrivalRuntime.Forget(rpc);}
+        internal static void Clear() {pending.Clear();GameArrivalRuntime.Clear();}
         internal static int Kind(ZRpc rpc) => pending.TryGetValue(rpc,out var resolution)&&resolution.Ready ? resolution.Stage : -1;
 
         internal static bool Resolve(ZRpc rpc, PlayerSnapshot state, out Vector3 point)

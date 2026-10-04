@@ -38,6 +38,7 @@ namespace Overhaul.Persistence
         internal static void Clear(){foreach(var actor in motions.Keys.ToArray())Forget(actor);simulating=null;GameDodgeAction.Clear();GameEnvironmentRuntime.Clear();}
         internal static void SavePosition(ZDOID actor,bool final=false)
         {
+            if(GameArrivalRuntime.Active(actor))return;
             if(!motions.TryGetValue(actor,out var motion)||motion.PositionPending&&!final)return;
             var point=motion.Position;
             if(!motion.PositionPending&&motion.HaveSavedPosition&&motion.SavedPosition==point)return;
@@ -63,8 +64,10 @@ namespace Overhaul.Persistence
         {
             if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
             motion.NextView=Time.timeAsDouble+.05;
-            return GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
+            var view=GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
+            view.Write(motion.Player&&motion.Player.InIntro());return view;
         }
+        internal static void Record(Player player){Remember(player);if(player.m_nview&&player.m_nview.IsValid())Protect(player.m_nview.GetZDO());}
         private static Motion Remember(Player player)
         {
             var id=player.GetZDOID();if(!motions.TryGetValue(id,out var motion))motions.Add(id,motion=new Motion());
@@ -126,6 +129,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Character __instance,float dt,out Scope __state)
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
+                if(GameArrivalRuntime.Active(player.GetZDOID())){Record(player);return false;}
                 GameTeleportAction.Tick(player,dt);
                 GameAttachmentRuntime.Tick(player);
                 if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);

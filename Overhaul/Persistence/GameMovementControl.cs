@@ -51,6 +51,7 @@ namespace Overhaul.Persistence
         internal static void ClientTick()
         {
             var player=Player.m_localPlayer;if(!player||!PlayerSessionGame.Managed||InventoryMoveGame.Client==null)return;
+            GameArrivalRuntime.ClientTick();
             var move=player.IsDead()?Vector3.zero:player.m_moveDir;move.y=0;move=Vector3.ClampMagnitude(move,1);
             var look=player.GetLookDir().normalized;if(look.sqrMagnitude<.99f)look=player.transform.forward;
             bool run=player.m_run&&!player.IsDead(),walk=player.m_walk,crouch=player.m_crouchToggled;

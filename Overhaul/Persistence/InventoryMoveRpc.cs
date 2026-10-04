@@ -31,7 +31,9 @@ namespace Overhaul.Persistence
         {
             if(!spawnRequested||PlayerSessionGame.Actor(rpc)!=null)return;
             if(!GameSpawnPoint.Resolve(rpc,canonical,out var point))return;
-            spawnRequested=false;rpc.Invoke("Overhaul_SpawnPoint",nonce,GameSpawnControl.Encode(spawnGeneration,point,GameSpawnPoint.Kind(rpc)));
+            int kind=GameSpawnPoint.Kind(rpc);bool arrival=kind==2&&GameArrivalRuntime.First(canonical);
+            if(arrival)GameArrivalRuntime.Grant(rpc,point);
+            spawnRequested=false;rpc.Invoke("Overhaul_SpawnPoint",nonce,GameSpawnControl.Encode(spawnGeneration,point,kind|(arrival?128:0)));
         }
         private void QueueDamage(bool final=false)
         {
@@ -195,6 +197,7 @@ namespace Overhaul.Persistence
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,int>("Overhaul_RequestSpawn",(sender,token,epoch)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce&&epoch==spawnGeneration)spawnRequested=true;});
+            rpc.Register<string,ZDOID,bool>("Overhaul_ArrivalControl",(sender,token,actor,skip)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce&&PlayerSessionGame.Actor(rpc)?.m_uid==actor)GameArrivalRuntime.Control(rpc,actor,skip);});
             rpc.Register<string,bool>("Overhaul_StaffGuardControl",(sender,token,held)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameStaffGuardRuntime.ControlInput(PlayerSessionGame.Actor(rpc),held);});
             rpc.Register<string,ZPackage>("Overhaul_MovementControl",(sender,token,packet)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementControl.Receive(PlayerSessionGame.Actor(rpc),packet);});
@@ -297,6 +300,7 @@ namespace Overhaul.Persistence
         internal void StaffGuardControl(bool held){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_StaffGuardControl",nonce,held);}
         internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
         internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
+        internal void ArrivalControl(ZDOID actor,bool skip){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ArrivalControl",nonce,actor,skip);}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
@@ -358,7 +362,7 @@ namespace Overhaul.Persistence
             {
                 QueueSpawn();
                 var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)
-                {BindActor(actor.m_uid);GameSpawnPoint.Tick(rpc,actor,serverActions);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
+                {BindActor(actor.m_uid);GameArrivalRuntime.Tick(rpc,actor);GameSpawnPoint.Tick(rpc,actor,serverActions);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
                 CaptureWear();
                 QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}

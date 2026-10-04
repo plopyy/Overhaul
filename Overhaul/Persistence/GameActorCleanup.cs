@@ -5,6 +5,7 @@ namespace Overhaul.Persistence
         internal static void Forget(ZDOID actor)
         {
             if(actor.IsNone())return;
+            GameArrivalRuntime.ForgetActor(actor);
             GameAttachmentRuntime.Forget(actor);
             PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);
             GameBowDraw.Forget(actor);GameWeaponReload.Forget(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);
