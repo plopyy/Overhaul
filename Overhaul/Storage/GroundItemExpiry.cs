@@ -34,6 +34,7 @@ namespace Overhaul.Storage
             {
                 var view = __instance.m_nview;
                 if (!view || !view.IsValid() || !view.IsOwner() || __instance.IsPiece()) return true;
+                if (Persistence.GamePersistence.ActionReserved(view.GetZDO().m_uid)) return false;
                 if (!Expired(view.GetZDO(), DateTime.UtcNow.Ticks)) return true;
                 view.Destroy();
                 return false;
