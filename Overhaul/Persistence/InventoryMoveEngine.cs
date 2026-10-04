@@ -77,6 +77,8 @@ namespace Overhaul.Persistence
 
     internal sealed class InventoryMoveResult
     {
+        // Present only while planning a paperdoll move; never sent over the network.
+        internal PlayerChange[] EquipmentBefore,EquipmentAfter;
         internal readonly PlayerBatch Player, Container;
         internal readonly int Moved;
         internal InventoryMoveResult(InventoryMoveAction request, IEnumerable<PlayerChange> player, IEnumerable<PlayerChange> container, int moved)
@@ -242,7 +244,15 @@ namespace Overhaul.Persistence
                 }
                 return rows;
             });
-            return new InventoryMoveResult(action, effects(0), effects(1), moved);
+            var result = new InventoryMoveResult(action, effects(0), effects(1), moved);
+            if (action.Kind == InventoryMoveKind.Slot && action.From == 0 && action.To == 0 &&
+                (playerLayout.Equipment(action.FromY*256+action.FromX) != null || playerLayout.Equipment(action.ToY*256+action.ToX) != null))
+            {
+                result.EquipmentBefore = player.ToArray();
+                result.EquipmentAfter = bags[0].Values.SelectMany(item => new[] { new PlayerChange("inventory",false,item.Values) }
+                    .Concat(item.Data.Select(p => new PlayerChange("item_data",false,"main",item.Values[1],item.Values[2],p.Key,p.Value)))).ToArray();
+            }
+            return result;
         }
     }
 }

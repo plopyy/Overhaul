@@ -16,7 +16,9 @@ namespace Overhaul.Persistence
         {
             int from = Bag(source), to = Bag(destination);
             if (from < 0 || to < 0 || Client.Controller.Busy || !Player.m_localPlayer || Player.m_localPlayer.IsTeleporting()) return false;
-            return Client.Controller.Move(kind, from, to, item?.m_gridPos.x ?? 0, item?.m_gridPos.y ?? 0, pos.x, pos.y, amount);
+            bool sent = Client.Controller.Move(kind, from, to, item?.m_gridPos.x ?? 0, item?.m_gridPos.y ?? 0, pos.x, pos.y, amount);
+            if (sent) PlayerEquipmentGame.MoveAnimation(Client.Controller.Pending,item,pos);
+            return sent;
         }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnSelectedItem))]

@@ -50,21 +50,59 @@ namespace Overhaul.Persistence
             float duration = Math.Max(0,item.m_shared.m_equipDuration);
             if (float.IsNaN(duration) || float.IsInfinity(duration) || duration > 20) throw new InvalidOperationException("Invalid equipment duration");
             PlayerEquipment.Apply(inventory,slot,request.Gameplay.Kind == PlayerActionKind.Equip,Definition,Slots.WearableUtilityItems);
-            float elapsed = 0,last = Time.time;
             return new PlayerActionPlan(new PlayerWorldAction(inventory.Delta(request.Action.Operation,snapshot.Revision),new Dictionary<long,ObjectRecord>()),() => { })
+            { Ready = Wait(actor,duration) };
+        }
+        internal static InventoryMovePlan PrepareMove(ZDO actor,InventoryMoveRequest request,InventoryMoveResult result,InventoryMoveLayout layout)
+        {
+            if (result.EquipmentBefore == null) return new InventoryMovePlan(result);
+            if (actor == null) throw new InvalidOperationException("Equipment actor is unavailable");
+            var bag = new PlayerActionInventory(result.EquipmentAfter,layout); float duration = 0;
+            foreach (var row in result.EquipmentBefore.Where(r => r.Table == "inventory" && Convert.ToBoolean(r.Values[7])))
             {
-                Ready = () =>
-                {
-                    var instance = ZNetScene.instance.FindInstance(actor.m_uid); var player = instance ? instance.GetComponent<Player>() : null;
-                    if (!player || player.IsDead() || player.IsTeleporting() || player.InDodge() || player.IsSwimming() && !player.IsOnGround())
-                        throw new InvalidOperationException("Player cannot complete equipment action");
-                    float now = Time.time,dt = Math.Max(0,now-last); last = now;
-                    if (player.InAttack()) return false;
-                    elapsed += dt; return elapsed >= duration;
-                }
+                var values = row.Values; int key = Convert.ToInt32(values[2])*256+Convert.ToInt32(values[1]);
+                if (layout.Equipment(key) != null && result.Player.Changes.Any(r => r.Table == "inventory" &&
+                    Convert.ToInt32(r.Values[2])*256+Convert.ToInt32(r.Values[1]) == key))
+                    duration = Math.Max(duration,PlayerInventoryView.ReadItem(values,null,true).m_shared.m_equipDuration);
+            }
+            foreach (int key in ContainerVersions.Slots(result.Player).Where(k => layout.Equipment(k) != null))
+            {
+                if (!bag.Keys.Contains(key) || Convert.ToBoolean(bag.Item(key)[7])) continue;
+                duration = Math.Max(duration,PlayerInventoryView.ReadItem(bag.Item(key),null,true).m_shared.m_equipDuration);
+                PlayerEquipment.Apply(bag,key,true,Definition,Slots.WearableUtilityItems);
+            }
+            var updated = new InventoryMoveResult(bag.DeltaAgainst(result.Player.Operation,result.Player.ExpectedRevision,result.EquipmentBefore),result.Container,result.Moved);
+            return new InventoryMovePlan(updated,Wait(actor,duration));
+        }
+        private static Func<bool> Wait(ZDO actor,float duration)
+        {
+            if (float.IsNaN(duration) || float.IsInfinity(duration) || duration < 0 || duration > 20) throw new InvalidOperationException("Invalid equipment duration");
+            float elapsed = 0,last = Time.time;
+            return () =>
+            {
+                var instance = ZNetScene.instance.FindInstance(actor.m_uid); var player = instance ? instance.GetComponent<Player>() : null;
+                if (!player || player.IsDead() || player.IsTeleporting() || player.InDodge() || player.IsSwimming() && !player.IsOnGround())
+                    throw new InvalidOperationException("Player cannot complete equipment action");
+                float now = Time.time,dt = Math.Max(0,now-last); last = now;
+                if (player.InAttack()) return false;
+                elapsed += dt; return elapsed >= duration;
             };
         }
-        private static bool EquipmentRequest(InventoryMoveRequest request) => request?.Gameplay?.Kind == PlayerActionKind.Equip || request?.Gameplay?.Kind == PlayerActionKind.Unequip;
+        private static bool EquipmentCell(int x,int y) => Slots.GetSlotInGrid(new Vector2i(x,y))?.IsEquipmentSlot == true;
+        private static bool EquipmentRequest(InventoryMoveRequest request) => request?.Gameplay?.Kind == PlayerActionKind.Equip || request?.Gameplay?.Kind == PlayerActionKind.Unequip ||
+            request?.Action.Kind == InventoryMoveKind.Slot && request.Action.From == 0 && request.Action.To == 0 &&
+            (EquipmentCell(request.Action.FromX,request.Action.FromY) || EquipmentCell(request.Action.ToX,request.Action.ToY));
+        internal static void MoveAnimation(InventoryMoveRequest request,ItemDrop.ItemData item,Vector2i destination)
+        {
+            if (!EquipmentRequest(request) || item == null || !Player.m_localPlayer) return;
+            var player = Player.m_localPlayer;
+            var resident = player.GetInventory().GetItemAt(destination.x,destination.y);
+            float duration = Math.Max(item.m_shared.m_equipDuration,resident?.m_shared.m_equipDuration ?? 0);
+            if (duration <= 0) return;
+            player.CancelReloadAction();
+            player.m_actionQueue.Add(new Player.MinorActionData { m_item = item,m_type = Player.MinorActionData.ActionType.Equip,
+                m_duration = duration,m_progressText = "$hud_equipping "+item.m_shared.m_name,m_animation = "equipping",m_startEffect = player.m_equipStartEffects });
+        }
         private static void Cancel(Player player)
         {
             var client = InventoryMoveGame.Client;

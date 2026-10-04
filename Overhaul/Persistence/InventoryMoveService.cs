@@ -4,6 +4,12 @@ using System.Threading.Tasks;
 
 namespace Overhaul.Persistence
 {
+    internal sealed class InventoryMovePlan
+    {
+        internal InventoryMoveResult Result;
+        internal Func<bool> Ready;
+        internal InventoryMovePlan(InventoryMoveResult result,Func<bool> ready = null) { Result = result; Ready = ready; }
+    }
     internal sealed class InventoryMoveLease : IDisposable
     {
         internal readonly long ObjectId;
@@ -31,6 +37,8 @@ namespace Overhaul.Persistence
         private readonly Action<byte[]> send;
         private readonly Action<Exception> failed;
         private readonly Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction;
+        private readonly Func<InventoryMoveRequest,InventoryMoveResult,InventoryMoveLayout,InventoryMovePlan> prepareMove;
+        private InventoryMovePlan preparedMove;
         private Task<PlayerSnapshot> actionState;
         private Task<PlayerBatch> actionCommit;
         private PlayerActionPlan actionPlan;
@@ -46,11 +54,13 @@ namespace Overhaul.Persistence
 
         internal InventoryMoveService(PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout,
             Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed,
-            Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction = null)
+            Func<InventoryMoveRequest,PlayerSnapshot,PlayerActionPlan> prepareAction = null,
+            Func<InventoryMoveRequest,InventoryMoveResult,InventoryMoveLayout,InventoryMovePlan> prepareMove = null)
         {
             if (session == null || session.State != PlayerAdmission.Phase.Ready) throw new InvalidOperationException("Character admission is incomplete");
             this.session = session; this.writer = writer; this.layout = layout; this.reserve = reserve; this.send = send; this.failed = failed;
             this.prepareAction = prepareAction;
+            this.prepareMove = prepareMove;
         }
         internal void Receive(byte[] bytes)
         {
@@ -99,12 +109,14 @@ namespace Overhaul.Persistence
                 }
                 if (actionPlan != null && actionCommit == null)
                 {
+                    bool ready = false;
                     try
                     {
                         if (actionPlan.Ready != null && (cancelled || disconnected)) throw new InvalidOperationException("Equipment action cancelled");
-                        if (actionPlan.Ready == null || actionPlan.Ready()) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
+                        ready = actionPlan.Ready == null || actionPlan.Ready();
                     }
                     catch (InvalidOperationException) { actionPlan = null; Synchronize(); }
+                    if (ready) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
                 }
                 if (actionCommit != null && actionCommit.IsCompleted)
                 {
@@ -120,8 +132,23 @@ namespace Overhaul.Persistence
                     {
                         var prepared = task.GetAwaiter().GetResult();
                         if (lease != null && !lease.Reserve(ContainerVersions.Slots(prepared.Container))) Synchronize();
-                        else move = writer.CommitTransfer(session.Identity, request.Action, prepared, lease?.ObjectId ?? 0);
+                        else
+                        {
+                            try { preparedMove = prepareMove == null ? new InventoryMovePlan(prepared) : prepareMove(request,prepared,layout); }
+                            catch (InvalidOperationException) { Synchronize(); }
+                        }
                     }
+                }
+                if (preparedMove != null && move == null)
+                {
+                    bool ready = false;
+                    try
+                    {
+                        if (preparedMove.Ready != null && (cancelled || disconnected)) throw new InvalidOperationException("Equipment move cancelled");
+                        ready = preparedMove.Ready == null || preparedMove.Ready();
+                    }
+                    catch (InvalidOperationException) { preparedMove = null; Synchronize(); }
+                    if (ready) { move = writer.CommitTransfer(session.Identity,request.Action,preparedMove.Result,lease?.ObjectId ?? 0); preparedMove = null; }
                 }
                 if (move != null && move.IsCompleted)
                 {
@@ -158,8 +185,10 @@ namespace Overhaul.Persistence
         }
         internal void CancelEquipment(string operation)
         {
-            if (request?.Action.Operation == operation && actionCommit == null &&
-                (request.Gameplay?.Kind == PlayerActionKind.Equip || request.Gameplay?.Kind == PlayerActionKind.Unequip)) cancelled = true;
+            if (request != null && request.Action.Operation == operation && actionCommit == null && move == null &&
+                (request.Gameplay?.Kind == PlayerActionKind.Equip || request.Gameplay?.Kind == PlayerActionKind.Unequip ||
+                request.Action.Kind == InventoryMoveKind.Slot && request.Action.From == 0 && request.Action.To == 0 &&
+                (layout.Equipment(request.Action.FromY*256+request.Action.FromX) != null || layout.Equipment(request.Action.ToY*256+request.Action.ToX) != null))) cancelled = true;
         }
         private void Fail(Exception error, bool storage)
         {

@@ -174,7 +174,10 @@ namespace Overhaul.Persistence
             items[key] = new PlayerChange("inventory",false,row).Values;
         }
         internal PlayerBatch Delta(string operation,long revision)
+            => DeltaAgainst(operation,revision,original);
+        internal PlayerBatch DeltaAgainst(string operation,long revision,IEnumerable<PlayerChange> baseline)
         {
+            var original = baseline.ToArray();
             var result = new List<PlayerChange>();
             var oldItems = original.Where(r => r.Table == "inventory").ToDictionary(r => Key(r.Values));
             foreach (int key in oldItems.Keys.Union(items.Keys).OrderBy(k => k))

@@ -36,7 +36,8 @@ namespace Overhaul.Persistence
             if (!ReferenceEquals(rpc, session.Connection)) throw new ArgumentException("Wrong admitted inventory connection");
             this.rpc = rpc; nonce = session.Nonce; access = new InventoryMoveGame.Access(rpc, session);
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
-                (request,state) => PlayerActionGame.Prepare(rpc,session,request,state));
+                (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
+                (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout));
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,string>(CancelEquipmentRequest,(sender,token,operation) =>
             { if (ReferenceEquals(sender,rpc) && token == nonce) server.CancelEquipment(operation); });
