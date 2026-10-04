@@ -103,6 +103,7 @@ namespace Overhaul.Persistence
             if(draw.End<0)draw.End=Math.Min(Time.timeAsDouble,draw.Seen+1.5);
             draw.Released=false;Queue(actor.m_uid,draw,true);draws.Remove(actor.m_uid);
         }
+        internal static void Forget(ZDOID actor)=>draws.Remove(actor);
         internal static void Clear(){draws.Clear();clientWeapon=null;clientScope=0;}
         [HarmonyPatch(typeof(Player),"UpdateAttackBowDraw")]
         private static class Input
@@ -132,3 +133,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

@@ -114,6 +114,7 @@ namespace Overhaul.Persistence
         }
         internal static void Close(ZDO actor)
         {if(reloads.TryGetValue(actor.m_uid,out var reload)){Capture(actor,reload);reload.Cancelled=true;Queue(actor.m_uid,reload,true);reloads.Remove(actor.m_uid);}}
+        internal static void Forget(ZDOID actor)=>reloads.Remove(actor);
         internal static void Clear(){reloads.Clear();clientWeapon=null;clientScope=0;}
         internal static void Receive(int x,int y,bool loaded)
         {
@@ -173,3 +174,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

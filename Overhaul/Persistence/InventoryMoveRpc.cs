@@ -60,8 +60,10 @@ namespace Overhaul.Persistence
         internal PlayerSnapshot State(ZDOID actor)
         {
             if(disposed || canonical==null || PlayerSessionGame.Actor(rpc)?.m_uid!=actor)return null;
-            knownActor=actor;return canonical;
+            BindActor(actor);return canonical;
         }
+        private void BindActor(ZDOID actor)
+        {if(actor==knownActor)return;var previous=knownActor;knownActor=actor;if(!previous.IsNone()){GameActorCleanup.Forget(previous);damageClock.Reset();}}
         internal bool ActionBusy=>server?.Busy==true || serverActions?.Busy==true;
         internal bool Wear(ZDOID actor,string token,float amount)
         {
@@ -332,7 +334,7 @@ namespace Overhaul.Persistence
             if(!disposed && serverActions!=null)
             {
                 var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)
-                {GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
+                {BindActor(actor.m_uid);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
                 CaptureWear();
                 QueueDamage();
                 if(Time.timeAsDouble>=nextWear){nextWear=Time.timeAsDouble+.2;QueueWear();}
@@ -380,7 +382,7 @@ namespace Overhaul.Persistence
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();GameBlockControl.ClearClient();GameMovementControl.ClearClient();GameStaffGuardRuntime.ClearClient();}
-            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);GameStatusRuntime.Forget(actor);GameStaffGuardRuntime.Forget(actor);GameGuardianPower.Forget(actor);GameMovementControl.Forget(actor);}}
+            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;GameActorCleanup.Forget(actor);if(actor!=knownActor)GameActorCleanup.Forget(knownActor);}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server!=null)rpc.Register<string,bool>("Overhaul_StaffGuardControl",(_,__,___)=>{});
@@ -399,4 +401,5 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
