@@ -34,7 +34,22 @@ namespace Overhaul.Persistence
                     player.m_hitEffects.Create(impact.m_point,Quaternion.identity,player.transform,1,-1,player.GetZDOID());
                 player.m_onDamaged?.Invoke(damage.Damage,impact.GetAttacker());
             }
-            if(block?.Blocked==true&&block.Timed)player.m_perfectBlockEffect.Create(impact.m_point,Quaternion.identity,null,1,-1,player.GetZDOID());
+            var attacker=impact.GetAttacker();
+            if(block?.Attempted==true)block.Item.m_shared.m_blockEffect.Create(impact.m_point,Quaternion.identity,null,1,-1,player.GetZDOID());
+            if(block?.Blocked==true)
+            {
+                if(DamageText.instance)DamageText.instance.ShowText(DamageText.TextType.Blocked,impact.m_point+Vector3.up*.5f,block.Absorbed,false);
+                if(attacker&&block.Timed)
+                {
+                    player.m_perfectBlockEffect.Create(impact.m_point,Quaternion.identity,null,1,-1,player.GetZDOID());
+                    if(attacker.m_staggerWhenBlocked)attacker.Stagger(-impact.m_dir);
+                }
+                if(attacker&&!impact.m_ranged)
+                {
+                    var direction=attacker.transform.position-player.transform.position;direction.y=0;
+                    attacker.Damage(new HitData{m_pushForce=block.Item.GetDeflectionForce()*(1-Mathf.Clamp01(block.Fraction*.5f)),m_dir=direction.normalized});
+                }
+            }
             var package=new ZPackage();var view=damage.Direct.Clone();view.m_pushForce=direct?0:impact.m_pushForce;
             view.Serialize(ref package);package.Write(stagger);package.Write(stunned);package.Write(damage.Damage>PlayerResources.Read(state,"max_health")/10);
             player.m_nview.InvokeRPC(Rpc,package);

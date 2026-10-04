@@ -32,6 +32,11 @@ namespace Overhaul.Persistence
             GameBlockMath.Result block=null;
             if(!direct)
             {
+                foreach(var effect in GameAttackResources.Effects(current).OfType<SE_React>())
+                {
+                    var reaction=(SE_React)effect.Clone();reaction.m_character=player;var reacted=hit.Clone();
+                    publish.Add(()=>{if(player&&attacker)reaction.OnDamaged(reacted,attacker);});
+                }
                 var shield=GameShieldDamage.Prepare(current,player,hit);Change(shield.Changes);hit=shield.Hit;publish.Add(shield.Publish);
                 var pose=hit.m_blockable?GameBlockControl.Blocking(player.GetZDOID(),player,current,hit.m_dir):null;
                 if(pose!=null)
@@ -39,6 +44,11 @@ namespace Overhaul.Persistence
                     block=GameBlockMath.Prepare(current,player,hit,pose.Slot,pose.Timed,GameHitFeedback.Stagger(player,current),attacker);
                     Change(block.Changes);hit=block.Hit;
                     if(block.Attempted)Change(PlayerCraftProgressGame.Raise(current,Skills.SkillType.Blocking,block.SkillGain));
+                    if(block.Blocked&&block.Timed&&attacker)
+                    {
+                        var effect=block.Item.m_shared.m_perfectBlockStatusEffect?block.Item.m_shared.m_perfectBlockStatusEffect:player.m_perfectBlockStatusEffect;
+                        if(effect)Change(GameStatusImpact.Prepare(current,player,effect.NameHash(),block.Item.m_worldLevel,GameAttackResources.SkillLevel(current,Skills.SkillType.Blocking,GameAttackResources.Effects(current)),-1,ZDOID.None));
+                    }
                 }
                 int status=hit.m_statusEffectHash;
                 var mods=player.m_damageModifiers;

@@ -6,7 +6,7 @@ using UnityEngine;
 namespace Overhaul.Persistence
 {
     // A server-validated blocking pose supplies the selected blocker and timing.
-    // Visuals, counterattacks, adrenaline and status procs belong to publication.
+    // Resource changes are planned here; visuals run after the action commits.
     internal static class GameBlockMath
     {
         internal sealed class Result
@@ -15,6 +15,8 @@ namespace Overhaul.Persistence
             internal PlayerChange[] Changes;
             internal bool Attempted,Blocked,Timed,Staggered;
             internal float Absorbed,Stagger,SkillGain;
+            internal float Fraction;
+            internal ItemDrop.ItemData Item;
         }
         internal static Result Prepare(PlayerSnapshot state,Player definition,HitData incoming,int slot,bool timed,float stagger,bool hasAttacker)
         {
@@ -31,6 +33,7 @@ namespace Overhaul.Persistence
             }
             else {row=inventory.Item(slot);item=PlayerInventoryView.ReadItem(row,null,true);}
             if(!item.m_equipped||slot>=0&&inventory.Layout.Cosmetic(slot)||item.m_shared.m_useDurability&&item.m_durability<=0)throw new InvalidOperationException("Canonical blocking item is unavailable");
+            result.Item=item;
             var effects=GameAttackResources.Effects(state);var equipment=GameCombatEquipment.Equipped(state);
             float skill=Mathf.Clamp01(GameAttackResources.SkillLevel(state,Skills.SkillType.Blocking,effects)/100f);
             float power=item.GetBlockPower(skill);timed&=item.m_shared.m_timedBlockBonus>1;
@@ -40,6 +43,7 @@ namespace Overhaul.Persistence
             if(item.m_shared.m_damageModifiers.Count>0){var mods=new HitData.DamageModifiers();mods.Apply(item.m_shared.m_damageModifiers);hit.ApplyResistance(mods,out _);}
             var reduced=hit.m_damage.Clone();reduced.ApplyArmor(power);
             float before=hit.GetTotalBlockableDamage(),absorbed=before-reduced.GetTotalBlockableDamage(),fraction=Mathf.Clamp01(absorbed/power);
+            result.Fraction=fraction;
             double stamina=PlayerResources.Read(state,"stamina"),maximum=PlayerResources.Read(state,"max_stamina");
             float modifier=equipment.Sum(i=>i.m_shared.m_blockStaminaModifier);bool spent=false;
             void Cost(float cost)
