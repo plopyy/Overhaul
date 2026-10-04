@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
@@ -8,8 +9,9 @@ namespace Overhaul.Persistence
     internal static class GameCreatureAuthority
     {
         private static readonly Dictionary<int,bool> prefabs=new Dictionary<int,bool>();
+        [ThreadStatic] private static Character localMutation;
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true && ZNet.instance && ZNet.instance.IsServer();
-        internal static void Clear()=>prefabs.Clear();
+        internal static void Clear(){prefabs.Clear();localMutation=null;}
         internal static bool Owns(ZDOID id)=>Owns(ZDOMan.instance?.GetZDO(id));
         internal static bool Owns(ZDO data)
         {
@@ -48,7 +50,18 @@ namespace Overhaul.Persistence
                     yield return AccessTools.Method(typeof(Character),name);
             }
             private static bool Prefix(Character __instance,long sender)
-            {return !__instance.m_nview || !__instance.m_nview.IsValid() || !Owns(__instance.m_nview.GetZDO()) || sender==ZNet.GetUID();}
+            {return !__instance.m_nview || !__instance.m_nview.IsValid() || !Owns(__instance.m_nview.GetZDO()) || sender==ZNet.GetUID() || sender==0 && localMutation==__instance;}
+        }
+        // Native owner-side Heal/Stagger call their RPC handlers directly with sender 0.
+        // Permit that call stack without treating arbitrary zero-sender RPCs as trusted.
+        [HarmonyPatch]
+        private static class LocalMutation
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {yield return AccessTools.Method(typeof(Character),nameof(Character.Heal));yield return AccessTools.Method(typeof(Character),nameof(Character.Stagger));}
+            private static void Prefix(Character __instance,out Character __state)
+            {__state=localMutation;localMutation=__instance.m_nview && __instance.m_nview.IsValid() && Owns(__instance.m_nview.GetZDO())?__instance:null;}
+            private static void Finalizer(Character __state)=>localMutation=__state;
         }
         [HarmonyPatch(typeof(SEMan),"RPC_AddStatusEffect")]
         private static class EffectOrigin
