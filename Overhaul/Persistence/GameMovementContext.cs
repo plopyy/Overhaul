@@ -63,6 +63,24 @@ namespace Overhaul.Persistence
             private static bool Prefix(SEMan __instance,ref Vector3 jump)
             {if(!Matches(__instance.m_character))return true;var original=jump;foreach(var effect in Current.Effects)effect.ModifyJump(original,ref jump);return false;}
         }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyWalkVelocity))]
+        private static class MovementFallSpeed
+        {
+            private static bool Prefix(SEMan __instance,ref Vector3 vel)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyWalkVelocity(ref vel);return false;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyFallDamage))]
+        private static class MovementFallDamage
+        {
+            private static bool Prefix(SEMan __instance,float baseDamage,ref float damage)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyFallDamage(baseDamage,ref damage);return false;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyNoise))]
+        private static class MovementNoise
+        {
+            private static bool Prefix(SEMan __instance,float baseNoise,ref float noise)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyNoise(baseNoise,ref noise);return false;}
+        }
         [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyRunStaminaDrain))]
         private static class MovementRunDrain
         {
