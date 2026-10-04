@@ -17,6 +17,9 @@ namespace Overhaul.Persistence
         private bool closed;
         private readonly PlayerAdmission.Session session;
         private InventoryMoveRpc inventory;
+        internal Func<bool> CanReceive = () => true;
+        private readonly Queue<byte[]> pending = new Queue<byte[]>();
+        private long pendingBytes;
 
         internal PlayerAdmissionRpc(ZRpc authenticatedRpc, PlayerAdmission admission, PlayerAdmission.Session session,
             Func<byte[], IEnumerable<PlayerChange>> decodeImport, Action<Exception> failed)
@@ -54,7 +57,14 @@ namespace Overhaul.Persistence
                 int size = package.ReadInt();
                 if (size < 0 || size != package.Size() - package.GetPos()) throw new InvalidDataException("Invalid character RPC size");
                 var bytes = package.ReadByteArray(size);
-                if (server != null) server.Receive(bytes); else client.Receive(bytes);
+                if (server != null) server.Receive(bytes);
+                else if (!CanReceive() || pending.Count != 0)
+                {
+                    if (pendingBytes + bytes.Length > PlayerAdmissionChannel.Limit + 68 || pending.Count >= 8)
+                        throw new InvalidDataException("Pending character admission exceeds limit");
+                    pending.Enqueue(bytes); pendingBytes += bytes.Length;
+                }
+                else client.Receive(bytes);
             }
             catch (Exception error) { Fail(error); }
         }
@@ -62,6 +72,9 @@ namespace Overhaul.Persistence
         {
             if (closed) { if(Closed)server?.Dispose(); return; }
             if (!rpc.IsConnected()) { Fail(new IOException("Character connection closed")); return; }
+            if (client != null && CanReceive())
+                while (!closed && pending.Count != 0)
+                { var bytes = pending.Dequeue(); pendingBytes -= bytes.Length; client.Receive(bytes); }
             if (server != null) server.Tick(); else client.Tick();
             if (inventory == null && !closed)
             {
@@ -84,6 +97,7 @@ namespace Overhaul.Persistence
         {
             if (closed) return;
             closed = true; inventory?.Dispose();
+            pending.Clear(); pendingBytes = 0;
             // Keep the account admitted until the previous session's writes drain;
             // a rapid reconnect must not load an earlier revision from SQLite.
             if(Closed)server?.Dispose();

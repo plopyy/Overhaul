@@ -29,7 +29,7 @@ namespace Overhaul.Persistence
             if(count<0||count!=(input.Size()-input.GetPos())/12||(input.Size()-input.GetPos())%12!=0)throw new InvalidDataException("Invalid deleted object list");
             var keep=new List<ZDOID>();
             for(int i=0;i<count;i++){var id=input.ReadZDOID();if(CanDelete(sender,id))keep.Add(id);}
-            var output=new ZPackage();output.Write(keep.Count);foreach(var id in keep)output.Write(id);return output;
+            var output=new ZPackage();output.Write(keep.Count);foreach(var id in keep)output.Write(id);output.SetPos(0);return output;
         }
         private static bool FilterRoutedDeletion(ref ZPackage package)
         {

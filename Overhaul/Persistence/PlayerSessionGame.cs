@@ -69,6 +69,10 @@ namespace Overhaul.Persistence
             if (client != null) throw new InvalidOperationException("Character connection is already bound");
             failed = false;
             client = new PlayerAdmissionRpc(rpc, CaptureImport, Load, ClientFailed);
+            // Jotunn may defer native PeerInfo while initial configuration is synchronized.
+            // Admission packets can arrive before that handler creates the world.
+            client.CanReceive = () => ZNet.m_world != null && ZNet.instance &&
+                (ZNet.instance.IsServer() || ZNet.m_connectionStatus == ZNet.ConnectionStatus.Connected);
         }
         internal static void BeginServer(ZRpc rpc, PlayerIdentity identity, string name)
         {
