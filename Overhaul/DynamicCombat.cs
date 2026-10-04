@@ -1644,7 +1644,7 @@ namespace Overhaul
 			private static void Postfix(StatusEffect __instance, ref string __result)
 			{
 				SE_Shield shield = __instance as SE_Shield;
-				if (!IsTrackedStaffShield(shield))
+				if (!(shield is Persistence.SE_StaffGuard) && !IsTrackedStaffShield(shield))
 				{
 					return;
 				}
@@ -1675,7 +1675,7 @@ namespace Overhaul
 				{
 					RectTransform slot = __instance.m_statusEffects[i];
 					Transform markerTransform = slot.Find("OverhaulInactiveShield");
-					bool showMarker = IsTrackedStaffShield(statusEffects[i] as SE_Shield)
+					bool showMarker = statusEffects[i] is Persistence.SE_StaffGuard guard ? !guard.m_guardActive : IsTrackedStaffShield(statusEffects[i] as SE_Shield)
 						&& !staffShieldIsActive;
 
 					if (markerTransform == null && showMarker)

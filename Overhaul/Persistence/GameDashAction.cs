@@ -18,7 +18,7 @@ namespace Overhaul.Persistence
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot state)
         {
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
-            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_body||!player.m_animator||!player.m_zanim||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||
+            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_body||!player.m_animator||!player.m_zanim||GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||
                 player.IsDead()||player.IsTeleporting()||player.InIntro()||player.m_sleeping||player.InAttack()||player.InDodge()||player.InMinorAction()||player.IsStaggering()||
                 DynamicCombat.IsDashing(player)||GameGuardianPower.Active(actor.m_uid))throw new InvalidOperationException("Character cannot dash");
             bool canMove=false;GameCombatContext.Run(player,state,null,null,()=>canMove=player.CanMove());
@@ -34,4 +34,5 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 

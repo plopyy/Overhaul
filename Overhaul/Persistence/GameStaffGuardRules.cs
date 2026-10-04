@@ -56,9 +56,10 @@ namespace Overhaul.Persistence
             if(!held)
             {guard.m_guardActive=false;guard.m_guardCast=0;guard.m_guardBroken=false;guard.m_damage=Mathf.Max(0,guard.m_damage-regeneration*(float)seconds);return;}
             if(guard.m_guardBroken||guard.m_guardStun>0){guard.m_guardActive=false;guard.m_guardCast=0;return;}
-            if(guard.m_guardCast>0){guard.m_guardCast=Mathf.Max(0,guard.m_guardCast-(float)seconds);if(guard.m_guardCast<=0)guard.m_guardActive=true;}
+            if(guard.m_guardCast>0){guard.m_damage=Mathf.Max(0,guard.m_damage-regeneration*(float)Math.Min(seconds,guard.m_guardCast));guard.m_guardCast=Mathf.Max(0,guard.m_guardCast-(float)seconds);if(guard.m_guardCast<=0)guard.m_guardActive=true;}
         }
         internal static void Break(SE_StaffGuard guard)
         {guard.m_guardActive=false;guard.m_guardBroken=true;guard.m_guardCast=0;guard.m_guardStun=1.5f;guard.m_damage=0;}
     }
 }
+

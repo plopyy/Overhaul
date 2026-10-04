@@ -81,7 +81,7 @@ namespace Overhaul.Persistence
         {
             if(request.Gameplay.Definition!=Start && request.Gameplay.Definition!=Unarmed || request.Action.Amount!=1)throw new InvalidOperationException("Invalid combat intent");
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
-            if(GameGuardianPower.Active(actor.m_uid))throw new InvalidOperationException("Guardian power animation is active");
+            if(GameStaffGuardRuntime.Blocked(snapshot)||GameGuardianPower.Active(actor.m_uid))throw new InvalidOperationException("Guardian power animation is active");
             if(!player || !player.m_animator || !player.m_zanim || !player.m_animEvent || !player.m_body || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
                 throw new InvalidOperationException("Character cannot start this attack");
             if(running.TryGetValue(actor.m_uid,out var previous) && (previous.Pending || previous.BurstPending || !previous.Attack.IsDone()&&!previous.Attack.CanStartChainAttack()))
@@ -320,3 +320,4 @@ namespace Overhaul.Persistence
         private static class HealthDebit {private static bool Prefix(Character __instance)=>!executing || !GameCombatContext.Matches(__instance);}
     }
 }
+

@@ -42,7 +42,7 @@ namespace Overhaul.Persistence
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot state)
         {
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
-            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_body||!player.m_animator||!player.m_zanim||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||
+            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_body||!player.m_animator||!player.m_zanim||GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||
                 player.IsTeleporting()||player.InIntro()||player.m_sleeping||player.InDodge()||player.IsKnockedBack()||player.IsStaggering()||player.InAttack()||GameGuardianPower.Active(actor.m_uid)||
                 !player.IsOnGround()&&(!player.InLiquidSwimDepth()||player.m_hitWorldTime>=.25f))throw new InvalidOperationException("Character cannot jump");
             bool encumbered=false;GameCombatContext.Run(player,state,null,null,()=>encumbered=player.IsEncumbered());
@@ -76,3 +76,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

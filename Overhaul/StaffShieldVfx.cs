@@ -89,29 +89,33 @@ namespace Overhaul
         }
 
         internal static void Show(Player player, ItemDrop.ItemData staff)
+        {Hide();activeVisual=Create(player,staff);}
+
+        internal static GameObject Create(Player player, ItemDrop.ItemData staff)
         {
-            Hide();
-            if (player == null || staff == null || staff.m_dropPrefab == null) return;
+
+            if (player == null || staff == null || staff.m_dropPrefab == null) return null;
 
             ShieldDefinition definition;
             if (!StaffShields.TryGetValue(staff.m_dropPrefab.name, out definition))
             {
                 Log.LogWarning($"No shield VFX mapping for staff '{staff.m_dropPrefab.name}'");
-                return;
+                return null;
             }
 
             Initialize();
             GameObject prefab;
-            if (!LoadedPrefabs.TryGetValue(definition.AssetName, out prefab)) return;
+            if (!LoadedPrefabs.TryGetValue(definition.AssetName, out prefab)) return null;
 
-            activeVisual = UnityEngine.Object.Instantiate(prefab);
-            activeVisual.name = "Overhaul_StaffShield_" + definition.AssetName;
-            activeVisual.transform.SetParent(player.transform, false);
-            activeVisual.transform.localPosition = player.GetCenterPoint() - player.transform.position;
-            activeVisual.transform.localRotation = Quaternion.identity;
-            activeVisual.transform.localScale = Vector3.one
+            var visual = UnityEngine.Object.Instantiate(prefab);
+            visual.name = "Overhaul_StaffShield_" + definition.AssetName;
+            visual.transform.SetParent(player.transform, false);
+            visual.transform.localPosition = player.GetCenterPoint() - player.transform.position;
+            visual.transform.localRotation = Quaternion.identity;
+            visual.transform.localScale = Vector3.one
                 * (player.GetRadius() * 2f * definition.Scale);
-            activeVisual.SetActive(true);
+            visual.SetActive(true);
+            return visual;
         }
 
         internal static void Hide()
@@ -134,3 +138,4 @@ namespace Overhaul
         }
     }
 }
+

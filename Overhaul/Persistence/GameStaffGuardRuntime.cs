@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using HarmonyLib;
 
 namespace Overhaul.Persistence
 {
     internal static class GameStaffGuardRuntime
     {
         private sealed class Control
-        {internal bool Held,Pending,Loaded;internal double Seen,Next;internal SE_StaffGuard Guard;}
+        {internal bool Held,Pending,Loaded;internal double Seen,Next,NextView;internal SE_StaffGuard Guard;}
         private static readonly Dictionary<ZDOID,Control> controls=new Dictionary<ZDOID,Control>();
         private static bool clientHeld,sent,last;private static double next;
         private static Control Get(ZDOID actor){if(!controls.TryGetValue(actor,out var value))controls.Add(actor,value=new Control());return value;}
@@ -21,7 +22,7 @@ namespace Overhaul.Persistence
             return rows.Length==0?null:(SE_StaffGuard)GameStatusCodec.Restore(rows,player);
         }
         internal static void Committed(ZDOID actor,PlayerSnapshot state)
-        {if(actor.IsNone())return;var input=Get(actor);input.Guard=Restore(state,null);input.Loaded=true;}
+        {if(actor.IsNone())return;var input=Get(actor);input.Guard=Restore(state,null);input.Loaded=true;var instance=ZNetScene.instance?ZNetScene.instance.FindInstance(actor):null;var player=instance?instance.GetComponent<Player>():null;GameStaffGuardView.Publish(player,input.Guard);input.NextView=Time.timeAsDouble+1;}
         internal static SE_StaffGuard Read(Player player)
         {
             if(!player)return null;
@@ -29,6 +30,7 @@ namespace Overhaul.Persistence
             {var input=Get(player.GetZDOID());if(!input.Loaded)Committed(player.GetZDOID(),InventoryMoveGame.State(player.GetZDOID()));return input.Guard;}
             return player.GetSEMan()?.GetStatusEffect(GameStaffGuardRules.Id) as SE_StaffGuard;
         }
+        internal static bool Blocked(PlayerSnapshot state)=>state.Rows.Any(row=>row.Table=="status_data"&&Convert.ToInt32(row.Values[0])==GameStaffGuardRules.Id&&((string)row.Values[1]=="SE_StaffGuard.m_guardCast"||(string)row.Values[1]=="SE_StaffGuard.m_guardStun")&&Convert.ToDouble(row.Values[2])>0);
         internal static bool Casting(Player player)=>Read(player)?.m_guardCast>0;
         internal static bool Stunned(Player player)=>Read(player)?.m_guardStun>0;
         internal static void Input(bool held){clientHeld=held;ClientTick();}
@@ -45,7 +47,7 @@ namespace Overhaul.Persistence
             if(actor==null)return;var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             if(!GameMovementRuntime.Managed(player))return;var input=Get(actor.m_uid);
             if(input.Pending||Time.timeAsDouble<input.Next)return;input.Next=Time.timeAsDouble+.1;
-            var guard=Read(player);if(!Held(player)&&guard==null)return;
+            var guard=Read(player);if(guard?.m_guardActive==true&&Time.timeAsDouble>=input.NextView){GameStaffGuardView.Publish(player,guard);input.NextView=Time.timeAsDouble+1;}if(!Held(player)&&guard==null)return;
             input.Pending=true;
             if(!InventoryMoveGame.TimedAction(player,state=>
             {
@@ -65,6 +67,10 @@ namespace Overhaul.Persistence
                 {input.Pending=false;if(casting&&player&&player.m_zanim)player.m_zanim.SetTrigger("staff_shield");});
             }))input.Pending=false;
         }
+        [HarmonyPatch(typeof(Player),nameof(Player.CanMove))]
+        private static class Movement
+        {private static bool Prefix(Player __instance,ref bool __result){if(!GameMovementRuntime.Managed(__instance)&&!(PlayerSessionGame.Managed&&__instance==Player.m_localPlayer)||!Casting(__instance)&&!Stunned(__instance))return true;__result=false;return false;}}
         internal static bool IsStaff(ItemDrop.ItemData item)=>item!=null&&item.IsWeapon()&&item.m_dropPrefab&&item.m_dropPrefab.name.StartsWith("Staff",StringComparison.OrdinalIgnoreCase);
     }
 }
+

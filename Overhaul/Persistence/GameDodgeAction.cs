@@ -45,7 +45,7 @@ namespace Overhaul.Persistence
             roll.Rewarded=true;
             if(!InventoryMoveGame.TimedAction(player,state=>
             {
-                if(GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return null;
+                if(GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return null;
                 float cost=0;GameCombatContext.Run(player,state,null,null,()=>cost=player.GetDodgeStaminaUse());
                 var changes=PlayerResources.Restore(state,0,cost*player.m_perfectDodgeStaminaReturnMultiplier,0).ToList();
                 GamePlayerHit.Merge(changes,GameAdrenaline.Change(PlayerProgressService.Overlay(state,changes),player,player.m_perfectDodgeAdrenaline));
@@ -59,7 +59,7 @@ namespace Overhaul.Persistence
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             var p=request.Gameplay.Position;var direction=new Vector3(p[0],p[1],p[2]);
             if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||Mathf.Abs(direction.y)>.001f||Mathf.Abs(direction.sqrMagnitude-1)>.01f||!player||!player.m_body||!player.m_animator||!player.m_zanim||
-                GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||!player.IsOnGround()||player.IsTeleporting()||player.InIntro()||player.m_sleeping||player.InAttack()||player.IsStaggering()||Active(player)||GameGuardianPower.Active(actor.m_uid))
+                GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0||!player.IsOnGround()||player.IsTeleporting()||player.InIntro()||player.m_sleeping||player.InAttack()||player.IsStaggering()||Active(player)||GameGuardianPower.Active(actor.m_uid))
                 throw new InvalidOperationException("Character cannot dodge");
             bool encumbered=false;GameCombatContext.Run(player,state,null,null,()=>encumbered=player.IsEncumbered());if(encumbered)throw new InvalidOperationException("Character is encumbered");
             var changes=Cost(state,player);
@@ -118,3 +118,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

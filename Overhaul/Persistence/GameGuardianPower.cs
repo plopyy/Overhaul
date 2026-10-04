@@ -27,7 +27,7 @@ namespace Overhaul.Persistence
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot state)
         {
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
-            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_animator||!player.m_zanim||casts.ContainsKey(actor.m_uid)||GameDeathProgress.IsDead(state)||
+            if(request.Action.Amount!=1||request.Gameplay.TargetId!=0||!player||!player.m_animator||!player.m_zanim||casts.ContainsKey(actor.m_uid)||GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||
                 player.IsTeleporting()||player.InIntro()||player.IsStaggering()||player.InDodge()||player.InMinorAction()||GameAttackRuntime.Active(actor.m_uid)||player.IsKnockedBack())
                 throw new InvalidOperationException("Character cannot start guardian power");
             var effect=Power(state);
@@ -48,7 +48,7 @@ namespace Overhaul.Persistence
             cast.Pending=true;
             if(!InventoryMoveGame.TimedAction(player,state=>
             {
-                if(GameDeathProgress.IsDead(state)||player.IsStaggering()){Forget(player.GetZDOID());return null;}
+                if(GameStaffGuardRuntime.Blocked(state)||GameDeathProgress.IsDead(state)||player.IsStaggering()){Forget(player.GetZDOID());return null;}
                 if(PlayerResources.Read(state,"guardian_cooldown")>0||!state.Rows.Any(r=>r.Table=="state"&&(string)r.Values[0]=="guardian_power"&&(string)r.Values[3]==cast.Power))
                 {Forget(player.GetZDOID());return null;}
                 var effect=Power(state);
@@ -85,3 +85,4 @@ namespace Overhaul.Persistence
         {private static bool Prefix()=>!PlayerSessionGame.Managed&&!GameCreatureAuthority.Enabled;}
     }
 }
+
