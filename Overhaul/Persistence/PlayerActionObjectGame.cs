@@ -21,6 +21,7 @@ namespace Overhaul.Persistence
         internal void Set(int key,long value) => Set(key,"long",value);
         internal void Set(int key,string value) => Set(key,"string",value);
         internal void Set(int key,byte[] value) => Set(key,"bytes",(byte[])value.Clone());
+        internal void Set(int key,UnityEngine.Vector3 value) => Set(key,"vector3",GameSnapshot.Components(value));
         private void Set(int key,string type,object value)
         {
             var property = new PropertyRecord { Key = key,Type = type,Name = NameCatalog.Key(key),Value = value };
@@ -52,6 +53,7 @@ namespace Overhaul.Persistence
                         case "long": data.Set(property.Key,(long)property.Value); break;
                         case "string": data.Set(property.Key,(string)property.Value); break;
                         case "bytes": data.Set(property.Key,(byte[])property.Value); break;
+                        case "vector3": data.Set(property.Key,GameSnapshot.Vector((float[])property.Value)); break;
                     }
                 if (delay > 0) GamePersistence.DeferActionObjects(spawned,delay,outputEffects);
                 else foreach (var addition in spawned) GamePersistence.PublishActionObject(addition);

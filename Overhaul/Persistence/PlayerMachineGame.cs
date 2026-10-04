@@ -35,6 +35,7 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerCatapultGame.Load || command.Definition == PlayerCatapultGame.Legs) return PlayerCatapultGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerHarvestGame.Harvest || command.Definition == PlayerHarvestGame.Honey || command.Definition == PlayerHarvestGame.Sap) return PlayerHarvestGame.Prepare(actor,target,request,snapshot);
             if (command.Definition == PlayerPetGame.Feed) return PlayerPetGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == GameTameInteraction.Use) return GameTameInteraction.Prepare(actor,target,request,snapshot);
             if (command.Definition == PlayerTradeGame.Give) return PlayerTradeGame.GiveItem(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
