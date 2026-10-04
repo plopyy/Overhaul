@@ -31,8 +31,17 @@ namespace Overhaul.Persistence
         {
             var manager=EnvMan.instance;if(!manager||WorldGenerator.instance==null||!ZNet.instance)return null;
             var point=player.transform.position;var biome=WorldGenerator.instance.GetBiomeSector(point,false);
+            bool ashlands=WorldGenerator.IsAshlands(point.x,point.z),north=WorldGenerator.IsDeepnorth(point.x,point.z);
+            if(ashlands||north)
+            {
+                var heightmap=Heightmap.FindHeightmap(point);
+                if(heightmap&&heightmap.GetWorldHeight(point,out var ground)&&ground<=manager.m_oceanLevelEnvCheckAshlandsDeepnorth)
+                    biome=ZNet.World.m_biomeData.Biomes[ashlands?Heightmap.Biome.AshLands:Heightmap.Biome.DeepNorth].Sectors[0];
+            }
             EnvSetup Named(string name)=>string.IsNullOrEmpty(name)?null:manager.GetEnv(name);
             var debug=Named(manager.m_debugEnv);if(debug!=null)return debug;
+            bool inZone=zones.TryGetValue(player.GetZDOID(),out var zone)&&zone.Value&&Time.timeAsDouble-zone.Seen<.5;
+            if(inZone&&zone.Value.m_force){var forced=Named(zone.Value.m_environment);if(forced!=null)return forced;}
             if(player.InIntro()){var intro=Named(manager.m_introEnvironment);if(intro!=null)return intro;}
             var events=RandEventSystem.instance;
             if(events)
@@ -46,7 +55,7 @@ namespace Overhaul.Persistence
             if(persistent)foreach(var active in persistent.m_activePersistentEvents.list)
                 if((active.position-point).sqrMagnitude<active.radius*active.radius)
                 {var forced=Named(active.Source.GetEnvironmentOverride(point));if(forced!=null)return forced;}
-            if(zones.TryGetValue(player.GetZDOID(),out var zone)&&zone.Value&&Time.timeAsDouble-zone.Seen<.5)
+            if(inZone)
             {var forced=Named(zone.Value.m_environment);if(forced!=null)return forced;}
             return Select(manager,biome,point,(long)ZNet.instance.GetTimeSeconds());
         }

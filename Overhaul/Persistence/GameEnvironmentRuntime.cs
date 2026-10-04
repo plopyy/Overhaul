@@ -24,9 +24,8 @@ namespace Overhaul.Persistence
             if(clock.Pending||Time.timeAsDouble<clock.Next)return;clock.Next=Time.timeAsDouble+.5;clock.Pending=true;
             if(!InventoryMoveGame.TimedAction(player,state=>
             {
-                clock.Pending=false;
-                if(!player||player.IsDead())return null;
-                var weather=GameEnvironmentWeather.Read(player);if(weather==null)return null;
+                if(!player||player.IsDead()){clock.Pending=false;return null;}
+                var weather=GameEnvironmentWeather.Read(player);if(weather==null){clock.Pending=false;return null;}
                 if(Time.timeAsDouble>=clock.NextCover)
                 {
                     clock.NextCover=Time.timeAsDouble+1;
@@ -39,8 +38,8 @@ namespace Overhaul.Persistence
                 var sample=new Conditions{Cold=weather.m_isCold||weather.m_isColdAtNight&&!EnvMan.IsDay(),Freezing=weather.m_isFreezing||weather.m_isFreezingAtNight&&!EnvMan.IsDay(),Rain=weather.m_isWet,
                     Roof=player.m_underRoof,Shelter=player.InShelter(),Fire=EffectArea.IsPointInsideArea(player.GetCenterPoint(),EffectArea.Type.Heat,player.GetRadius()),
                     Warm=EffectArea.IsPointInsideArea(point,EffectArea.Type.WarmCozyArea,1),Shield=ShieldGenerator.IsInsideShield(point),Sensed=player.IsSensed(),Sitting=player.IsSitting(),Comfort=player.m_comfortLevel,BaseValue=player.m_baseValue};
-                var rows=Prepare(state,player,sample);if(rows.Length==0)return null;
-                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>{});
+                var rows=Prepare(state,player,sample);if(rows.Length==0){clock.Pending=false;return null;}
+                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>clock.Pending=false);
             }))clock.Pending=false;
         }
         internal static PlayerChange[] Prepare(PlayerSnapshot state,Player player,Conditions sample)
