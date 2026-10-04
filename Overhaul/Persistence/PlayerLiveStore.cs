@@ -41,6 +41,7 @@ namespace Overhaul.Persistence
             return true;
         }
         internal PlayerSnapshot Chest(long id)=>containers.TryGetValue(id,out var c)?c.State:throw new InvalidOperationException("Live container is unavailable");
+        internal bool HasChest(long id)=>containers.ContainsKey(id);
         internal void Validate(long id,InventoryMoveAction action,IEnumerable<int> slots)
         {
             var container=containers[id];long revision=container.State.Revision;
@@ -68,7 +69,7 @@ namespace Overhaul.Persistence
         private void FlushLiveProgress(PendingProgress entry)
         {
             var batch=new PlayerBatch(Guid.NewGuid().ToString("N"),entry.Revision,entry.Rows);
-            shared.Persist(world=>{PrepareTransfers(world);PlayerTransferJournal.Recover(world,Get);Get(entry.Identity).CommitProgress(batch);});
+            shared.Persist(world=>{PrepareTransfers(world);Get(entry.Identity).CommitProgress(batch);});
             pendingProgress.Remove(entry.Identity.FileName);
         }
         internal void EnableLiveState(){if(shared==null)throw new InvalidOperationException("Live state requires a world writer");Live=new PlayerLiveStore();}
@@ -85,9 +86,10 @@ namespace Overhaul.Persistence
         private void PersistAccepted(PlayerIdentity identity,PlayerWorldAction action)
         {
             var objects=action.Objects;var containers=action.Containers;var keys=action.WorldKeys;var batch=action.Player;
+            bool attempted=false;
             shared.Persist(world=>
             {
-                PrepareTransfers(world);PlayerTransferJournal.Recover(world,Get);
+                PrepareTransfers(world);if(attempted)PlayerTransferJournal.Recover(world,Get);attempted=true;
                 var player=Get(identity);
                 // A failed Finish can already have committed the player's half.
                 if(player.Revision==batch.ExpectedRevision+1)return;

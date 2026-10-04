@@ -22,9 +22,9 @@ namespace Overhaul.Persistence
             internal Action Effects;
         }
         private static readonly List<DeferredOutput> deferredOutputs = new List<DeferredOutput>();
-        // These objects are already committed in SQLite. Delaying their live publication
-        // preserves the tap animation without holding the machine or player transaction.
-        // A restart restores the committed outputs directly, including an interrupted tap.
+        // Their accepted mutation is queued for persistence. Delayed publication
+        // preserves the tap animation without holding the machine or player action.
+        // A restart restores outputs whose background write has completed.
         internal static void DeferActionObjects(ObjectRecord[] records,float seconds,Action effects)
         {
             if (float.IsNaN(seconds) || float.IsInfinity(seconds) || seconds < 0)

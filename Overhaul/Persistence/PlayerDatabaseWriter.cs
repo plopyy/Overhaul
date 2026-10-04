@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 namespace Overhaul.Persistence
 {
     // One worker for all players. Commands contain managed values, never Player/Inventory/Unity objects.
-    // A completed task means the transaction is durable, not merely queued.
+    // Live gameplay methods complete on acceptance in memory. Admission, migration
+    // and explicit Flush still use the worker's completion as their disk barrier.
     internal sealed partial class PlayerDatabaseWriter : IDisposable
     {
         private sealed class Entry

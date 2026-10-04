@@ -27,7 +27,7 @@ namespace Overhaul.Persistence
         }
         internal Task<PlayerSnapshot> ContainerState(long objectId)
         {
-            if(Live!=null)return Task.FromResult(Live.Chest(objectId));
+            if(Live?.HasChest(objectId)==true)return Task.FromResult(Live.Chest(objectId));
             if (shared == null) throw new InvalidOperationException("Container reads require the world executor");
             return SubmitWorld(world =>
             {

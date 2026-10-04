@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Overhaul.Persistence
 {
     // Only server code can enqueue these actions. The same gate as client intents
-    // protects their fresh snapshot, durable write and main-thread publication.
+    // protects preparation and publication of the accepted state in memory.
     internal sealed class PlayerServerActions
     {
         private sealed class Event
