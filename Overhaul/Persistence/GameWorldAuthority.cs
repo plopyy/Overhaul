@@ -47,6 +47,7 @@ namespace Overhaul.Persistence
                     yield return AccessTools.Method(type,"RPC_Damage");
                 yield return AccessTools.Method(typeof(MineRock),"RPC_Hit");
                 yield return AccessTools.Method(typeof(WearNTear),"RPC_Remove");
+                yield return AccessTools.Method(typeof(ItemDrop),"RPC_MakePiece");
             }
             private static bool Prefix(Component __instance,long sender,MethodBase __originalMethod,object[] __args)
             {

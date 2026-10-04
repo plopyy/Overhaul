@@ -17,8 +17,15 @@ namespace Overhaul.Persistence
             {
                 if(package.Size()-position<44)return false;
                 package.ReadLong();long sender=package.ReadLong();
-                package.ReadLong();package.ReadZDOID();package.ReadInt();int length=package.ReadInt();
-                return sender==peer.m_uid && length>=0 && length==package.Size()-package.GetPos();
+                long targetPeer=package.ReadLong();var target=package.ReadZDOID();package.ReadInt();int length=package.ReadInt();
+                if(sender!=peer.m_uid || length<0 || length!=package.Size()-package.GetPos())return false;
+                // A denied mutation must not still be forwarded to other clients as
+                // a fake visual/state confirmation for a server-controlled object.
+                if(targetPeer!=ZNet.GetUID() && (GameCreatureAuthority.Owns(target) || GameWorldAuthority.Owns(target) || PlayerFishingCastGame.ServerOwned(target)))return false;
+                var data=ZDOMan.instance?.GetZDO(target);
+                var prefab=data!=null && ZNetScene.instance?ZNetScene.instance.GetPrefab(data.GetPrefab()):null;
+                if(prefab && prefab.GetComponent<Player>() && target!=peer.m_characterID)return false;
+                return true;
             }
             catch(Exception){return false;}
             finally{package.SetPos(position);}
