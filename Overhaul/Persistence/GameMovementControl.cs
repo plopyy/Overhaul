@@ -35,7 +35,8 @@ namespace Overhaul.Persistence
         }
         internal static bool Receive(ZDO actor,ZPackage packet)
         {
-            if(actor==null||packet==null||packet.Size()-packet.GetPos()!=36)return false;
+            if(actor==null||packet==null||packet.Size()-packet.GetPos()!=48)return false;
+            if(packet.ReadZDOID()!=actor.m_uid)return false;
             var state=InventoryMoveGame.State(actor.m_uid);if(state==null||GameDeathProgress.IsDead(state)||PlayerResources.Read(state,"health")<=0)return false;
             long number=packet.ReadLong();Vector3 move=packet.ReadVector3(),look=packet.ReadVector3();int flags=packet.ReadInt();
             if(number<=0||(flags&~7)!=0||float.IsNaN(move.sqrMagnitude)||float.IsInfinity(move.sqrMagnitude)||move.sqrMagnitude>1.0001f||Mathf.Abs(move.y)>.001f||
@@ -43,9 +44,9 @@ namespace Overhaul.Persistence
             if(inputs.TryGetValue(actor.m_uid,out var previous)&&number<=previous.Sequence)return false;
             inputs[actor.m_uid]=new Input{Sequence=number,Move=move,Look=look.normalized,Run=(flags&1)!=0,Walk=(flags&2)!=0,Crouch=(flags&4)!=0,Seen=Time.timeAsDouble};return true;
         }
-        internal static ZPackage Encode(long number,Vector3 move,Vector3 look,bool run,bool walk,bool crouch)
+        internal static ZPackage Encode(ZDOID actor,long number,Vector3 move,Vector3 look,bool run,bool walk,bool crouch)
         {
-            var package=new ZPackage();package.Write(number);package.Write(move);package.Write(look);package.Write((run?1:0)|(walk?2:0)|(crouch?4:0));return package;
+            var package=new ZPackage();package.Write(actor);package.Write(number);package.Write(move);package.Write(look);package.Write((run?1:0)|(walk?2:0)|(crouch?4:0));return package;
         }
         internal static void ClientTick()
         {
@@ -58,7 +59,7 @@ namespace Overhaul.Persistence
             if(last!=null&&Time.timeAsDouble<next)return;
             last=new Input{Move=move,Look=look,Run=run,Walk=walk,Crouch=crouch};
             ++sequence;int slot=(int)(sequence&63);sentSequence[slot]=sequence;sentTime[slot]=Time.timeAsDouble;
-            InventoryMoveGame.Client.MovementControl(Encode(sequence,move,look,run,walk,crouch));next=Time.timeAsDouble+.05;
+            InventoryMoveGame.Client.MovementControl(Encode(player.GetZDOID(),sequence,move,look,run,walk,crouch));next=Time.timeAsDouble+.05;
         }
         [HarmonyPatch(typeof(Player),nameof(Player.SetControls))]
         private static class Capture

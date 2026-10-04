@@ -47,7 +47,7 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Game),"SpawnPlayer")]
         private static class Spawned
         {
-            private static void Prefix(){if(PlayerSessionGame.Managed)GameCharacterView.PrepareSpawn();}
+            private static void Prefix(){if(PlayerSessionGame.Managed){GameCharacterView.PrepareSpawn();GameMovementControl.ClearClient();}}
             private static void Postfix(){if(PlayerSessionGame.Managed){consumed=true;ready=false;}}
         }
     }

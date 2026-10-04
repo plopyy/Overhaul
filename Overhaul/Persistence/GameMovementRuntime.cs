@@ -63,7 +63,7 @@ namespace Overhaul.Persistence
         {
             if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
             motion.NextView=Time.timeAsDouble+.05;
-            return GameMovementView.Encode(++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
+            return GameMovementView.Encode(actor,++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
         }
         private static Motion Remember(Player player)
         {
@@ -74,7 +74,11 @@ namespace Overhaul.Persistence
         }
         internal static void Protect(ZDO actor)
         {
-            if(!motions.TryGetValue(actor.m_uid,out var motion))return;
+            if(!motions.TryGetValue(actor.m_uid,out var motion))
+            {
+                actor.SetRotation(Quaternion.identity);
+                actor.Set(ZDOVars.s_velHash,Vector3.zero);actor.Set(ZDOVars.s_bodyVelHash,Vector3.zero);actor.Set(ZDOVars.s_bodyAVelHash,Vector3.zero);return;
+            }
             actor.SetPosition(motion.Position);actor.SetRotation(motion.Rotation);
             actor.Set(ZDOVars.s_velHash,motion.Velocity);actor.Set(ZDOVars.s_bodyVelHash,motion.Velocity);actor.Set(ZDOVars.s_bodyAVelHash,motion.Angular);
         }
