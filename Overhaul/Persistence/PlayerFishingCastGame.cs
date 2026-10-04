@@ -33,8 +33,22 @@ namespace Overhaul.Persistence
         private static readonly HashSet<ZDOID> owned=new HashSet<ZDOID>();
         private static PlayerActionCommand queued;
         private static int queuedX,queuedY;
+        private sealed class Input {internal bool Reel,Cancel;internal float Received;}
+        private static readonly Dictionary<ZDOID,Input> inputs=new Dictionary<ZDOID,Input>();
+        private static bool sentControl,lastReel,lastCancel;
+        private static float nextControl;
+        internal static void Control(ZDO actor,bool reel,bool cancel)
+        {
+            if(actor==null)return;var state=InventoryMoveGame.State(actor.m_uid);if(state==null)return;
+            bool rod=state.Rows.Where(r=>r.Table=="inventory" && Convert.ToBoolean(r.Values[7])).Any(r=>
+            {var prefab=ObjectDB.instance.GetItemPrefab(Convert.ToInt32(r.Values[3]));var drop=prefab?prefab.GetComponent<ItemDrop>():null;return drop && FloatPrefab(drop.m_itemData.m_shared.m_attack?.m_attackProjectile);});
+            if(!rod || actor.GetBool(ZDOVars.s_dead,false)){inputs.Remove(actor.m_uid);return;}
+            inputs[actor.m_uid]=new Input{Reel=reel,Cancel=cancel,Received=Time.time};
+        }
+        internal static bool Reeling(ZDOID actor)=>inputs.TryGetValue(actor,out var input) && Time.time-input.Received<1.5f && input.Reel;
+        internal static bool Cancelling(ZDOID actor)=>inputs.TryGetValue(actor,out var input) && Time.time-input.Received<1.5f && input.Cancel;
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
-        internal static void Clear(){draws.Clear();queued=null;}
+        internal static void Clear(){draws.Clear();inputs.Clear();queued=null;sentControl=lastReel=lastCancel=false;nextControl=0;}
         internal static void Close(){Clear();owned.Clear();landings.Clear();ValidateNibble.Clear();}
         internal static bool HasServerLines=>Enabled && owned.Count!=0;
         internal static void TrackRestored(ZDO data){if(data.GetLong(OwnerUser,0)!=0)owned.Add(data.m_uid);}
@@ -44,7 +58,7 @@ namespace Overhaul.Persistence
             if(Enabled && data.GetLong(OwnerUser,0)!=0 && !owned.Contains(data.m_uid))
                 record.Properties.RemoveAll(p=>p.Key==OwnerUser || p.Key==OwnerId || p.Key==BaitData || p.Key==Used || p.Key==Ready || p.Key==Length || p.Key==Velocity || p.Key==Lifetime);
         }
-        internal static void Forget(ZDOID actor)=>draws.Remove(actor);
+        internal static void Forget(ZDOID actor){draws.Remove(actor);inputs.Remove(actor);}
         internal static void Begin(ZDO actor,int x,int y)
         {if(actor!=null && x>=0 && x<256 && y>=0 && y<256)draws[actor.m_uid]=new Draw{X=x,Y=y,Started=Time.time};}
         internal static bool Managed(FishingFloat line)=>line && line.m_nview && line.m_nview.IsValid() && line.m_nview.GetZDO().GetLong(OwnerUser,0)!=0 &&
@@ -111,6 +125,11 @@ namespace Overhaul.Persistence
             var controller=InventoryMoveGame.Client?.Controller;
             if(!PlayerSessionGame.Managed || controller==null || controller.Closed){queued=null;return;}
             if(queued!=null && !controller.Busy && controller.Act(queued,queuedX,queuedY,1))queued=null;
+            var player=Player.m_localPlayer;if(!player)return;
+            bool line=FishingFloat.m_allInstances.Any(f=>Managed(f) && Owner(f)==player.GetZDOID());
+            bool reel=line && player.IsBlocking(),cancel=line && (player.InAttack() || player.IsDrawingBow());
+            if((line || sentControl) && (!sentControl || reel!=lastReel || cancel!=lastCancel || Time.time>=nextControl))
+            {InventoryMoveGame.Client.FishingControl(reel,cancel);sentControl=line;lastReel=reel;lastCancel=cancel;nextControl=Time.time+.5f;}
         }
         private static bool ManagedFlight(Projectile flight)=>flight && flight.m_nview && flight.m_nview.IsValid() && ServerOwned(flight.m_nview.GetZDO().m_uid) && FloatPrefab(flight.gameObject);
         internal static void Land(Projectile flight,Vector3 normal,bool water,bool expired=false)

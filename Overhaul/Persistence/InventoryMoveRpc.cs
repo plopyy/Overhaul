@@ -16,6 +16,7 @@ namespace Overhaul.Persistence
         private PlayerSnapshot canonical;
         private double pendingStamina;
         internal PlayerSnapshot State(ZDOID actor)=>!disposed && canonical!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor?canonical:null;
+        internal bool ActionBusy=>server?.Busy==true;
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
         internal bool Spending(ZDOID actor,float amount,float delay)
         {
@@ -92,6 +93,8 @@ namespace Overhaul.Persistence
             rpc.Register<ZPackage>(Request, Receive);
             rpc.Register<string,int,int>("Overhaul_FishingDraw",(sender,token,x,y)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)PlayerFishingCastGame.Begin(PlayerSessionGame.Actor(rpc),x,y);});
+            rpc.Register<string,bool,bool>("Overhaul_FishingControl",(sender,token,reel,cancel)=>
+            {if(ReferenceEquals(sender,rpc)&&token==nonce)PlayerFishingCastGame.Control(PlayerSessionGame.Actor(rpc),reel,cancel);});
             rpc.Register<string,string>(CancelEquipmentRequest,(sender,token,operation) =>
             { if (ReferenceEquals(sender,rpc) && token == nonce) server.CancelEquipment(operation); });
             rpc.Register<string>(CloseRequest, (sender, token) => { if (ReferenceEquals(sender, rpc) && token == nonce) access.Close(); });
@@ -131,6 +134,7 @@ namespace Overhaul.Persistence
         internal void CancelEquipment()
         { if (!disposed && Controller?.Pending != null) rpc.Invoke(CancelEquipmentRequest,nonce,Controller.Pending.Action.Operation); }
         internal void BeginFishingDraw(int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingDraw",nonce,x,y);}
+        internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
             var player = Player.m_localPlayer;
@@ -229,6 +233,7 @@ namespace Overhaul.Persistence
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });
             if (server != null) rpc.Register<string,int,int>("Overhaul_FishingDraw",(_,__,___,____)=>{ });
+            if (server != null) rpc.Register<string,bool,bool>("Overhaul_FishingControl",(_,__,___,____)=>{ });
         }
     }
 }

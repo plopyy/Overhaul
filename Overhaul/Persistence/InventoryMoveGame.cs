@@ -26,6 +26,8 @@ namespace Overhaul.Persistence
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action))return true;return false;}
         internal static PlayerSnapshot State(ZDOID actor)
         {foreach(var endpoint in connections){var state=endpoint.State(actor);if(state!=null)return state;}return null;}
+        internal static bool CanSimulate(ZDOID actor)
+        {foreach(var endpoint in connections)if(endpoint.State(actor)!=null)return !endpoint.ActionBusy;return false;}
         internal static double Stamina(ZDOID actor)
         {foreach(var endpoint in connections)if(endpoint.State(actor)!=null)return endpoint.Stamina(actor);return 0;}
         internal static bool SpendStamina(ZDOID actor,float amount,float delay)

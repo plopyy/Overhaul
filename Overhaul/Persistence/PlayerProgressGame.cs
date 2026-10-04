@@ -201,6 +201,24 @@ namespace Overhaul.Persistence
     internal static class PlayerProgressGame
     {
         private static Character actor;
+        [HarmonyPatch(typeof(Humanoid),nameof(Humanoid.IsBlocking))]
+        private static class Reel
+        {
+            private static bool Prefix(Humanoid __instance,ref bool __result)
+            {if(!actor || actor!=__instance)return true;__result=PlayerFishingCastGame.Reeling(actor.GetZDOID());return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.InAttack))]
+        private static class CancelLine
+        {
+            private static bool Prefix(Player __instance,ref bool __result)
+            {if(!actor || actor!=__instance)return true;__result=PlayerFishingCastGame.Cancelling(actor.GetZDOID());return false;}
+        }
+        [HarmonyPatch(typeof(Humanoid),nameof(Humanoid.IsDrawingBow))]
+        private static class DrawLine
+        {
+            private static bool Prefix(Humanoid __instance,ref bool __result)
+            {if(!actor || actor!=__instance)return true;__result=false;return false;}
+        }
         [HarmonyPatch(typeof(Player),nameof(Player.GetSkillFactor))]
         private static class SkillFactor
         {
@@ -222,10 +240,12 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(FishingFloat),"FixedUpdate")]
         private static class FishingSimulation
         {
-            private static void Prefix(FishingFloat __instance,out Character __state)
+            private static bool Prefix(FishingFloat __instance,out Character __state)
             {
                 __state=actor;
-                if(PlayerFishingCastGame.Enabled && PlayerFishingCastGame.Managed(__instance) && ZNet.instance.IsServer() && __instance.m_nview.IsOwner())actor=__instance.GetOwner();
+                if(PlayerFishingCastGame.Enabled && PlayerFishingCastGame.Managed(__instance) && ZNet.instance.IsServer() && __instance.m_nview.IsOwner())
+                {actor=__instance.GetOwner();if(actor && !InventoryMoveGame.CanSimulate(actor.GetZDOID()))return false;}
+                return true;
             }
             private static Exception Finalizer(Character __state,Exception __exception){actor=__state;return __exception;}
         }
