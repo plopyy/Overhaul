@@ -26,7 +26,7 @@ namespace Overhaul.Persistence
             centers.Clear();centerZones.Clear();zones.Clear();
             void Center(Vector3 position)
             {
-                if(float.IsNaN(position.x) || float.IsNaN(position.z) || Math.Abs(position.x)>1000000 || Math.Abs(position.z)>1000000)return;
+                if(float.IsNaN(position.x) || float.IsNaN(position.y) || float.IsNaN(position.z) || Math.Abs(position.x)>1000000 || Math.Abs(position.y)>1000000 || Math.Abs(position.z)>1000000)return;
                 var zone=ZoneSystem.GetZone(position);if(!centerZones.Add(zone))return;centers.Add(position);
                 var system=ZoneSystem.instance;var distance=ZNet.instance.GetSyncedSimulationDistance();int radius=distance.NearSimulationDistance;
                 for(int y=zone.y-radius;y<=zone.y+radius;y++)for(int x=zone.x-radius;x<=zone.x+radius;x++)
@@ -35,6 +35,10 @@ namespace Overhaul.Persistence
             // A host also needs its normal reference area while its own character is spawning.
             if(!ZNet.instance.IsDedicated())Center(ZNet.instance.GetReferencePosition());
             foreach(var actor in PlayerSessionGame.ActiveActors())Center(actor.GetPosition());
+            // Keep the supporting terrain alive until outstanding actions have published.
+            // Keeping only their ZNetViews would let ZoneSystem unload the ground below them.
+            if(ZNetScene.instance)foreach(var pair in ZNetScene.instance.m_instances)
+                if(GamePersistence.ActionReserved(pair.Key.m_uid) || GamePersistence.InventoryReserved(pair.Key.m_uid))zones.Add(pair.Key.GetSector());
         }
         internal static bool Contains(Vector3 position)
         {Refresh();foreach(var center in centers)if(ZNetScene.InActiveArea(position,center))return true;return false;}
