@@ -103,7 +103,7 @@ namespace Overhaul.Persistence
                 else if (row.Table == "knowledge")
                 {
                     string category = (string)v[0], key = (string)v[1];
-                    HashSet<string> set = category == "uniques" ? player.m_uniques : category == "recipes" ? player.m_knownRecipes : category == "materials" ? player.m_knownMaterial : null;
+                    HashSet<string> set = category == "uniques" ? player.m_uniques : category == "recipes" ? player.m_knownRecipes : category == "materials" ? player.m_knownMaterial : category=="tutorials"?player.m_shownTutorials:category=="biomes"?player.m_knownBiome:null;
                     if (set != null) { effects.Add(() => { if (row.Delete) set.Remove(key); else set.Add(key); }); continue; }
                     if(category=="trophies")
                     {effects.Add(()=>{if(row.Delete)player.m_trophies.Remove(key);else if(!player.m_trophies.Contains(key))player.m_trophies.Add(key);});continue;}

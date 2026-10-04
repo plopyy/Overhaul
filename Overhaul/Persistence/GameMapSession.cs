@@ -32,11 +32,12 @@ namespace Overhaul.Persistence
         private PlayerChange[] changes;
         private int size,lastX=int.MinValue,lastY=int.MinValue;
         private double next;
+        private Vector3? finalPoint;
         private MapTable shareTable;
         private ZDOID shareId;
         private bool shareWrite,shareQueued;
         private Task<PlayerSharedMap.Result> sharing;
-        internal bool Finished=>pending==null&&edits.Count==0&&!shareQueued&&sharing==null;
+        internal bool Finished=>pending==null&&edits.Count==0&&!shareQueued&&sharing==null&&!finalPoint.HasValue;
         internal void Share(MapTable table,bool write)
         {
             if(!table||shareQueued||sharing!=null||size==0||!GameCartographyRuntime.Reserve(table.m_nview.GetZDO().m_uid))return;
@@ -89,6 +90,7 @@ namespace Overhaul.Persistence
         }
         internal void Tick(ZDO actor,bool final=false)
         {
+            if(final&&actor!=null)finalPoint=actor.GetPosition();
             if(sharing!=null)
             {
                 if(!sharing.IsCompleted)return;
@@ -113,10 +115,13 @@ namespace Overhaul.Persistence
                 if(!shareTable||!shareTable.m_nview||!shareTable.m_nview.IsValid()){AbortShare();return;}
                 var data=shareTable.m_nview.GetZDO().GetByteArray(ZDOVars.s_data,null);sharing=writer.ShareMap(identity,data==null?null:(byte[])data.Clone(),shareWrite);shareQueued=false;return;
             }
-            var map=Minimap.instance;if(actor==null||!map||!final&&Time.timeAsDouble<next)return;next=Time.timeAsDouble+1;
-            if(map.m_textureSize<1||map.m_textureSize>4096||map.m_pixelSize<=0||float.IsNaN(map.m_pixelSize)||float.IsInfinity(map.m_pixelSize))return;
+            var map=Minimap.instance;
+            if(!map){finalPoint=null;return;}
+            if(actor==null&&!finalPoint.HasValue||!final&&!finalPoint.HasValue&&Time.timeAsDouble<next)return;next=Time.timeAsDouble+1;
+            if(map.m_textureSize<1||map.m_textureSize>4096||map.m_pixelSize<=0||float.IsNaN(map.m_pixelSize)||float.IsInfinity(map.m_pixelSize)){finalPoint=null;return;}
             if(size!=0&&size!=map.m_textureSize)throw new InvalidOperationException("Saved map dimensions differ from the server map");
-            var point=actor.GetPosition();if(float.IsNaN(point.x)||float.IsInfinity(point.x)||float.IsNaN(point.z)||float.IsInfinity(point.z))return;
+            var point=finalPoint??actor.GetPosition();finalPoint=null;
+            if(float.IsNaN(point.x)||float.IsInfinity(point.x)||float.IsNaN(point.z)||float.IsInfinity(point.z))return;
             int x=Utils.RoundToInt(point.x/map.m_pixelSize+map.m_textureSize/2),y=Utils.RoundToInt(point.z/map.m_pixelSize+map.m_textureSize/2);
             if(lastX==x&&lastY==y)return;
             int radius=Mathf.CeilToInt(map.m_exploreRadius/map.m_pixelSize);

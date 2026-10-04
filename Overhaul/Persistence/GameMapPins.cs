@@ -57,6 +57,8 @@ namespace Overhaul.Persistence
             if(!PlayerSessionGame.Managed||InventoryMoveGame.Client==null||pending.Count==0)return;
             var rows=pending.Take(64).ToArray();InventoryMoveGame.Client.MapEdit(rows);pending.RemoveRange(0,rows.Length);
         }
+        internal static void Flush()
+        {while(PlayerSessionGame.Managed&&InventoryMoveGame.Client!=null&&pending.Count!=0)Tick();}
         [HarmonyPatch(typeof(Minimap),"SetMapData")]
         private static class Load
         {

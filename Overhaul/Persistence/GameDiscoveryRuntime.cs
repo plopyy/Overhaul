@@ -38,7 +38,7 @@ namespace Overhaul.Persistence
             if(stone is RuneStone rune)
             {
                 var text=rune.GetRandomText();string label=text?.m_label??rune.m_label,value=text?.m_text??rune.m_text;
-                if(!string.IsNullOrEmpty(label))changes.Add(new PlayerChange("knowledge",false,"texts",label,value??""));
+                if(!string.IsNullOrEmpty(label))changes.Add(new PlayerChange("knowledge",false,"texts",label.Replace("\u0016",""),(value??"").Replace("\u0016","")));
             }
             else if(stone is Vegvisir vegvisir)
             {
@@ -61,6 +61,23 @@ namespace Overhaul.Persistence
                 if(stone is Vegvisir veg&&veg.m_locations.Any(location=>name==location.m_locationName&&pinName==location.m_pinName&&pinType==(int)location.m_pinType&&showMap==location.m_showMap&&discoverAll==location.m_discoverAll))return true;
             }
             return false;
+        }
+        internal static PlayerChange[] SeenTutorial(PlayerSnapshot state,string name)
+        {
+            if(string.IsNullOrEmpty(name)||name.Length>128||!Tutorial.instance)return Array.Empty<PlayerChange>();
+            var text=Tutorial.instance.m_texts.FirstOrDefault(entry=>entry.m_name==name);
+            if(text==null||state.Rows.Any(row=>row.Table=="knowledge"&&(string)row.Values[0]=="tutorials"&&(string)row.Values[1]==name))return Array.Empty<PlayerChange>();
+            var rows=new List<PlayerChange>{new PlayerChange("knowledge",false,"tutorials",name,"")};
+            if(!string.IsNullOrEmpty(text.m_label))rows.Add(new PlayerChange("knowledge",false,"texts",text.m_label.Replace("\u0016",""),(text.m_text??"").Replace("\u0016","")));
+            return rows.ToArray();
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.SetSeenTutorial))]
+        private static class TutorialSeen
+        {
+            private static void Prefix(Player __instance,string name)
+            {
+                if(PlayerSessionGame.Managed&&__instance==Player.m_localPlayer&&!__instance.HaveSeenTutorial(name))InventoryMoveGame.Client?.TutorialSeen(name);
+            }
         }
         [HarmonyPatch(typeof(Game),"RPC_DiscoverClosestLocation")]
         private static class LocationRequest

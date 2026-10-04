@@ -38,7 +38,14 @@ namespace Overhaul.Persistence
                 var sample=new Conditions{Cold=weather.m_isCold||weather.m_isColdAtNight&&!EnvMan.IsDay(),Freezing=weather.m_isFreezing||weather.m_isFreezingAtNight&&!EnvMan.IsDay(),Rain=weather.m_isWet,
                     Roof=player.m_underRoof,Shelter=player.InShelter(),Fire=EffectArea.IsPointInsideArea(player.GetCenterPoint(),EffectArea.Type.Heat,player.GetRadius()),
                     Warm=EffectArea.IsPointInsideArea(point,EffectArea.Type.WarmCozyArea,1),Shield=ShieldGenerator.IsInsideShield(point),Sensed=player.IsSensed(),Sitting=player.IsSitting(),Comfort=player.m_comfortLevel,BaseValue=player.m_baseValue};
-                var rows=Prepare(state,player,sample);if(rows.Length==0){clock.Pending=false;return null;}
+                var discoveries=new List<PlayerChange>(Prepare(state,player,sample));
+                void Learn(string kind,string key)
+                {if(!string.IsNullOrEmpty(key)&&!state.Rows.Any(row=>row.Table=="knowledge"&&(string)row.Values[0]==kind&&(string)row.Values[1]==key))discoveries.Add(new PlayerChange("knowledge",false,kind,key,""));}
+                var biome=WorldGenerator.instance.GetBiomeSector(point,false);
+                player.m_currentBiomeData=biome;player.m_currentBiome=biome.BiomeType.Biome;
+                Learn("biomes",biome.GetName(false));
+                var location=Location.GetLocation(point,false);if(location)Learn("tutorials",location.m_discoverLabel);
+                var rows=discoveries.ToArray();if(rows.Length==0){clock.Pending=false;return null;}
                 return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>clock.Pending=false);
             }))clock.Pending=false;
         }
