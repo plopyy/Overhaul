@@ -10,7 +10,7 @@ namespace Overhaul.Persistence
     internal static class PlayerMachineGame
     {
         internal const string Ore = "smelter.ore", Fuel = "smelter.fuel", CookingFuel = "cooking.fuel", FireFuel = "fire.fuel";
-        internal const string Ferment = "fermenter.input";
+        internal const string Ferment = "fermenter.input", Processed = "smelter.output";
         private static bool Enabled => PlayerPersistenceConfig.Enabled?.Value == true;
         private static bool Managed(Humanoid user) => user && user == Player.m_localPlayer && PlayerSessionGame.Managed;
         private static bool Held(Component component)
@@ -26,6 +26,7 @@ namespace Overhaul.Persistence
             if (data == null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) ||
                 Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5f) throw new InvalidOperationException("Machine is unavailable");
             if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
@@ -109,6 +110,28 @@ namespace Overhaul.Persistence
             }
         }
         private static IEnumerable<int> Prefab(ItemDrop item) => item ? new[] { item.gameObject.name.GetStableHashCode() } : Array.Empty<int>();
+        private static PlayerActionPlan TakeProcessed(GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var smelter = target.GetComponent<Smelter>();
+            if (!smelter || request.Action.Amount != 1 || request.Gameplay.Alternate)
+                throw new InvalidOperationException("Invalid processed output request");
+            var data = smelter.m_nview.GetZDO(); int count = data.GetInt(ZDOVars.s_spawnAmount,0);
+            var conversion = smelter.GetItemConversion(data.GetString(ZDOVars.s_spawnOre,""));
+            if (count <= 0 || conversion?.m_to == null || !smelter.m_outputPoint)
+                throw new InvalidOperationException("No processed output is available");
+            var item = conversion.m_to.m_itemData.Clone(); item.m_dropPrefab = conversion.m_to.gameObject;
+            // The amount comes only from the machine's completed queue, never from the request.
+            item.m_stack = count; item.m_equipped = false; item.m_worldLevel = Game.m_worldLevel;
+            item.m_cheated = !PlayerProfile.s_bypassCheatChecks &&
+                (data.GetBool(ZDOVars.s_cheatedQueued,false) || data.GetBool(ZDOVars.s_cheated,false));
+            var output = PlayerDropGame.Ground(item,smelter.m_outputPoint.position,smelter.m_outputPoint.rotation);
+            using (var world = new PlayerActionObjectGame(data))
+            {
+                world.Set(ZDOVars.s_spawnOre,""); world.Set(ZDOVars.s_spawnAmount,0);
+                return world.FinishWithObjects(new PlayerBatch(request.Action.Operation,snapshot.Revision,Array.Empty<PlayerChange>()),new[] { output },
+                    () => smelter.m_produceEffects.Create(target.transform.position,target.transform.rotation,null,1,-1,default(ZDOID)));
+            }
+        }
         private static void Send(Component machine,Humanoid user,ItemDrop.ItemData item,string interaction,bool bulk)
         {
             var view = machine.GetComponent<ZNetView>();
@@ -132,6 +155,16 @@ namespace Overhaul.Persistence
                 __result = false;
                 string action = __instance is CookingStation ? CookingFuel : __originalMethod.Name == "OnAddOre" ? Ore : Fuel;
                 Send(__instance,user,item,action,Storage.SmelterQuickFill.ShiftHeld()); return false;
+            }
+        }
+        [HarmonyPatch(typeof(Smelter),"OnEmpty")]
+        private static class ProcessedOutput
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(Smelter __instance,Humanoid user,ref bool __result)
+            {
+                if (!Managed(user)) return true;
+                __result = false; Send(__instance,user,null,Processed,false); return false;
             }
         }
         [HarmonyPatch(typeof(Fireplace),nameof(Fireplace.Interact))]
@@ -189,6 +222,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Fermenter),"RPC_AddItem");
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_AddItem");
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
+                yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
@@ -198,7 +232,7 @@ namespace Overhaul.Persistence
         {
             private static IEnumerable<MethodBase> TargetMethods()
             {
-                yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
+                yield return AccessTools.Method(typeof(Smelter),"DropAllItems");
                 yield return AccessTools.Method(typeof(CookingStation),"DropAllItems");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuelAmount");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_SetFuelAmount");
