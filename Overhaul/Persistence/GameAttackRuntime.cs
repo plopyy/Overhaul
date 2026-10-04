@@ -21,6 +21,15 @@ namespace Overhaul.Persistence
             internal AnimatorCullingMode Culling;
         }
         private static readonly Dictionary<ZDOID,Running> running=new Dictionary<ZDOID,Running>();
+        private sealed class ClientIntent
+        {
+            internal PlayerActionCommand Command;
+            internal ItemDrop.ItemData Weapon;
+            internal int X,Y,Retries;
+            internal double Deadline;
+            internal string Operation;
+        }
+        private static ClientIntent clientIntent;
         [ThreadStatic] private static bool executing,starting,firing;
         private static bool Fishing(ItemDrop.ItemData item)=>item!=null && PlayerFishingCastGame.FloatPrefab(item.m_shared.m_attack?.m_attackProjectile);
         private static bool Managed(Player player)=>player && player.m_nview && player.m_nview.IsValid() && InventoryMoveGame.State(player.GetZDOID())!=null;
@@ -34,7 +43,29 @@ namespace Overhaul.Persistence
             {current.Player.m_previousAttack=current.Attack;current.Player.m_currentAttack=null;}
             if(current.Player && current.Player.m_animator)current.Player.m_animator.cullingMode=current.Culling;
         }
-        internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);}
+        internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);ClearClient();}
+        internal static void ClearClient()=>clientIntent=null;
+        internal static void ClientTick()
+        {
+            var intent=clientIntent;if(intent==null)return;
+            var player=Player.m_localPlayer;var controller=InventoryMoveGame.Client?.Controller;
+            if(!player || !PlayerSessionGame.Managed || controller==null || controller.Closed || Time.timeAsDouble>intent.Deadline || player.IsDead())
+            {clientIntent=null;return;}
+            if(intent.Operation!=null || controller.Busy)return;
+            var weapon=intent.Command.Definition==Unarmed?player.GetCurrentWeapon():player.GetInventory().GetItemAt(intent.X,intent.Y);
+            if(weapon==null || !SameWeapon(intent.Weapon,weapon)){clientIntent=null;return;}
+            if(controller.Act(intent.Command,intent.X,intent.Y))intent.Operation=controller.Pending?.Action.Operation;
+        }
+        internal static void ClientReply(InventoryMoveReply reply,InventoryMoveRequest request)
+        {
+            var intent=clientIntent;if(intent==null || request==null || intent.Operation!=request.Action.Operation || reply.Notification)return;
+            // Only retry an explicitly rejected, stale revision. The selected
+            // weapon is checked again after the authoritative snapshot is applied.
+            // Never replay a successful shot or a gameplay validation rejection.
+            if(!reply.Accepted && reply.Snapshot && reply.Player.ExpectedRevision>request.Action.PlayerRevision && intent.Retries++<2 && Time.timeAsDouble<intent.Deadline)
+                intent.Operation=null;
+            else clientIntent=null;
+        }
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
             if(request.Gameplay.Definition!=Start && request.Gameplay.Definition!=Unarmed || request.Action.Amount!=1)throw new InvalidOperationException("Invalid combat intent");
@@ -150,9 +181,12 @@ namespace Overhaul.Persistence
                 if(__instance!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;
                 var weapon=__instance.GetCurrentWeapon();if(Fishing(weapon))return true;
                 __result=false;if(weapon==null)return false;
+                if(clientIntent!=null)return false;
                 var rotation=Quaternion.LookRotation(__instance.GetLookDir());
-                __result=InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.Attack,Definition=__instance.GetInventory().ContainsItem(weapon)?Start:Unarmed,Alternate=secondaryAttack,
-                    Rotation=new[]{rotation.x,rotation.y,rotation.z,rotation.w}},weapon.m_gridPos.x,weapon.m_gridPos.y)==true;
+                clientIntent=new ClientIntent{Weapon=weapon.Clone(),X=weapon.m_gridPos.x,Y=weapon.m_gridPos.y,Deadline=Time.timeAsDouble+1,
+                    Command=new PlayerActionCommand{Kind=PlayerActionKind.Attack,Definition=__instance.GetInventory().ContainsItem(weapon)?Start:Unarmed,Alternate=secondaryAttack,
+                    Rotation=new[]{rotation.x,rotation.y,rotation.z,rotation.w}}};
+                ClientTick();__result=clientIntent!=null;
                 return false;
             }
         }

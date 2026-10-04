@@ -233,6 +233,7 @@ namespace Overhaul.Persistence
             var eating = !reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Consume;
             if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
+            GameAttackRuntime.ClientReply(reply,Controller.Pending);
             if(!reply.Notification)PlayerFishingGame.Confirm(Controller.Pending);
             if(!reply.Notification && reply.Accepted)PlayerBuildGame.Feedback(player,Controller.Pending);
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
@@ -305,7 +306,7 @@ namespace Overhaul.Persistence
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
-            if(Controller!=null)PlayerFishingCastGame.ClientTick();
+            if(Controller!=null){PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();}
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
@@ -327,7 +328,7 @@ namespace Overhaul.Persistence
             if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
-            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
+            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();}
             else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);}}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
