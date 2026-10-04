@@ -176,7 +176,7 @@ namespace Overhaul.Persistence
             var gui=InventoryGui.instance;
             if(!gui)return;
             if(gui.m_dragInventory==player.GetInventory() && gui.m_dragItem!=null &&
-                ContainerVersions.Slots(reply.Player).Contains(gui.m_dragItem.m_gridPos.y*256+gui.m_dragItem.m_gridPos.x))gui.SetupDragItem(null,null,1);
+                reply.Player.Changes.Where(r=>r.Table=="inventory" || r.Table=="item_data").Any(r=>Convert.ToInt32(r.Values[1])==gui.m_dragItem.m_gridPos.x && Convert.ToInt32(r.Values[2])==gui.m_dragItem.m_gridPos.y))gui.SetupDragItem(null,null,1);
             gui.UpdateCraftingPanel(false);
         }
         private void ReceiveProgress(ZRpc sender,ZPackage package)

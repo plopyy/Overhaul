@@ -36,7 +36,11 @@ namespace Overhaul.Persistence
         internal static PlayerSnapshot Overlay(PlayerSnapshot snapshot,IEnumerable<PlayerChange> changes)
         {
             var rows=snapshot.Rows.ToList();
-            foreach(var change in changes){rows.RemoveAll(r=>SameKey(r,change));if(!change.Delete)rows.Add(change);}
+            foreach(var change in changes)
+            {
+                rows.RemoveAll(r=>SameKey(r,change) || change.Delete && change.Table=="inventory" && r.Table=="item_data" && r.SameInventorySlot(change));
+                if(!change.Delete)rows.Add(change);
+            }
             return new PlayerSnapshot(snapshot.Revision,rows);
         }
         internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" ||

@@ -39,6 +39,9 @@ namespace Overhaul.Persistence
         internal readonly bool Delete;
         private readonly object[] values;
         private readonly int keyCount;
+        internal bool SameInventorySlot(PlayerChange other)
+            =>other!=null && (Table=="inventory" || Table=="item_data") && (other.Table=="inventory" || other.Table=="item_data") &&
+                Equals(values[0],other.values[0]) && Convert.ToInt32(values[1])==Convert.ToInt32(other.values[1]) && Convert.ToInt32(values[2])==Convert.ToInt32(other.values[2]);
         internal bool SameKey(PlayerChange other)
         {
             if(other==null || Table!=other.Table)return false;
