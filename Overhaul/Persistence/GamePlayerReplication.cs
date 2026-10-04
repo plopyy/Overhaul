@@ -22,8 +22,7 @@ namespace Overhaul.Persistence
             if(!player || peer==null || owner!=peer.m_uid)return false;
             var session=PlayerSessionGame.Session(peer.m_rpc);
             if(session==null || session.State!=PlayerAdmission.Phase.Ready)return false;
-            if(existing==null)return id.UserID==peer.m_uid&&(peer.m_characterID.IsNone()||peer.m_characterID==id);
-            return wasPlayer && existing.GetOwner()==peer.m_uid && (peer.m_characterID.IsNone() || peer.m_characterID==id);
+            return (existing==null || wasPlayer && existing.GetOwner()==peer.m_uid) && GameAvatarBinding.Accept(peer,id);
         }
         internal static bool Position(ZNetPeer peer,ZDOID id,ZPackage body,ref Vector3 position)
         {

@@ -42,7 +42,7 @@ namespace Overhaul.Persistence
         {
             if (IsLocal(rpc)) return Player.m_localPlayer ? Player.m_localPlayer.m_nview.GetZDO() : null;
             var peer = ZNet.instance.GetPeer(rpc);
-            return peer == null ? null : Storage.ChestAccess.Actor(peer.m_uid, peer.m_characterID);
+            return peer == null ? null : Storage.ChestAccess.Actor(peer.m_uid, GameCreatureAuthority.Enabled ? GameAvatarBinding.Current(rpc) : peer.m_characterID);
         }
         internal static PlayerIdentity Identity(ZNetPeer peer)
         {
@@ -149,13 +149,14 @@ namespace Overhaul.Persistence
             foreach (var pair in servers.ToArray())
             {
                 pair.Value.Tick();
-                if (pair.Value.Closed) { servers.Remove(pair.Key); sessions.Remove(pair.Key); }
+                if (pair.Value.Closed) { servers.Remove(pair.Key); sessions.Remove(pair.Key); GameAvatarBinding.Forget(pair.Key); }
             }
             client?.Tick();
         }
         internal static void Stop()
         {
             GamePlayerAreas.Clear();
+            GameAvatarBinding.Clear();
             client?.Dispose(); client = null;
             foreach (var endpoint in servers.Values) endpoint.Dispose(); servers.Clear(); sessions.Clear(); admission = null;
             localClient?.Dispose(); localServer?.Dispose(); localClient = localServer = null;
