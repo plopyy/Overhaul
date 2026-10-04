@@ -38,6 +38,8 @@ namespace Overhaul.Persistence
         }
         internal object[] Item(int key) => items.TryGetValue(key,out var row) ? (object[])row.Clone() : throw new InvalidOperationException("Source slot is empty");
         internal Dictionary<string,string> Data(int key) => new Dictionary<string,string>(metadata[key]);
+        internal IEnumerable<int> Keys => items.Keys.OrderBy(k => k).ToArray();
+        internal bool Available(int key) => layout.Available(key);
         internal sealed class Consumed
         {
             internal int Prefab, Count;

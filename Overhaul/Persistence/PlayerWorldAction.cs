@@ -11,13 +11,20 @@ namespace Overhaul.Persistence
     {
         internal readonly PlayerBatch Player;
         private readonly Dictionary<long, ObjectRecord> objects;
+        private readonly Dictionary<long, PlayerContainerAction> containers;
+        internal readonly Dictionary<long,PlayerBatch> CommittedContainers = new Dictionary<long,PlayerBatch>();
+        internal IDictionary<long,PlayerContainerAction> Containers => new Dictionary<long,PlayerContainerAction>(containers);
         internal IDictionary<long, ObjectRecord> Objects => objects.ToDictionary(p => p.Key, p => Copy(p.Value));
-        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects)
+        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects) : this(player,objects,null) { }
+        internal PlayerWorldAction(PlayerBatch player, IDictionary<long, ObjectRecord> objects, IDictionary<long,PlayerContainerAction> containers)
         {
             Player = player ?? throw new ArgumentNullException(nameof(player));
             if (objects == null || objects.Count > 128 || objects.Any(p => p.Key <= 0 || p.Value != null && p.Value.Id != p.Key))
                 throw new InvalidDataException("Invalid world objects in player action");
             this.objects = objects.ToDictionary(p => p.Key, p => Copy(p.Value));
+            this.containers = containers == null ? new Dictionary<long,PlayerContainerAction>() : new Dictionary<long,PlayerContainerAction>(containers);
+            if (this.containers.Count > 128 || this.containers.Any(p => p.Key <= 0 || p.Value == null || objects.ContainsKey(p.Key)))
+                throw new InvalidDataException("Invalid crafting containers");
         }
         private static ObjectRecord Copy(ObjectRecord value)
         {
@@ -61,6 +68,8 @@ namespace Overhaul.Persistence
                         }
                     }
                 }
+                foreach (var pair in containers.OrderBy(p => p.Key))
+                { writer.Write(pair.Key); writer.Write(pair.Value.Before.Digest()); writer.Write(pair.Value.After.Digest()); }
                 writer.Flush(); using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(stream.ToArray())).Replace("-", "");
             }
         }
@@ -75,14 +84,17 @@ namespace Overhaul.Persistence
         {
             PrepareTransfers(world); var player = Get(identity);
             if (player.Revision != action.Player.ExpectedRevision) throw new InvalidOperationException("Stale player action revision");
-            var changes = action.Objects;
-            if (changes.Count == 0) player.CommitDelta(action.Player);
+            var changes = action.Objects; var containers = action.Containers;
+            foreach (var pair in containers) pair.Value.Validate(world,pair.Key);
+            if (changes.Count == 0 && containers.Count == 0) player.CommitDelta(action.Player);
             else
             {
-                PlayerTransferJournal.Stage(world, player, identity, action.Player, action.Digest(), changes.Keys, db =>
+                PlayerTransferJournal.Stage(world, player, identity, action.Player, action.Digest(), changes.Keys.Concat(containers.Keys), db =>
                 {
                     foreach (var pair in changes)
                         if (pair.Value == null) ObjectSql.Delete(db, pair.Key); else ObjectSql.Write(db, pair.Value);
+                    foreach (var pair in containers)
+                        action.CommittedContainers[pair.Key] = pair.Value.Apply(db,pair.Key);
                 });
                 PlayerTransferJournal.Finish(world, player, identity, action.Player.Operation);
             }

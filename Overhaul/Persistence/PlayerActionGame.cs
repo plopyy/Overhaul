@@ -25,6 +25,7 @@ namespace Overhaul.Persistence
             {
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn: return PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
+                case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Repair:
                 {
                     var station = Target(command)?.GetComponent<CraftingStation>();
@@ -55,6 +56,7 @@ namespace Overhaul.Persistence
             item.m_equipped = false; item.m_pickedUp = true;
             inventory.Add(Row(item).Values,item.m_customData);
             var changes = inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.ToList();
+            changes.Add(new PlayerChange("knowledge",false,"materials",item.m_shared.m_name,""));
             if (item.m_shared.m_questItem) changes.Add(new PlayerChange("knowledge",false,"uniques",item.m_shared.m_name,""));
             var uid = data.m_uid;
             var record = GamePersistence.ReserveAction(data);
