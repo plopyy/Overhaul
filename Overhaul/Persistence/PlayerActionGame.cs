@@ -24,7 +24,7 @@ namespace Overhaul.Persistence
             switch (command.Kind)
             {
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
-                case PlayerActionKind.UseOn: return PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
+                case PlayerActionKind.UseOn: return command.Definition == PlayerOfferingGame.Interaction ? PlayerOfferingGame.Prepare(actor,request,snapshot,inventory) : PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Equip: case PlayerActionKind.Unequip: return PlayerEquipmentGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Consume: return command.Definition == PlayerFoodGame.Placed ? PlayerFoodGame.FromWorld(actor,request,snapshot) : command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
@@ -148,5 +148,6 @@ namespace Overhaul.Persistence
         private static class PickupGuard { private static void Postfix(ItemDrop __instance,ref bool __result) { if (Held(__instance)) __result = false; } }
     }
 }
+
 
 
