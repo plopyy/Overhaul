@@ -136,6 +136,11 @@ static class PlacementPatches
         {
             if (!config.ModActive || !piece || !HoldingCultivator || !IsPlantOrPickable(piece.gameObject))
                 return;
+            if(Overhaul.Persistence.PlayerSessionGame.Managed)
+            {
+                var pending=Overhaul.Persistence.InventoryMoveGame.Client?.Controller.Pending;
+                if(pending?.Gameplay?.Kind!=Overhaul.Persistence.PlayerActionKind.Build||pending.Gameplay.Definition!=piece.gameObject.name)return;
+            }
 
             __instance.m_placeRotation = placementRotation;
 
@@ -168,6 +173,8 @@ static class PlacementPatches
             }
 
             ItemDrop.ItemData rightItem = __instance.GetRightItem();
+
+            if(Overhaul.Persistence.PlayerSessionGame.Managed)return; // Each server placement owns its resource debit.
 
             for (int i = 0; i < placementMultiplier; i++)
             {

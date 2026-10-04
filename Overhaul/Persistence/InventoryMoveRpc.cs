@@ -338,6 +338,8 @@ namespace Overhaul.Persistence
             if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
             GameAttackRuntime.ClientReply(reply,Controller.Pending);
+            if(!reply.Notification&&Controller.Pending?.Gameplay?.Kind==PlayerActionKind.Build)
+                global::Advize_PlantEasily.PlacementController.ServerPlacementAccepted=reply.Accepted;
             GameRespawnGame.Reply(reply,Controller.Pending);
             if(!reply.Notification)PlayerFishingGame.Confirm(Controller.Pending);
             if(!reply.Notification && reply.Accepted)PlayerBuildGame.Feedback(player,Controller.Pending);

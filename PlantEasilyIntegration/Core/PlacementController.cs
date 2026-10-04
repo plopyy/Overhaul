@@ -17,6 +17,7 @@ internal sealed class PlacementController : MonoBehaviour
     private readonly List<Renderer> _disabledRenderers = [];
 
     private bool _isPlanting;
+    internal static bool ServerPlacementAccepted;
 
     internal static void ClearSession()
     {
@@ -73,18 +74,28 @@ internal sealed class PlacementController : MonoBehaviour
         }
 
         //Plant stuff in batches
-        foreach (GameObject go in ValidExtraGhosts)
+        foreach (GameObject go in new List<GameObject>(ValidExtraGhosts))
         {
+            if(Overhaul.Persistence.PlayerSessionGame.Managed)
+            {
+                var controller=Overhaul.Persistence.InventoryMoveGame.Client?.Controller;
+                while(controller!=null&&!controller.Closed&&controller.Busy)yield return null;
+                if(controller==null||controller.Closed||!ServerPlacementAccepted||!player||player.IsDead()||!go||!player.GetRightItem()?.m_shared.m_buildPieces)break;
+            }
             count++;
             PlacePiece(player, go, piecePrefab);
-
-            if (count % config.BulkPlantingBatchSize == 0)
+            if(Overhaul.Persistence.PlayerSessionGame.Managed)
+            {
+                var controller=Overhaul.Persistence.InventoryMoveGame.Client?.Controller;
+                while(controller!=null&&!controller.Closed&&controller.Busy)yield return null;
+            }
+            else if (count % config.BulkPlantingBatchSize == 0)
                 yield return null;
         }
 
         ValidExtraGhosts.Clear();
         _isPlanting = false;
-        player.SetupPlacementGhost();
+        if(player)player.SetupPlacementGhost();
         ReEnableRenderers();
     }
 
@@ -107,6 +118,14 @@ internal sealed class PlacementController : MonoBehaviour
         }
 
         go.SetActive(false);
+
+        if(Overhaul.Persistence.PlayerSessionGame.Managed)
+        {
+            var tool=player.GetRightItem();ServerPlacementAccepted=false;
+            if(tool!=null)Overhaul.Persistence.InventoryMoveGame.Client?.Controller.Act(new Overhaul.Persistence.PlayerActionCommand
+            {Kind=Overhaul.Persistence.PlayerActionKind.Build,Definition=piecePrefab.name,Position=new[]{position.x,position.y,position.z},Rotation=new[]{rotation.x,rotation.y,rotation.z,rotation.w}},tool.m_gridPos.x,tool.m_gridPos.y,1);
+            return;
+        }
 
         TerrainModifier.SetTriggerOnPlaced(trigger: true);
         GameObject clone = Instantiate(piecePrefab, position, rotation);
