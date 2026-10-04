@@ -318,7 +318,7 @@ namespace Overhaul.Persistence
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
-            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone())PlayerFishingCastGame.Forget(actor);}
+            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);}}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);

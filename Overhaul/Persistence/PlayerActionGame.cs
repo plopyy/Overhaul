@@ -32,6 +32,7 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.Build: return PlayerBuildGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Attack:
                     if(command.Definition==PlayerFishingCastGame.Cast)return PlayerFishingCastGame.Prepare(actor,request,snapshot,inventory);
+                    if(command.Definition==GameAttackRuntime.Start)return GameAttackRuntime.Prepare(actor,request,snapshot);
                     throw new InvalidOperationException("Attack authority is not connected yet");
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn:
