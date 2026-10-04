@@ -26,6 +26,8 @@ namespace Overhaul.Persistence
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action))return true;return false;}
         internal static bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
         {foreach(var endpoint in connections)if(endpoint.ServerAction(actor,prepare,confirmed))return true;return false;}
+        internal static bool Wear(ZDOID actor,string token,float amount)
+        {foreach(var endpoint in connections)if(endpoint.Wear(actor,token,amount))return true;return false;}
         internal static PlayerSnapshot State(ZDOID actor)
         {foreach(var endpoint in connections){var state=endpoint.State(actor);if(state!=null)return state;}return null;}
         internal static PlayerSnapshot SessionState(ZRpc connection)

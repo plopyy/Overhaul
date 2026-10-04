@@ -52,6 +52,15 @@ namespace Overhaul.Persistence
             knownActor=actor;return canonical;
         }
         internal bool ActionBusy=>server?.Busy==true || serverActions?.Busy==true;
+        internal bool Wear(ZDOID actor,string token,float amount)
+        {
+            var state=State(actor);if(state==null)return false;
+            if(token==null || float.IsNaN(amount) || float.IsInfinity(amount) || amount<=0)return true;
+            if(!state.Rows.Any(r=>r.Table=="item_data" && (string)r.Values[3]==GameEquipmentWear.Identity && (string)r.Values[4]==token))return true;
+            float protection=PlayerCraftProgressGame.Passive(state,"artisan")?1:Mathf.Clamp01(PlayerCraftProgressGame.Bonus(state,"durability"));
+            double cost=amount*(1-protection);if(cost<=0)return true;
+            wearDebits.TryGetValue(token,out double previous);wearDebits[token]=previous+cost;QueueWear();return true;
+        }
         internal bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
             =>!disposed && serverActions!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && serverActions.Enqueue(prepare,confirmed);
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);

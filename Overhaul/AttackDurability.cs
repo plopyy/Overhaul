@@ -25,6 +25,12 @@ namespace Overhaul
                 float cost = due - Charged;
                 if (cost <= 0f) return;
                 Charged = due;
+                if(Player && Player.m_nview && Player.m_nview.IsValid())
+                {
+                    Weapon.m_customData.TryGetValue(Persistence.GameEquipmentWear.Identity,out string identity);
+                    if(Persistence.InventoryMoveGame.Wear(Player.GetZDOID(),identity,cost))return;
+                    if(Player==global::Player.m_localPlayer && Persistence.PlayerSessionGame.Managed)return;
+                }
                 // A projectile can outlive its owner or the item being dropped/destroyed.
                 if (!Player || !Player.GetInventory().ContainsItem(Weapon)) return;
                 float reduction = Leveling.LevelingEffects.Passive(Player, "artisan") ? 1f
