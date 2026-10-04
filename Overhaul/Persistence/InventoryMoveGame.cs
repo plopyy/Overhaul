@@ -28,6 +28,8 @@ namespace Overhaul.Persistence
         {foreach(var endpoint in connections)if(endpoint.ServerAction(actor,prepare,confirmed))return true;return false;}
         internal static bool Damage(Player player,HitData hit,bool direct)
         {foreach(var endpoint in connections)if(endpoint.Damage(player,hit,direct))return true;return false;}
+        internal static bool TimedAction(Player player,Func<PlayerSnapshot,PlayerActionPlan> prepare)
+        {foreach(var endpoint in connections)if(endpoint.TimedAction(player,prepare))return true;return false;}
         internal static bool Wear(ZDOID actor,string token,float amount)
         {foreach(var endpoint in connections)if(endpoint.Wear(actor,token,amount))return true;return false;}
         internal static PlayerSnapshot State(ZDOID actor)

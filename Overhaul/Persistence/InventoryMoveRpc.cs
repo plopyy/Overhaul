@@ -75,6 +75,8 @@ namespace Overhaul.Persistence
         internal bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
             =>!disposed && serverActions!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && serverActions.Enqueue(prepare,confirmed);
         internal bool Damage(Player player,HitData hit,bool direct)
+            =>TimedAction(player,state=>GamePlayerHit.Prepare(state,player,hit,direct));
+        internal bool TimedAction(Player player,Func<PlayerSnapshot,PlayerActionPlan> prepare)
         {
             if(!player||State(player.GetZDOID())==null)return false;
             return ServerAction(player.GetZDOID(),state=>
@@ -84,7 +86,7 @@ namespace Overhaul.Persistence
                 var timed=damageClock.Prepare(state,player,true);
                 var before=timed==null?state:PlayerProgressService.Overlay(state,timed.Change.Player.Changes);
                 if(GameDeathProgress.IsDead(before))return timed;
-                var impact=GamePlayerHit.Prepare(before,player,hit,direct);
+                var impact=prepare(before);
                 if(timed==null)return impact;if(impact==null)return timed;
                 var rows=timed.Change.Player.Changes.ToList();GamePlayerHit.Merge(rows,impact.Change.Player.Changes);
                 return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),impact.Change.Objects),()=>{timed.Publish();impact.Publish();});
