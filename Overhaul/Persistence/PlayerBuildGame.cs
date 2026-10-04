@@ -47,6 +47,15 @@ namespace Overhaul.Persistence
                 if(prefab.GetComponent<PrivateArea>())Add(ZDOVars.s_creatorName,"string",(string)snapshot.Rows.First(r=>r.Table=="state" && (string)r.Values[0]=="player_name").Values[3]);
                 if(resources.Cheated && !PlayerProfile.s_bypassCheatChecks)Add(ZDOVars.s_cheated,"int",1);
                 var changes=inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.ToList();
+                var stationBuilt=prefab.GetComponentInChildren<CraftingStation>();
+                if(stationBuilt && !snapshot.Rows.Any(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations" && (string)r.Values[1]==stationBuilt.m_name))changes.Add(new PlayerChange("knowledge",false,"stations",stationBuilt.m_name,"1"));
+                var pet=prefab.GetComponent<Pet>();
+                if(pet && pet.m_materialVariation)
+                {
+                    var remembered=snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="uniques" && ((string)r.Values[1]).StartsWith("Pet ",StringComparison.OrdinalIgnoreCase)).ToArray();
+                    if(remembered.Length>0)
+                    {if(!int.TryParse(((string)remembered[0].Values[1]).Split(' ')[1],out int face) || face<0 || face>=pet.m_materialVariation.m_materials.Count)throw new InvalidOperationException("Saved pet appearance is invalid");Add(("MatVar"+pet.m_materialVariation.m_materialIndex).GetStableHashCode(),"int",face);foreach(var old in remembered)changes.Add(new PlayerChange("knowledge",true,"uniques",old.Values[1]));}
+                }
                 changes.AddRange(Progress(snapshot,table,false));
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.Builds).ToString(),1));
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:pieces",piece.m_name,1));
@@ -74,7 +83,7 @@ namespace Overhaul.Persistence
             if(!piece.m_canBeRemoved || !piece.CanBeRemoved() || (feast?!tool.m_shared.m_buildPieces.m_canRemoveFeasts:!tool.m_shared.m_buildPieces.m_canRemovePieces))throw new InvalidOperationException("Piece cannot be dismantled");
             // These components have their own stored payloads; never delete one until its
             // complete refund has been incorporated into the same transaction.
-            if(target.GetComponent<IRemoved>()!=null)
+            if(target.GetComponent<IRemoved>()!=null && !target.GetComponent<Pet>())
                 throw new InvalidOperationException("Dismantling this machine requires its stored contents handler");
             var outputs=new List<ObjectRecord>();var chest=target.GetComponentInChildren<Container>();
             if(chest)
@@ -96,8 +105,14 @@ namespace Overhaul.Persistence
             int toolSlot=request.Action.FromY*256+request.Action.FromX;
             if(tool.m_shared.m_useDurability)
             {float factor=tool.m_shared.m_placementDurabilitySkill==Skills.SkillType.None?0:PlayerCraftProgressGame.Factor(snapshot,tool.m_shared.m_placementDurabilitySkill);tool.m_durability=Mathf.Max(0,tool.m_durability-tool.m_shared.m_useDurabilityDrain*(1-tool.m_shared.m_placementDurabilityMax*factor)*Game.m_durabilityRate);inventory.Set(toolSlot,PlayerActionGame.Row(tool,toolSlot%256,toolSlot/256).Values);}
-            var delta=inventory.Delta(request.Action.Operation,snapshot.Revision);
-            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(delta.Operation,delta.ExpectedRevision,delta.Changes.Concat(Progress(snapshot,tool.m_shared.m_buildPieces,true))),outputs);
+            var delta=inventory.Delta(request.Action.Operation,snapshot.Revision);var changes=delta.Changes.Concat(Progress(snapshot,tool.m_shared.m_buildPieces,true)).ToList();
+            var pet=target.GetComponent<Pet>();if(pet && pet.m_materialVariation)
+            {
+                int face=data.GetInt(("MatVar"+pet.m_materialVariation.m_materialIndex).GetStableHashCode(),pet.m_materialVariation.GetMaterial());
+                if(face>=0 && face!=7)
+                {foreach(var old in snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="uniques" && ((string)r.Values[1]).StartsWith("Pet ",StringComparison.OrdinalIgnoreCase)))changes.Add(new PlayerChange("knowledge",true,"uniques",old.Values[1]));changes.Add(new PlayerChange("knowledge",false,"uniques","Pet "+face,""));}
+            }
+            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(delta.Operation,delta.ExpectedRevision,changes),outputs);
         }
         internal static IEnumerable<PlayerChange> Progress(PlayerSnapshot snapshot,PieceTable table,bool removing)
         {
@@ -196,6 +211,7 @@ namespace Overhaul.Persistence
             if(piece.m_noInWater && water>point.y || piece.m_waterPiece && water<point.y-.5f)throw new InvalidOperationException("Construction water conditions are invalid");
             var extension=piece.GetComponent<StationExtension>();
             if(extension && !extension.FindClosestStationInRange(point))throw new InvalidOperationException("Station extension is out of range");
+            if(extension && StationExtension.m_allExtensions.Any(e=>e && Vector3.Distance(e.transform.position,point)<piece.m_spaceRequirement))throw new InvalidOperationException("Station extensions need more space");
             int mask=LayerMask.GetMask("Default","static_solid","Default_small","piece","piece_nonsolid","terrain","vehicle");
             var nearby=Physics.OverlapSphere(point,Mathf.Max(10,piece.m_blockRadius,piece.m_connectRadius),mask,QueryTriggerInteraction.Ignore);
             if(piece.m_mustConnectTo && !nearby.Any(c=>{var view=c.GetComponentInParent<ZNetView>();return view && view.IsValid() && view.GetZDO().GetPrefab()==piece.m_mustConnectTo.name.GetStableHashCode() && Vector3.Distance(view.transform.position,point)<=piece.m_connectRadius;}))throw new InvalidOperationException("Required construction connection is absent");
