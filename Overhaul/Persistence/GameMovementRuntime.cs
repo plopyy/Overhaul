@@ -127,6 +127,7 @@ namespace Overhaul.Persistence
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
                 GameTeleportAction.Tick(player,dt);
+                GameAttachmentRuntime.Tick(player);
                 if(DynamicCombat.IsDashing(player)&&(player.IsDead()||player.IsTeleporting()||player.IsStaggering()||player.InDodge()))DynamicCombat.CancelDash(player);
                 var motion=Remember(player);
                 if(player.m_body&&!AreaReady(player,motion))

@@ -30,6 +30,7 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerRecyclerGame.Interaction) return PlayerRecyclerGame.Prepare(actor,target,request,snapshot);
             if (command.Definition == Fireworks) return LaunchFireworks(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerDoorGame.Interaction) return PlayerDoorGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerFurnitureGame.BedUse || command.Definition == PlayerFurnitureGame.ChairUse) return PlayerFurnitureGame.Prepare(actor,target,request,snapshot);
             if (command.Definition == PlayerTurretGame.Interaction) return PlayerTurretGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerSaddleGame.Attach || command.Definition == PlayerSaddleGame.Remove) return PlayerSaddleGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerCatapultGame.Load || command.Definition == PlayerCatapultGame.Legs) return PlayerCatapultGame.Prepare(actor,target,request,snapshot,inventory);

@@ -42,6 +42,7 @@ namespace Overhaul.Persistence
                     throw new InvalidOperationException("Attack authority is not connected yet");
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn:
+                    if(command.Definition==PlayerFurnitureGame.Leave)return PlayerFurnitureGame.Detach(actor,request,snapshot);
                     if(command.Definition==GameTeleportAction.Portal||command.Definition==GameTeleportAction.Dungeon)return GameTeleportAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameDashAction.Dash)return GameDashAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameJumpAction.Jump)return GameJumpAction.Prepare(actor,request,snapshot);
