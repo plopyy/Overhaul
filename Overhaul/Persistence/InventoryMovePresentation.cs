@@ -28,7 +28,7 @@ namespace Overhaul.Persistence
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () =>
             {
-                if (resize) { Slots.SetBaseRowsForLoad(rows); playerInventory.m_height = height; }
+                if (resize) { Slots.SetBaseRowsFromServer(rows); playerInventory.m_height = height; }
                 var preserved = new HashSet<ItemDrop.ItemData>();
                 if (player)
                 {

@@ -265,6 +265,18 @@ namespace EquipmentAndQuickSlots {
             UpdateSlotsGridPosition(moveResidents: false);
         }
 
+        // A confirmed server expansion includes every relocated item. Change only the cell
+        // coordinates here; validating the old residents before installing that result would
+        // trigger a second local migration. The caller publishes inventory.Changed afterwards.
+        internal static void SetBaseRowsFromServer(int rows) {
+            _baseRowsCaptured = true;
+            BaseRows = Mathf.Clamp(rows, 1, 9);
+            ClearCachedItems();
+            foreach (Slot slot in slots)
+                slot?.UpdateGridPosition(moveItem: false);
+            ClearCachedItems();
+        }
+
         // The visible row count changed (config edit, the server's value arriving on join, or the
         // character's own vanilla row count): the slot region moves with it. Slot residents move
         // with their slots; anything from the visible grid that now finds itself on a slot cell it
