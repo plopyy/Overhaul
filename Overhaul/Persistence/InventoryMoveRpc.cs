@@ -15,6 +15,7 @@ namespace Overhaul.Persistence
         private readonly PlayerProgressService progress;
         private PlayerSnapshot canonical;
         private ZDOID knownActor;
+        internal PlayerSnapshot SessionState(ZRpc connection)=>!disposed && server!=null && ReferenceEquals(rpc,connection)?canonical:null;
         private double pendingStamina;
         internal PlayerSnapshot State(ZDOID actor)
         {

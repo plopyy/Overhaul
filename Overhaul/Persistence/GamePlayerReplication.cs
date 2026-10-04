@@ -38,7 +38,9 @@ namespace Overhaul.Persistence
                 if(incoming==null || !PlayerPrefab(__instance.GetPrefab()))return;
                 var session=PlayerSessionGame.Session(incoming);
                 if(session==null || session.State!=PlayerAdmission.Phase.Ready)return;
-                var state=InventoryMoveGame.State(__instance.m_uid)??session.Snapshot;
+                // Read by authenticated connection: the incoming packet may itself
+                // have replaced the avatar's id, which must not select stale login data.
+                var state=InventoryMoveGame.SessionState(incoming)??session.Snapshot;
                 __instance.Set(ZDOVars.s_playerID,PlayerSessionGame.CharacterId(session));
                 var name=state.Rows.SingleOrDefault(r=>r.Table=="state" && (string)r.Values[0]=="player_name");
                 if(name!=null)__instance.Set(ZDOVars.s_playerName,(string)name.Values[3]);
