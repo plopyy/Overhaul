@@ -44,6 +44,12 @@ namespace Overhaul.Persistence
                 try { output.Effects?.Invoke(); } catch (Exception error) { ZLog.LogError("[Overhaul delayed output effects] " + error); }
             }
         }
+        internal static System.Threading.Tasks.Task<bool> CommitWorldObjects(PlayerWorldAction action)
+        {
+            if(!Active || action.Player.Changes.Length!=0 || action.Containers.Count!=0 || action.WorldKeys.Length!=0)throw new InvalidOperationException("Invalid autonomous world action");
+            var records=action.Objects;
+            return writer.Submit(db=>{db.Transaction(()=>{foreach(var pair in records){if(pair.Value==null)ObjectSql.Delete(db,pair.Key);else ObjectSql.Write(db,pair.Value);}});return true;});
+        }
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
         internal static bool HasReservations => actionReservations.Count != 0 || inventoryReservations.Count != 0;
@@ -230,6 +236,7 @@ namespace Overhaul.Persistence
             if(!Active)return;
             try
             {
+                PlayerCatapultGame.Tick();
                 PublishDeferredActionObjects(Time.time);
                 if(Time.realtimeSinceStartup>=nextCapture){Capture();writer.RequestFlush();nextCapture=Time.realtimeSinceStartup+5;}
                 string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] Write or backup failed; failed operations will be retried: "+error);}
@@ -251,7 +258,7 @@ namespace Overhaul.Persistence
                 {
                     Players=null;
                     try { writer.Dispose(); }
-                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();deferredOutputs.Clear();InventoryMoveReservations.Clear();PlayerWorldKeyGame.Clear(); }
+                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();deferredOutputs.Clear();InventoryMoveReservations.Clear();PlayerWorldKeyGame.Clear();PlayerCatapultGame.Clear(); }
                 }
             }
         }
@@ -339,4 +346,5 @@ namespace Overhaul.Persistence
         static void Postfix(ZDOID __0)=>GamePersistence.Mark(__0);
     }
 }
+
 

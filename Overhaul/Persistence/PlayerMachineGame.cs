@@ -32,6 +32,7 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerDoorGame.Interaction) return PlayerDoorGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerTurretGame.Interaction) return PlayerTurretGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerSaddleGame.Attach || command.Definition == PlayerSaddleGame.Remove) return PlayerSaddleGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerCatapultGame.Load || command.Definition == PlayerCatapultGame.Legs) return PlayerCatapultGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerPetGame.Feed) return PlayerPetGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == PlayerTradeGame.Give) return PlayerTradeGame.GiveItem(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
@@ -344,6 +345,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 
 
 
