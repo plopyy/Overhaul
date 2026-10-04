@@ -14,10 +14,12 @@ namespace Overhaul.Persistence
     {
         private const string Owner="overhaul_grapple_player";
         private static readonly Dictionary<ZDOID,GrapplingPoint> points=new Dictionary<ZDOID,GrapplingPoint>();
+        private static GrapplingPoint visual;
+        private static bool visualSecondary;
         [ThreadStatic] private static GrapplingPoint current;
         internal static StatusEffect[] Effects(Player player,StatusEffect[] effects)
         {
-            if(!player||!points.TryGetValue(player.GetZDOID(),out var point)||!point||!point.m_se)return effects;
+            if(!player||!player.m_nview||!player.m_nview.IsValid()||!points.TryGetValue(player.GetZDOID(),out var point)||!point||!point.m_se)return effects;
             return effects.Where(e=>e.NameHash()!=point.m_se.NameHash()).Concat(new[]{point.m_se}).ToArray();
         }
         internal static void Close(ZDOID actor)
@@ -41,6 +43,26 @@ namespace Overhaul.Persistence
         private static float FallSpeed()=>current&&current.m_grappledSE?current.m_grappledSE.m_maxMaxFallSpeed:GrapplingPoint.m_seFallSpeed;
         private static void Fov(GameCamera camera,float target,float inertia){if(!GameCreatureAuthority.Enabled&&camera)camera.SetTempFOV(target,inertia);}
         private static void ResetFov(GameCamera camera){if(!GameCreatureAuthority.Enabled&&camera)camera.ResetTempFOV();}
+        private static void Visual(GrapplingPoint point)
+        {
+            if(!Player.m_localPlayer||point.m_character!=Player.m_localPlayer)return;
+            Player.m_localPlayer.m_grappling=.2f;
+            if(!point.GetComponent<ViewCleanup>())point.gameObject.AddComponent<ViewCleanup>().Point=point;
+            if(visual==point&&visualSecondary==point.m_secondary)return;
+            visual=point;visualSecondary=point.m_secondary;
+            if(GameCamera.instance){if(point.m_secondary)GameCamera.instance.ResetTempFOV();else if(point.m_FOVTarget!=0)GameCamera.instance.SetTempFOV(point.m_FOVTarget,point.m_FOVInertia);}
+        }
+        public sealed class ViewCleanup:MonoBehaviour
+        {
+            internal GrapplingPoint Point;
+            private void OnDestroy()
+            {
+                if(visual!=Point)return;
+                visual=null;if(Player.m_localPlayer)Player.m_localPlayer.m_grappling=0;
+                if(GrapplingPoint.m_localGrappler==Point)GrapplingPoint.m_localGrappler=null;
+                if(GameCamera.instance)GameCamera.instance.ResetTempFOV();
+            }
+        }
         private static StatusEffect Add(SEMan manager,StatusEffect definition,bool reset,int level,float skill,short variant)
         {
             if(!current)return manager.AddStatusEffect(definition,reset,level,skill,variant);
@@ -112,21 +134,34 @@ namespace Overhaul.Persistence
                     if(PlayerSessionGame.Managed)
                     {
                         if(!__instance.m_character)__instance.FindCharacter();
-                        if(__instance.m_character==Player.m_localPlayer&&Player.m_localPlayer)Player.m_localPlayer.m_grappling=.2f;
+                        if(__instance.m_nview&&__instance.m_nview.IsValid())__instance.m_secondary=__instance.m_nview.GetZDO().GetBool("overhaul_grapple_secondary",__instance.m_secondary);
+                        Visual(__instance);
                     }
                     return true;
                 }
-                if(!(__instance.m_character is Player player))return true;
+                if(!(__instance.m_character is Player player))
+                {
+                    __instance.FindCharacter();
+                    if(!__instance.m_character&&__instance.m_nview&&__instance.m_nview.IsValid()&&__instance.m_nview.IsOwner())ZNetScene.instance.Destroy(__instance.gameObject);
+                    return false;
+                }
                 var state=InventoryMoveGame.State(player.GetZDOID());
                 if(state==null||player.IsDead()||player.IsTeleporting()){__instance.Break(true);return false;}
                 Run(__instance,player,state,()=>__instance.Update());
                 if(points.TryGetValue(player.GetZDOID(),out var active)&&active==__instance)
                 {
                     player.m_grappling=.2f;
+                    Visual(__instance);
                     if(player.m_grapplingStaminaDrain>0&&!player.IsOnGround())InventoryMoveGame.SpendStamina(player.GetZDOID(),Time.deltaTime*player.m_grapplingStaminaDrain,player.m_staminaRegenDelay);
                 }
                 GameMovementRuntime.Record(player);return false;
             }
+        }
+        [HarmonyPatch(typeof(GrapplingPoint),"Deactivate")]
+        private static class Deactivate
+        {
+            private static void Postfix(GrapplingPoint __instance)
+            {if(GameCreatureAuthority.Enabled&&__instance.m_nview&&__instance.m_nview.IsValid())__instance.m_nview.GetZDO().Set("overhaul_grapple_secondary",true);}
         }
         [HarmonyPatch(typeof(GrapplingPoint),nameof(GrapplingPoint.Break))]
         private static class Break
