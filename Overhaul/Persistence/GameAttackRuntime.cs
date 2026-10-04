@@ -24,10 +24,13 @@ namespace Overhaul.Persistence
         private static bool Fishing(ItemDrop.ItemData item)=>item!=null && PlayerFishingCastGame.FloatPrefab(item.m_shared.m_attack?.m_attackProjectile);
         private static bool Managed(Player player)=>player && player.m_nview && player.m_nview.IsValid() && InventoryMoveGame.State(player.GetZDOID())!=null;
         private static bool Active(Attack attack)=>executing && GameCombatContext.Matches(attack.m_character);
+        internal static bool Active(ZDOID actor)=>running.ContainsKey(actor);
         internal static void Forget(ZDOID actor)
         {
             if(!running.TryGetValue(actor,out var current))return;
-            running.Remove(actor);current.Attack.Abort();
+            running.Remove(actor);current.Attack.Stop();
+            if(current.Player && current.Player.m_currentAttack==current.Attack)
+            {current.Player.m_previousAttack=current.Attack;current.Player.m_currentAttack=null;}
             if(current.Player && current.Player.m_animator)current.Player.m_animator.cullingMode=current.Culling;
         }
         internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);}
@@ -35,9 +38,9 @@ namespace Overhaul.Persistence
         {
             if(request.Gameplay.Definition!=Start || request.Action.Amount!=1)throw new InvalidOperationException("Invalid combat intent");
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
-            if(!player || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
+            if(!player || !player.m_animator || !player.m_zanim || !player.m_animEvent || !player.m_body || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
                 throw new InvalidOperationException("Character cannot start this attack");
-            if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() && player.InAttack() || previous.Pending))
+            if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() || previous.Pending))
                 throw new InvalidOperationException("Previous server attack is still active");
             int slot=request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
@@ -78,7 +81,7 @@ namespace Overhaul.Persistence
         }
         private static void Trigger(Running current)
         {
-            if(current.Pending || current.Triggered)return;
+            if(current.Pending || current.Triggered || !current.Player || !current.Player.InAttack())return;
             current.Pending=true;var actor=current.Player.GetZDOID();
             if(!InventoryMoveGame.ServerAction(actor,state=>
             {

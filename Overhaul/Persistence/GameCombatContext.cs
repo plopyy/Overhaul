@@ -94,6 +94,21 @@ namespace Overhaul.Persistence
                 if(minZero)staminaUse=Mathf.Max(0,staminaUse);return false;
             }
         }
+        [HarmonyPatch(typeof(Character),nameof(Character.GetLevel))]
+        private static class NativeLevel
+        {
+            private static bool Prefix(Character __instance,ref int __result)
+            {if(!Matches(__instance))return true;__result=1;return false;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ModifyAttack))]
+        private static class AttackEffects
+        {
+            private static bool Prefix(SEMan __instance,Skills.SkillType skill,ref HitData hitData)
+            {
+                if(!Matches(__instance.m_character))return true;
+                foreach(var effect in Current.Effects)effect.ModifyAttack(skill,ref hitData);return false;
+            }
+        }
         [HarmonyPatch(typeof(global::Overhaul.Leveling.LevelingEffects),"Bonus")]
         private static class Bonus
         {

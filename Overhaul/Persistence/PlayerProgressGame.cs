@@ -255,9 +255,10 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First+300)]
             private static bool Prefix(Player __instance,Skills.SkillType skill,float value)
             {
-                if(!actor || actor!=__instance)return true;
+                var source=GameCombatContext.Matches(__instance)?__instance:actor;
+                if(!source || source!=__instance)return true;
                 if(skill!=Skills.SkillType.None && value>0 && !float.IsNaN(value) && !float.IsInfinity(value))
-                    InventoryMoveGame.Progress(actor.GetZDOID(),state=>PlayerCraftProgressGame.Raise(state,skill,value));
+                    InventoryMoveGame.Progress(source.GetZDOID(),state=>PlayerCraftProgressGame.Raise(state,skill,value));
                 return false;
             }
         }
@@ -267,9 +268,10 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First+300)]
             private static bool Prefix(PlayerStatType stat,float amount)
             {
-                if(!actor)return true;
+                var source=GameCombatContext.Current?.Player??actor;
+                if(!source)return true;
                 if(stat!=PlayerStatType.None && !float.IsNaN(amount) && !float.IsInfinity(amount))
-                    InventoryMoveGame.Progress(actor.GetZDOID(),state=>new[]{PlayerCraftProgressGame.Increment(state,"statistics:0:values",((int)stat).ToString(CultureInfo.InvariantCulture),amount)});
+                    InventoryMoveGame.Progress(source.GetZDOID(),state=>new[]{PlayerCraftProgressGame.Increment(state,"statistics:0:values",((int)stat).ToString(CultureInfo.InvariantCulture),amount)});
                 return false;
             }
         }

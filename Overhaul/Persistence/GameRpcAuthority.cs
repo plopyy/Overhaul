@@ -17,7 +17,7 @@ namespace Overhaul.Persistence
             {
                 if(package.Size()-position<44)return false;
                 package.ReadLong();long sender=package.ReadLong();
-                long targetPeer=package.ReadLong();var target=package.ReadZDOID();package.ReadInt();int length=package.ReadInt();
+                long targetPeer=package.ReadLong();var target=package.ReadZDOID();int method=package.ReadInt();int length=package.ReadInt();
                 if(sender!=peer.m_uid || length<0 || length!=package.Size()-package.GetPos())return false;
                 // A denied mutation must not still be forwarded to other clients as
                 // a fake visual/state confirmation for a server-controlled object.
@@ -25,6 +25,7 @@ namespace Overhaul.Persistence
                 var data=ZDOMan.instance?.GetZDO(target);
                 var prefab=data!=null && ZNetScene.instance?ZNetScene.instance.GetPrefab(data.GetPrefab()):null;
                 if(prefab && prefab.GetComponent<Player>() && (target!=peer.m_characterID || data.GetOwner()!=peer.m_uid))return false;
+                if(method=="SetTrigger".GetStableHashCode() && GameAttackRuntime.Active(target))return false;
                 return true;
             }
             catch(Exception){return false;}
