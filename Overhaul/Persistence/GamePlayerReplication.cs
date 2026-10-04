@@ -47,6 +47,9 @@ namespace Overhaul.Persistence
                 if(name!=null)__instance.Set(ZDOVars.s_playerName,(string)name.Values[3]);
                 float health=(float)PlayerResources.Read(state,"health"),maximum=(float)PlayerResources.Read(state,"max_health");
                 __instance.Set(ZDOVars.s_health,health);__instance.Set(ZDOVars.s_maxHealth,maximum);__instance.Set(ZDOVars.s_dead,health<=0);
+                __instance.Set(ZDOVars.s_stamina,(float)PlayerResources.Read(state,"stamina"));
+                __instance.Set(ZDOVars.s_eitr,(float)PlayerResources.Read(state,"eitr"));
+                __instance.Set(ZDOVars.s_adrenaline,(float)GameAdrenaline.Read(state,PlayerResources.Adrenaline));
             }
         }
     }
