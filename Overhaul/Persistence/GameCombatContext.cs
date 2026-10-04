@@ -7,7 +7,7 @@ namespace Overhaul.Persistence
 {
     // Native combat routines can query a remote avatar without trusting its
     // replicated client stats or temporarily replacing the player's inventory.
-    internal static class GameCombatContext
+    internal static partial class GameCombatContext
     {
         internal sealed class Frame
         {
