@@ -8,13 +8,14 @@ namespace Overhaul.Persistence
 {
     internal static class GameAttackRuntime
     {
-        internal const string Start="combat.start";
+        internal const string Start="combat.start",Unarmed="combat.unarmed";
         private sealed class Running
         {
             internal Player Player;
             internal Attack Attack;
             internal ItemDrop.ItemData Weapon,Ammo;
             internal string Identity;
+            internal int WeaponSlot;
             internal bool Secondary,Pending,Triggered,BurstPending;
             internal float Began;
             internal AnimatorCullingMode Culling;
@@ -36,18 +37,18 @@ namespace Overhaul.Persistence
         internal static void Clear(){foreach(var key in running.Keys.ToArray())Forget(key);}
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
-            if(request.Gameplay.Definition!=Start || request.Action.Amount!=1)throw new InvalidOperationException("Invalid combat intent");
+            if(request.Gameplay.Definition!=Start && request.Gameplay.Definition!=Unarmed || request.Action.Amount!=1)throw new InvalidOperationException("Invalid combat intent");
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             if(!player || !player.m_animator || !player.m_zanim || !player.m_animEvent || !player.m_body || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
                 throw new InvalidOperationException("Character cannot start this attack");
             if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() || previous.Pending || previous.BurstPending))
                 throw new InvalidOperationException("Previous server attack is still active");
-            int slot=request.Action.FromY*256+request.Action.FromX;
+            int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
             if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
                 attack.m_bowDraw || attack.m_requiresReload || attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
-            if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity))
+            if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
                 throw new InvalidOperationException("Weapon identity has not been confirmed");
             var q=request.Gameplay.Rotation;var rotation=new Quaternion(q[0],q[1],q[2],q[3]);
             if(Mathf.Abs(Quaternion.Dot(rotation,rotation)-1)>.01f)throw new InvalidOperationException("Invalid attack aim");
@@ -58,7 +59,7 @@ namespace Overhaul.Persistence
                 if(!player || !Managed(player))return;
                 Forget(actor.m_uid);
                 var current=new Running{Player=player,Attack=attack,Weapon=preview.Weapon,Ammo=preview.Ammo,Identity=identity,
-                    Secondary=request.Gameplay.Alternate,Began=Time.time,Culling=player.m_animator.cullingMode};
+                    WeaponSlot=slot,Secondary=request.Gameplay.Alternate,Began=Time.time,Culling=player.m_animator.cullingMode};
                 running[actor.m_uid]=current;player.m_animator.cullingMode=AnimatorCullingMode.AlwaysAnimate;
                 player.SetLookDir(rotation*Vector3.forward);
                 InContext(current,snapshot,()=>
@@ -88,10 +89,15 @@ namespace Overhaul.Persistence
                 try
                 {
                     if(!current.Player || current.Player.IsStaggering() || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return null;
-                    var identity=state.Rows.FirstOrDefault(r=>r.Table=="item_data" && (string)r.Values[3]==GameEquipmentWear.Identity && (string)r.Values[4]==current.Identity);
-                    if(identity==null)return null;
-                    var values=identity.Values;int slot=Convert.ToInt32(values[2])*256+Convert.ToInt32(values[1]);
+                    int slot=current.WeaponSlot;
+                    if(current.Identity!=null)
+                    {
+                        var identity=state.Rows.FirstOrDefault(r=>r.Table=="item_data" && (string)r.Values[3]==GameEquipmentWear.Identity && (string)r.Values[4]==current.Identity);
+                        if(identity==null)return null;
+                        var values=identity.Values;slot=Convert.ToInt32(values[2])*256+Convert.ToInt32(values[1]);
+                    }
                     var result=GameAttackInventory.Trigger(state,slot,current.Secondary,Guid.NewGuid().ToString("N"));
+                    if(!SameWeapon(current.Weapon,result.Weapon))return null;
                     return new PlayerActionPlan(result.Change,()=>
                     {
                         if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
@@ -103,6 +109,9 @@ namespace Overhaul.Persistence
                 catch(InvalidOperationException){return null;}
             },()=>{current.Pending=false;if(!current.Triggered)Forget(actor);}))current.Pending=false;
         }
+        private static bool SameWeapon(ItemDrop.ItemData before,ItemDrop.ItemData after)=>before.m_dropPrefab==after.m_dropPrefab && before.m_quality==after.m_quality &&
+            before.m_variant==after.m_variant && before.m_crafterID==after.m_crafterID && before.m_crafterName==after.m_crafterName && before.m_worldLevel==after.m_worldLevel &&
+            before.m_customData.Count==after.m_customData.Count && before.m_customData.All(p=>after.m_customData.TryGetValue(p.Key,out var value) && value==p.Value);
         private static void Burst(Running current)
         {
             if(current.BurstPending)return;
@@ -134,7 +143,7 @@ namespace Overhaul.Persistence
                 var weapon=__instance.GetCurrentWeapon();if(Fishing(weapon))return true;
                 __result=false;if(weapon==null)return false;
                 var rotation=Quaternion.LookRotation(__instance.GetLookDir());
-                __result=InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.Attack,Definition=Start,Alternate=secondaryAttack,
+                __result=InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.Attack,Definition=__instance.GetInventory().ContainsItem(weapon)?Start:Unarmed,Alternate=secondaryAttack,
                     Rotation=new[]{rotation.x,rotation.y,rotation.z,rotation.w}},weapon.m_gridPos.x,weapon.m_gridPos.y)==true;
                 return false;
             }

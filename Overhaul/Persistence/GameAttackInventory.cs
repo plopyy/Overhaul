@@ -23,8 +23,16 @@ namespace Overhaul.Persistence
         {
             if(PlayerResources.Read(snapshot,"health")<=0)throw new InvalidOperationException("Dead character cannot attack");
             var inventory=new PlayerActionInventory(snapshot.Rows,InventoryMoveGame.PlayerLayout(snapshot.Rows));
-            var weapon=Read(inventory,weaponSlot);
-            if(!inventory.Available(weaponSlot) || inventory.Layout.Cosmetic(weaponSlot) || !weapon.m_equipped || !weapon.IsWeapon() ||
+            ItemDrop.ItemData weapon;
+            if(weaponSlot==-1)
+            {
+                if(inventory.Keys.Select(k=>Read(inventory,k)).Any(i=>i.m_equipped && i.IsWeapon()))throw new InvalidOperationException("Character already has an equipped weapon");
+                var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>()?.m_unarmedWeapon:null;
+                if(!definition)throw new InvalidOperationException("Unarmed attack definition is unavailable");
+                weapon=definition.m_itemData.Clone();weapon.m_dropPrefab=definition.gameObject;weapon.m_equipped=true;
+            }
+            else weapon=Read(inventory,weaponSlot);
+            if(weaponSlot!=-1 && (!inventory.Available(weaponSlot) || inventory.Layout.Cosmetic(weaponSlot)) || !weapon.m_equipped || !weapon.IsWeapon() ||
                 weapon.m_shared.m_buildPieces || weapon.m_shared.m_useDurability && weapon.m_durability<=0)
                 throw new InvalidOperationException("Attack weapon is unavailable");
             var definition=secondary?weapon.m_shared.m_secondaryAttack:weapon.m_shared.m_attack;
@@ -47,7 +55,8 @@ namespace Overhaul.Persistence
                 }
                 else inventory.Remove(ammoSlot,1);
             }
-            if(definition.m_consumeItem)inventory.Remove(weaponSlot,1,true);
+            if(definition.m_consumeItem)
+            {if(weaponSlot==-1)throw new InvalidOperationException("Unarmed definition cannot consume an inventory weapon");inventory.Remove(weaponSlot,1,true);}
             var batch=inventory.Delta(operation,snapshot.Revision);
             return new Result{Weapon=weapon,Ammo=ammo,Definition=definition.Clone(),Change=new PlayerWorldAction(
                 new PlayerBatch(operation,snapshot.Revision,batch.Changes.Concat(additional)),new Dictionary<long,ObjectRecord>())};
