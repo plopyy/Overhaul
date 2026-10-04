@@ -8,21 +8,25 @@ namespace Overhaul.Persistence
         private static long sequence;
         private static Vector3 correction;
         internal static void Clear(){sequence=0;correction=Vector3.zero;}
-        internal static ZPackage Encode(long order,long input,Vector3 position,Quaternion rotation,Vector3 velocity)
-        {var packet=new ZPackage();packet.Write(order);packet.Write(input);packet.Write(position);packet.Write(rotation);packet.Write(velocity);return packet;}
+        internal static ZPackage Encode(long order,long input,Vector3 position,Quaternion rotation,Vector3 velocity,bool teleporting,bool distant)
+        {var packet=new ZPackage();packet.Write(order);packet.Write(input);packet.Write(position);packet.Write(rotation);packet.Write(velocity);packet.Write(teleporting);packet.Write(distant);return packet;}
         private static bool Finite(float number)=>!float.IsNaN(number)&&!float.IsInfinity(number);
         private static bool Finite(Vector3 vector)=>Finite(vector.x)&&Finite(vector.y)&&Finite(vector.z);
         internal static bool Receive(ZPackage packet)
         {
-            var player=Player.m_localPlayer;if(!player||packet==null||packet.Size()-packet.GetPos()!=56)return false;
+            var player=Player.m_localPlayer;if(!player||packet==null||packet.Size()-packet.GetPos()!=58)return false;
             long order=packet.ReadLong(),input=packet.ReadLong();var point=packet.ReadVector3();var rotation=packet.ReadQuaternion();var velocity=packet.ReadVector3();
+            bool teleporting=packet.ReadBool(),distant=packet.ReadBool();
             float length=Quaternion.Dot(rotation,rotation);
             if(order<=sequence||input<0||!Finite(point)||!Finite(velocity)||!Finite(length)||Mathf.Abs(length-1)>.01f)return false;
             sequence=order;
             // A host already renders the authoritative body. Remote clients keep
             // local prediction and reconcile against authenticated server poses.
-            if(GameCreatureAuthority.Enabled||player.IsDead()||player.IsTeleporting()){correction=Vector3.zero;return true;}
+            if(GameCreatureAuthority.Enabled||player.IsDead()){correction=Vector3.zero;return true;}
+            bool completed=player.m_teleporting&&!teleporting;
+            player.m_teleporting=teleporting;player.m_distantTeleport=distant;
             if(!player.m_body)return true;
+            if(teleporting||completed){player.m_body.position=point;player.m_body.rotation=rotation;player.m_body.linearVelocity=velocity;player.m_maxAirAltitude=point.y;correction=Vector3.zero;if(completed){player.InvalidateCachedLiquidDepth();player.ResetCloth();}return true;}
             double age=GameMovementControl.Age(input);
             var target=point+velocity*(float)Math.Min(.15,age*.5);
             var delta=target-player.m_body.position;
@@ -41,3 +45,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

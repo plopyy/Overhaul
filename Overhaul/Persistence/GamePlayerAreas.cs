@@ -19,7 +19,7 @@ namespace Overhaul.Persistence
         private static bool spawning;
         private static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true && ZNet.instance && ZNet.instance.IsServer();
         internal static void Clear()
-        {centers.Clear();centerZones.Clear();zones.Clear();nearSet.Clear();distantSet.Clear();scratchNear.Clear();scratchDistant.Clear();candidates.Clear();refreshed=-1;cursor=0;spawning=false;GameCreatureAuthority.Clear();GameWorldAuthority.Clear();}
+        {centers.Clear();centerZones.Clear();zones.Clear();nearSet.Clear();distantSet.Clear();scratchNear.Clear();scratchDistant.Clear();candidates.Clear();refreshed=-1;cursor=0;spawning=false;GameTeleportAction.Clear();GameCreatureAuthority.Clear();GameWorldAuthority.Clear();}
         internal static void Refresh(bool force=false)
         {
             if(!force && Time.time<refreshed+.1f)return;refreshed=Time.time;
@@ -110,3 +110,4 @@ namespace Overhaul.Persistence
         {private static bool Prefix(Vector3 point,ref bool __result){if(!Enabled)return true;__result=!Contains(point);return false;}}
     }
 }
+

@@ -63,7 +63,7 @@ namespace Overhaul.Persistence
         {
             if(!motions.TryGetValue(actor,out var motion)||Time.timeAsDouble<motion.NextView)return null;
             motion.NextView=Time.timeAsDouble+.05;
-            return GameMovementView.Encode(++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity);
+            return GameMovementView.Encode(++motion.ViewSequence,GameMovementControl.Read(actor)?.Sequence??0,motion.Position,motion.Rotation,motion.Velocity,motion.Player&&motion.Player.m_teleporting,motion.Player&&motion.Player.m_distantTeleport);
         }
         private static Motion Remember(Player player)
         {
@@ -122,6 +122,7 @@ namespace Overhaul.Persistence
             private static bool Prefix(Character __instance,float dt,out Scope __state)
             {
                 __state=null;if(!(__instance is Player player)||!Managed(player))return true;
+                GameTeleportAction.Tick(player,dt);
                 var motion=Remember(player);
                 if(player.m_body&&!AreaReady(player,motion))
                 {if(!motion.Suspended){motion.WasKinematic=player.m_body.isKinematic;motion.Suspended=true;}player.m_body.isKinematic=true;return false;}
@@ -181,3 +182,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

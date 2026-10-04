@@ -38,6 +38,7 @@ namespace Overhaul.Persistence
                     throw new InvalidOperationException("Attack authority is not connected yet");
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn:
+                    if(command.Definition==GameTeleportAction.Portal||command.Definition==GameTeleportAction.Dungeon)return GameTeleportAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameJumpAction.Jump)return GameJumpAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameDodgeAction.Dodge)return GameDodgeAction.Prepare(actor,request,snapshot);
                     if(command.Definition==GameGuardianPower.Start)return GameGuardianPower.Prepare(actor,request,snapshot);
@@ -172,6 +173,7 @@ namespace Overhaul.Persistence
         private static class PickupGuard { private static void Postfix(ItemDrop __instance,ref bool __result) { if (Held(__instance)) __result = false; } }
     }
 }
+
 
 
 
