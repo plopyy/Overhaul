@@ -8,7 +8,7 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerBuildGame
     {
-        internal const string Place="build.place";
+        internal const string Repair="build.repair", Remove="build.remove";
         private static readonly int Placed="overhaul_build_placed".GetStableHashCode();
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
@@ -16,6 +16,7 @@ namespace Overhaul.Persistence
             var tool=PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);var table=tool.m_shared.m_buildPieces;
             if(!tool.m_equipped || !table || tool.m_shared.m_useDurability && tool.m_durability<=0 || request.Action.Amount!=1 || actor.GetBool(ZDOVars.s_dead,false))
                 throw new InvalidOperationException("Construction tool is unavailable");
+            if(command.Definition==Repair || command.Definition==Remove)return Existing(actor,request,snapshot,inventory,tool);
             var prefab=table.m_pieces.FirstOrDefault(p=>p && p.name==command.Definition);var piece=prefab?prefab.GetComponent<Piece>():null;
             if(!piece || !piece.m_enabled || piece.m_repairPiece || piece.m_removePiece || piece.m_harvest || prefab.GetComponent<TerrainModifier>() || prefab.GetComponent<TerrainOp>())
                 throw new InvalidOperationException("Construction definition is unavailable or requires a terrain action");
@@ -49,6 +50,45 @@ namespace Overhaul.Persistence
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:pieces",piece.m_name,1));
                 return resources.Finish(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),()=>piece.m_placeEffect?.Create(position,rotation),new[]{output});
             }
+        }
+        private static PlayerActionPlan Existing(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory,ItemDrop.ItemData tool)
+        {
+            var command=request.Gameplay;var target=ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
+            var piece=target?target.GetComponent<Piece>():null;var view=piece?piece.GetComponent<ZNetView>():null;var data=view && view.IsValid()?view.GetZDO():null;
+            long creator=actor.GetLong(ZDOVars.s_playerID,0);
+            if(data==null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) || Vector3.Distance(actor.GetPosition(),target.transform.position)>Game.instance.m_playerPrefab.GetComponent<Player>().m_maxPlaceDistance ||
+                !Storage.ChestAccess.WardAccessAt(target.transform.position,creator) || Location.IsInsideNoBuildLocation(target.transform.position))throw new InvalidOperationException("Construction target is unavailable");
+            if(piece.m_craftingStation && !ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoWorkbench) && !CraftingStation.HaveBuildStationInRange(piece.m_craftingStation.m_name,actor.GetPosition()))throw new InvalidOperationException("Required construction station is unavailable");
+            if(command.Definition==Repair)
+            {
+                var wear=target.GetComponent<WearNTear>();
+                if(!tool.m_shared.m_buildPieces.m_pieces.Any(p=>p && p.GetComponent<Piece>()?.m_repairPiece==true) || !wear || data.GetFloat(ZDOVars.s_health,wear.m_health)>=wear.m_health || Time.time-wear.m_lastRepair<1)throw new InvalidOperationException("Piece cannot be repaired");
+                int slot=request.Action.FromY*256+request.Action.FromX;
+                if(tool.m_shared.m_useDurability){tool.m_durability=Mathf.Max(0,tool.m_durability-tool.m_shared.m_useDurabilityDrain*Game.m_durabilityRate);inventory.Set(slot,PlayerActionGame.Row(tool,slot%256,slot/256).Values);}
+                using(var world=new PlayerActionObjectGame(data))
+                {world.Set(ZDOVars.s_health,wear.m_health);return world.Finish(inventory.Delta(request.Action.Operation,snapshot.Revision),()=>{wear.m_lastRepair=Time.time;wear.m_nview.InvokeRPC(ZNetView.Everybody,"RPC_HealthChanged",wear.m_health);});}
+            }
+            bool feast=target.GetComponent<Feast>() || target.GetComponent<ItemDrop>();
+            if(!piece.m_canBeRemoved || !piece.CanBeRemoved() || (feast?!tool.m_shared.m_buildPieces.m_canRemoveFeasts:!tool.m_shared.m_buildPieces.m_canRemovePieces))throw new InvalidOperationException("Piece cannot be dismantled");
+            // These components have their own stored payloads; never delete one until its
+            // complete refund has been incorporated into the same transaction.
+            if(target.GetComponent<IRemoved>()!=null || target.GetComponent<Smelter>() || target.GetComponent<CookingStation>() || target.GetComponent<Fermenter>() || target.GetComponent<ItemStand>() || target.GetComponent<ArmorStand>() || target.GetComponent<Turret>() || target.GetComponent<Catapult>() || piece.m_destroyedLootPrefab)
+                throw new InvalidOperationException("Dismantling this machine requires its stored contents handler");
+            var outputs=new List<ObjectRecord>();var chest=target.GetComponentInChildren<Container>();
+            if(chest)
+            {
+                if(!chest.CheckAccess(creator) || Storage.MoveReservation.Busy(chest) || Storage.ChestAccess.Leased(chest) || GamePersistence.ReservedSlots(data.m_uid).Any())throw new InvalidOperationException("Container is in use");
+                chest.Load();foreach(var item in chest.GetInventory().GetAllItems())outputs.Add(PlayerDropGame.Ground(item.Clone(),target.transform.position+Vector3.up,Quaternion.identity));
+            }
+            if(!ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey()))foreach(var requirement in piece.m_resources.Where(r=>r.m_resItem && r.m_recover && r.m_amount>0))
+            {
+                int count=requirement.m_amount;var food=target.GetComponent<Feast>();if(food)count=Mathf.FloorToInt(count*food.GetStackPercentige());
+                if(data.GetLong(ZDOVars.s_creator,0)==0 && count>0)count=Mathf.Max(1,count/3);
+                while(count>0)
+                {var item=requirement.m_resItem.m_itemData.Clone();item.m_dropPrefab=requirement.m_resItem.gameObject;item.m_stack=Math.Min(count,item.m_shared.m_maxStackSize);item.m_equipped=false;item.m_cheated|=data.GetBool(ZDOVars.s_cheated,false)&&!PlayerProfile.s_bypassCheatChecks;count-=item.m_stack;outputs.Add(PlayerDropGame.Ground(item,target.transform.position+Vector3.up*piece.m_returnResourceHeightOffset,Quaternion.identity));}
+            }
+            if(outputs.Count>127)throw new InvalidOperationException("Dismantling output exceeds one transaction");
+            return PlayerActionGame.RemoveWorldObject(view,inventory.Delta(request.Action.Operation,snapshot.Revision),outputs);
         }
         internal static void Validate(ZDO actor,Piece piece,Vector3 point,Quaternion rotation,long creator)
         {
@@ -110,5 +150,25 @@ namespace Overhaul.Persistence
             private static void Postfix(ZDO zdo,GameObject __result)
             {if(!__result || zdo.GetInt(Placed,0)==0)return;var wear=__result.GetComponent<WearNTear>();if(wear)wear.OnPlaced();if(zdo.IsOwner())zdo.Set(Placed,0);}
         }
+        [HarmonyPatch(typeof(Player),"Repair")]
+        private static class RepairIntent
+        {
+            [HarmonyPriority(Priority.First+300)]
+            private static bool Prefix(Player __instance,ItemDrop.ItemData toolItem)
+            {if(__instance!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;Send(__instance,__instance.GetHoveringPiece(),toolItem,Repair);return false;}
+        }
+        [HarmonyPatch(typeof(Player),"RemovePiece")]
+        private static class RemoveIntent
+        {
+            [HarmonyPriority(Priority.First+300)]
+            private static bool Prefix(Player __instance,ref bool __result)
+            {if(__instance!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;__result=false;Send(__instance,__instance.GetHoveringPiece(),__instance.GetRightItem(),Remove);return false;}
+        }
+        private static void Send(Player player,Piece piece,ItemDrop.ItemData tool,string action)
+        {var view=piece?piece.GetComponent<ZNetView>():null;if(tool==null || !view || !view.IsValid())return;var id=view.GetZDO().m_uid;if(InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.Build,Definition=action,TargetUser=id.UserID,TargetId=id.ID},tool.m_gridPos.x,tool.m_gridPos.y,1)==true)player.m_lastToolUseTime=Time.time;}
+        [HarmonyPatch(typeof(WearNTear),"RPC_Repair")]
+        private static class LegacyRepair {private static bool Prefix()=>PlayerPersistenceConfig.Enabled?.Value!=true;}
+        [HarmonyPatch(typeof(WearNTear),"RPC_Remove")]
+        private static class LegacyRemove {private static bool Prefix()=>PlayerPersistenceConfig.Enabled?.Value!=true;}
     }
 }
