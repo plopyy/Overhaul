@@ -18,14 +18,15 @@ namespace Overhaul.Persistence
             foreach (var effect in PlayerPotionGame.Active(snapshot)) effect.ModifySkillLevel(type,ref level);
             return Mathf.Clamp01(Mathf.Floor(level)/100f);
         }
-        internal static float LootChance(PlayerSnapshot snapshot)
+        internal static float LootChance(PlayerSnapshot snapshot)=>Mathf.Clamp01(Bonus(snapshot,"bonus_loot"));
+        internal static float Bonus(PlayerSnapshot snapshot,string id)
         {
             var row = snapshot.Rows.FirstOrDefault(r => r.Table == "custom_data" && (string)r.Values[0] == OverhaulCharacter.SaveKey);
             if (row == null) return 0;
             var state = JsonConvert.DeserializeObject<OverhaulCharacterData>((string)row.Values[1]);
             LevelingSystem.Reconcile(state);
-            return state.AllocatedStats.TryGetValue("bonus_loot",out int rank) && LevelingConfig.Current.Stats.TryGetValue("bonus_loot",out var rule)
-                ? Mathf.Clamp01((float)(rank*rule.PerPoint)) : 0;
+            return state.AllocatedStats.TryGetValue(id,out int rank) && LevelingConfig.Current.Stats.TryGetValue(id,out var rule)
+                ? (float)(rank*rule.PerPoint) : 0;
         }
         internal static IEnumerable<PlayerChange> Raise(PlayerSnapshot snapshot,Skills.SkillType type,float amount)
         {

@@ -7,6 +7,48 @@ using UnityEngine;
 
 namespace Overhaul.Persistence
 {
+    internal static class PlayerResourceGame
+    {
+        internal static PlayerChange[] BuildCost(InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
+        {
+            var tool=PlayerInventoryView.ReadItem(inventory.Item(request.Action.FromY*256+request.Action.FromX),null,true);
+            float stamina=tool.m_shared.m_attack.m_attackStamina,eitr=request.Gameplay.Definition==PlayerBuildGame.Remove?0:tool.m_shared.m_attack.m_attackEitr;
+            if(stamina==0 && eitr==0)return Array.Empty<PlayerChange>();
+            float equipment=0;
+            foreach(int slot in inventory.Keys)
+            {var item=PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);if(item.m_equipped)equipment+=item.m_shared.m_homeItemsStaminaModifier;}
+            stamina*=1+equipment;float baseCost=stamina;
+            foreach(var effect in PlayerPotionGame.Active(snapshot))effect.ModifyHomeItemStaminaUsage(baseCost,ref stamina);
+            if(tool.m_shared.m_buildPieces && tool.m_shared.m_buildPieces.m_skill!=Skills.SkillType.None)stamina*=1-.5f*PlayerCraftProgressGame.Factor(snapshot,tool.m_shared.m_buildPieces.m_skill);
+            eitr*=1-Mathf.Clamp01(PlayerCraftProgressGame.Bonus(snapshot,"eitr_cost"));
+            var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>():null;
+            if(!definition)throw new InvalidOperationException("Player resource definitions are unavailable");
+            return PlayerResources.Spend(snapshot,Mathf.Max(0,stamina)*Game.m_staminaRate,Mathf.Max(0,eitr)*Game.m_eitrRate,definition.m_staminaRegenDelay,definition.m_eitrRegenDelay);
+        }
+        internal static Action Presentation(IEnumerable<PlayerChange> source,Player player)
+        {
+            var rows=source.ToArray();if(rows.Length==0)return ()=>{};
+            if(!player)throw new System.IO.InvalidDataException("Resource view is unavailable");
+            var values=new Dictionary<string,float>();
+            foreach(var row in rows)
+            {
+                if(row.Table!="state" || row.Delete)throw new System.IO.InvalidDataException("Invalid resource confirmation");
+                string key=(string)row.Values[0];double value=Convert.ToDouble(row.Values[2]);
+                PlayerResources.Row(key,value);if(value>float.MaxValue)throw new System.IO.InvalidDataException("Resource value overflow");values.Add(key,(float)value);
+            }
+            return ()=>
+            {
+                if(values.TryGetValue("max_health",out var hpMax))player.SetMaxHealth(hpMax,true);
+                if(values.TryGetValue("max_stamina",out var staminaMax))player.SetMaxStamina(staminaMax,true);
+                if(values.TryGetValue("max_eitr",out var eitrMax))player.SetMaxEitr(eitrMax,true);
+                if(values.TryGetValue("health",out var health))player.SetHealth(health);
+                if(values.TryGetValue("stamina",out var stamina))player.m_stamina=stamina;
+                if(values.TryGetValue("eitr",out var eitr))player.m_eitr=eitr;
+                if(values.TryGetValue(PlayerResources.StaminaDelay,out var staminaDelay))player.m_staminaRegenTimer=staminaDelay;
+                if(values.TryGetValue(PlayerResources.EitrDelay,out var eitrDelay))player.m_eitrRegenTimer=eitrDelay;
+            };
+        }
+    }
     internal static class PlayerDiscoveryGame
     {
         // These facts are derived from the confirmed inventory plan, never supplied by the client.

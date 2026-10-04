@@ -13,6 +13,14 @@ namespace Overhaul.Persistence
         private static readonly int Placed="overhaul_build_placed".GetStableHashCode();
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
+            var costs=PlayerResourceGame.BuildCost(request,snapshot,inventory);
+            var plan=PrepareCore(actor,request,snapshot,inventory);
+            var batch=plan.Change.Player;
+            plan.Change.Discover(new PlayerBatch(batch.Operation,batch.ExpectedRevision,batch.Changes.Concat(costs)));
+            return plan;
+        }
+        private static PlayerActionPlan PrepareCore(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
+        {
             var command=request.Gameplay;int slot=request.Action.FromY*256+request.Action.FromX;
             var tool=PlayerInventoryView.ReadItem(inventory.Item(slot),null,true);var table=tool.m_shared.m_buildPieces;
             if(!tool.m_equipped || !table || tool.m_shared.m_useDurability && tool.m_durability<=0 || request.Action.Amount!=1 || actor.GetBool(ZDOVars.s_dead,false))

@@ -19,7 +19,8 @@ namespace Overhaul.Persistence
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
-            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]!=PlayerBuildGame.Debt),player);
+            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]!=PlayerBuildGame.Debt && !PlayerResources.IsKey((string)r.Values[0])),player);
+            var resources = PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])),player);
             var building = PlayerBuildGame.Presentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]==PlayerBuildGame.Debt),player);
             bool resize = reply.Player.Changes.Any(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "uniques" &&
                 ((string)r.Values[1]).StartsWith(Player.InventoryRowsKey+" ",StringComparison.OrdinalIgnoreCase));
@@ -54,6 +55,7 @@ namespace Overhaul.Persistence
                 potions();
                 guardian();
                 building();
+                resources();
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)
