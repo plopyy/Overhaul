@@ -257,6 +257,26 @@ namespace Overhaul.Persistence
                 return player!=Player.m_localPlayer || !PlayerSessionGame.Managed || Fishing(player.GetCurrentWeapon());
             }
         }
+        [HarmonyPatch]
+        private static class AnimationOwnership
+        {
+            private static System.Collections.Generic.IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(Humanoid),nameof(Humanoid.OnWeaponTrailStart));
+                yield return AccessTools.Method(typeof(Humanoid),nameof(Humanoid.OnStopMoving));
+            }
+            private static bool Prefix(Humanoid __instance,System.Reflection.MethodBase __originalMethod)
+            {
+                if(executing||!(__instance is Player player)||!player.m_nview||!player.m_nview.IsValid()||!running.TryGetValue(player.GetZDOID(),out var current))return true;
+                var state=InventoryMoveGame.State(player.GetZDOID());if(state==null)return false;
+                InContext(current,state,()=>
+                {
+                    if(__originalMethod.Name==nameof(Humanoid.OnWeaponTrailStart))player.OnWeaponTrailStart();
+                    else player.OnStopMoving();
+                });
+                return false;
+            }
+        }
         [HarmonyPatch(typeof(Attack),"UseAmmo")]
         private static class AmmoDebit
         {
