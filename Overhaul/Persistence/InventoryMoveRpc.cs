@@ -20,7 +20,7 @@ namespace Overhaul.Persistence
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
         internal bool Spending(ZDOID actor,float amount,float delay)
         {
-            if(State(actor)==null || float.IsNaN(amount) || float.IsInfinity(amount) || amount<0)return false;
+            if(State(actor)==null || float.IsNaN(amount) || float.IsInfinity(amount) || amount<0 || float.IsNaN(delay) || float.IsInfinity(delay) || delay<0)return false;
             double debit=Math.Min(Stamina(actor),amount);if(debit==0)return true;
             pendingStamina+=debit;
             if(progress.Enqueue(state=>new[]{PlayerResources.Row("stamina",Math.Max(0,PlayerResources.Read(state,"stamina")-debit)),PlayerResources.Row(PlayerResources.StaminaDelay,delay)},()=>pendingStamina=Math.Max(0,pendingStamina-debit)))return true;
@@ -81,7 +81,9 @@ namespace Overhaul.Persistence
         {
             if (!ReferenceEquals(rpc, session.Connection)) throw new ArgumentException("Wrong admitted inventory connection");
             this.rpc = rpc; nonce = session.Nonce; access = new InventoryMoveGame.Access(rpc, session);
-            canonical=session.Snapshot;
+            // Map blocks belong to admission/persistence, not the frequently updated
+            // action view. Avoid copying the explored map on every resource tick.
+            canonical=new PlayerSnapshot(session.Snapshot.Revision,session.Snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));
             progress=new PlayerProgressService(session.Identity,writer,batch=>
             {Committed(batch,false);if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,

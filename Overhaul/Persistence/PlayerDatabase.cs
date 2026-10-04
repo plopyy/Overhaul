@@ -309,7 +309,9 @@ namespace Overhaul.Persistence
                 ApplyRows(batch.Changes); db.Write("UPDATE identity SET revision=? WHERE id=1", checked(batch.ExpectedRevision + 1));
             });
         }
-        internal PlayerChange[] ActionState() => ReadTables("inventory", "item_data", "state", "food", "effects", "skills", "custom_data", "knowledge", "spawn");
+        private static readonly string[] actionTables={"inventory", "item_data", "state", "food", "effects", "skills", "custom_data", "knowledge", "spawn"};
+        internal static bool IsActionTable(string table)=>Array.IndexOf(actionTables,table)>=0;
+        internal PlayerChange[] ActionState() => ReadTables(actionTables);
         private PlayerChange[] ReadTables(params string[] tables)
         {
             if (!Complete) throw new InvalidOperationException("Incomplete player database");
