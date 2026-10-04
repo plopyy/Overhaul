@@ -38,6 +38,8 @@ namespace Overhaul.Persistence
             changes.Add(PlayerEffectClock.Anchor(PlayerEffectClock.Read(snapshot.Rows)+seconds));
             var stepped=PlayerProgressService.Overlay(snapshot,changes);
             changes.AddRange(Advance(stepped,actor,seconds));
+            var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>():null;
+            if(definition)GamePlayerHit.Merge(changes,GameAdrenaline.Advance(PlayerProgressService.Overlay(snapshot,changes),definition,seconds));
             var regenerated=PlayerProgressService.Overlay(snapshot,changes);
             bool removedFood=false;
             foreach(var change in PlayerPotionGame.Periodic(snapshot,regenerated,seconds))
@@ -119,6 +121,9 @@ namespace Overhaul.Persistence
                 if(values.TryGetValue("eitr",out var eitr))player.m_eitr=eitr;
                 if(values.TryGetValue(PlayerResources.StaminaDelay,out var staminaDelay))player.m_staminaRegenTimer=staminaDelay;
                 if(values.TryGetValue(PlayerResources.EitrDelay,out var eitrDelay))player.m_eitrRegenTimer=eitrDelay;
+                if(values.TryGetValue(PlayerResources.Adrenaline,out var adrenaline))player.m_adrenaline=adrenaline;
+                if(values.TryGetValue(PlayerResources.AdrenalineDelay,out var adrenalineDelay))player.m_adrenalineDegenTimer=adrenalineDelay;
+                if(values.TryGetValue(PlayerResources.AdrenalineLastMaximum,out var adrenalineMax))player.m_lastMaxAdrenaline=adrenalineMax;
             };
         }
     }

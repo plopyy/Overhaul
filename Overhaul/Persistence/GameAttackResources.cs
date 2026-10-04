@@ -78,6 +78,7 @@ namespace Overhaul.Persistence
             {rows.Add(PlayerResources.Row("stamina",Math.Max(0,Math.Min(PlayerResources.Read(snapshot,"max_stamina"),stamina-staminaCost))));rows.Add(PlayerResources.Row(PlayerResources.StaminaDelay,definition.m_staminaRegenDelay));}
             if(eitrCost>0){rows.Add(PlayerResources.Row("eitr",Math.Max(0,eitr-eitrCost)));rows.Add(PlayerResources.Row(PlayerResources.EitrDelay,definition.m_eitrRegenDelay));}
             if(cost.Health>0)rows.Add(PlayerResources.Row("health",Math.Max(Math.Min(1,health),health-cost.Health)));
+            if(attack.m_attackUseAdrenaline>0)GamePlayerHit.Merge(rows,GameAdrenaline.Change(PlayerProgressService.Overlay(snapshot,rows),definition,attack.m_attackUseAdrenaline));
             return rows.ToArray();
         }
     }

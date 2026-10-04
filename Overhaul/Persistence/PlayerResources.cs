@@ -9,7 +9,8 @@ namespace Overhaul.Persistence
     internal static class PlayerResources
     {
         internal const string StaminaDelay="overhaul_stamina_delay",EitrDelay="overhaul_eitr_delay",FoodRegen="overhaul_food_regen";
-        internal static bool IsKey(string key)=>key=="health" || key=="stamina" || key=="eitr" || key=="max_health" || key=="max_stamina" || key=="max_eitr" || key==StaminaDelay || key==EitrDelay || key==FoodRegen;
+        internal const string Adrenaline="adrenaline",AdrenalineDelay="adrenaline_delay",AdrenalineMaximum="max_adrenaline",AdrenalineLastMaximum="adrenaline_last_max";
+        internal static bool IsKey(string key)=>key=="health" || key=="stamina" || key=="eitr" || key=="max_health" || key=="max_stamina" || key=="max_eitr" || key==StaminaDelay || key==EitrDelay || key==FoodRegen || key==Adrenaline || key==AdrenalineDelay || key==AdrenalineMaximum || key==AdrenalineLastMaximum;
         internal static double Read(PlayerSnapshot snapshot,string key)
         {
             var row=snapshot.Rows.SingleOrDefault(r=>r.Table=="state" && (string)r.Values[0]==key);

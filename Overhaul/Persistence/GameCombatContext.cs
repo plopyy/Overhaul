@@ -84,6 +84,18 @@ namespace Overhaul.Persistence
             private static bool Prefix(Player __instance,ref float __result)
             {if(!Matches(__instance))return true;__result=(float)PlayerResources.Read(Current.State,"max_eitr");return false;}
         }
+        [HarmonyPatch(typeof(Player),nameof(Player.GetAdrenaline))]
+        private static class Adrenaline
+        {
+            private static bool Prefix(Player __instance,ref float __result)
+            {if(!Matches(__instance))return true;__result=(float)GameAdrenaline.Read(Current.State,PlayerResources.Adrenaline);return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.GetMaxAdrenaline))]
+        private static class MaxAdrenaline
+        {
+            private static bool Prefix(Player __instance,ref float __result)
+            {if(!Matches(__instance))return true;__result=GameAdrenaline.Maximum(Current.State,__instance);return false;}
+        }
         [HarmonyPatch(typeof(Player),nameof(Player.GetEquipmentAttackStaminaModifier))]
         private static class AttackModifier
         {

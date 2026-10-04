@@ -88,7 +88,7 @@ namespace Overhaul.Persistence
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
             if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
-                attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
+                attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
             if(attack.m_loopingAttack && !Holding(actor.m_uid,request.Gameplay.Alternate))throw new InvalidOperationException("Looping attack has no live held control");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity) && preview.Weapon.m_shared.m_useDurability && preview.Weapon.m_shared.m_maxStackSize==1)
@@ -291,6 +291,12 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Character),nameof(Character.TryUseEitr))]
         private static class HaveEitr
         {private static bool Prefix(Character __instance,ref bool __result){if(!starting || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
+        [HarmonyPatch(typeof(Player),nameof(Player.AddAdrenaline))]
+        private static class AdrenalineDebit
+        {
+            [HarmonyPriority(Priority.First+250)]
+            private static bool Prefix(Player __instance)=>!GameCombatContext.Matches(__instance)||!starting&&!firing;
+        }
         [HarmonyPatch(typeof(Player),nameof(Player.UseStamina))]
         private static class StaminaDebit {private static bool Prefix(Player __instance)=>!executing || !GameCombatContext.Matches(__instance);}
         [HarmonyPatch(typeof(Player),nameof(Player.UseEitr))]

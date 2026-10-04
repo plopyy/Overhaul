@@ -49,9 +49,14 @@ namespace Overhaul.Persistence
             private static bool Prefix(SE_Stats __instance)
             {
                 if(current==null)return true;
-                if(__instance.m_adrenalineUpFront!=0)throw new InvalidOperationException("Status adrenaline requires server resource support");
                 var changes=PlayerResources.Restore(current.State,Math.Max(0,__instance.m_healthUpFront),Math.Max(0,__instance.m_staminaUpFront),Math.Max(0,__instance.m_eitrUpFront));
-                current.Changes.AddRange(changes);current.State=PlayerProgressService.Overlay(current.State,changes);return false;
+                GamePlayerHit.Merge(current.Changes,changes);current.State=PlayerProgressService.Overlay(current.State,changes);
+                if(__instance.m_adrenalineUpFront>0)
+                {
+                    var adrenaline=GameAdrenaline.Change(current.State,(Player)__instance.m_character,__instance.m_adrenalineUpFront);
+                    GamePlayerHit.Merge(current.Changes,adrenaline);current.State=PlayerProgressService.Overlay(current.State,adrenaline);
+                }
+                return false;
             }
         }
     }

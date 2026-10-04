@@ -44,12 +44,15 @@ namespace Overhaul.Persistence
                     block=GameBlockMath.Prepare(current,player,hit,pose.Slot,pose.Timed,GameHitFeedback.Stagger(player,current),attacker);
                     Change(block.Changes);hit=block.Hit;
                     if(block.Attempted)Change(PlayerCraftProgressGame.Raise(current,Skills.SkillType.Blocking,block.SkillGain));
+                    if(attacker&&block.Attempted&&!block.Timed)Change(GameAdrenaline.Change(current,player,block.Item.m_shared.m_blockAdrenaline));
                     if(block.Blocked&&block.Timed&&attacker)
                     {
+                        Change(GameAdrenaline.Change(current,player,block.Item.m_shared.m_perfectBlockAdrenaline));
                         var effect=block.Item.m_shared.m_perfectBlockStatusEffect?block.Item.m_shared.m_perfectBlockStatusEffect:player.m_perfectBlockStatusEffect;
                         if(effect)Change(GameStatusImpact.Prepare(current,player,effect.NameHash(),block.Item.m_worldLevel,GameAttackResources.SkillLevel(current,Skills.SkillType.Blocking,GameAttackResources.Effects(current)),-1,ZDOID.None));
                     }
                 }
+                else Change(GameAdrenaline.Change(current,player,player.m_nonBlockDamageAdrenaline));
                 int status=hit.m_statusEffectHash;
                 var mods=player.m_damageModifiers;
                 if(status!=0&&!(status==SEMan.s_statusEffectBurning&&mods.m_fire==HitData.DamageModifier.Immune)&&
