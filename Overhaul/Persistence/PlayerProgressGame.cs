@@ -9,6 +9,14 @@ namespace Overhaul.Persistence
 {
     internal static class PlayerResourceGame
     {
+        private static PlayerChange[] initial;
+        internal static void Initial(IEnumerable<PlayerChange> rows)=>initial=rows?.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])).ToArray();
+        [HarmonyPatch(typeof(Player),nameof(Player.Load))]
+        private static class Restore
+        {
+            private static void Postfix(Player __instance)
+            {if(!PlayerSessionGame.Managed || initial==null)return;var rows=initial;initial=null;Presentation(rows,__instance)();}
+        }
         internal static IEnumerable<PlayerChange> Simulate(PlayerSnapshot snapshot,ZDO actor,double seconds)
         {
             if(actor==null || seconds<=0)return Array.Empty<PlayerChange>();

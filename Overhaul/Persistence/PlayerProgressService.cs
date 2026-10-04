@@ -32,13 +32,7 @@ namespace Overhaul.Persistence
     // They leave the inventory revision unchanged and never read a client snapshot.
     internal sealed class PlayerProgressService
     {
-        internal static bool SameKey(PlayerChange a,PlayerChange b)
-        {
-            if(a.Table!=b.Table)return false;
-            if(a.Table=="skills" || a.Table=="food" || a.Table=="effects")return Convert.ToInt32(a.Values[0])==Convert.ToInt32(b.Values[0]);
-            int keys=PlayerDatabase.Tables.Single(t=>t.Name==a.Table).Keys;
-            return a.Values.Take(keys).SequenceEqual(b.Values.Take(keys));
-        }
+        internal static bool SameKey(PlayerChange a,PlayerChange b)=>a.SameKey(b);
         internal static PlayerSnapshot Overlay(PlayerSnapshot snapshot,IEnumerable<PlayerChange> changes)
         {
             var rows=snapshot.Rows.ToList();

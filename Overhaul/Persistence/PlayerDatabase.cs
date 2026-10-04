@@ -38,6 +38,19 @@ namespace Overhaul.Persistence
         internal readonly string Table;
         internal readonly bool Delete;
         private readonly object[] values;
+        private readonly int keyCount;
+        internal bool SameKey(PlayerChange other)
+        {
+            if(other==null || Table!=other.Table)return false;
+            for(int i=0;i<keyCount;i++)
+            {
+                object a=values[i],b=other.values[i];
+                if((a is int || a is long) && (b is int || b is long))
+                {if(Convert.ToInt64(a)!=Convert.ToInt64(b))return false;}
+                else if(!Equals(a,b))return false;
+            }
+            return true;
+        }
         internal object[] Values => values.Select(Copy).ToArray();
         internal PlayerChange(string table, bool delete, params object[] values)
         {
@@ -54,7 +67,7 @@ namespace Overhaul.Persistence
                     value is byte[] bytes && bytes.Length > 4 * 1024 * 1024) throw new ArgumentException("Character value too large");
             }
             if (values.Take(definition.Keys).Any(v => v == null)) throw new ArgumentException("Missing character row key");
-            Table = table; Delete = delete; this.values = values.Select(Copy).ToArray();
+            Table = table; Delete = delete; keyCount=definition.Keys; this.values = values.Select(Copy).ToArray();
         }
         private static object Copy(object value) => value is byte[] bytes ? bytes.Clone() : value;
     }
