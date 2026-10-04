@@ -93,9 +93,10 @@ namespace Overhaul.Leveling
         private sealed class Attempt { internal bool Consumed; }
         private static readonly ConditionalWeakTable<Attack,Attempt> Attempts=new ConditionalWeakTable<Attack,Attempt>();
         internal static void Begin(Attack attack)=>Attempts.Remove(attack);
-        private static void Prefix(Attack __instance,out int __state)
+        private static void Prefix(Attack __instance,bool __runOriginal,out int __state)
         {
-            __state=__instance.m_projectiles;var attempt=Attempts.GetOrCreateValue(__instance);if(attempt.Consumed)return;
+            __state=__instance.m_projectiles;if(!__runOriginal)return;
+            var attempt=Attempts.GetOrCreateValue(__instance);if(attempt.Consumed)return;
             attempt.Consumed=true;
             if(UnityEngine.Random.value<Math.Min(1,LevelingEffects.Bonus(__instance.m_character,"projectile")))__instance.m_projectiles++;
         }

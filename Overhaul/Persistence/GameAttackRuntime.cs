@@ -259,6 +259,7 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Attack),"FireProjectileBurst")]
         private static class ProjectileBurst
         {
+            [HarmonyPriority(Priority.First+250)]
             private static bool Prefix(Attack __instance)
             {
                 if(!Active(__instance) || !__instance.m_perBurstResourceUsage || firing)return true;
