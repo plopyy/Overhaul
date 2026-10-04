@@ -70,6 +70,7 @@ namespace Overhaul.Persistence
         internal readonly InventoryMoveController Controller;
         private bool disposed;
         internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished) && (serverActions==null || serverActions.Finished);
+        internal bool StorageFailed=>server?.StorageFailed==true || progress?.Failed==true || serverActions?.Failed==true;
         internal bool Progress(ZDOID actor,Func<PlayerSnapshot,System.Collections.Generic.IEnumerable<PlayerChange>> action)
         {return !disposed && progress!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && progress.Enqueue(action);}
         internal Container Container { get; private set; }

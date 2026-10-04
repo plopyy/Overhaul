@@ -24,7 +24,9 @@ namespace Overhaul.Persistence
         internal bool Busy => pending != null;
         internal bool Closed { get; private set; }
         internal InventoryMoveRequest Pending => pending;
-        internal InventoryMoveController(string nonce, long revision, Action<byte[]> send, Action<InventoryMoveReply> apply, Action<Exception> failed, Action<InventoryMoveReply> applyServer = null)
+        internal InventoryMoveController(string nonce, long revision, Action<byte[]> send, Action<InventoryMoveReply> apply, Action<Exception> failed)
+            : this(nonce,revision,send,apply,failed,null) { }
+        internal InventoryMoveController(string nonce, long revision, Action<byte[]> send, Action<InventoryMoveReply> apply, Action<Exception> failed, Action<InventoryMoveReply> applyServer)
         {
             if (!Guid.TryParseExact(nonce, "N", out _) || revision < 0) throw new ArgumentException("Invalid inventory session");
             this.nonce = nonce; PlayerRevision = revision; this.send = send; this.apply = apply; this.failed = failed;

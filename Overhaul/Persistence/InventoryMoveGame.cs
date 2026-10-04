@@ -24,6 +24,8 @@ namespace Overhaul.Persistence
         private static readonly List<InventoryMoveRpc> connections = new List<InventoryMoveRpc>();
         internal static bool Progress(ZDOID actor,Func<PlayerSnapshot,IEnumerable<PlayerChange>> action)
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action))return true;return false;}
+        internal static bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
+        {foreach(var endpoint in connections)if(endpoint.ServerAction(actor,prepare,confirmed))return true;return false;}
         internal static PlayerSnapshot State(ZDOID actor)
         {foreach(var endpoint in connections){var state=endpoint.State(actor);if(state!=null)return state;}return null;}
         internal static PlayerSnapshot SessionState(ZRpc connection)
@@ -37,11 +39,12 @@ namespace Overhaul.Persistence
         internal static void FinishSession()
         {
             foreach (var endpoint in connections) endpoint.Dispose();
-            for (int pass = 0; pass < 4; pass++)
+            while(connections.Any(endpoint=>!endpoint.Finished && !endpoint.StorageFailed))
             {
                 GamePersistence.Players?.Flush().GetAwaiter().GetResult();
-                foreach (var endpoint in connections.ToArray()) endpoint.Tick();
+                foreach (var endpoint in connections.ToArray())if(!endpoint.StorageFailed)endpoint.Tick();
             }
+            if(connections.Any(endpoint=>endpoint.StorageFailed))throw new InvalidOperationException("Character storage failed while draining server actions; world recovery is required");
             connections.Clear(); Client = null; Access.Clear();
         }
         internal static void Broadcast(Container container, PlayerBatch effect, ZRpc except)
