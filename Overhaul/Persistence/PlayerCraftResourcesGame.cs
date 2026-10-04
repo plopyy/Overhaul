@@ -38,12 +38,8 @@ namespace Overhaul.Persistence
         }
         private static IEnumerable<PlayerChange> Rows(Inventory inventory)
         {
-            foreach (var item in inventory.GetAllItems())
-            {
-                yield return PlayerActionGame.Row(item,item.m_gridPos.x,item.m_gridPos.y);
-                foreach (var pair in item.m_customData)
-                    yield return new PlayerChange("item_data",false,"main",item.m_gridPos.x,item.m_gridPos.y,pair.Key,pair.Value);
-            }
+            var package = new ZPackage(); inventory.Save(package);
+            return PlayerNativeFormat.DecodeInventory(package.GetArray());
         }
         private IEnumerable<Tuple<Source,int,object[]>> Matching(ItemDrop resource,int quality)
         {

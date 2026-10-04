@@ -45,7 +45,7 @@ namespace Overhaul.Persistence
             if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid)) throw new InvalidOperationException("World inventory is unavailable");
             if (!ids.TryGetValue(data.m_uid, out long id)) { id = checked(++nextId); ids.Add(data.m_uid, id); }
             var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
-            writer.Enqueue(new[] { snapshot }, null); dirty.Remove(data.m_uid); return id;
+            writer.CaptureInventory(snapshot); dirty.Remove(data.m_uid); return id;
         }
         internal static void ReleaseSlots(ZDO data, IEnumerable<int> cells)
         {

@@ -21,6 +21,12 @@ namespace Overhaul.Persistence
         { string s = r.ReadString(); if (s.Length > 1024 * 1024) throw new InvalidDataException("Character string too long"); return s; }
         private static float Number(BinaryReader r)
         { float f = r.ReadSingle(); if (float.IsNaN(f) || float.IsInfinity(f)) throw new InvalidDataException("Invalid character number"); return f; }
+        internal static PlayerChange[] DecodeInventory(byte[] bytes)
+        {
+            var rows = new List<PlayerChange>();
+            using (var reader = NativeFormat.Reader(bytes)) { ReadInventory(reader,rows,"main"); NativeFormat.End(reader); }
+            return rows.ToArray();
+        }
         private static void State(Character c, string key, object integer = null, object real = null, object text = null, object blob = null)
             => c.Rows.Add(new PlayerChange("state", false, key, integer, real, text, blob));
         internal static Character Decode(byte[] bytes)

@@ -53,6 +53,19 @@ namespace Overhaul.Persistence
             }
         }
         internal void RequestFlush(bool createBackup=false){lock(gate)backup|=createBackup;wake.Set();}
+        // A capture preceding a slot reservation must not be coalesced away by a later
+        // protected capture: a new container may not have any persisted slots yet.
+        internal void CaptureInventory(ObjectRecord snapshot)
+        {
+            lock(gate)
+            {
+                if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
+                if(commands.Count>=1024)throw new InvalidOperationException("World command queue is full");
+                commands.Enqueue(new Command { Run = db => db.Transaction(() => ObjectSql.Write(db,snapshot)), Fail = _ => { } });
+                submitted++;
+            }
+            wake.Set();
+        }
         // Inventory/world transactions share this executor. Their callers reserve participating
         // containers before submission, so later ordinary captures cannot overwrite the result.
         internal Task<T> Submit<T>(Func<SqliteDatabase,T> action)

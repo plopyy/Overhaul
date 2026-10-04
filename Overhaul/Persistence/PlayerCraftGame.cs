@@ -97,7 +97,8 @@ namespace Overhaul.Persistence
                     if (upgrade)
                     {
                         old.m_quality = quality; old.m_durability = old.GetMaxDurability(); old.m_crafterID = playerId; old.m_crafterName = playerName;
-                        old.m_cheated |= cheated; old.m_worldLevel = Game.m_worldLevel; old.m_equipped = false;
+                        old.m_cheated |= cheated; old.m_worldLevel = Game.m_worldLevel;
+                        old.m_equipped = old.m_equipped && !InventoryMoveGame.PlayerLayout(snapshot.Rows).Ordinary(slot);
                         inventory.Set(slot,PlayerActionGame.Row(old,slot%256,slot/256).Values);
                     }
                     else
