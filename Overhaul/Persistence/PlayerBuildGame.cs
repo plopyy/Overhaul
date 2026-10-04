@@ -139,7 +139,18 @@ namespace Overhaul.Persistence
                 if(face>=0 && face!=7)
                 {foreach(var old in snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="uniques" && ((string)r.Values[1]).StartsWith("Pet ",StringComparison.OrdinalIgnoreCase)))changes.Add(new PlayerChange("knowledge",true,"uniques",old.Values[1]));changes.Add(new PlayerChange("knowledge",false,"uniques","Pet "+face,""));}
             }
-            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(delta.Operation,delta.ExpectedRevision,changes),outputs);
+            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(delta.Operation,delta.ExpectedRevision,changes),outputs,
+                beforeDestroy:()=>DestructionEffects(target));
+        }
+        private static void DestructionEffects(GameObject target)
+        {
+            var wear=target.GetComponent<WearNTear>();
+            var destructible=target.GetComponent<Destructible>();
+            var view=target.GetComponent<ZNetView>();
+            var effects=wear?wear.m_destroyedEffect:destructible?destructible.m_destroyedEffect:null;
+            effects?.Create(target.transform.position,target.transform.rotation,target.transform);
+            if(wear?wear.m_autoCreateFragments:destructible&&destructible.m_autoCreateFragments)
+                view.InvokeRPC(ZNetView.Everybody,"RPC_CreateFragments");
         }
         internal static IEnumerable<PlayerChange> Progress(PlayerSnapshot snapshot,PieceTable table,bool removing)
         {

@@ -95,7 +95,7 @@ namespace Overhaul.Persistence
             return RemoveWorldItem(drop,new PlayerBatch(request.Action.Operation,snapshot.Revision,changes));
         }
         internal static PlayerActionPlan RemoveWorldItem(ItemDrop drop,PlayerBatch player) => RemoveWorldObject(drop.m_nview,player,Array.Empty<ObjectRecord>());
-        internal static PlayerActionPlan RemoveWorldObject(ZNetView view,PlayerBatch player,IEnumerable<ObjectRecord> outputs,Action effects = null)
+        internal static PlayerActionPlan RemoveWorldObject(ZNetView view,PlayerBatch player,IEnumerable<ObjectRecord> outputs,Action effects = null,Action beforeDestroy = null)
         {
             var data = view.GetZDO(); var target = view.gameObject; var additions = outputs.ToArray();
             var uid = data.m_uid;
@@ -109,6 +109,7 @@ namespace Overhaul.Persistence
                     {
                         if (!view || !view.IsValid()) throw new IOException("Reserved ground item disappeared before publication");
                         foreach (var output in additions) GamePersistence.PublishActionObject(output);
+                        try { beforeDestroy?.Invoke(); } catch(Exception error) { ZLog.LogWarning("[Overhaul destruction effects] "+error.Message); }
                         ZNetScene.instance.Destroy(target);
                         // Native Destroy queues the network notification. Remove the local ZDO now so
                         // an intervening world snapshot cannot resurrect the committed pickup.

@@ -74,6 +74,12 @@ namespace Overhaul.Persistence
             if (ids.ContainsKey(uid) || ZDOMan.instance.GetZDO(uid) != null) throw new IOException("Committed spawn identifier already exists");
             var data = GameSnapshot.Restore(ZDOMan.instance,record); data.SetOwner(ZNet.GetUID());
             ids.Add(uid,record.Id); Mark(uid);
+            // Gameplay outputs in a loaded area need their native components now,
+            // including the rigidbody of dropped resources, rather than joining the scene backlog.
+            var scene=ZNetScene.instance;var zones=ZoneSystem.instance;
+            if(scene && zones && zones.IsZoneLoaded(data.GetSector()) && zones.IsZoneReadyForType(data.GetSector(),data.Type))
+                scene.CreateObject(data);
+            ZDOMan.instance.ForceSendZDO(uid);
         }
         internal static ObjectRecord ReserveAction(ZDO data)
         {
