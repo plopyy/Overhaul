@@ -49,6 +49,9 @@ namespace Overhaul.Persistence
             return result.ToArray();
         }
         internal static StatusEffect Restore(IEnumerable<PlayerChange> source,Player player)
+            =>RestoreCore(source,player,true);
+        internal static StatusEffect Modifiers(IEnumerable<PlayerChange> source)=>RestoreCore(source,null,false);
+        private static StatusEffect RestoreCore(IEnumerable<PlayerChange> source,Player player,bool restoreAttacker)
         {
             var rows=source.ToArray();var header=rows.SingleOrDefault(r=>r.Table=="status"&&!r.Delete);
             if(header==null || rows.Any(r=>r.Delete || r.Table!="status"&&r.Table!="status_data"))throw new InvalidDataException("Invalid saved native status rows");
@@ -70,7 +73,7 @@ namespace Overhaul.Persistence
                     throw new InvalidDataException("Invalid native status field value");
                 field.SetValue(effect,type.IsEnum?Enum.ToObject(type,checked((int)number)):Convert.ChangeType(number,type,CultureInfo.InvariantCulture));
             }
-            if(instance!=0)
+            if(restoreAttacker&&instance!=0)
             {var go=ZNetScene.instance?ZNetScene.instance.FindInstance(new ZDOID(owner,(uint)instance)):null;var attacker=go?go.GetComponent<Character>():null;if(attacker)effect.SetAttacker(attacker);}
             return effect;
         }

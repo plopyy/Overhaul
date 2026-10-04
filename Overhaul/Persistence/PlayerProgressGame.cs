@@ -52,14 +52,8 @@ namespace Overhaul.Persistence
             var instance=actor==null?null:ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             if(!definition || !player || player.IsDead() || player.InIntro() || player.IsTeleporting())return Array.Empty<PlayerChange>();
             var items=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).ToArray();
-            var equipped=items.Where(i=>i.m_equipped).ToArray();
-            var effects=PlayerPotionGame.Active(snapshot).ToList();
-            foreach(var item in equipped)
-            {
-                if(item.m_shared.m_equipStatusEffect)effects.Add(item.m_shared.m_equipStatusEffect);
-                if(item.m_shared.m_setStatusEffect && equipped.Count(i=>i.m_shared.m_setName==item.m_shared.m_setName)>=item.m_shared.m_setSize)effects.Add(item.m_shared.m_setStatusEffect);
-            }
-            effects=effects.GroupBy(e=>e.NameHash()).Select(g=>g.First()).ToList();
+            var equipped=GameCombatEquipment.Equipped(snapshot);
+            var effects=GameAttackResources.Effects(snapshot);
             float health=definition.m_baseHP,stamina=definition.m_baseStamina,eitr=0,foodHeal=0;
             float duration=PlayerFoodGame.Multiplier(snapshot.Rows);
             foreach(var row in snapshot.Rows.Where(r=>r.Table=="food"))

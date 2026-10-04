@@ -45,7 +45,7 @@ namespace Overhaul.Persistence
             var value = new Skills.Skill(info);
             if (rows.TryGetValue((int)type,out var before)) { value.m_level = Convert.ToSingle(before[1]); value.m_accumulator = Convert.ToSingle(before[2]); }
             float multiplier = 1;
-            foreach (var effect in PlayerPotionGame.Active(snapshot)) effect.ModifyRaiseSkill(type,ref multiplier);
+            foreach (var effect in GameAttackResources.Effects(snapshot)) effect.ModifyRaiseSkill(type,ref multiplier);
             bool raised = value.Raise(amount * multiplier);
             yield return new PlayerChange("skills",false,(int)type,value.m_level,value.m_accumulator);
             if (raised && definitions.m_useSkillCap)

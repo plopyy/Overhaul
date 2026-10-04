@@ -12,6 +12,11 @@ namespace Overhaul.Persistence
         {
             var equipped=GameCombatEquipment.Equipped(snapshot);
             var effects=PlayerPotionGame.Active(snapshot).ToList();
+            foreach(var header in snapshot.Rows.Where(r=>r.Table=="status"))
+            {
+                int id=Convert.ToInt32(header.Values[0]);
+                effects.Insert(0,GameStatusCodec.Modifiers(snapshot.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id)));
+            }
             foreach(var item in equipped)
             {
                 if(item.m_shared.m_equipStatusEffect)effects.Add(item.m_shared.m_equipStatusEffect);
