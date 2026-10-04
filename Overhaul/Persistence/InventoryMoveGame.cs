@@ -48,15 +48,16 @@ namespace Overhaul.Persistence
                         visible = Math.Max(1, Math.Min(9, count));
                 }
             visible += Slots.ExtraRows;
-            var items = Prefabs(); var cells = new Dictionary<int, IEnumerable<int>>(); var equipment = new Dictionary<int, string>();
+            var items = Prefabs(); var cells = new Dictionary<int, IEnumerable<int>>(); var equipment = new Dictionary<int, string>(); var ammo = new List<int>();
             for (int y = 0; y < visible; y++) for (int x = 0; x < Slots.VanillaInventoryWidth; x++) cells.Add(y * 256 + x, null);
             foreach (var slot in Slots.slots.Where(s => s != null && s.IsActive && !s.IsEmptySlot))
             {
                 int key = (visible + slot.Index / Slots.VanillaInventoryWidth) * 256 + slot.Index % Slots.VanillaInventoryWidth;
                 cells[key] = items.Where(p => slot.ItemFits(p.Value)).Select(p => p.Key).ToArray();
                 if (slot.IsEquipmentSlot) equipment[key] = slot.ID;
+                if (slot.IsAmmoSlot) ammo.Add(key);
             }
-            return Layout(cells, items, equipment);
+            return Layout(cells, items, equipment, ammo);
         }
         internal static InventoryMoveLayout ContainerLayout(Container container)
         {
@@ -67,11 +68,11 @@ namespace Overhaul.Persistence
         }
         private static Dictionary<int, ItemDrop.ItemData> Prefabs() => ObjectDB.instance.m_itemByHash
             .Where(p => p.Value && p.Value.GetComponent<ItemDrop>()).ToDictionary(p => p.Key, p => p.Value.GetComponent<ItemDrop>().m_itemData);
-        private static InventoryMoveLayout Layout(Dictionary<int, IEnumerable<int>> cells, Dictionary<int, ItemDrop.ItemData> items, Dictionary<int, string> equipment)
+        private static InventoryMoveLayout Layout(Dictionary<int, IEnumerable<int>> cells, Dictionary<int, ItemDrop.ItemData> items, Dictionary<int, string> equipment, IEnumerable<int> ammo = null)
             => new InventoryMoveLayout(cells, items.ToDictionary(p => p.Key, p => p.Value.m_shared.m_maxStackSize),
                 items.Where(p => p.Value.m_shared.m_questItem).Select(p => p.Key), equipment,
                 items.ToDictionary(p => p.Key, p => ((int)p.Value.m_shared.m_itemType).ToString("D6") + ":" +
-                    (Localization.instance != null ? Localization.instance.Localize(p.Value.m_shared.m_name) : p.Value.m_shared.m_name)));
+                    (Localization.instance != null ? Localization.instance.Localize(p.Value.m_shared.m_name) : p.Value.m_shared.m_name)), ammo);
 
         internal sealed class Access : IDisposable
         {
@@ -107,6 +108,7 @@ namespace Overhaul.Persistence
                     if (!viewers.TryGetValue(chest, out var group)) { group = new HashSet<Access>(); viewers.Add(chest, group); }
                     group.Add(this);
                     opened = chest; chest.m_inUse = true; zdo.Set(ZDOVars.s_inUse, 1);
+                    chest.UpdateUseVisual();
                     return new InventoryMoveLease(objectId, ContainerLayout(chest).Excluding(GamePersistence.ReservedSlots(id)), effect =>
                     {
                         var contents = InventoryMovePresentation.Prepare(chest.GetInventory(), effect, false);
@@ -127,6 +129,7 @@ namespace Overhaul.Persistence
                 var data = ChestAccess.Data(chest); if (data == null) return;
                 chest.m_inUse = viewers.ContainsKey(chest) || GamePersistence.InventoryReserved(data.m_uid);
                 data.Set(ZDOVars.s_inUse, chest.m_inUse ? 1 : 0);
+                chest.UpdateUseVisual();
             }
             internal void Close()
             {

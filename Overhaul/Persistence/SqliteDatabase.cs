@@ -122,8 +122,8 @@ namespace Overhaul.Persistence
             try
             {
                 Check(result);
-                using (var row = Query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='container_revisions'")) InventoryRevisions = row.Read();
                 Execute("PRAGMA busy_timeout=5000");
+                using (var row = Query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='container_revisions'")) InventoryRevisions = row.Read();
                 if (!readOnly)
                 {
                     using (var command = Query("PRAGMA journal_mode=WAL"))

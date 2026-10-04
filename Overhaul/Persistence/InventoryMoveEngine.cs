@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Overhaul.Persistence
 {
-    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort }
+    internal enum InventoryMoveKind { Slot, Quick, TakeAll, StackAll, Sort, Ammo }
 
     // Inventory 0 is the admitted player's bag; inventory 1 is the server-resolved container.
     // No item identity, metadata or claimed player ID is accepted from a client.
@@ -26,7 +26,8 @@ namespace Overhaul.Persistence
                 !Enum.IsDefined(typeof(InventoryMoveKind), kind) || from < 0 || from > 1 || to < 0 || to > 1 ||
                 new[] { fromX, fromY, toX, toY }.Any(v => v < 0 || v > 255) || amount < 1 || amount > ushort.MaxValue ||
                 (kind == InventoryMoveKind.Slot && from == to && fromX == toX && fromY == toY) ||
-                (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && from == to) || (kind == InventoryMoveKind.Sort && from != to) || this.slotVersions.Count > 4096 ||
+                (kind != InventoryMoveKind.Slot && kind != InventoryMoveKind.Sort && kind != InventoryMoveKind.Ammo && from == to) ||
+                (kind == InventoryMoveKind.Ammo && to != 0) || (kind == InventoryMoveKind.Sort && from != to) || this.slotVersions.Count > 4096 ||
                 this.slotVersions.Any(p => p.Key < 0 || p.Key > 65535 || p.Value < 0)) throw new ArgumentException("Invalid inventory movement intent");
             Operation = operation; PlayerRevision = playerRevision; ContainerRevision = containerRevision;
             Kind = kind; From = from; To = to; FromX = fromX; FromY = fromY; ToX = toX; ToY = toY; Amount = amount;
@@ -43,9 +44,12 @@ namespace Overhaul.Persistence
         private readonly Dictionary<int, string> equipment;
         private readonly HashSet<int> blocked = new HashSet<int>();
         private readonly Dictionary<int,string> order;
+        private readonly HashSet<int> ammo;
+        internal bool Ammo(int key) => ammo.Contains(key);
         internal InventoryMoveLayout(IDictionary<int, IEnumerable<int>> slots, IDictionary<int, int> maxStacks, IEnumerable<int> questItems,
-            IDictionary<int, string> equipmentCells = null, IDictionary<int,string> sortOrder = null)
+            IDictionary<int, string> equipmentCells = null, IDictionary<int,string> sortOrder = null, IEnumerable<int> ammoCells = null)
         {
+            ammo = new HashSet<int>(ammoCells ?? Enumerable.Empty<int>());
             order = sortOrder == null ? new Dictionary<int,string>() : new Dictionary<int,string>(sortOrder);
             equipment = equipmentCells == null ? new Dictionary<int, string>() : new Dictionary<int, string>(equipmentCells);
             cells = new SortedDictionary<int, HashSet<int>>(slots.ToDictionary(p => p.Key,
@@ -60,7 +64,7 @@ namespace Overhaul.Persistence
         internal bool Accepts(int key, int prefab) => Available(key) && cells.TryGetValue(key, out var filter) && maximum.ContainsKey(prefab) && (filter == null || filter.Contains(prefab));
         internal InventoryMoveLayout Excluding(IEnumerable<int> keys)
         {
-            var copy = new InventoryMoveLayout(cells.ToDictionary(p => p.Key, p => (IEnumerable<int>)p.Value), maximum, quest, equipment, order);
+            var copy = new InventoryMoveLayout(cells.ToDictionary(p => p.Key, p => (IEnumerable<int>)p.Value), maximum, quest, equipment, order, ammo);
             foreach (int key in keys) copy.blocked.Add(key); return copy;
         }
         internal int Maximum(int prefab) => maximum.TryGetValue(prefab, out int value) ? value : throw new InvalidDataException("Unknown server item prefab");
@@ -202,19 +206,21 @@ namespace Overhaul.Persistence
             }
             else
             {
-                int[] sources = action.Kind == InventoryMoveKind.Quick ? new[] { action.FromY * 256 + action.FromX } : from.Keys.OrderBy(k => k).ToArray();
+                bool single = action.Kind == InventoryMoveKind.Quick || action.Kind == InventoryMoveKind.Ammo;
+                int[] sources = single ? new[] { action.FromY * 256 + action.FromX } : from.Keys.OrderBy(k => k).ToArray();
                 foreach (int key in sources)
                 {
-                    if (!from.TryGetValue(key, out var item)) { if (action.Kind == InventoryMoveKind.Quick) throw new InvalidOperationException("Source slot is empty"); continue; }
+                    if (!from.TryGetValue(key, out var item)) { if (single) throw new InvalidOperationException("Source slot is empty"); continue; }
                     if (!layouts[action.From].Available(key)) continue;
                     if (layouts[action.From].IsQuest(item.Prefab)) continue;
                     if (action.Kind == InventoryMoveKind.StackAll && Convert.ToBoolean(item.Values[7])) continue;
-                    if (action.Kind == InventoryMoveKind.Quick && action.Amount > item.Count) throw new InvalidOperationException("Insufficient source quantity");
-                    int remaining = action.Kind == InventoryMoveKind.Quick ? Math.Min(action.Amount, item.Count) : item.Count;
+                    if (single && action.Amount > item.Count) throw new InvalidOperationException("Insufficient source quantity");
+                    int remaining = single ? Math.Min(action.Amount, item.Count) : item.Count;
                     bool matched = to.Values.Any(v => v.Prefab == item.Prefab);
                     if (action.Kind == InventoryMoveKind.StackAll && !matched) continue;
                     foreach (int dest in layouts[action.To].Slots.OrderBy(k => to.ContainsKey(k) ? 0 : 1))
                     {
+                        if (action.From == action.To && dest == key || action.Kind == InventoryMoveKind.Ammo && !layouts[action.To].Ammo(dest)) continue;
                         if (!layouts[action.To].Accepts(dest, item.Prefab) || to.TryGetValue(dest, out var target) &&
                             (!Mergeable(item, target) || layouts[action.To].Maximum(item.Prefab) == 1)) continue;
                         int count = move(key, dest, remaining, false); moved += count; remaining -= count;

@@ -54,6 +54,19 @@ namespace Overhaul.Persistence
                 Move(InventoryMoveKind.Slot, fromInventory, __instance.GetInventory(), item, pos, amount); return false;
             }
         }
+        [HarmonyPatch(typeof(EquipmentAndQuickSlots.AmmoSlots), nameof(EquipmentAndQuickSlots.AmmoSlots.Insert))]
+        private static class Ammo
+        {
+            [HarmonyPriority(Priority.First + 100)]
+            private static bool Prefix(Player player, Inventory source, ItemDrop.ItemData item, ref bool __result)
+            {
+                if (!Active || player != Player.m_localPlayer) return true;
+                if (source == player.GetInventory() && EquipmentAndQuickSlots.Slots.GetItemSlot(item)?.IsAmmoSlot == true) return true;
+                __result = item != null && EquipmentAndQuickSlots.AmmoSlots.IsAmmo(item) &&
+                    Move(InventoryMoveKind.Ammo, source, player.GetInventory(), item, default(Vector2i), item.m_stack);
+                return false;
+            }
+        }
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnTakeAll))]
         private static class TakeAll
         {
