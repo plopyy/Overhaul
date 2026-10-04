@@ -23,7 +23,7 @@ namespace Overhaul.Persistence
         {
             if(!player || snapshot==null || action==null)throw new ArgumentException("Invalid server combat context");
             var frame=new Frame{Player=player,State=snapshot,Weapon=weapon,Ammo=ammo,Effects=GameAttackResources.Effects(snapshot),
-                Equipment=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).Where(i=>i.m_equipped).ToArray()};
+                Equipment=GameCombatEquipment.Equipped(snapshot)};
             var previous=Current;Current=frame;try{action();}finally{Current=previous;}
         }
         [HarmonyPatch(typeof(Player),nameof(Player.GetSkillFactor))]
@@ -77,6 +77,24 @@ namespace Overhaul.Persistence
         {
             private static bool Prefix(Player __instance,ref float __result)
             {if(!Matches(__instance))return true;__result=Current.Equipment.Sum(i=>i.m_shared.m_attackStaminaModifier);return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.GetBodyArmor))]
+        private static class BodyArmor
+        {
+            private static bool Prefix(Player __instance,ref float __result)
+            {if(!Matches(__instance))return true;__result=GameCombatEquipment.BodyArmor(Current.Equipment,Current.Effects);return false;}
+        }
+        [HarmonyPatch(typeof(Player),"ApplyArmorDamageMods")]
+        private static class ArmorResistance
+        {
+            private static bool Prefix(Player __instance,ref HitData.DamageModifiers mods)
+            {if(!Matches(__instance))return true;foreach(var item in Current.Equipment.Where(GameCombatEquipment.Armor))mods.Apply(item.m_shared.m_damageModifiers);return false;}
+        }
+        [HarmonyPatch(typeof(SEMan),nameof(SEMan.ApplyDamageMods))]
+        private static class EffectResistance
+        {
+            private static bool Prefix(SEMan __instance,ref HitData.DamageModifiers mods)
+            {if(!Matches(__instance.m_character))return true;foreach(var effect in Current.Effects)effect.ModifyDamageMods(ref mods);return false;}
         }
         [HarmonyPatch(typeof(Player),nameof(Player.GetEquipmentHomeItemModifier))]
         private static class HomeModifier

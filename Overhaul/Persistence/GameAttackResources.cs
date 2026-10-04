@@ -10,7 +10,7 @@ namespace Overhaul.Persistence
         internal sealed class Costs { internal double Stamina,Eitr,Health; }
         internal static StatusEffect[] Effects(PlayerSnapshot snapshot)
         {
-            var equipped=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).Where(i=>i.m_equipped).ToArray();
+            var equipped=GameCombatEquipment.Equipped(snapshot);
             var effects=PlayerPotionGame.Active(snapshot).ToList();
             foreach(var item in equipped)
             {
@@ -29,7 +29,7 @@ namespace Overhaul.Persistence
         internal static Costs Calculate(PlayerSnapshot snapshot,ItemDrop.ItemData weapon,Attack attack)
         {
             if(weapon==null || attack==null)throw new InvalidOperationException("Attack resource definition is unavailable");
-            var equipped=snapshot.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true)).Where(i=>i.m_equipped).ToArray();
+            var equipped=GameCombatEquipment.Equipped(snapshot);
             var effects=Effects(snapshot);
             float factor=Mathf.Clamp01(SkillLevel(snapshot,weapon.m_shared.m_skillType,effects)/100f);
             float stamina=0;

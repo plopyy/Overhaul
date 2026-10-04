@@ -59,7 +59,7 @@ namespace Overhaul.Persistence
             var batch=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);
             return batch.Changes.Any()?new PlayerActionPlan(new PlayerWorldAction(batch,new Dictionary<long,ObjectRecord>()),()=>{ }):null;
         }
-        private static void Apply(PlayerActionInventory inventory,int key,object[] values,double drain)
+        internal static void Apply(PlayerActionInventory inventory,int key,object[] values,double drain)
         {
             if(double.IsNaN(drain) || double.IsInfinity(drain) || drain<0)throw new InvalidOperationException("Invalid equipment durability drain");
             var item=PlayerInventoryView.ReadItem(values,null,true);

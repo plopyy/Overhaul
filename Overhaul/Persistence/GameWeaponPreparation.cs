@@ -42,8 +42,7 @@ namespace Overhaul.Persistence
             {
                 float skill=Mathf.Clamp01(GameAttackResources.SkillLevel(state,weapon.m_shared.m_skillType,effects)/100f);
                 float rate=Mathf.Max(0,attack.m_drawStaminaDrain)*(1-.33f*skill);
-                float equipment=state.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true))
-                    .Where(i=>i.m_equipped).Sum(i=>i.m_shared.m_attackStaminaModifier);
+                float equipment=GameCombatEquipment.Equipped(state).Sum(i=>i.m_shared.m_attackStaminaModifier);
                 rate*=1+equipment;float original=rate;
                 foreach(var effect in effects)effect.ModifyAttackStaminaUsage(original,ref rate);
                 // Integrate both sides of the full-charge threshold. Splitting a
