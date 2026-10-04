@@ -174,7 +174,17 @@ namespace Overhaul.Persistence
         internal static void Close()
         {
             if(writer==null)return;
-            InventoryMoveGame.FinishSession();Capture();Players?.Dispose();Players=null;writer.Dispose();writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();InventoryMoveReservations.Clear();
+            try { InventoryMoveGame.FinishSession(); Capture(); }
+            finally
+            {
+                try { Players?.Dispose(); }
+                finally
+                {
+                    Players=null;
+                    try { writer.Dispose(); }
+                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();InventoryMoveReservations.Clear(); }
+                }
+            }
         }
     }
 

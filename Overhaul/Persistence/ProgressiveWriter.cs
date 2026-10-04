@@ -68,6 +68,20 @@ namespace Overhaul.Persistence
             }
             wake.Set();return completion.Task;
         }
+        // Close player connections on their owning thread even when a world snapshot fails.
+        // This never runs gameplay writes after a failed snapshot.
+        internal Task Cleanup(Action action)
+        {
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Action run = () => { try { action(); completion.TrySetResult(true); } catch (Exception error) { completion.TrySetException(error); } };
+            lock(gate)
+            {
+                if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
+                commands.Enqueue(new Command { Run = _ => run(), Fail = _ => run() });
+                submitted++;
+            }
+            wake.Set(); return completion.Task;
+        }
         internal void Flush()
         {
             lock(gate)

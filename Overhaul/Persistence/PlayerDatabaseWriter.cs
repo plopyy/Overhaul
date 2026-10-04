@@ -137,8 +137,9 @@ namespace Overhaul.Persistence
             lock (gate) { if (stopping) return; stopping = true; }
             if (shared != null)
             {
-                shared.Submit(_ => { foreach (var entry in open.Values) entry.Database.Dispose(); open.Clear(); return true; }).GetAwaiter().GetResult();
-                wake.Dispose(); return;
+                try { shared.Cleanup(() => { foreach (var entry in open.Values) entry.Database.Dispose(); open.Clear(); }).GetAwaiter().GetResult(); }
+                finally { wake.Dispose(); }
+                return;
             }
             wake.Set(); worker.Join(); wake.Dispose();
         }
