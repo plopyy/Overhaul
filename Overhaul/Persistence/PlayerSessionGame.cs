@@ -155,6 +155,9 @@ namespace Overhaul.Persistence
         }
         internal static void Stop()
         {
+            // Final position, wear and map capture still need the admitted avatar
+            // and its loaded scene. Drain before clearing either session binding.
+            InventoryMoveGame.FinishSession();
             GamePlayerAreas.Clear();
             GameAvatarBinding.Clear();
             client?.Dispose(); client = null;

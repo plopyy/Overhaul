@@ -47,6 +47,7 @@ namespace Overhaul.Persistence
         internal void Edit(PlayerChange[] rows)
         {
             if(rows.Length>64)throw new InvalidOperationException("Map edit exceeds limit");
+            var accepted=new List<PlayerChange>(edits);
             foreach(var row in rows)
             {
                 var v=row.Values;
@@ -58,9 +59,10 @@ namespace Overhaul.Persistence
                 else if(row.Table=="knowledge")
                 {if((string)v[0]!="map_pin_author"||((string)v[1]).Length>64||!row.Delete&&((string)v[2]).Length>256)throw new InvalidOperationException("Invalid map marker author");}
                 else if(row.Table!="state"||row.Delete||(string)v[0]!="map_public"||v[1]==null||Convert.ToInt32(v[1])<0||Convert.ToInt32(v[1])>1)throw new InvalidOperationException("Client map edit cannot modify exploration or character state");
-                edits.RemoveAll(old=>old.SameKey(row));edits.Add(row);
+                accepted.RemoveAll(old=>old.SameKey(row));accepted.Add(row);
             }
-            if(edits.Count>1024)throw new InvalidOperationException("Too many queued map edits");
+            if(accepted.Count>1024)throw new InvalidOperationException("Too many queued map edits");
+            edits.Clear();edits.AddRange(accepted);
         }
         internal GameMapSession(PlayerDatabaseWriter writer,PlayerIdentity identity,PlayerSnapshot state,Action<PlayerChange[],bool> publish)
         {
