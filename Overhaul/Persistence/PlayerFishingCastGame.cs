@@ -122,7 +122,9 @@ namespace Overhaul.Persistence
                 var ownerObject=ZNetScene.instance.FindInstance(new ZDOID(data.GetLong(OwnerUser,0),unchecked((uint)data.GetInt(OwnerId,0))));
                 var owner=ownerObject?ownerObject.GetComponent<Character>():null;var prefab=FloatPrefab(flight.gameObject);
                 var top=owner?prefab.GetRodTop(owner):null;
-                if(!top)throw new InvalidOperationException("Fishing rod tip is unavailable at impact");
+                // Unequipping the rod or disconnecting during flight ends the cast.
+                // Persist removal instead of throwing on every physics tick.
+                if(!top){Land(flight,normal,water,true);return;}
                 var point=flight.transform.position+flight.transform.TransformDirection(flight.m_spawnOffset)+normal*.25f;
                 var rotation=flight.m_copyProjectileRotation?flight.transform.rotation:Quaternion.identity;
                 var output=GamePersistence.AllocateActionObject(prefab.gameObject,point,rotation,true);
