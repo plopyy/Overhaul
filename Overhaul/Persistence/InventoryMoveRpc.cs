@@ -66,6 +66,7 @@ namespace Overhaul.Persistence
             var eating = !reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Consume;
             if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
+            if(!reply.Notification)PlayerFishingGame.Confirm(Controller.Pending);
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
             if (!reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Trash) PlayerDropGame.TrashFeedback();
             if (!reply.Notification && reply.Accepted && (Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Buy || Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Sell))
@@ -127,6 +128,7 @@ namespace Overhaul.Persistence
         {
             if (disposed) return;
             disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
+            if(Controller!=null)PlayerFishingGame.Clear();
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });

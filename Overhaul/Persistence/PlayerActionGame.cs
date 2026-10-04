@@ -24,7 +24,9 @@ namespace Overhaul.Persistence
             switch (command.Kind)
             {
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
-                case PlayerActionKind.UseOn: return command.Definition == PlayerOfferingGame.Interaction ? PlayerOfferingGame.Prepare(actor,request,snapshot,inventory) : PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
+                case PlayerActionKind.UseOn:
+                    if(command.Definition==PlayerFishingGame.Catch || command.Definition==PlayerFishingGame.Pickup)return PlayerFishingGame.Prepare(actor,request,snapshot,inventory);
+                    return command.Definition == PlayerOfferingGame.Interaction ? PlayerOfferingGame.Prepare(actor,request,snapshot,inventory) : PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Equip: case PlayerActionKind.Unequip: return PlayerEquipmentGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Consume: return command.Definition == PlayerFoodGame.Placed ? PlayerFoodGame.FromWorld(actor,request,snapshot) : command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
@@ -47,6 +49,8 @@ namespace Overhaul.Persistence
         private static GameObject Target(PlayerActionCommand command) => command.TargetId == 0 ? null : ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
         private static PlayerActionPlan Pickup(ZDO actor, InventoryMoveRequest request, PlayerSnapshot snapshot, PlayerActionInventory inventory)
         {
+            if(Target(request.Gameplay)?.GetComponent<Fish>())
+            {request.Gameplay.Definition=PlayerFishingGame.Pickup;return PlayerFishingGame.Prepare(actor,request,snapshot,inventory);}
             var target = Target(request.Gameplay); var drop = target ? target.GetComponent<ItemDrop>() : null;
             var view = drop ? drop.m_nview : null; var data = view && view.IsValid() ? view.GetZDO() : null;
             if (data == null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) ||
