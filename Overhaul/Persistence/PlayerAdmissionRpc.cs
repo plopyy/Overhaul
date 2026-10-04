@@ -40,7 +40,7 @@ namespace Overhaul.Persistence
         }
 
         internal PlayerAdmissionClient Client => client;
-        internal bool Closed => closed;
+        internal bool Closed => closed && (inventory == null || inventory.Finished) && inventory?.StorageFailed != true;
         private void Send(string name, byte[] bytes)
         {
             var package = new ZPackage(); package.Write(bytes); rpc.Invoke(name, package);
@@ -60,7 +60,7 @@ namespace Overhaul.Persistence
         }
         internal void Tick()
         {
-            if (closed) return;
+            if (closed) { if(Closed)server?.Dispose(); return; }
             if (!rpc.IsConnected()) { Fail(new IOException("Character connection closed")); return; }
             if (server != null) server.Tick(); else client.Tick();
             if (inventory == null && !closed)
@@ -82,7 +82,11 @@ namespace Overhaul.Persistence
         public void Dispose()
         {
             if (closed) return;
-            closed = true; inventory?.Dispose(); server?.Dispose(); client?.Dispose();
+            closed = true; inventory?.Dispose();
+            // Keep the account admitted until the previous session's writes drain;
+            // a rapid reconnect must not load an earlier revision from SQLite.
+            if(Closed)server?.Dispose();
+            client?.Dispose();
             rpc.Register<ZPackage>(receiveName, Ignore);
         }
     }
