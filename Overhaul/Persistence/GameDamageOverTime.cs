@@ -25,6 +25,7 @@ namespace Overhaul.Persistence
             internal float Damage;
         }
         [ThreadStatic] private static Frame current;
+        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield));
         private static void Change(Frame frame,IEnumerable<PlayerChange> rows)
         {
             var changes=rows.ToArray();
@@ -45,7 +46,17 @@ namespace Overhaul.Persistence
                     {
                         int id=Convert.ToInt32(header.Values[0]);var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id);
                         var effect=GameStatusCodec.Restore(rows,player);
-                        if(!(effect is SE_Burning) && !(effect is SE_Poison))continue;
+                        if(!Supported(effect))continue;
+                        if(!(effect is SE_Burning) && !(effect is SE_Poison))
+                        {
+                            // These native types only advance their age. Avoid
+                            // IsDone on shields: it raises skills and emits FX.
+                            effect.m_time+=(float)seconds;
+                            if(effect.m_ttl>0&&effect.m_time>effect.m_ttl)
+                                Change(frame,new[]{new PlayerChange("status",true,id)});
+                            else Change(frame,GameStatusCodec.Delta(frame.State,effect,new ZDOID(Convert.ToInt64(header.Values[4]),checked((uint)Convert.ToInt64(header.Values[5])))));
+                            continue;
+                        }
                         double remaining=seconds;int iterations=0;
                         while(remaining>0 && !effect.IsDone())
                         {

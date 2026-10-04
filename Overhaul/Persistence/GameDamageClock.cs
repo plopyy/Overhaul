@@ -15,7 +15,7 @@ namespace Overhaul.Persistence
         internal void Reset()=>advanced=stopped??Time.timeAsDouble;
         internal void Freeze(){if(!stopped.HasValue)stopped=Time.timeAsDouble;}
         internal static bool Active(PlayerSnapshot state)=>state!=null&&PlayerResources.Read(state,"health")>0&&state.Rows.Any(r=>r.Table=="status"&&
-            (ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])) is SE_Burning||ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0])) is SE_Poison));
+            GameDamageOverTime.Supported(ObjectDB.instance.GetStatusEffect(Convert.ToInt32(r.Values[0]))));
         internal PlayerActionPlan Prepare(PlayerSnapshot state,Player player,bool final=false)
         {
             if(!player||!Active(state)){Reset();return null;}
