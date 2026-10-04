@@ -66,7 +66,7 @@ namespace Overhaul.Persistence
             else{Remove(SEMan.s_statusEffectCold);Remove(SEMan.s_statusEffectFreezing);}
             string statistic=((int)PlayerStatType.MaxComfort).ToString(CultureInfo.InvariantCulture);
             var known=state.Rows.FirstOrDefault(row=>row.Table=="knowledge"&&(string)row.Values[0]=="statistics:0:values"&&(string)row.Values[1]==statistic);
-            double maximum=known==null?0:double.Parse((string)known.Values[2],CultureInfo.InvariantCulture);
+            float maximum=known==null?0:float.Parse((string)known.Values[2],CultureInfo.InvariantCulture);
             if(sample.Comfort>maximum)Change(new[]{PlayerCraftProgressGame.Increment(current,"statistics:0:values",statistic,sample.Comfort-maximum)});
             return changes.ToArray();
         }
