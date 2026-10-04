@@ -19,12 +19,13 @@ namespace Overhaul.Persistence
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
+            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state"),player);
             bool resize = reply.Player.Changes.Any(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "uniques" &&
                 ((string)r.Values[1]).StartsWith(Player.InventoryRowsKey+" ",StringComparison.OrdinalIgnoreCase));
             int rows = resize ? InventoryMoveGame.PlayerRows(reply.Player.Changes) : 0;
             int height = resize ? rows + Slots.ExtraRows + Slots.HiddenRows : playerInventory.m_height;
             var bag = PrepareSized(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
-                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects")), reply.Snapshot,null,height);
+                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects" && r.Table != "state")), reply.Snapshot,null,height);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () => PlayerEquipmentGame.Present(() =>
             {
@@ -50,6 +51,7 @@ namespace Overhaul.Persistence
                 progression();
                 food();
                 potions();
+                guardian();
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)

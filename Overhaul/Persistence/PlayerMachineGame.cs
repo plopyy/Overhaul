@@ -28,6 +28,8 @@ namespace Overhaul.Persistence
             if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
+            if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
+                return PlayerStandGame.Prepare(actor,target,request,snapshot,inventory);
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
@@ -119,7 +121,7 @@ namespace Overhaul.Persistence
                 fermenter.GetStatus() != Fermenter.Status.Ready)
                 throw new InvalidOperationException("Fermenter is not ready for collection");
             var data = fermenter.m_nview.GetZDO(); var conversion = fermenter.GetItemConversion(fermenter.GetContent());
-            if (conversion?.m_to == null || conversion.m_producedItems < 1 || conversion.m_producedItems > 128 || !fermenter.m_outputPoint)
+            if (conversion?.m_to == null || conversion.m_producedItems < 1 || conversion.m_producedItems > 127 || !fermenter.m_outputPoint)
                 throw new InvalidOperationException("Invalid fermentation output");
             var position = fermenter.m_outputPoint.position + Vector3.up*0.3f;
             var outputs = new List<ObjectRecord>();
