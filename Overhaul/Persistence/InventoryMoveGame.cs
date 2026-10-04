@@ -82,6 +82,12 @@ namespace Overhaul.Persistence
             private Container opened;
             internal bool Views(Container value) => opened == value;
             internal static bool HasViewers(Container value) => value && viewers.ContainsKey(value);
+            internal static Access Viewer(ZRpc connection,Container value)
+            {
+                if (value && viewers.TryGetValue(value,out var group))
+                    return group.FirstOrDefault(a => ReferenceEquals(a.rpc,connection) && a.opened == value);
+                return null;
+            }
             internal static void Clear() => viewers.Clear();
             internal Access(ZRpc rpc, PlayerAdmission.Session session) { this.rpc = rpc; this.session = session; }
             internal InventoryMoveLease Reserve(InventoryMoveRequest request)
@@ -114,7 +120,7 @@ namespace Overhaul.Persistence
                         var contents = InventoryMovePresentation.Prepare(chest.GetInventory(), effect, false);
                         chest.GetInventory().m_inventory.Clear(); chest.GetInventory().m_inventory.AddRange(contents);
                         chest.GetInventory().Changed(); chest.Save();
-                        Broadcast(chest, effect, rpc);
+                        Broadcast(chest, effect, request.Gameplay == null ? rpc : null);
                     }, keys => GamePersistence.ReserveSlots(id, keys), keys =>
                     {
                         GamePersistence.ReleaseSlots(zdo, keys);

@@ -23,6 +23,12 @@ namespace Overhaul.Persistence
         }
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
+            var record = Remove(actor,request,inventory);
+            return new PlayerActionPlan(new PlayerWorldAction(inventory.Delta(request.Action.Operation,snapshot.Revision),
+                new Dictionary<long,ObjectRecord> { [record.Id] = record }),() => GamePersistence.PublishActionObject(record));
+        }
+        private static ObjectRecord Remove(ZDO actor,InventoryMoveRequest request,PlayerActionInventory inventory)
+        {
             int slot = request.Action.FromY*256+request.Action.FromX;
             var item = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true); item.m_customData = inventory.Data(slot);
             int amount = request.Action.Amount;
@@ -31,10 +37,31 @@ namespace Overhaul.Persistence
             inventory.Remove(slot,amount); item.m_stack = amount; item.m_equipped = false; item.m_customData.Remove("eaqs_parked");
             if (amount < originalAmount) { var remainder = inventory.Item(slot); remainder[7] = false; inventory.Set(slot,remainder); }
             var rotation = actor.GetRotation(); var forward = rotation*Vector3.forward;
-            var record = Ground(item,actor.GetPosition()+forward+Vector3.up,rotation,actor.GetLong(ZDOVars.s_playerID,0),
+            return Ground(item,actor.GetPosition()+forward+Vector3.up,rotation,actor.GetLong(ZDOVars.s_playerID,0),
                 (forward+Vector3.up)*(item.GetWeight(-1) >= 300f ? 0.5f : 5f));
-            return new PlayerActionPlan(new PlayerWorldAction(inventory.Delta(request.Action.Operation,snapshot.Revision),
-                new Dictionary<long,ObjectRecord> { [record.Id] = record }),() => GamePersistence.PublishActionObject(record));
+        }
+        internal static PlayerActionPlan FromContainer(ZRpc rpc,ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var command = request.Gameplay; var target = ZNetScene.instance.FindInstance(new ZDOID(command.TargetUser,command.TargetId));
+            var chest = target ? target.GetComponent<Container>() : null; var access = InventoryMoveGame.Access.Viewer(rpc,chest);
+            if (access == null) throw new InvalidOperationException("Drop source inventory is not open");
+            var lease = access.Reserve(new InventoryMoveRequest { ContainerUser = command.TargetUser,ContainerId = command.TargetId,
+                Action = request.Action,Gameplay = command });
+            try
+            {
+                var package = new ZPackage(); chest.GetInventory().Save(package); var before = PlayerNativeFormat.DecodeInventory(package.GetArray());
+                var bag = new PlayerActionInventory(before,lease.Layout); var record = Remove(actor,request,bag);
+                var delta = bag.Delta(request.Action.Operation,0);
+                if (!lease.Reserve(ContainerVersions.Slots(delta))) throw new InvalidOperationException("Drop source slot is busy");
+                var action = new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,Array.Empty<PlayerChange>()),
+                    new Dictionary<long,ObjectRecord> { [record.Id] = record },
+                    new Dictionary<long,PlayerContainerAction> { [lease.ObjectId] = new PlayerContainerAction(before,delta) });
+                return new PlayerActionPlan(action,() =>
+                {
+                    GamePersistence.PublishActionObject(record); lease.Publish(action.CommittedContainers[lease.ObjectId]); lease.Dispose();
+                });
+            }
+            catch { lease.Dispose(); throw; }
         }
         [HarmonyPatch(typeof(Humanoid),nameof(Humanoid.DropItem))]
         private static class Intent
@@ -44,9 +71,16 @@ namespace Overhaul.Persistence
             {
                 if (__instance != Player.m_localPlayer || !PlayerSessionGame.Managed) return true;
                 __result = false;
-                if (item == null || amount <= 0 || inventory != null && inventory != __instance.GetInventory() ||
-                    !__instance.GetInventory().ContainsItem(item) || __instance.IsTeleporting()) return false;
-                InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Drop },item.m_gridPos.x,item.m_gridPos.y,Math.Min(amount,item.m_stack));
+                inventory = inventory ?? __instance.GetInventory();
+                if (item == null || amount <= 0 || !inventory.ContainsItem(item) || __instance.IsTeleporting()) return false;
+                var endpoint = InventoryMoveGame.Client; var id = ZDOID.None;
+                if (inventory != __instance.GetInventory())
+                {
+                    var chest = endpoint?.Container;
+                    if (!chest || !endpoint.ManagedView(chest) || inventory != chest.GetInventory() || !chest.m_nview || !chest.m_nview.IsValid()) return false;
+                    id = chest.m_nview.GetZDO().m_uid;
+                }
+                endpoint?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Drop,TargetUser = id.UserID,TargetId = id.ID },item.m_gridPos.x,item.m_gridPos.y,Math.Min(amount,item.m_stack));
                 return false;
             }
         }
