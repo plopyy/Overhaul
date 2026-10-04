@@ -11,6 +11,7 @@ namespace Overhaul.Persistence
             GameBlockControl.Forget(player.GetZDOID());
             GameHitFeedback.Forget(player.GetZDOID());
             GameGuardianPower.Forget(player.GetZDOID());
+            GameMovementControl.Forget(player.GetZDOID());
             player.m_lastHit=hit.Clone();player.m_isDead=true;
             player.m_nview.GetZDO().Set(ZDOVars.s_dead,true);player.SetHealth(0);
             player.CreateDeathEffects();
