@@ -48,7 +48,8 @@ namespace Overhaul.Persistence
         internal static bool Reeling(ZDOID actor)=>inputs.TryGetValue(actor,out var input) && Time.time-input.Received<1.5f && input.Reel;
         internal static bool Cancelling(ZDOID actor)=>inputs.TryGetValue(actor,out var input) && Time.time-input.Received<1.5f && input.Cancel;
         internal static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
-        internal static void Clear(){draws.Clear();inputs.Clear();queued=null;sentControl=lastReel=lastCancel=false;nextControl=0;}
+        internal static void ClearClient(){queued=null;sentControl=lastReel=lastCancel=false;nextControl=0;}
+        internal static void Clear(){draws.Clear();inputs.Clear();ClearClient();}
         internal static void Close(){Clear();owned.Clear();landings.Clear();ValidateNibble.Clear();}
         internal static bool HasServerLines=>Enabled && owned.Count!=0;
         internal static void TrackRestored(ZDO data){if(data.GetLong(OwnerUser,0)!=0)owned.Add(data.m_uid);}

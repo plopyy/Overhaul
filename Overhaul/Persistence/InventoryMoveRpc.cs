@@ -14,8 +14,13 @@ namespace Overhaul.Persistence
         private readonly InventoryMoveService server;
         private readonly PlayerProgressService progress;
         private PlayerSnapshot canonical;
+        private ZDOID knownActor;
         private double pendingStamina;
-        internal PlayerSnapshot State(ZDOID actor)=>!disposed && canonical!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor?canonical:null;
+        internal PlayerSnapshot State(ZDOID actor)
+        {
+            if(disposed || canonical==null || PlayerSessionGame.Actor(rpc)?.m_uid!=actor)return null;
+            knownActor=actor;return canonical;
+        }
         internal bool ActionBusy=>server?.Busy==true;
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
         internal bool Spending(ZDOID actor,float amount,float delay)
@@ -228,8 +233,8 @@ namespace Overhaul.Persistence
             if (disposed) return;
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();deferredRequest=null;
-            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.Clear();}
-            else {var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)PlayerFishingCastGame.Forget(actor.m_uid);}
+            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
+            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone())PlayerFishingCastGame.Forget(actor);}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
