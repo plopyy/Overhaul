@@ -181,6 +181,8 @@ namespace Overhaul.Persistence
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,ZPackage>("Overhaul_MovementControl",(sender,token,packet)=>
+            {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementControl.Receive(PlayerSessionGame.Actor(rpc),packet);});
             rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(sender,token,held,forward)=>
             {if(ReferenceEquals(sender,rpc)&&token==nonce)GameBlockControl.Control(PlayerSessionGame.Actor(rpc),held,forward);});
             rpc.Register<string,bool,bool,Vector3>("Overhaul_AttackControl",(sender,token,primary,secondary,aim)=>
@@ -264,6 +266,7 @@ namespace Overhaul.Persistence
         internal void AttackControl(bool primary,bool secondary,Vector3 aim){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_AttackControl",nonce,primary,secondary,aim);}
         internal void ReloadControl(bool cancel,int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_ReloadControl",nonce,cancel,x,y);}
         internal void BlockControl(bool held,Vector3 forward){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_BlockControl",nonce,held,forward);}
+        internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
@@ -347,7 +350,7 @@ namespace Overhaul.Persistence
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
-            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();}
+            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();GameMovementControl.ClientTick();}
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
@@ -369,13 +372,14 @@ namespace Overhaul.Persistence
             if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);damageClock.Freeze();QueueDamage(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
             progress?.Close();serverActions?.Close();deferredRequest=null;
-            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();GameBlockControl.ClearClient();}
-            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);GameStatusRuntime.Forget(actor);GameGuardianPower.Forget(actor);}}
+            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();GameAttackRuntime.ClearClient();GameBlockControl.ClearClient();GameMovementControl.ClearClient();}
+            else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone()){PlayerFishingCastGame.Forget(actor);GameAttackRuntime.Forget(actor);GameAttackRuntime.ForgetControls(actor);GameBlockControl.Forget(actor);GameHitFeedback.Forget(actor);GameStatusRuntime.Forget(actor);GameGuardianPower.Forget(actor);GameMovementControl.Forget(actor);}}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
+            if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});
             if (server != null) rpc.Register<string,bool,bool,Vector3>("Overhaul_AttackControl",(_,__,___,____,_____)=>{ });
             if (server != null) rpc.Register<string,int,int,int>("Overhaul_BowControl",(_,__,___,____,_____)=>{ });
             if (server != null) rpc.Register<string,bool,int,int>("Overhaul_ReloadControl",(_,__,___,____,_____)=>{ });
