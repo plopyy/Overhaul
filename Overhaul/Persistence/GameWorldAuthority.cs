@@ -22,7 +22,7 @@ namespace Overhaul.Persistence
                 owned=!prefab.GetComponent<Character>() && (prefab.GetComponent<IDestructible>()!=null || prefab.GetComponent<ItemDrop>() ||
                     prefab.GetComponent<Container>() || prefab.GetComponent<TerrainComp>() || prefab.GetComponent<Smelter>() ||
                     prefab.GetComponent<CookingStation>() || prefab.GetComponent<Fermenter>() || prefab.GetComponent<Fireplace>() ||
-                    prefab.GetComponent<Beehive>() || prefab.GetComponent<SapCollector>() || prefab.GetComponent<Projectile>() || prefab.GetComponent<Aoe>());
+                    prefab.GetComponent<Beehive>() || prefab.GetComponent<SapCollector>() || prefab.GetComponent<Projectile>() || prefab.GetComponent<Aoe>() || prefab.GetComponent<Ship>());
                 prefabs.Add(hash,owned);
             }
             return owned;

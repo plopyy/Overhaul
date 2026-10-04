@@ -21,15 +21,19 @@ namespace Overhaul.Persistence
         internal static void Attach(Player player,ZNetView target,int kind,int index)
         {
             if(!player||!target||!target.IsValid())return;
-            Transform point;GameObject colliders=null;bool hide=false,ship=false;string animation;Vector3 offset;
+            Transform point;GameObject colliders=null;bool hide=false,ship=false;string animation;Vector3 offset;IDoodadController controller=null;
             if(kind==1)
             {var bed=target.GetComponent<Bed>();if(!bed)return;point=bed.m_spawnPoint;colliders=bed.gameObject;hide=true;animation="attach_bed";offset=new Vector3(0,.5f,0);}
+            else if(kind==3)
+            {var saddles=target.GetComponentsInChildren<Sadle>(true);if(index<0||index>=saddles.Length)return;var saddle=saddles[index];point=saddle.m_attachPoint;colliders=saddle.m_character.gameObject;animation=saddle.m_attachAnimation;offset=saddle.m_detachOffset;controller=saddle;}
+            else if(kind==4)
+            {var controls=target.GetComponentsInChildren<ShipControlls>(true);if(index<0||index>=controls.Length)return;var helm=controls[index];point=helm.m_attachPoint;ship=true;animation=helm.m_attachAnimation;offset=helm.m_detachOffset;controller=helm;}
             else
             {var chairs=target.GetComponentsInChildren<Chair>(true);if(kind!=2||index<0||index>=chairs.Length)return;var chair=chairs[index];point=chair.m_attachPoint;ship=chair.m_inShip;animation=chair.m_attachAnimation;offset=chair.m_detachOffset;}
             if(!point)return;
             if(links.TryGetValue(player.GetZDOID(),out var old)&&old.Point==point)return;
             bool previous=applying;applying=true;
-            try{player.AttachStop();player.AttachStart(point,colliders,hide,kind==1,ship,animation,offset);}
+            try{player.AttachStop();player.AttachStart(point,colliders,hide,kind==1,ship,animation,offset);if(controller!=null)player.StartDoodadControl(controller);}
             finally{applying=previous;}
             var link=new Link{Player=player,Target=target,Point=point,Kind=kind,Index=index};links[player.GetZDOID()]=link;if(GameCreatureAuthority.Enabled)cooldowns[player.GetZDOID()]=Time.timeAsDouble+2;
             Animation(player,animation,true);Publish(player,link);
@@ -37,6 +41,7 @@ namespace Overhaul.Persistence
         internal static void Detach(Player player)
         {
             if(!player||player.IsSleeping())return;
+            GameVehicleRuntime.Release(player);
             string animation=player.m_attachAnimation;bool previous=applying;applying=true;
             try{player.AttachStop();}finally{applying=previous;}
             if(links.Remove(player.GetZDOID())){Animation(player,animation,false);Publish(player,null);}
@@ -84,7 +89,7 @@ namespace Overhaul.Persistence
                 if(!__instance.IsSleeping())InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.UseOn,Definition=PlayerFurnitureGame.Leave});return false;
             }
             private static void Postfix(Player __instance)
-            {if(!applying&&!__instance.m_attached&&links.Remove(__instance.GetZDOID()))Publish(__instance,null);}
+            {if(!applying&&!__instance.m_attached&&links.Remove(__instance.GetZDOID())){GameVehicleRuntime.Release(__instance);Publish(__instance,null);}}
         }
         [HarmonyPatch(typeof(Player),"OnDestroy")]
         private static class Cleanup
