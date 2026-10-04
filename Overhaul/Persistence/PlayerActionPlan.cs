@@ -6,6 +6,7 @@ namespace Overhaul.Persistence
     {
         internal readonly PlayerWorldAction Change;
         internal readonly Action Publish;
+        internal InventoryMoveLayout NextLayout;
         internal PlayerActionPlan(PlayerWorldAction change, Action publish) { Change = change; Publish = publish; }
     }
 }

@@ -29,6 +29,7 @@ namespace Overhaul.Persistence
             var coin = Coins(); if (!coin) throw new InvalidOperationException("Trader currency is unavailable");
             int currency = coin.gameObject.name.GetStableHashCode();
             var extra = new List<PlayerChange>();
+            InventoryMoveLayout nextLayout = null;
             if (command.Kind == PlayerActionKind.Buy)
             {
                 if (request.Action.Amount != 1 || command.Variant < 0 || command.Variant >= trader.m_items.Count) throw new InvalidOperationException("Unknown trade offer");
@@ -37,7 +38,6 @@ namespace Overhaul.Persistence
                 if (offer == null || offer.m_price < 0 || (!string.IsNullOrEmpty(offer.m_requiredGlobalKey) && !ZoneSystem.instance.GetGlobalKey(offer.m_requiredGlobalKey)) ||
                     (!string.IsNullOrEmpty(offer.m_buyKey) && unique.Contains(offer.m_buyKey)) ||
                     (!offer.m_prefab && string.IsNullOrEmpty(offer.m_buyKey))) throw new InvalidOperationException("Trade offer is unavailable");
-                if (offer.m_incrementKey == Player.InventoryRowsKey) throw new InvalidOperationException("Inventory expansion requires the authoritative layout handler");
                 var coins = inventory.Keys.Where(k => inventory.Available(k)).Select(k => new { Key = k,Values = inventory.Item(k) })
                     .Where(p => Convert.ToInt32(p.Values[3]) == currency && !Convert.ToBoolean(p.Values[7]) && Convert.ToInt32(p.Values[11]) >= Game.m_worldLevel).ToArray();
                 if (coins.Sum(p => Convert.ToInt64(p.Values[4])) < offer.m_price) throw new InvalidOperationException("Not enough server currency");
@@ -60,11 +60,20 @@ namespace Overhaul.Persistence
                     if (!string.IsNullOrEmpty(offer.m_incrementKey))
                     {
                         var old = unique.Where(k => k.Split(' ').Length >= 2 && k.Split(' ')[0].Equals(offer.m_incrementKey,StringComparison.OrdinalIgnoreCase)).ToArray();
-                        int value = 0; if (old.Length > 0) int.TryParse(old[0].Split(' ')[1],out value);
+                        bool expansion = offer.m_incrementKey.Equals(Player.InventoryRowsKey,StringComparison.OrdinalIgnoreCase);
+                        int value = expansion ? InventoryMoveGame.PlayerRows(snapshot.Rows) : 0;
+                        if (!expansion && old.Length > 0) int.TryParse(old[0].Split(' ')[1],out value);
                         long next = (long)value + offer.m_incrementAmount;
                         if (next < int.MinValue || next > int.MaxValue) throw new InvalidOperationException("Trade key is out of range");
+                        if (expansion) { next = Math.Min(9,next); if (next <= value) throw new InvalidOperationException("Inventory is already at this size"); }
                         foreach (string key in old) extra.Add(new PlayerChange("knowledge",true,"uniques",key));
                         extra.Add(new PlayerChange("knowledge",false,"uniques",offer.m_incrementKey.ToLowerInvariant()+" "+next.ToString(CultureInfo.InvariantCulture),""));
+                        if (expansion)
+                        {
+                            nextLayout = InventoryMoveGame.PlayerLayout(snapshot.Rows.Concat(extra));
+                            int extraRows = EquipmentAndQuickSlots.Slots.ExtraRows;
+                            inventory.ExpandRows(value+extraRows,(int)next+extraRows,nextLayout);
+                        }
                     }
                 }
             }
@@ -81,7 +90,7 @@ namespace Overhaul.Persistence
             }
             else throw new InvalidOperationException("Invalid trade action");
             var changes = inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.Concat(extra);
-            return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),new Dictionary<long,ObjectRecord>()),() => { });
+            return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),new Dictionary<long,ObjectRecord>()),() => { }) { NextLayout = nextLayout };
         }
         internal static void Feedback(PlayerActionCommand command)
         {

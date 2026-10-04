@@ -11,7 +11,7 @@ namespace Overhaul.Persistence
     internal sealed class PlayerActionInventory
     {
         private readonly PlayerChange[] original;
-        private readonly InventoryMoveLayout layout;
+        private InventoryMoveLayout layout;
         private readonly Dictionary<int, object[]> items = new Dictionary<int, object[]>();
         private readonly Dictionary<int, Dictionary<string,string>> metadata = new Dictionary<int, Dictionary<string,string>>();
         internal PlayerActionInventory(IEnumerable<PlayerChange> rows, InventoryMoveLayout layout)
@@ -37,6 +37,22 @@ namespace Overhaul.Persistence
             int x = Convert.ToInt32(v[1]), y = Convert.ToInt32(v[2]);
             if ((string)v[0] != "main" || x < 0 || x > 255 || y < 0 || y > 255) throw new InvalidDataException("Invalid action inventory cell");
             return y * 256 + x;
+        }
+        internal void ExpandRows(int oldVisible,int newVisible,InventoryMoveLayout next)
+        {
+            if (oldVisible < 1 || newVisible <= oldVisible || newVisible > 251 || next == null) throw new InvalidOperationException("Invalid inventory expansion");
+            var moved = new Dictionary<int,object[]>(); var data = new Dictionary<int,Dictionary<string,string>>();
+            foreach (var pair in items)
+            {
+                var row = (object[])pair.Value.Clone(); int y = Convert.ToInt32(row[2]);
+                if (y >= oldVisible) row[2] = y + newVisible - oldVisible;
+                int key = Key(row);
+                if (!next.Accepts(key,Convert.ToInt32(row[3])) || moved.ContainsKey(key)) throw new InvalidOperationException("Expanded slot does not accept its resident");
+                moved.Add(key,row); data.Add(key,new Dictionary<string,string>(metadata[pair.Key]));
+            }
+            items.Clear(); metadata.Clear();
+            foreach (var pair in moved) { items.Add(pair.Key,pair.Value); metadata.Add(pair.Key,data[pair.Key]); }
+            layout = next;
         }
         internal object[] Item(int key) => items.TryGetValue(key,out var row) ? (object[])row.Clone() : throw new InvalidOperationException("Source slot is empty");
         internal Dictionary<string,string> Data(int key) => new Dictionary<string,string>(metadata[key]);

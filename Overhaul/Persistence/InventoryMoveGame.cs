@@ -47,15 +47,7 @@ namespace Overhaul.Persistence
         }
         internal static InventoryMoveLayout PlayerLayout(IEnumerable<PlayerChange> rows)
         {
-            int visible = Slots.VanillaInventoryHeight;
-            foreach (var row in rows.Where(r => r.Table == "knowledge").Select(r => r.Values))
-                if ((string)row[0] == "uniques")
-                {
-                    string[] key = ((string)row[1]).Split(' ');
-                    if (key.Length >= 2 && key[0].Equals(Player.InventoryRowsKey, StringComparison.OrdinalIgnoreCase) && int.TryParse(key[1], out int count))
-                        visible = Math.Max(1, Math.Min(9, count));
-                }
-            visible += Slots.ExtraRows;
+            int visible = PlayerRows(rows) + Slots.ExtraRows;
             var items = Prefabs(); var cells = new Dictionary<int, IEnumerable<int>>(); var equipment = new Dictionary<int, string>(); var ammo = new List<int>();
             for (int y = 0; y < visible; y++) for (int x = 0; x < Slots.VanillaInventoryWidth; x++) cells.Add(y * 256 + x, null);
             foreach (var slot in Slots.slots.Where(s => s != null && s.IsActive && !s.IsEmptySlot))
@@ -66,6 +58,18 @@ namespace Overhaul.Persistence
                 if (slot.IsAmmoSlot) ammo.Add(key);
             }
             return Layout(cells, items, equipment, ammo);
+        }
+        internal static int PlayerRows(IEnumerable<PlayerChange> rows)
+        {
+            int visible = Slots.VanillaInventoryHeight;
+            foreach (var row in rows.Where(r => r.Table == "knowledge" && !r.Delete).Select(r => r.Values))
+                if ((string)row[0] == "uniques")
+                {
+                    string[] key = ((string)row[1]).Split(' ');
+                    if (key.Length >= 2 && key[0].Equals(Player.InventoryRowsKey, StringComparison.OrdinalIgnoreCase) && int.TryParse(key[1], out int count))
+                        visible = Math.Max(1, Math.Min(9, count));
+                }
+            return visible;
         }
         internal static InventoryMoveLayout ContainerLayout(Container container)
         {

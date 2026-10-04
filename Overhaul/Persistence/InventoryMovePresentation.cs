@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using EquipmentAndQuickSlots;
 
 namespace Overhaul.Persistence
 {
@@ -18,11 +19,16 @@ namespace Overhaul.Persistence
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
-            var bag = Prepare(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
-                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects")), reply.Snapshot);
+            bool resize = reply.Player.Changes.Any(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "uniques" &&
+                ((string)r.Values[1]).StartsWith(Player.InventoryRowsKey+" ",StringComparison.OrdinalIgnoreCase));
+            int rows = resize ? InventoryMoveGame.PlayerRows(reply.Player.Changes) : 0;
+            int height = resize ? rows + Slots.ExtraRows + Slots.HiddenRows : playerInventory.m_height;
+            var bag = PrepareSized(playerInventory, new PlayerBatch(reply.Player.Operation,reply.Player.ExpectedRevision,
+                reply.Player.Changes.Where(r => r.Table != "knowledge" && r.Table != "skills" && r.Table != "food" && r.Table != "effects")), reply.Snapshot,null,height);
             var chest = reply.ContainerAllowed ? Prepare(container, reply.Container, reply.Snapshot, reply.PreserveContainerSlots) : null;
             return () =>
             {
+                if (resize) { Slots.SetBaseRowsForLoad(rows); playerInventory.m_height = height; }
                 var preserved = new HashSet<ItemDrop.ItemData>();
                 if (player)
                 {
@@ -48,9 +54,12 @@ namespace Overhaul.Persistence
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)
                     foreach (var item in bag.Where(i => i.m_equipped && !player.IsItemEquiped(i)).ToArray()) player.EquipItem(item, false);
+                if (resize && InventoryGui.instance && InventoryGui.instance.m_player) InventoryGui.instance.SetInventorySize(rows+Slots.ExtraRows);
             };
         }
         internal static List<ItemDrop.ItemData> Prepare(Inventory inventory, PlayerBatch data, bool snapshot, HashSet<int> preserve = null)
+            => PrepareSized(inventory,data,snapshot,preserve,inventory == null ? 0 : inventory.m_height);
+        private static List<ItemDrop.ItemData> PrepareSized(Inventory inventory, PlayerBatch data, bool snapshot, HashSet<int> preserve,int height)
         {
             if (inventory == null || data == null) throw new InvalidDataException("Inventory view is unavailable");
             var items = snapshot ? new Dictionary<int, ItemDrop.ItemData>() : inventory.m_inventory.ToDictionary(i => i.m_gridPos.y * 256 + i.m_gridPos.x);
@@ -61,7 +70,7 @@ namespace Overhaul.Persistence
             {
                 if (row.Table != "inventory" && row.Table != "item_data" || snapshot && row.Delete) throw new InvalidDataException("Invalid inventory effect table");
                 var values = row.Values; int x = Convert.ToInt32(values[1]), y = Convert.ToInt32(values[2]), key = y * 256 + x;
-                if ((string)values[0] != "main" || x < 0 || x >= inventory.m_width || y < 0 || y >= inventory.m_height)
+                if ((string)values[0] != "main" || x < 0 || x >= inventory.m_width || y < 0 || y >= height)
                     throw new InvalidDataException("Inventory effect is outside the layout");
                 if (snapshot && preserve?.Contains(key) == true) continue;
                 if (row.Table == "inventory")

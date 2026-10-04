@@ -26,7 +26,7 @@ namespace Overhaul.Persistence
     {
         private readonly PlayerAdmission.Session session;
         private readonly PlayerDatabaseWriter writer;
-        private readonly InventoryMoveLayout layout;
+        private InventoryMoveLayout layout;
         private readonly Func<InventoryMoveRequest, InventoryMoveLease> reserve;
         private readonly Action<byte[]> send;
         private readonly Action<Exception> failed;
@@ -101,7 +101,7 @@ namespace Overhaul.Persistence
                 if (actionCommit != null && actionCommit.IsCompleted)
                 {
                     var result = actionCommit.GetAwaiter().GetResult(); actionCommit = null;
-                    actionPlan.Publish(); actionPlan = null;
+                    actionPlan.Publish(); if (actionPlan.NextLayout != null) layout = actionPlan.NextLayout; actionPlan = null;
                     Complete(new InventoryMoveReply { Nonce = session.Nonce, Accepted = true, Player = result });
                 }
                 if (plan != null && plan.IsCompleted)
