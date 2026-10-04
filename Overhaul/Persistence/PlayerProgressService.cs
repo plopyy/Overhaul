@@ -45,8 +45,8 @@ namespace Overhaul.Persistence
             return new PlayerSnapshot(snapshot.Revision,rows);
         }
         internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" || row.Table=="status" || row.Table=="status_data" ||
-            row.Table=="spawn" && !row.Delete && (string)row.Values[0]=="logout" ||
-            row.Table=="state" && !row.Delete && (PlayerResources.IsKey((string)row.Values[0]) || (string)row.Values[0]==PlayerFoodClock.Key || (string)row.Values[0]==PlayerEffectClock.Key || (string)row.Values[0]=="time_since_death");
+            row.Table=="spawn" && !row.Delete && ((string)row.Values[0]=="logout" || (string)row.Values[0]=="home") ||
+            row.Table=="state" && !row.Delete && (PlayerResources.IsKey((string)row.Values[0]) || (string)row.Values[0]==PlayerFoodClock.Key || (string)row.Values[0]==PlayerEffectClock.Key || (string)row.Values[0]=="time_since_death" || (string)row.Values[0]=="first_spawn");
         private readonly PlayerIdentity identity;
         private readonly PlayerDatabaseWriter writer;
         private readonly Action<PlayerBatch> publish;

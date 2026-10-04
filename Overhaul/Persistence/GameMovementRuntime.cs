@@ -45,8 +45,18 @@ namespace Overhaul.Persistence
             // One outstanding position update per actor. Slow disks cannot grow
             // an unbounded queue of intermediate physics coordinates.
             motion.PositionPending=true;
-            if(!InventoryMoveGame.Progress(actor,current=>GameDeathProgress.IsDead(current)||PlayerResources.Read(current,"health")<=0?Array.Empty<PlayerChange>():
-                new[]{new PlayerChange("spawn",false,"logout",(double)point.x,(double)point.y,(double)point.z)},()=>
+            if(!InventoryMoveGame.Progress(actor,current=>
+                {
+                    if(GameDeathProgress.IsDead(current)||PlayerResources.Read(current,"health")<=0)return Array.Empty<PlayerChange>();
+                    var rows=new List<PlayerChange>{new PlayerChange("spawn",false,"logout",(double)point.x,(double)point.y,(double)point.z)};
+                    var first=current.Rows.FirstOrDefault(row=>row.Table=="state"&&(string)row.Values[0]=="first_spawn");
+                    if(first!=null&&Convert.ToBoolean(first.Values[1]))
+                    {
+                        rows.Add(new PlayerChange("state",false,"first_spawn",false,null,null,null));
+                        if(!current.Rows.Any(row=>row.Table=="spawn"&&(string)row.Values[0]=="home"))rows.Add(new PlayerChange("spawn",false,"home",(double)point.x,(double)point.y,(double)point.z));
+                    }
+                    return rows.ToArray();
+                },()=>
                 {motion.PositionPending=false;motion.HaveSavedPosition=true;motion.SavedPosition=point;}))motion.PositionPending=false;
         }
         internal static ZPackage View(ZDOID actor)

@@ -9,7 +9,7 @@ namespace Overhaul.Persistence
 {
     internal static class GameLifeView
     {
-        internal static bool IsKey(string key)=>key==GameDeathProgress.Dead||key=="time_since_death"||key==GameRespawnGame.After;
+        internal static bool IsKey(string key)=>key==GameDeathProgress.Dead||key=="time_since_death"||key==GameRespawnGame.After||key=="first_spawn";
         private static PlayerChange[] initial;
         internal static void Initial(IEnumerable<PlayerChange> rows)=>initial=rows?.Where(r=>r.Table=="state"&&IsKey((string)r.Values[0])).ToArray();
         [HarmonyPatch(typeof(Player),nameof(Player.Load))]
@@ -29,6 +29,8 @@ namespace Overhaul.Persistence
                 var v=row.Values;
                 if(row.Table=="state"&&!row.Delete&&IsKey((string)v[0]))
                 {
+                    if((string)v[0]=="first_spawn")
+                    {int value=Convert.ToInt32(v[1]);if(value!=0&&value!=1)throw new InvalidDataException("Invalid first spawn flag");updates.Add(()=>profile.m_firstSpawn=value==1);continue;}
                     if((string)v[0]==GameRespawnGame.After){long ticks=Convert.ToInt64(v[1]);if(ticks<0||ticks>DateTime.MaxValue.Ticks)throw new InvalidDataException("Invalid respawn deadline");continue;}
                     if((string)v[0]==GameDeathProgress.Dead)
                     {
