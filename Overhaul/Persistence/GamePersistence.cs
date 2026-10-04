@@ -17,6 +17,27 @@ namespace Overhaul.Persistence
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
         internal static bool HasReservations => actionReservations.Count != 0 || inventoryReservations.Count != 0;
+        internal static ObjectRecord AllocateActionObject(GameObject prefab,Vector3 position,Quaternion rotation)
+        {
+            var view = prefab ? prefab.GetComponent<ZNetView>() : null;
+            if (!CanSave() || !view || !view.m_persistent) throw new InvalidOperationException("Persistent world prefab is unavailable");
+            var manager = ZDOMan.instance; ZDOID uid;
+            do { uint serial = manager.m_nextUid; manager.m_nextUid = checked(serial+1); uid = new ZDOID(manager.m_sessionID,serial); }
+            while (uid.IsNone() || manager.GetZDO(uid) != null);
+            var chunk = ZoneSystem.GetZonesChunk(ZoneSystem.GetSectorIndex(position));
+            // Allocate identifiers only. No ZDO, sector entry or network-visible object exists before commit.
+            return new ObjectRecord { Id = checked(++nextId),User = uid.UserID,NetworkId = uid.ID,
+                Chunk = 1+chunk.Chunk,Prefab = prefab.name.GetStableHashCode(),Name = prefab.name,
+                Flags = 256 | (view.m_distant ? 512 : 0) | ((int)view.m_type << 10),
+                Position = GameSnapshot.Components(position),Rotation = GameSnapshot.Components(rotation.eulerAngles) };
+        }
+        internal static void PublishActionObject(ObjectRecord record)
+        {
+            var uid = new ZDOID(record.User,record.NetworkId);
+            if (ids.ContainsKey(uid) || ZDOMan.instance.GetZDO(uid) != null) throw new IOException("Committed spawn identifier already exists");
+            var data = GameSnapshot.Restore(ZDOMan.instance,record); data.SetOwner(ZNet.GetUID());
+            ids.Add(uid,record.Id); Mark(uid);
+        }
         internal static ObjectRecord ReserveAction(ZDO data)
         {
             if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid) || InventoryReserved(data.m_uid))

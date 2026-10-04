@@ -26,6 +26,7 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn: return PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
+                case PlayerActionKind.Drop: return PlayerDropGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Repair:
                 {
                     var station = Target(command)?.GetComponent<CraftingStation>();

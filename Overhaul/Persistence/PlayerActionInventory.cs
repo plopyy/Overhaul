@@ -5,6 +5,8 @@ using System.Linq;
 
 namespace Overhaul.Persistence
 {
+    internal sealed class PlayerInventoryFullException : InvalidOperationException
+    { internal PlayerInventoryFullException() : base("Inventory is full") { } }
     // A detached server inventory. An unsuccessful action discards this instance.
     internal sealed class PlayerActionInventory
     {
@@ -109,7 +111,7 @@ namespace Overhaul.Persistence
             var candidates = layout.Slots.Where(k => layout.Accepts(k,prefab) && (items.ContainsKey(k) ? maximum > 1 && Merge(k) : layout.Ordinary(k) || layout.Ammo(k)))
                 .OrderBy(k => items.ContainsKey(k) ? 0 : 1).ThenBy(k => k).ToArray();
             if (candidates.Sum(k => (long)maximum - (items.ContainsKey(k) ? Convert.ToInt32(items[k][4]) : 0)) < left)
-                throw new InvalidOperationException("Inventory is full");
+                throw new PlayerInventoryFullException();
             foreach (int key in candidates)
             {
                 bool exists = items.TryGetValue(key,out var target); int count = exists ? Convert.ToInt32(target[4]) : 0;

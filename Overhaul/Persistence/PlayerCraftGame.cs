@@ -66,6 +66,7 @@ namespace Overhaul.Persistence
                 else if (!free)
                     foreach (var requirement in requirements) resources.Consume(requirement.m_resItem,checked(requirement.GetAmount(quality)*count));
                 var extra = new List<PlayerChange>();
+                var spawned = new List<ObjectRecord>();
                 if (station && station.m_craftingSkill != Skills.SkillType.None && recipe.m_item.m_itemData.m_shared.m_maxStackSize > 1)
                 {
                     var gui = CraftGui(); float chance = gui ? gui.m_craftBonusChance : 0.25f; int amount = gui ? gui.m_craftBonusAmount : 1;
@@ -103,8 +104,14 @@ namespace Overhaul.Persistence
                     }
                     else
                     {
-                        if (UnityEngine.Random.value < PlayerCraftProgressGame.LootChance(snapshot) && recipe.m_item.m_itemData.m_shared.m_maxStackSize > 1) produced++;
                         Add(inventory,recipe.m_item,produced,quality,command.Variant,playerId,playerName,cheated);
+                        if (recipe.m_item.m_itemData.m_shared.m_maxStackSize > 1 && UnityEngine.Random.value < PlayerCraftProgressGame.LootChance(snapshot))
+                        {
+                            // Overhaul's extra item is a clone of the template, with its own metadata.
+                            var bonus = recipe.m_item.m_itemData.Clone(); bonus.m_dropPrefab = recipe.m_item.gameObject; bonus.m_stack = 1; bonus.m_equipped = false;
+                            try { inventory.Add(PlayerActionGame.Row(bonus).Values,bonus.m_customData); }
+                            catch (PlayerInventoryFullException) { spawned.Add(PlayerDropGame.Ground(bonus,actor.GetPosition()+Vector3.up,Quaternion.identity)); }
+                        }
                     }
                 }
                 if (recipe.m_craftingStation && recipe.m_craftingStation.m_craftingSkill != Skills.SkillType.None)
@@ -116,7 +123,7 @@ namespace Overhaul.Persistence
                 return resources.Finish(new PlayerBatch(delta.Operation,delta.ExpectedRevision,delta.Changes.Concat(extra)),() =>
                 {
                     if (station) (success ? station.m_craftItemDoneEffects : station.m_craftItemDoneFailEffects)?.Create(actor.GetPosition(),Quaternion.identity,null,1f,-1,default(ZDOID));
-                });
+                },spawned);
             }
         }
         private static InventoryGui CraftGui() => InventoryGui.instance ? InventoryGui.instance :
