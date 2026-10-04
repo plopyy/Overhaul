@@ -206,6 +206,10 @@ namespace Overhaul.Persistence
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
                 batch=>{Committed(batch,true);if(batch.Changes.Any(r=>r.Table=="inventory" || r.Table=="knowledge" && (string)r.Values[0]=="stations"))Discover();});
             server.CanAct=request=>!GameDeathProgress.IsDead(canonical)||GameRespawnGame.Intent(request);
+            // The shared action gate publishes each commit into canonical before
+            // another action starts. Reuse it instead of rereading eleven tables
+            // for every resource tick and gameplay intention.
+            progress.Snapshot=serverActions.Snapshot=server.Snapshot=()=>canonical;
             foreach(var row in session.Snapshot.Rows.Where(r=>r.Table=="knowledge" && (string)r.Values[0]=="stations"))observedStations[(string)row.Values[1]]=Convert.ToInt32(row.Values[2]);
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();

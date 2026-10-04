@@ -53,6 +53,7 @@ namespace Overhaul.Persistence
         internal bool Busy => request != null;
         internal bool StorageFailed { get; private set; }
         internal Func<InventoryMoveRequest,bool> CanAct;
+        internal Func<PlayerSnapshot> Snapshot;
 
         internal InventoryMoveService(PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout,
             Func<InventoryMoveRequest, InventoryMoveLease> reserve, Action<byte[]> send, Action<Exception> failed,
@@ -81,7 +82,7 @@ namespace Overhaul.Persistence
                     if (incoming.Gameplay != null)
                     {
                         if (prepareAction == null) throw new InvalidOperationException("Player action handler is unavailable");
-                        actionState = writer.ActionState(session.Identity);
+                        actionState = Snapshot==null?writer.ActionState(session.Identity):Task.FromResult(Snapshot());
                     }
                     else if (incoming.Open) Synchronize();
                     else plan = writer.PlanTransfer(session.Identity, incoming.Action, layout, lease?.ObjectId ?? 0, lease?.Layout);

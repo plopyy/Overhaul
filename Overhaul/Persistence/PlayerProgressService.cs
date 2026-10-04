@@ -62,6 +62,7 @@ namespace Overhaul.Persistence
         internal bool Failed=>broken;
         internal bool Busy=>read!=null || commit!=null;
         internal bool Finished=>!Busy && queued.Count==0;
+        internal Func<PlayerSnapshot> Snapshot;
         internal PlayerProgressService(PlayerIdentity identity,PlayerDatabaseWriter writer,Action<PlayerBatch> publish,Action<Exception> failed)
         {this.identity=identity;this.writer=writer;this.publish=publish;this.failed=failed;}
         internal bool Enqueue(Func<PlayerSnapshot,IEnumerable<PlayerChange>> action,Action confirmed=null)
@@ -97,7 +98,7 @@ namespace Overhaul.Persistence
                     else{result=new PlayerBatch(Guid.NewGuid().ToString("N"),snapshot.Revision,changes);commit=writer.CommitProgress(identity,result);}
                 }
                 if(!Busy && !playerActionBusy && queued.Count!=0)
-                {active=queued.ToArray();queued.Clear();read=writer.ActionState(identity);}
+                {active=queued.ToArray();queued.Clear();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
             }
             catch(Exception error){broken=true;failed(error);}
         }

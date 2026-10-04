@@ -24,6 +24,7 @@ namespace Overhaul.Persistence
         internal bool Failed { get; private set; }
         internal bool Busy=>active!=null;
         internal bool Finished=>!Busy && queued.Count==0;
+        internal Func<PlayerSnapshot> Snapshot;
         internal PlayerServerActions(PlayerIdentity identity,PlayerDatabaseWriter writer,Action<PlayerBatch> publish,Action<Exception> failed)
         {this.identity=identity;this.writer=writer;this.publish=publish;this.failed=failed;}
         internal bool Enqueue(Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
@@ -59,7 +60,7 @@ namespace Overhaul.Persistence
                     }
                 }
                 if(!Busy && !otherActionBusy && queued.Count!=0)
-                {active=queued.Dequeue();read=writer.ActionState(identity);}
+                {active=queued.Dequeue();read=Snapshot==null?writer.ActionState(identity):Task.FromResult(Snapshot());}
             }
             catch(Exception error){Fail(error);}
         }
