@@ -12,7 +12,7 @@ namespace Overhaul.Persistence
         {
             internal ItemDrop.ItemData Weapon;
             internal int Slot;
-            internal double Began,Seen,Paid,End=-1,Next;
+            internal double Began,Seen,Paid,Prepared,End=-1,Next;
             internal bool Released,Pending,Consumed,Exhausted;
         }
         internal sealed class Shot
@@ -63,7 +63,12 @@ namespace Overhaul.Persistence
             if(!InventoryMoveGame.Progress(actor,state=>
             {
                 if(draw.Consumed)return Array.Empty<PlayerChange>();
-                paid=Until(draw);var step=GameWeaponPreparation.Advance(state,draw.Weapon,false,draw.Paid,paid);
+                paid=Until(draw);var step=GameWeaponPreparation.Advance(state,draw.Weapon,false,Math.Max(draw.Paid,draw.Prepared),paid);
+                // A close flush may share the same progress transaction with an
+                // already queued tick. Reserve that interval during preparation
+                // so the second callback only accounts for the remaining tail.
+                // A failed transaction closes the endpoint; it is never reused.
+                draw.Prepared=paid;
                 exhausted=step.Exhausted;return step.Changes;
             },()=>
             {
