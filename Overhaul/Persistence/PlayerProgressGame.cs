@@ -90,6 +90,7 @@ namespace Overhaul.Persistence
             var tool=PlayerInventoryView.ReadItem(inventory.Item(request.Action.FromY*256+request.Action.FromX),null,true);
             if(!tool.m_equipped || !tool.m_shared.m_buildPieces || tool.m_shared.m_attack==null)throw new InvalidOperationException("Construction tool is unavailable");
             float stamina=tool.m_shared.m_attack.m_attackStamina,eitr=request.Gameplay.Definition==PlayerBuildGame.Remove?0:tool.m_shared.m_attack.m_attackEitr;
+            if(PlayerBuildGame.PlantingRules(tool,request.Gameplay.Definition)&&!global::Advize_PlantEasily.ModContext.config.UseStamina)stamina=0;
             if(stamina==0 && eitr==0)return Array.Empty<PlayerChange>();
             float equipment=0;
             foreach(int slot in inventory.Keys)

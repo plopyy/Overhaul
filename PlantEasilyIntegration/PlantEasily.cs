@@ -15,10 +15,10 @@ internal static class PlantEasily
     internal static Harmony Patches;
     internal static void Initialize(ManualLogSource logger)
     {
-        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
         ModContext.ModLogger = logger;
         ModContext.config = new ModConfig(new ConfigFile(Path.Combine(Paths.ConfigPath,
             "plopyy.valheim.Overhaul.PlantEasily.cfg"), true));
+        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
         Patches = new Harmony("plopyy.valheim.Overhaul.PlantEasily");
         foreach (var type in typeof(PlantEasily).Assembly.GetTypes())
             if (type.Namespace == "Advize_PlantEasily") Patches.CreateClassProcessor(type).Patch();

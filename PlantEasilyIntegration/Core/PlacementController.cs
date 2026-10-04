@@ -53,6 +53,7 @@ internal sealed class PlacementController : MonoBehaviour
     private IEnumerator BulkPlanting(GameObject piecePrefab)
     {
         Player player = Player.m_localPlayer;
+        bool serverPlacement=Overhaul.Persistence.PlayerSessionGame.Managed;
         _isPlanting = true;
         int count = 0;
 
@@ -76,15 +77,15 @@ internal sealed class PlacementController : MonoBehaviour
         //Plant stuff in batches
         foreach (GameObject go in new List<GameObject>(ValidExtraGhosts))
         {
-            if(Overhaul.Persistence.PlayerSessionGame.Managed)
+            if(serverPlacement)
             {
                 var controller=Overhaul.Persistence.InventoryMoveGame.Client?.Controller;
                 while(controller!=null&&!controller.Closed&&controller.Busy)yield return null;
-                if(controller==null||controller.Closed||!ServerPlacementAccepted||!player||player.IsDead()||!go||!player.GetRightItem()?.m_shared.m_buildPieces)break;
+                if(!Overhaul.Persistence.PlayerSessionGame.Managed||controller==null||controller.Closed||!ServerPlacementAccepted||!player||player.IsDead()||!go||!player.GetRightItem()?.m_shared.m_buildPieces)break;
             }
             count++;
             PlacePiece(player, go, piecePrefab);
-            if(Overhaul.Persistence.PlayerSessionGame.Managed)
+            if(serverPlacement)
             {
                 var controller=Overhaul.Persistence.InventoryMoveGame.Client?.Controller;
                 while(controller!=null&&!controller.Closed&&controller.Busy)yield return null;

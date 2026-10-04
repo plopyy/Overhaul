@@ -11,6 +11,12 @@ namespace Overhaul.Persistence
         internal const string Repair="build.repair", Remove="build.remove";
         internal const string Debt="build_remove_debt";
         private static readonly int Placed="overhaul_build_placed".GetStableHashCode();
+        internal static bool PlantingRules(ItemDrop.ItemData tool,string definition)
+        {
+            if(global::Advize_PlantEasily.ModContext.config?.ModActive!=true||!tool.m_dropPrefab||Utils.GetPrefabName(tool.m_dropPrefab)!="Cultivator")return false;
+            var prefab=tool.m_shared.m_buildPieces?.m_pieces.FirstOrDefault(piece=>piece&&piece.name==definition);
+            return prefab&&global::Advize_PlantEasily.ModUtils.IsPlantOrPickable(prefab);
+        }
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
             var costs=PlayerResourceGame.BuildCost(request,snapshot,inventory);
@@ -41,7 +47,7 @@ namespace Overhaul.Persistence
             using(var resources=new PlayerCraftResourcesGame(inventory,station,creator))
             {
                 if(!free)foreach(var requirement in piece.m_resources.Where(r=>r.m_resItem && r.m_amount>0))resources.Consume(requirement.m_resItem,requirement.m_amount);
-                if(tool.m_shared.m_useDurability)
+                if(tool.m_shared.m_useDurability&&(!PlantingRules(tool,command.Definition)||global::Advize_PlantEasily.ModContext.config.UseDurability))
                 {
                     float factor=tool.m_shared.m_placementDurabilitySkill==Skills.SkillType.None?0:PlayerCraftProgressGame.Factor(snapshot,tool.m_shared.m_placementDurabilitySkill);
                     tool.m_durability=Mathf.Max(0,tool.m_durability-tool.m_shared.m_useDurabilityDrain*(1-tool.m_shared.m_placementDurabilityMax*factor)*Game.m_durabilityRate);
