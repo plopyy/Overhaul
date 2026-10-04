@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
 
 namespace Overhaul.Persistence
@@ -38,10 +39,21 @@ namespace Overhaul.Persistence
 
         // Native damage messages contain damage amounts; only the server may originate
         // them for server-simulated creatures. Player attack intents use a separate path.
-        [HarmonyPatch(typeof(Character),"RPC_Damage")]
+        [HarmonyPatch]
         private static class DamageOrigin
         {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {
+                foreach(string name in new[]{"RPC_Damage","RPC_Heal","RPC_AddAdrenaline","RPC_SetTamed","RPC_Stagger","RPC_TeleportTo","RPC_FreezeFrame"})
+                    yield return AccessTools.Method(typeof(Character),name);
+            }
             private static bool Prefix(Character __instance,long sender)
+            {return !__instance.m_nview || !__instance.m_nview.IsValid() || !Owns(__instance.m_nview.GetZDO()) || sender==ZNet.GetUID();}
+        }
+        [HarmonyPatch(typeof(SEMan),"RPC_AddStatusEffect")]
+        private static class EffectOrigin
+        {
+            private static bool Prefix(SEMan __instance,long sender)
             {return !__instance.m_nview || !__instance.m_nview.IsValid() || !Owns(__instance.m_nview.GetZDO()) || sender==ZNet.GetUID();}
         }
     }
