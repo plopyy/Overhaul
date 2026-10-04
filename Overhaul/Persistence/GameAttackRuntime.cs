@@ -83,7 +83,7 @@ namespace Overhaul.Persistence
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             if(!player || !player.m_animator || !player.m_zanim || !player.m_animEvent || !player.m_body || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
                 throw new InvalidOperationException("Character cannot start this attack");
-            if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() || previous.Pending || previous.BurstPending))
+            if(running.TryGetValue(actor.m_uid,out var previous) && (previous.Pending || previous.BurstPending || !previous.Attack.IsDone()&&!previous.Attack.CanStartChainAttack()))
                 throw new InvalidOperationException("Previous server attack is still active");
             int slot=request.Gameplay.Definition==Unarmed?-1:request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
@@ -151,7 +151,7 @@ namespace Overhaul.Persistence
                     if(!SameWeapon(current.Weapon,result.Weapon))return null;
                     return new PlayerActionPlan(result.Change,()=>
                     {
-                        if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
+                        if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return;
                         triggered=true;current.Triggered=true;current.Weapon=result.Weapon;current.Ammo=result.Ammo;
                         current.Attack.m_weapon=result.Weapon;
                         InContext(current,state,()=>current.Attack.OnAttackTrigger());
@@ -171,11 +171,11 @@ namespace Overhaul.Persistence
             {
                 try
                 {
-                    if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || current.Attack.IsDone() || !running.TryGetValue(actor,out var active) || active!=current)return null;
+                    if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || current.Attack.IsDone() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return null;
                     var costs=GameAttackResources.Spend(state,current.Weapon,current.Attack,true);
                     return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,costs),new Dictionary<long,ObjectRecord>()),()=>
                     {
-                        if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
+                        if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || !running.TryGetValue(actor,out var active) || active!=current || current.Attack.m_loopingAttack&&!Holding(actor,current.Secondary))return;
                         bool previous=firing;firing=true;
                         try{InContext(current,state,()=>current.Attack.FireProjectileBurst());fired=true;}
                         finally{firing=previous;}
@@ -193,6 +193,8 @@ namespace Overhaul.Persistence
                 if(__instance!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;
                 var weapon=__instance.GetCurrentWeapon();if(Fishing(weapon))return true;
                 __result=false;if(weapon==null)return false;
+                var definition=secondaryAttack?weapon.m_shared.m_secondaryAttack:weapon.m_shared.m_attack;
+                if(__instance.InAttack() && (definition==null || definition.m_loopingAttack || definition.m_attackChainLevels<=1 || !__instance.m_animEvent || !__instance.m_animEvent.CanChain()))return false;
                 if(clientIntent!=null)return false;
                 var rotation=Quaternion.LookRotation(__instance.GetLookDir());
                 clientIntent=new ClientIntent{Weapon=weapon.Clone(),X=weapon.m_gridPos.x,Y=weapon.m_gridPos.y,Deadline=Time.timeAsDouble+1,
