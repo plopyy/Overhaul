@@ -42,9 +42,11 @@ namespace Overhaul.Persistence
 
         internal static void RespawnCommitted(ZRpc rpc, ZDOID previous)
         {
-            GameSpawnPoint.Forget(rpc);
-            if (PlayerSessionGame.IsLocal(rpc)) return;
+            if (PlayerSessionGame.IsLocal(rpc))
+            {GameSpawnPoint.Forget(rpc);InventoryMoveGame.RespawnCommitted(rpc);return;}
             if (!bindings.TryGetValue(rpc, out var binding) || binding.Current != previous) return;
+            GameSpawnPoint.Forget(rpc);
+            InventoryMoveGame.RespawnCommitted(rpc);
             binding.Retired = System.Math.Max(binding.Retired, previous.ID);
             binding.Current = ZDOID.None;
             binding.Available = true;

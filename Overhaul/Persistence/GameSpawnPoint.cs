@@ -21,6 +21,7 @@ namespace Overhaul.Persistence
         internal static IEnumerable<Vector3> Areas => pending.Values.Where(r => r.HavePoint).Select(r => r.Point);
         internal static void Forget(ZRpc rpc) => pending.Remove(rpc);
         internal static void Clear() => pending.Clear();
+        internal static int Kind(ZRpc rpc) => pending.TryGetValue(rpc,out var resolution)&&resolution.Ready ? resolution.Stage : -1;
 
         internal static bool Resolve(ZRpc rpc, PlayerSnapshot state, out Vector3 point)
         {
@@ -85,15 +86,20 @@ namespace Overhaul.Persistence
         internal static void Tick(ZRpc rpc, ZDO actor, PlayerServerActions actions)
         {
             if (actor == null || !pending.TryGetValue(rpc, out var resolution) || !resolution.Ready || resolution.Pending) return;
-            if (resolution.Rejected.Count == 0) { pending.Remove(rpc); return; }
+            if (resolution.Rejected.Count == 0 && resolution.Stage == 0) { pending.Remove(rpc); return; }
             resolution.Pending = true;
             if (!actions.Enqueue(state =>
             {
                 // A bed selected after spawning must not be removed by a delayed
                 // correction for the previous bed.
                 var rows = resolution.Rejected.Where(old => state.Rows.Any(row => row.SameKey(old) && row.Values.SequenceEqual(old.Values)))
-                    .Select(old => new PlayerChange("spawn", true, old.Values[0])).ToArray();
-                if (rows.Length == 0) return null;
+                    .Select(old => new PlayerChange("spawn", true, old.Values[0])).ToList();
+                if(resolution.Stage!=0)
+                {
+                    var home=new PlayerChange("spawn",false,"home",(double)resolution.Point.x,(double)resolution.Point.y,(double)resolution.Point.z);
+                    if(!state.Rows.Any(row=>row.SameKey(home)&&row.Values.SequenceEqual(home.Values)))rows.Add(home);
+                }
+                if (rows.Count == 0) return null;
                 return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"), state.Revision, rows), new Dictionary<long, ObjectRecord>()), () => { });
             }, () => { if (pending.TryGetValue(rpc, out var current) && ReferenceEquals(current, resolution)) pending.Remove(rpc); })) resolution.Pending = false;
         }

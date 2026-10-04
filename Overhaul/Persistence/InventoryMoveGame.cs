@@ -22,6 +22,8 @@ namespace Overhaul.Persistence
                 Action = request.Action,Gameplay = command });
         }
         private static readonly List<InventoryMoveRpc> connections = new List<InventoryMoveRpc>();
+        internal static void RespawnCommitted(ZRpc rpc)
+        {foreach(var endpoint in connections)endpoint.RespawnCommitted(rpc);}
         internal static bool Progress(ZDOID actor,Func<PlayerSnapshot,IEnumerable<PlayerChange>> action,Action confirmed=null)
         {foreach(var endpoint in connections)if(endpoint.Progress(actor,action,confirmed))return true;return false;}
         internal static bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)

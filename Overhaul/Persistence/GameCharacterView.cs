@@ -21,7 +21,12 @@ namespace Overhaul.Persistence
             if(State==null||!Game.instance)throw new InvalidOperationException("Confirmed character spawn data is unavailable");
             var rows=State.Rows.ToArray();
             byte[] native=PlayerNativeFormat.Encode(rows,PlayerSessionGame.Appearance());
-            Game.instance.GetPlayerProfile().m_playerData=native;
+            var previous=Game.instance.GetPlayerProfile();long world=ZNet.m_world.m_uid;
+            var profile=PlayerProfileBridge.Restore(rows,world,native,null);
+            // Preserve the already loaded map without encoding or copying it at
+            // each spawn. All gameplay fields come from confirmed server rows.
+            if(previous.m_worldData.TryGetValue(world,out var data))profile.m_worldData[world].m_mapData=data.m_mapData;
+            Game.instance.m_playerProfile=profile;
             PlayerPotionGame.Initial(rows);GameStatusGame.Initial(rows);GameLifeView.Initial(rows);PlayerResourceGame.Initial(rows);
         }
     }

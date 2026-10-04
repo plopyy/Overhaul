@@ -23,6 +23,16 @@ namespace Overhaul.Persistence
         private bool wearPending,identityPending;
         private readonly GameDamageClock damageClock=new GameDamageClock();
         private bool damagePending;
+        private int spawnGeneration;
+        private bool spawnRequested;
+        internal void RespawnCommitted(ZRpc connection)
+        {if(server!=null&&ReferenceEquals(connection,rpc)){spawnGeneration=checked(spawnGeneration+1);spawnRequested=false;}}
+        private void QueueSpawn()
+        {
+            if(!spawnRequested||PlayerSessionGame.Actor(rpc)!=null)return;
+            if(!GameSpawnPoint.Resolve(rpc,canonical,out var point))return;
+            spawnRequested=false;rpc.Invoke("Overhaul_SpawnPoint",nonce,GameSpawnControl.Encode(spawnGeneration,point,GameSpawnPoint.Kind(rpc)));
+        }
         private void QueueDamage(bool final=false)
         {
             if(serverActions==null||damagePending&&!final)return;
@@ -184,6 +194,7 @@ namespace Overhaul.Persistence
             wearRates=GameEquipmentWear.Rates(canonical);IdentifyItems();
             Discover();
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,int>("Overhaul_RequestSpawn",(sender,token,epoch)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce&&epoch==spawnGeneration)spawnRequested=true;});
             rpc.Register<string,bool>("Overhaul_StaffGuardControl",(sender,token,held)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameStaffGuardRuntime.ControlInput(PlayerSessionGame.Actor(rpc),held);});
             rpc.Register<string,ZPackage>("Overhaul_MovementControl",(sender,token,packet)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementControl.Receive(PlayerSessionGame.Actor(rpc),packet);});
@@ -211,6 +222,7 @@ namespace Overhaul.Persistence
             rpc.Register<ZPackage>(Response, Receive);
             rpc.Register<ZPackage>(ProgressResponse,ReceiveProgress);
             rpc.Register<ZPackage>(ServerActionResponse,ReceiveServerAction);
+            rpc.Register<string,ZPackage>("Overhaul_SpawnPoint",(sender,token,packet)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameSpawnControl.Receive(packet);});
             rpc.Register<string,ZPackage>("Overhaul_MovementView",(sender,token,packet)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementView.Receive(packet);});
             rpc.Register<string,int,int,bool>("Overhaul_ReloadReady",(sender,token,x,y,ready)=>
@@ -229,7 +241,12 @@ namespace Overhaul.Persistence
         }
         private void ApplyServer(InventoryMoveReply reply)
         {
-            var player=Player.m_localPlayer;if(!player)throw new InvalidDataException("Player disappeared during server inventory update");
+            var player=Player.m_localPlayer;
+            if(!player)
+            {
+                if(GameCharacterView.State==null)throw new InvalidDataException("Confirmed character is unavailable during loading");
+                GameCharacterView.Confirm(reply.Player,false,true);return;
+            }
             InventoryMovePresentation.Stage(player.GetInventory(),null,reply,player)();
             var gui=InventoryGui.instance;
             if(!gui)return;
@@ -246,6 +263,11 @@ namespace Overhaul.Persistence
                 int length=package.ReadInt();if(length<0 || length!=package.Size()-package.GetPos())throw new InvalidDataException("Invalid progress response length");
                 var reply=InventoryMoveProtocol.Reply(package.ReadByteArray(length));if(reply.Nonce!=nonce)return;
                 if(!reply.Accepted || reply.Snapshot || reply.Notification || reply.ContainerAllowed || reply.Player.Changes.Any(r=>!PlayerProgressService.Allowed(r)))throw new InvalidDataException("Invalid server progress response");
+                if(!Player.m_localPlayer)
+                {
+                    if(GameCharacterView.State==null)throw new InvalidDataException("Confirmed character is unavailable during loading");
+                    GameCharacterView.Confirm(reply.Player);return;
+                }
                 var progressView=PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="skills" || r.Table=="knowledge"),Player.m_localPlayer);
                 var resourceView=PlayerResourceGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="state" && PlayerResources.IsKey((string)r.Values[0])),Player.m_localPlayer);
                 var foodView=PlayerFoodGame.Presentation(reply.Player.Changes.Where(r=>r.Table=="food"),Player.m_localPlayer);
@@ -274,6 +296,7 @@ namespace Overhaul.Persistence
         internal void BlockControl(bool held,Vector3 forward){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_BlockControl",nonce,held,forward);}
         internal void StaffGuardControl(bool held){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_StaffGuardControl",nonce,held);}
         internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
+        internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
@@ -333,6 +356,7 @@ namespace Overhaul.Persistence
             if (!disposed && !rpc.IsConnected()) Dispose();
             if(!disposed && serverActions!=null)
             {
+                QueueSpawn();
                 var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)
                 {BindActor(actor.m_uid);GameSpawnPoint.Tick(rpc,actor,serverActions);GameBowDraw.Tick(actor);GameWeaponReload.Tick(actor);GameEnvironmentRuntime.Tick(actor);GameStaffGuardRuntime.Tick(actor);GameMovementRuntime.SavePosition(actor.m_uid);var pose=GameMovementRuntime.View(actor.m_uid);if(pose!=null)rpc.Invoke("Overhaul_MovementView",nonce,pose);}
                 CaptureWear();
@@ -388,6 +412,8 @@ namespace Overhaul.Persistence
             if(server!=null)rpc.Register<string,bool>("Overhaul_StaffGuardControl",(_,__,___)=>{});
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if(server==null)rpc.Register<string,ZPackage>("Overhaul_MovementView",(_,__,___)=>{});
+            if(server==null){rpc.Register<string,ZPackage>("Overhaul_SpawnPoint",(_,__,___)=>{});GameSpawnControl.Clear();}
+            else rpc.Register<string,int>("Overhaul_RequestSpawn",(_,__,___)=>{});
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});

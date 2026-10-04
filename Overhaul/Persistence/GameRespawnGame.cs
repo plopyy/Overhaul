@@ -28,7 +28,7 @@ namespace Overhaul.Persistence
         internal static void Reply(InventoryMoveReply reply,InventoryMoveRequest request)
         {
             if(!Intent(request)||reply.Notification)return;
-            if(reply.Accepted){confirmed=true;requested=false;}
+            if(reply.Accepted){confirmed=true;requested=false;GameSpawnControl.Respawn();}
             else if(!reply.Snapshot||reply.Player.ExpectedRevision<=request.Action.PlayerRevision){requested=false;}
         }
         internal static void DeathConfirmed(Player player)
@@ -39,7 +39,7 @@ namespace Overhaul.Persistence
             if(controller==null||controller.Closed||controller.Busy)return;
             if(confirmed)
             {
-                confirmed=false;GameCharacterView.PrepareSpawn();restarting=true;
+                confirmed=false;restarting=true;
                 try{Game.instance._RequestRespawn();}finally{restarting=false;}
                 return;
             }
