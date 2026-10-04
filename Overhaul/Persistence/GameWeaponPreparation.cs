@@ -45,7 +45,7 @@ namespace Overhaul.Persistence
                 float equipment=state.Rows.Where(r=>r.Table=="inventory").Select(r=>PlayerInventoryView.ReadItem(r.Values,null,true))
                     .Where(i=>i.m_equipped).Sum(i=>i.m_shared.m_attackStaminaModifier);
                 rate*=1+equipment;float original=rate;
-                foreach(var effect in effects)effect.ModifyAttackStaminaUsage(original,ref rate,true);
+                foreach(var effect in effects)effect.ModifyAttackStaminaUsage(original,ref rate);
                 // Integrate both sides of the full-charge threshold. Splitting a
                 // time interval into multiple writes must not change its cost.
                 double full=Math.Max(0,until-Math.Max(from,duration));
