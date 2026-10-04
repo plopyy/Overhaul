@@ -13,6 +13,8 @@ namespace Overhaul.Persistence
         private readonly string nonce;
         private readonly InventoryMoveService server;
         private readonly PlayerProgressService progress;
+        private readonly PlayerServerActions serverActions;
+        private const string ServerActionResponse="Overhaul_ServerItemsChanged";
         private PlayerSnapshot canonical;
         private ZDOID knownActor;
         internal PlayerSnapshot SessionState(ZRpc connection)=>!disposed && server!=null && ReferenceEquals(rpc,connection)?canonical:null;
@@ -22,7 +24,9 @@ namespace Overhaul.Persistence
             if(disposed || canonical==null || PlayerSessionGame.Actor(rpc)?.m_uid!=actor)return null;
             knownActor=actor;return canonical;
         }
-        internal bool ActionBusy=>server?.Busy==true;
+        internal bool ActionBusy=>server?.Busy==true || serverActions?.Busy==true;
+        internal bool ServerAction(ZDOID actor,Func<PlayerSnapshot,PlayerActionPlan> prepare,Action confirmed=null)
+            =>!disposed && serverActions!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && serverActions.Enqueue(prepare,confirmed);
         internal double Stamina(ZDOID actor)=>State(actor)==null?0:Math.Max(0,PlayerResources.Read(canonical,"stamina")-pendingStamina);
         internal bool Spending(ZDOID actor,float amount,float delay)
         {
@@ -65,7 +69,7 @@ namespace Overhaul.Persistence
         private readonly InventoryMoveGame.Access access;
         internal readonly InventoryMoveController Controller;
         private bool disposed;
-        internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished);
+        internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished) && (serverActions==null || serverActions.Finished);
         internal bool Progress(ZDOID actor,Func<PlayerSnapshot,System.Collections.Generic.IEnumerable<PlayerChange>> action)
         {return !disposed && progress!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && progress.Enqueue(action);}
         internal Container Container { get; private set; }
@@ -92,6 +96,11 @@ namespace Overhaul.Persistence
             canonical=new PlayerSnapshot(session.Snapshot.Revision,session.Snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));
             progress=new PlayerProgressService(session.Identity,writer,batch=>
             {Committed(batch,false);if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
+            serverActions=new PlayerServerActions(session.Identity,writer,batch=>
+            {
+                Committed(batch,true);Discover();
+                if(!disposed)Send(ServerActionResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));
+            },Fail);
             server = new InventoryMoveService(session, writer, layout, access.Reserve, bytes => Send(Response, bytes), Fail,
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout),
@@ -110,9 +119,31 @@ namespace Overhaul.Persistence
         internal InventoryMoveRpc(ZRpc rpc, string nonce, long revision)
         {
             this.rpc = rpc; this.nonce = nonce;
-            Controller = new InventoryMoveController(nonce, revision, bytes => Send(Request, bytes), Apply, Fail);
+            Controller = new InventoryMoveController(nonce, revision, bytes => Send(Request, bytes), Apply, Fail, ApplyServer);
             rpc.Register<ZPackage>(Response, Receive);
             rpc.Register<ZPackage>(ProgressResponse,ReceiveProgress);
+            rpc.Register<ZPackage>(ServerActionResponse,ReceiveServerAction);
+        }
+        private void ReceiveServerAction(ZRpc sender,ZPackage package)
+        {
+            if(disposed || !ReferenceEquals(sender,rpc))return;
+            try
+            {
+                if(package.Size()>InventoryMoveProtocol.Limit+4)throw new InvalidDataException("Server inventory response exceeds limit");
+                int length=package.ReadInt();if(length<0 || length!=package.Size()-package.GetPos())throw new InvalidDataException("Invalid server inventory response length");
+                Controller.ReceiveServer(package.ReadByteArray(length));
+            }
+            catch(Exception error){Fail(error);}
+        }
+        private void ApplyServer(InventoryMoveReply reply)
+        {
+            var player=Player.m_localPlayer;if(!player)throw new InvalidDataException("Player disappeared during server inventory update");
+            InventoryMovePresentation.Stage(player.GetInventory(),null,reply,player)();
+            var gui=InventoryGui.instance;
+            if(!gui)return;
+            if(gui.m_dragInventory==player.GetInventory() && gui.m_dragItem!=null &&
+                ContainerVersions.Slots(reply.Player).Contains(gui.m_dragItem.m_gridPos.y*256+gui.m_dragItem.m_gridPos.x))gui.SetupDragItem(null,null,1);
+            gui.UpdateCraftingPanel(false);
         }
         private void ReceiveProgress(ZRpc sender,ZPackage package)
         {
@@ -184,8 +215,9 @@ namespace Overhaul.Persistence
                 if (length < 0 || length != package.Size() - package.GetPos()) throw new InvalidDataException("Invalid inventory RPC length");
                 byte[] bytes = package.ReadByteArray(length);
                 // Start already accepted simulation events before reading a new action snapshot.
-                if(server!=null && !server.Busy)progress.Tick(false);
-                if(server!=null && progress.Busy)
+                if(server!=null && !server.Busy)
+                {serverActions.Tick(progress.Busy);progress.Tick(serverActions.Busy);}
+                if(server!=null && (progress.Busy || serverActions.Busy))
                 {if(deferredRequest!=null)throw new InvalidDataException("Multiple requests during server progress update");deferredRequest=bytes;}
                 else if (server != null) server.Receive(bytes); else Controller.Receive(bytes);
             }
@@ -208,8 +240,9 @@ namespace Overhaul.Persistence
                 if(stations.Length!=0)progress.Enqueue(state=>PlayerDiscoveryGame.Refresh(state,stations));
             }
             server?.Tick();
-            progress?.Tick(server?.Busy==true || deferredRequest!=null);
-            if(!disposed && deferredRequest!=null && !progress.Busy)
+            serverActions?.Tick(server?.Busy==true || progress?.Busy==true || deferredRequest!=null);
+            progress?.Tick(server?.Busy==true || serverActions?.Busy==true || deferredRequest!=null);
+            if(!disposed && deferredRequest!=null && !progress.Busy && !serverActions.Busy)
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
@@ -226,18 +259,19 @@ namespace Overhaul.Persistence
         {
             ZLog.LogError("[Overhaul inventory] " + error);
             Dispose(); rpc.GetSocket().Close();
-            if (server?.StorageFailed == true || progress?.Failed == true) ZNet.m_loadError = true;
+            if (server?.StorageFailed == true || progress?.Failed == true || serverActions?.Failed==true) ZNet.m_loadError = true;
         }
         private static void Ignore(ZRpc sender, ZPackage package) { }
         public void Dispose()
         {
             if (disposed) return;
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
-            progress?.Close();deferredRequest=null;
+            progress?.Close();serverActions?.Close();deferredRequest=null;
             if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.ClearClient();}
             else {var actor=PlayerSessionGame.Actor(rpc)?.m_uid??knownActor;if(!actor.IsNone())PlayerFishingCastGame.Forget(actor);}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if(server==null)rpc.Register<ZPackage>(ProgressResponse,Ignore);
+            if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });
             if (server != null) rpc.Register<string,int,int>("Overhaul_FishingDraw",(_,__,___,____)=>{ });

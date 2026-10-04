@@ -10,6 +10,7 @@ namespace Overhaul.Persistence
         private readonly string nonce;
         private readonly Action<byte[]> send;
         private readonly Action<InventoryMoveReply> apply;
+        private readonly Action<InventoryMoveReply> applyServer;
         private readonly Action<Exception> failed;
         private InventoryMoveRequest pending;
         private DateTime deadline;
@@ -23,10 +24,30 @@ namespace Overhaul.Persistence
         internal bool Busy => pending != null;
         internal bool Closed { get; private set; }
         internal InventoryMoveRequest Pending => pending;
-        internal InventoryMoveController(string nonce, long revision, Action<byte[]> send, Action<InventoryMoveReply> apply, Action<Exception> failed)
+        internal InventoryMoveController(string nonce, long revision, Action<byte[]> send, Action<InventoryMoveReply> apply, Action<Exception> failed, Action<InventoryMoveReply> applyServer = null)
         {
             if (!Guid.TryParseExact(nonce, "N", out _) || revision < 0) throw new ArgumentException("Invalid inventory session");
             this.nonce = nonce; PlayerRevision = revision; this.send = send; this.apply = apply; this.failed = failed;
+            this.applyServer = applyServer;
+        }
+        internal void ReceiveServer(byte[] bytes)
+        {
+            if(Closed)return;
+            try
+            {
+                var reply=InventoryMoveProtocol.Reply(bytes);
+                if(reply.Nonce!=nonce)return;
+                if(!reply.Accepted || reply.Snapshot || reply.Notification || reply.ContainerAllowed || reply.Container!=null)
+                    throw new InvalidDataException("Invalid server inventory update");
+                if(reply.Player.ExpectedRevision<PlayerRevision)return; // Repeated confirmed update.
+                if(reply.Player.ExpectedRevision!=PlayerRevision || applyServer==null)
+                    throw new InvalidDataException("Server inventory update revision mismatch");
+                applyServer(reply);
+                PlayerRevision=checked(PlayerRevision+1);
+                // An already sent intent retains its original revision. The server
+                // will reject/resynchronize it instead of applying it to new slots.
+            }
+            catch(Exception error){Fail(error);}
         }
         internal bool Open(long user, uint id)
         {
