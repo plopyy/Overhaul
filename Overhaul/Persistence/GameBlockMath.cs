@@ -37,7 +37,7 @@ namespace Overhaul.Persistence
             float modifier=equipment.Sum(i=>i.m_shared.m_blockStaminaModifier);bool spent=false;
             void Cost(float cost)
             {
-                foreach(var effect in effects)effect.ModifyBlockStaminaUsage(cost,ref cost,false);
+                foreach(var effect in effects)effect.ModifyBlockStaminaUsage(cost,ref cost);
                 if(float.IsNaN(cost)||float.IsInfinity(cost))throw new InvalidOperationException("Invalid block stamina cost");
                 if(cost>0){stamina=Math.Max(0,stamina-cost*Game.m_staminaRate);spent=true;}
                 else stamina=Math.Min(maximum,stamina-cost);
