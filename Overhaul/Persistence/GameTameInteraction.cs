@@ -21,7 +21,7 @@ namespace Overhaul.Persistence
                 throw new InvalidOperationException("Tamed animal is unavailable");
             var data=tame.m_nview.GetZDO();long now=ZNet.instance.GetTime().Ticks;
             if(now<data.GetLong(Next,0))throw new InvalidOperationException("Animal interaction is still cooling down");
-            bool command=tame.m_commandable;
+            Vector3 stopAt=data.GetPosition();bool command=tame.m_commandable;
             if(command && !tame.m_monsterAI)throw new InvalidOperationException("Animal cannot follow a player");
             bool follow=command && string.IsNullOrEmpty(data.GetString(ZDOVars.s_follow,"")) && !tame.m_monsterAI.GetFollowTarget();
             string name=(string)snapshot.Rows.Single(r=>r.Table=="state" && (string)r.Values[0]=="player_name").Values[3];
@@ -32,7 +32,7 @@ namespace Overhaul.Persistence
                 if(command)
                 {
                     world.Set(ZDOVars.s_follow,follow?name:"");world.Set(ZDOVars.s_patrol,follow?0:1);
-                    if(!follow)world.Set(ZDOVars.s_patrolPoint,data.GetPosition());
+                    if(!follow)world.Set(ZDOVars.s_patrolPoint,stopAt);
                 }
                 return world.Finish(new PlayerBatch(request.Action.Operation,snapshot.Revision,new[]{statistic}),()=>
                 {
@@ -40,7 +40,7 @@ namespace Overhaul.Persistence
                     if(command)
                     {
                         tame.m_monsterAI.SetFollowTarget(follow?playerObject:null);
-                        if(follow)tame.m_monsterAI.ResetPatrolPoint();else tame.m_monsterAI.SetPatrolPoint();
+                        if(follow)tame.m_monsterAI.ResetPatrolPoint();else tame.m_monsterAI.SetPatrolPoint(stopAt);
                         tame.m_unsummonTime=0;
                         int maximum=data.GetInt(ZDOVars.s_maxInstances,0);if(follow && maximum>0)tame.UnsummonMaxInstances(maximum);
                     }
