@@ -14,6 +14,37 @@ namespace Overhaul.Persistence
         private static bool Enabled=>PlayerPersistenceConfig.Enabled?.Value==true;
         internal static PlayerActionPlan Prepare(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
+            var plans=new List<PlayerActionPlan>();var targets=new List<ZDOID>();var objects=new Dictionary<long,ObjectRecord>();var updated=new Dictionary<string,PlayerChange>();
+            string Key(PlayerChange r)=>r.Table+":"+r.Values[0]+(r.Table=="knowledge"?":"+r.Values[1]:"");
+            try
+            {
+                var first=PrepareOne(actor,target,request,snapshot);plans.Add(first);targets.Add(target.GetComponent<ZNetView>().GetZDO().m_uid);foreach(var pair in first.Change.Objects)objects.Add(pair.Key,pair.Value);foreach(var row in first.Change.Player.Changes)updated[Key(row)]=row;
+                var pick=target.GetComponent<Pickable>();
+                float radius=Mathf.Clamp(OverhaulConfig.PickupRange?.Value ?? 0,0,20);
+                if(pick && radius>0)
+                {
+                    var candidates=Physics.OverlapSphere(target.transform.position,radius).Select(c=>c.GetComponentInParent<Pickable>()).Where(p=>p && p!=pick && p.m_itemPrefab==pick.m_itemPrefab).Distinct().OrderBy(p=>(p.transform.position-target.transform.position).sqrMagnitude).Take(64);
+                    foreach(var other in candidates)
+                    {
+                        if(objects.Count>=127)break;
+                        var view=other.m_nview;if(!view || !view.IsValid() || !view.GetZDO().Persistent || GamePersistence.ActionReserved(view.GetZDO().m_uid))continue;
+                        var current=new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>!updated.ContainsKey(Key(r))).Concat(updated.Values));
+                        PlayerActionPlan next;try{next=PrepareOne(actor,other.gameObject,request,current);}catch(InvalidOperationException){continue;}
+                        var additions=next.Change.Objects;
+                        if(objects.Count+additions.Count>128){GamePersistence.ReleaseAction(new[]{view.GetZDO().m_uid});break;}
+                        plans.Add(next);targets.Add(view.GetZDO().m_uid);foreach(var pair in additions)objects.Add(pair.Key,pair.Value);foreach(var row in next.Change.Player.Changes)updated[Key(row)]=row;
+                    }
+                }
+                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,updated.Values),objects),()=>{foreach(var plan in plans)plan.Publish();});
+            }
+            catch
+            {
+                GamePersistence.ReleaseAction(targets);
+                throw;
+            }
+        }
+        private static PlayerActionPlan PrepareOne(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
             var view=target.GetComponent<ZNetView>();var data=view.GetZDO();var pick=target.GetComponent<Pickable>();var loose=target.GetComponent<PickableItem>();
             if(request.Action.Amount!=1 || !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)))throw new InvalidOperationException("Harvest is unavailable");
             var outputs=new List<ObjectRecord>();var changes=new List<PlayerChange>();
@@ -98,4 +129,7 @@ namespace Overhaul.Persistence
         }
     }
 }
+
+
+
 

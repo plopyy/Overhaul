@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using HarmonyLib;
 using Overhaul.Utility;
 using UnityEngine;
@@ -318,7 +318,7 @@ namespace Overhaul.Patches
 			public static bool Prepare()
 			{
 				bool available = AccessTools.DeclaredMethod(typeof(FishingFloat), "FixedUpdate") != null;
-				if (!available) Log.LogWarning("FishingFloat.FixedUpdate introuvable : gestion de stamina de pÃªche dÃ©sactivÃ©e.");
+				if (!available) Log.LogWarning("FishingFloat.FixedUpdate introuvable : gestion de stamina de pêche désactivée.");
 				return available;
 			}
 
@@ -357,6 +357,7 @@ namespace Overhaul.Patches
             Pickable pickable = componentInParent as Pickable;
             if (pickable != null)
             {
+                if (Overhaul.Persistence.PlayerSessionGame.Managed) return;
                 foreach (Collider collider in Physics.OverlapSphere(go.transform.position, OverhaulConfig.PickupRange.Value, __instance.m_interactMask))
                 {
                     Pickable pickable2;
@@ -402,3 +403,4 @@ namespace Overhaul.Patches
         }
     }
 }
+

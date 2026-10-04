@@ -127,9 +127,36 @@ namespace Overhaul.Persistence
                 return !Enabled || ZNet.instance && sender==(ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer()?.m_uid);
             }
         }
+        private static Catapult firing;
+        [HarmonyPatch(typeof(Catapult),"ShootProjectile")]
+        private static class ProjectileScope
+        {
+            private sealed class State { internal Catapult Before; internal readonly Dictionary<Projectile,bool> Prefabs=new Dictionary<Projectile,bool>(); }
+            private static bool Prefix(Catapult __instance,out State __state)
+            {
+                __state=null;if(!Enabled)return true;if(__instance.m_loadedItem==null)return false;
+                __state=new State{Before=firing};firing=__instance;
+                foreach(var prefab in new[]{__instance.m_projectile,__instance.m_loadedItem.m_shared.m_attack.m_attackProjectile?__instance.m_loadedItem.m_shared.m_attack.m_attackProjectile.GetComponent<Projectile>():null})
+                    if(prefab && !__state.Prefabs.ContainsKey(prefab))__state.Prefabs.Add(prefab,prefab.m_respawnItemOnHit);
+                return true;
+            }
+            private static Exception Finalizer(State __state,Exception __exception)
+            {
+                if(__state!=null){foreach(var pair in __state.Prefabs)if(pair.Key)pair.Key.m_respawnItemOnHit=pair.Value;firing=__state.Before;}return __exception;
+            }
+        }
+        [HarmonyPatch(typeof(Projectile),nameof(Projectile.Setup))]
+        private static class ProjectileItem
+        {
+            private static void Prefix(Projectile __instance)
+            {
+                if(firing) __instance.m_respawnItemOnHit=!firing.m_includeItemsOverride.Any(i=>i && i.m_itemData.m_shared.m_name==firing.m_loadedItem.m_shared.m_name);
+            }
+        }
         [HarmonyPatch(typeof(Catapult),"Shoot")]
         private static class LegacyShoot {private static bool Prefix()=>!Enabled;}
     }
 }
+
 
 
