@@ -32,6 +32,19 @@ namespace Overhaul.Persistence
     // They leave the inventory revision unchanged and never read a client snapshot.
     internal sealed class PlayerProgressService
     {
+        internal static bool SameKey(PlayerChange a,PlayerChange b)
+        {
+            if(a.Table!=b.Table)return false;
+            if(a.Table=="skills" || a.Table=="food" || a.Table=="effects")return Convert.ToInt32(a.Values[0])==Convert.ToInt32(b.Values[0]);
+            int keys=PlayerDatabase.Tables.Single(t=>t.Name==a.Table).Keys;
+            return a.Values.Take(keys).SequenceEqual(b.Values.Take(keys));
+        }
+        internal static PlayerSnapshot Overlay(PlayerSnapshot snapshot,IEnumerable<PlayerChange> changes)
+        {
+            var rows=snapshot.Rows.ToList();
+            foreach(var change in changes){rows.RemoveAll(r=>SameKey(r,change));if(!change.Delete)rows.Add(change);}
+            return new PlayerSnapshot(snapshot.Revision,rows);
+        }
         internal static bool Allowed(PlayerChange row)=>row.Table=="skills" || row.Table=="knowledge" || row.Table=="food" || row.Table=="effects" ||
             row.Table=="state" && !row.Delete && (PlayerResources.IsKey((string)row.Values[0]) || (string)row.Values[0]==PlayerFoodClock.Key || (string)row.Values[0]==PlayerEffectClock.Key);
         private readonly PlayerIdentity identity;
@@ -72,12 +85,8 @@ namespace Overhaul.Persistence
                         foreach(var row in delta)
                         {
                             if(!Allowed(row))throw new InvalidDataException("Invalid server simulation table");
-                            int keys=PlayerDatabase.Tables.Single(t=>t.Name==row.Table).Keys;
-                            bool Same(PlayerChange old)=>old.Table==row.Table && (row.Table=="skills" || row.Table=="food" || row.Table=="effects"
-                                ? Convert.ToInt32(old.Values[0])==Convert.ToInt32(row.Values[0])
-                                : old.Values.Take(keys).SequenceEqual(row.Values.Take(keys)));
-                            current.RemoveAll(old=>Same(old));if(!row.Delete)current.Add(row);
-                            changes.RemoveAll(old=>Same(old));changes.Add(row);
+                            current.RemoveAll(old=>SameKey(old,row));if(!row.Delete)current.Add(row);
+                            changes.RemoveAll(old=>SameKey(old,row));changes.Add(row);
                         }
                     }
                     if(changes.Count==0)active=null;

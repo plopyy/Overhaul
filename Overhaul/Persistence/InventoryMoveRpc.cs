@@ -24,7 +24,11 @@ namespace Overhaul.Persistence
             if(resourcePending || resourceElapsed<=0 || progress==null)return;
             var actor=PlayerSessionGame.Actor(rpc);if(actor==null)return;
             double seconds=resourceElapsed;resourceElapsed=0;resourcePending=true;
-            if(!progress.Enqueue(state=>{resourcePending=false;return PlayerResourceGame.Simulate(state,actor,seconds);}))resourcePending=false;
+            if(!progress.Enqueue(state=>
+            {
+                resourcePending=false;double elapsed=seconds+resourceElapsed;resourceElapsed=0;
+                return PlayerResourceGame.Simulate(state,actor,elapsed);
+            }))resourcePending=false;
         }
         private readonly System.Collections.Generic.Dictionary<string,int> observedStations=new System.Collections.Generic.Dictionary<string,int>();
         private void Discover()

@@ -27,7 +27,14 @@ namespace Overhaul.Persistence
             }
             changes.Add(PlayerEffectClock.Anchor(PlayerEffectClock.Read(snapshot.Rows)+seconds));
             var stepped=new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>r.Table!="food" && r.Table!="effects" && !(r.Table=="state" && ((string)r.Values[0]==PlayerFoodClock.Key || (string)r.Values[0]==PlayerEffectClock.Key))).Concat(changes.Where(r=>!r.Delete)));
-            changes.AddRange(Advance(stepped,actor,seconds));return changes;
+            changes.AddRange(Advance(stepped,actor,seconds));
+            var regenerated=PlayerProgressService.Overlay(snapshot,changes);
+            bool removedFood=false;
+            foreach(var change in PlayerPotionGame.Periodic(snapshot,regenerated,seconds))
+            {removedFood|=change.Table=="food";changes.RemoveAll(r=>PlayerProgressService.SameKey(r,change));changes.Add(change);}
+            if(removedFood)foreach(var change in Advance(PlayerProgressService.Overlay(snapshot,changes),actor,0))
+            {changes.RemoveAll(r=>PlayerProgressService.SameKey(r,change));changes.Add(change);}
+            return changes;
         }
         internal static IEnumerable<PlayerChange> Advance(PlayerSnapshot snapshot,ZDO actor,double seconds)
         {
