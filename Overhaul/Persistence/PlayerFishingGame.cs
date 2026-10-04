@@ -65,10 +65,14 @@ namespace Overhaul.Persistence
         }
         internal static void Confirm(InventoryMoveRequest request)
         {
-            if(request?.Gameplay?.Definition!=Catch || !waitingFloat)return;
+            if(request?.Gameplay?.Definition!=Catch)return;
             var line=waitingFloat;var fish=waitingFish;Clear();
-            if(fish)fish.OnHooked(null);
-            if(line && line.m_nview && line.m_nview.IsValid()){line.SetCatch(null);line.m_nview.Destroy();}
+            try
+            {
+                if(fish)fish.OnHooked(null);
+                if(line && line.m_nview && line.m_nview.IsValid()){line.SetCatch(null);line.m_nview.Destroy();}
+            }
+            catch(Exception error){ZLog.LogWarning("[Overhaul fishing presentation] "+error.Message);}
         }
         [HarmonyPatch(typeof(FishingFloat),nameof(FishingFloat.Catch))]
         private static class CatchIntent
