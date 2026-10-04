@@ -97,7 +97,7 @@ namespace Overhaul.Persistence
         }
     }
 
-    internal sealed class PlayerDatabase : IDisposable
+    internal sealed partial class PlayerDatabase : IDisposable
     {
         internal sealed class Table
         {

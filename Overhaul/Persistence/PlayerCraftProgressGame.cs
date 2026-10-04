@@ -67,7 +67,7 @@ namespace Overhaul.Persistence
             }
             foreach (var pair in increments) yield return Increment(snapshot,"statistics:0:values",((int)pair.Key).ToString(CultureInfo.InvariantCulture),pair.Value);
         }
-        private static PlayerChange Increment(PlayerSnapshot snapshot,string category,string key,float amount)
+        internal static PlayerChange Increment(PlayerSnapshot snapshot,string category,string key,float amount)
         {
             var before = snapshot.Rows.FirstOrDefault(r => r.Table == "knowledge" && (string)r.Values[0] == category && (string)r.Values[1] == key);
             float value = before == null ? 0 : float.Parse((string)before.Values[2],CultureInfo.InvariantCulture);
@@ -97,6 +97,7 @@ namespace Overhaul.Persistence
                     if (category == "statistics:0:values")
                     { var type = (PlayerStatType)int.Parse(key,CultureInfo.InvariantCulture); effects.Add(() => stats.m_stats[type] = value); }
                     else if (category == "statistics:0:craft") effects.Add(() => stats.m_itemCraftStats[key] = value);
+                    else if (category == "statistics:0:food") effects.Add(() => stats.m_foodEatenStats[key] = value);
                     else throw new System.IO.InvalidDataException("Unsupported progression effect");
                 }
                 else throw new System.IO.InvalidDataException("Unsupported progression table");

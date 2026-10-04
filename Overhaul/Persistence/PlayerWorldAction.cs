@@ -86,10 +86,11 @@ namespace Overhaul.Persistence
             if (player.Revision != action.Player.ExpectedRevision) throw new InvalidOperationException("Stale player action revision");
             var changes = action.Objects; var containers = action.Containers;
             foreach (var pair in containers) pair.Value.Validate(world,pair.Key);
-            if (changes.Count == 0 && containers.Count == 0) player.CommitDelta(action.Player);
+            var batch = action.Player.Changes.Any(r => r.Table == "food") ? PlayerFoodClock.Rebase(action.Player,player.FoodClock) : action.Player;
+            if (changes.Count == 0 && containers.Count == 0) player.CommitDelta(batch);
             else
             {
-                PlayerTransferJournal.Stage(world, player, identity, action.Player, action.Digest(), changes.Keys.Concat(containers.Keys), db =>
+                PlayerTransferJournal.Stage(world, player, identity, batch, action.Digest(), changes.Keys.Concat(containers.Keys), db =>
                 {
                     foreach (var pair in changes)
                         if (pair.Value == null) ObjectSql.Delete(db, pair.Key); else ObjectSql.Write(db, pair.Value);
@@ -98,7 +99,7 @@ namespace Overhaul.Persistence
                 });
                 PlayerTransferJournal.Finish(world, player, identity, action.Player.Operation);
             }
-            return action.Player;
+            return batch;
         });
     }
 }
