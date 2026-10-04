@@ -37,13 +37,14 @@ namespace Overhaul.Persistence
             float modifier=equipment.Sum(i=>i.m_shared.m_blockStaminaModifier);bool spent=false;
             void Cost(float cost)
             {
-                foreach(var effect in effects)effect.ModifyBlockStaminaUsage(cost,ref cost);
+                float baseCost=cost;foreach(var effect in effects)effect.ModifyBlockStaminaUsage(baseCost,ref cost);
                 if(float.IsNaN(cost)||float.IsInfinity(cost))throw new InvalidOperationException("Invalid block stamina cost");
                 if(cost>0){stamina=Math.Max(0,stamina-cost*Game.m_staminaRate);spent=true;}
                 else stamina=Math.Min(maximum,stamina-cost);
             }
-            Cost((timed?definition.m_perfectBlockStaminaDrain:definition.m_blockStaminaDrain*fraction)*(1+modifier));
-            float added=reduced.GetTotalStaggerDamage();foreach(var effect in effects)effect.ModifyStagger(added,ref added);
+            float drain=global::Overhaul.Utility.OverhaulConfig.BlockUseStamina?.Value==false?0:global::Overhaul.Utility.OverhaulConfig.BlockStaminaDrain?.Value??definition.m_blockStaminaDrain;
+            Cost((timed?definition.m_perfectBlockStaminaDrain:drain*fraction)*(1+modifier));
+            float added=reduced.GetTotalStaggerDamage(),baseAdded=added;foreach(var effect in effects)effect.ModifyStagger(baseAdded,ref added);
             float threshold=(float)PlayerResources.Read(state,"max_health")*definition.m_staggerDamageFactor;
             if(threshold>0){result.Stagger=Mathf.Min(threshold,stagger+added);result.Staggered=result.Stagger>=threshold;}
             result.Attempted=true;result.Timed=timed;result.Blocked=stamina>0&&!result.Staggered;result.Absorbed=absorbed;result.SkillGain=timed?2:1;
