@@ -92,11 +92,8 @@ namespace Overhaul.Persistence
                 if(!PlayerFishingCastGame.Enabled || !ZNet.instance || sender==(ZNet.instance.IsServer()?ZNet.GetUID():ZNet.instance.GetServerPeer()?.m_uid))return true;
                 try
                 {
-                    var input=new ZPackage(pkg.GetArray());input.SetPos(pkg.GetPos());int count=input.ReadInt();
-                    if(count<0 || count>(input.Size()-input.GetPos())/12)throw new System.IO.InvalidDataException("Invalid destroyed object count");
-                    var keep=new List<ZDOID>();for(int i=0;i<count;i++){var id=input.ReadZDOID();if(!PlayerFishingCastGame.ServerOwned(id) && !GameCreatureAuthority.Owns(id) && !GameWorldAuthority.Owns(id))keep.Add(id);}
-                    if(input.GetPos()!=input.Size())throw new System.IO.InvalidDataException("Invalid destroyed object suffix");
-                    var output=new ZPackage();output.Write(keep.Count);foreach(var id in keep)output.Write(id);pkg=output;return true;
+                    var input=new ZPackage(pkg.GetArray());input.SetPos(pkg.GetPos());
+                    pkg=GameRpcAuthority.FilterDeletion(sender,input);return true;
                 }
                 catch(Exception error){ZLog.LogWarning("[Overhaul protected object deletion] "+error.Message);return false;}
             }
