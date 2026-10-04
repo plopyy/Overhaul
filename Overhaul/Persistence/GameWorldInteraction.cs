@@ -8,6 +8,34 @@ namespace Overhaul.Persistence
     internal static class GameWorldInteraction
     {
         private const string SignRpc="Overhaul_SignText";
+        private const string LadderRpc="Overhaul_UseLadder";
+        private static bool climbing;
+        internal static void Register(GameObject root)
+        {
+            if(!root)return;var view=root.GetComponent<ZNetView>();
+            if(!view||!view.IsValid()||root.GetComponentInChildren<Ladder>(true)==null)return;
+            view.Register<int>(LadderRpc,(sender,index)=>
+            {
+                if(!GameCreatureAuthority.Enabled)return;
+                var ladders=view.GetComponentsInChildren<Ladder>(true);
+                if(index<0||index>=ladders.Length)return;
+                var ladder=ladders[index];var actor=Nearby(ladder,sender);if(actor==null)return;
+                var player=ZNetScene.instance.FindInstance(actor.m_uid)?.GetComponent<Player>();
+                if(!ladder.gameObject.activeInHierarchy||!ladder.m_targetPos||!GameMovementRuntime.Managed(player)||player.IsTeleporting()||player.InIntro()||player.IsAttached())return;
+                bool previous=climbing;climbing=true;
+                try{ladder.Interact(player,false,false);GameMovementRuntime.Record(player);}finally{climbing=previous;}
+            });
+        }
+        [HarmonyPatch(typeof(Ladder),nameof(Ladder.Interact))]
+        private static class LadderIntent
+        {
+            private static bool Prefix(Ladder __instance,Humanoid character,bool hold,ref bool __result)
+            {
+                if(climbing||!PlayerSessionGame.Managed||character!=Player.m_localPlayer)return true;
+                __result=false;var view=__instance.GetComponentInParent<ZNetView>();
+                if(!hold&&view&&view.IsValid())view.InvokeRPC(LadderRpc,System.Array.IndexOf(view.GetComponentsInChildren<Ladder>(true),__instance));return false;
+            }
+        }
         private static ZDO Actor(long sender)
         {
             if(sender==ZNet.GetUID())return GameMovementRuntime.Managed(Player.m_localPlayer)?Player.m_localPlayer.m_nview.GetZDO():null;
@@ -15,7 +43,7 @@ namespace Overhaul.Persistence
         }
         internal static ZDO Nearby(Component target,long sender,bool ward=true)
         {
-            var view=target?target.GetComponent<ZNetView>():null;var actor=Actor(sender);
+            var view=target?target.GetComponentInParent<ZNetView>():null;var actor=Actor(sender);
             if(!view||!view.IsValid()||!view.IsOwner()||actor==null||actor.GetBool(ZDOVars.s_dead,false)||
                 GamePersistence.ActionReserved(view.GetZDO().m_uid)||(target.transform.position-actor.GetPosition()).sqrMagnitude>25)return null;
             return !ward||Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0))?actor:null;
@@ -24,6 +52,21 @@ namespace Overhaul.Persistence
         {
             foreach(var info in ZNet.instance.GetPlayerList())if(info.m_characterID==actor.m_uid)return info.m_userInfo.m_id.ToString();
             return "host";
+        }
+        internal static bool PortalUpdate(long sender,global::XPortal.KnownPortal portal)
+        {
+            if(!GameCreatureAuthority.Enabled||sender==ZNet.GetUID())return true;
+            if(portal==null||portal.Name==null||portal.Name.Length>128||portal.Colour==null||portal.Colour.Length>32)return false;
+            var instance=ZNetScene.instance.FindInstance(portal.Id);var source=instance?instance.GetComponent<TeleportWorld>():null;
+            if(!source||Nearby(source,sender)==null)return false;
+            if(!portal.Target.IsNone())
+            {
+                var destination=ZDOMan.instance.GetZDO(portal.Target);var prefab=destination==null?null:ZNetScene.instance.GetPrefab(destination.GetPrefab());
+                if(!prefab||!prefab.GetComponent<TeleportWorld>()||GamePersistence.ActionReserved(destination.m_uid))return false;
+            }
+            portal.Location=source.m_nview.GetZDO().GetPosition();
+            portal.PreviousId=source.m_nview.GetZDO().GetZDOID(global::XPortal.XPortal.Key_PreviousId);
+            return true;
         }
         private static void SignText(Sign sign,long sender,string text)
         {

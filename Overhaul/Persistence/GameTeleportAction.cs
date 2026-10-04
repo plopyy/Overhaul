@@ -13,6 +13,7 @@ namespace Overhaul.Persistence
         private static readonly HashSet<Teleport> entrances=new HashSet<Teleport>();
         internal static void RegisterEntrances(GameObject root)
         {
+            GameWorldInteraction.Register(root);
             if(!root||!GameCreatureAuthority.Enabled)return;
             GameDiscoveryRuntime.Register(root);
             foreach(var entry in root.GetComponentsInChildren<Teleport>(true))

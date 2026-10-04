@@ -30,6 +30,7 @@ namespace XPortal.RPC.Server
             }
 
             var portal = new KnownPortal(pkg);
+            if (!Overhaul.Persistence.GameWorldInteraction.PortalUpdate(sender,portal)) return;
             Log.Debug($"{sender} wants `{portal.Id}` to be added or updated");
 
             var updatedPortal = KnownPortalsManager.Instance.AddOrUpdate(portal);
@@ -59,6 +60,7 @@ namespace XPortal.RPC.Server
         /// <param name="portalId">The ZDOID of the portal that should be removed</param>
         internal static void RPC_RemoveRequest(long sender, ZDOID portalId)
         {
+            if (Overhaul.Persistence.GameCreatureAuthority.Enabled && sender != ZNet.GetUID()) return;
             if (!Environment.IsServer)
             {
                 Log.Error($"{sender} wants `{portalId}` to be removed, {ERR_NOTSERVER}");
