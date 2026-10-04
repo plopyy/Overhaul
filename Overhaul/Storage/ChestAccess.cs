@@ -27,6 +27,11 @@ namespace Overhaul.Storage
 
         internal static ZDO Actor(long sender, ZDOID character)
         {
+            if(Persistence.GameCreatureAuthority.Enabled&&sender!=ZNet.GetUID())
+            {
+                var peer=ZNet.instance.GetPeer(sender);
+                if(peer==null||Persistence.GameAvatarBinding.Current(peer.m_rpc)!=character)return null;
+            }
             var data = ZDOMan.instance?.GetZDO(character);
             var prefab = data == null || !ZNetScene.instance ? null : ZNetScene.instance.GetPrefab(data.GetPrefab());
             return data != null && data.GetOwner() == sender && data.GetLong(ZDOVars.s_playerID, 0) != 0 &&
@@ -58,6 +63,7 @@ namespace Overhaul.Storage
         }
         internal static void RequestLease(Container c, long sender, ZDOID actorId, ZDOID stationId, string token)
         {
+            if(Persistence.GameCreatureAuthority.Enabled)return; // Canonical crafting uses server slot reservations.
             if (!Eligible(c) || !c.m_nview.IsOwner() || MoveReservation.Busy(c) || string.IsNullOrEmpty(token) || token.Length > 64) return;
             var actor = Actor(sender, actorId); var station = ZDOMan.instance.GetZDO(stationId);
             var stationPrefab = station == null ? null : ZNetScene.instance.GetPrefab(station.GetPrefab());

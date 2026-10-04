@@ -93,6 +93,11 @@ namespace Overhaul.Storage
             if(!Eligible(p)||!p.m_nview.IsOwner()||!MoveReservation.Own(p,sender,token))return false;
             var actor=ChestAccess.Actor(sender,actorId);
             if(actor==null||actor.GetFloat(ZDOVars.s_health,0)<=0)return false;
+            if(Persistence.GameCreatureAuthority.Enabled)
+            {
+                var state=Persistence.InventoryMoveGame.State(actorId);
+                if(state==null||!Persistence.GameCombatEquipment.Equipped(state).Any(item=>item.m_dropPrefab&&Utils.GetPrefabName(item.m_dropPrefab)=="Hammer"))return false;
+            }
             var data=p.m_nview.GetZDO();long user=actor.GetLong(ZDOVars.s_playerID,0);
             if(data.GetInt(RevisionKey,0)!=revision||Vector3.Distance(p.transform.position,origin)>.05f||
                 !Near(p,actor.GetPosition())||Vector3.Distance(actor.GetPosition(),point)>Reach||

@@ -39,6 +39,7 @@ namespace Overhaul.Storage
         internal static bool HasWorkbench(Vector3 position) => CraftingStation.HaveBuildStationInRange("$piece_workbench", position);
         internal static void Request(Ship ship, long sender, ZDOID actorId, string key)
         {
+            if(Persistence.GameCreatureAuthority.Enabled)return; // Managed dismantling uses PlayerBuildGame.
             if (!ship.m_nview.IsOwner() || string.IsNullOrEmpty(key) || key.Length > 64) return;
             var actor = ChestAccess.Actor(sender,actorId);
             if (actor == null || !HasWorkbench(actor.GetPosition()) || !Access(ship,actor.GetLong(ZDOVars.s_playerID,0)) || !Near(ship,actor.GetPosition(),8)) return;
