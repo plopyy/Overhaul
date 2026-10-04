@@ -15,6 +15,8 @@ namespace Overhaul.Persistence
             internal HitData LastHit;
             internal bool Lethal;
             internal float Damage;
+            internal PlayerActionPlan Death;
+            internal Action Publish;
         }
         private sealed class Frame
         {
@@ -23,13 +25,15 @@ namespace Overhaul.Persistence
             internal readonly List<PlayerChange> Changes=new List<PlayerChange>();
             internal HitData LastHit;
             internal float Damage;
+            internal PlayerActionPlan Death;
+            internal readonly List<Action> Publish=new List<Action>();
         }
         [ThreadStatic] private static Frame current;
-        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield));
+        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React));
         private static void Change(Frame frame,IEnumerable<PlayerChange> rows)
         {
             var changes=rows.ToArray();
-            foreach(var row in changes){frame.Changes.RemoveAll(r=>r.SameKey(row));frame.Changes.Add(row);}
+            GamePlayerHit.Merge(frame.Changes,changes);
             frame.State=PlayerProgressService.Overlay(frame.State,changes);
             if(GameCombatContext.Matches(frame.Player))GameCombatContext.Current.State=frame.State;
         }
@@ -47,7 +51,7 @@ namespace Overhaul.Persistence
                         int id=Convert.ToInt32(header.Values[0]);var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id);
                         var effect=GameStatusCodec.Restore(rows,player);
                         if(!Supported(effect))continue;
-                        if(!(effect is SE_Burning) && !(effect is SE_Poison))
+                        if(!(effect is SE_Burning) && !(effect is SE_Poison) && !(effect is SE_Stats) && !(effect is SE_Smoke))
                         {
                             // These native types only advance their age. Avoid
                             // IsDone on shields: it raises skills and emits FX.
@@ -58,10 +62,10 @@ namespace Overhaul.Persistence
                             continue;
                         }
                         double remaining=seconds;int iterations=0;
-                        while(remaining>0 && !effect.IsDone())
+                        while(remaining>0 && !effect.IsDone() && PlayerResources.Read(frame.State,"health")>0)
                         {
-                            float interval=effect is SE_Burning burning?burning.m_damageInterval:((SE_Poison)effect).m_damageInterval;
-                            float timer=effect is SE_Burning fire?fire.m_timer:((SE_Poison)effect).m_timer;
+                            float interval=effect is SE_Burning burning?burning.m_damageInterval:effect is SE_Poison poisoned?poisoned.m_damageInterval:1;
+                            float timer=effect is SE_Burning fire?fire.m_timer:effect is SE_Poison venom?venom.m_timer:1;
                             if(interval<=0 || float.IsNaN(interval)||float.IsInfinity(interval) || ++iterations>16384)throw new InvalidOperationException("Invalid damage-over-time cadence");
                             // Jump directly to the next native damage event. No
                             // replay of every physics frame while SQL was busy.
@@ -70,16 +74,68 @@ namespace Overhaul.Persistence
                             // Float ages need an expiry step larger than their
                             // rounding unit; a fixed microsecond stalls at long TTLs.
                             double expiryEpsilon=Math.Max(.000001,Math.Abs((double)effect.m_ttl)*.000001);
-                            if(effect.m_ttl>0)step=Math.Min(step,Math.Max(expiryEpsilon,(effect.m_ttl-effect.m_time)/(wet?6d:1d)+expiryEpsilon));
+                            bool Has(int hash)=>frame.State.Rows.Any(r=>(r.Table=="status"||r.Table=="effects")&&Convert.ToInt32(r.Values[0])==hash);
+                            double ageRate=wet?6:effect is SE_Wet?1+(Has(SEMan.s_statusEffectCampFire)?10:0)+(Has(SEMan.s_statusEffectBurning)?50:0):1;
+                            if(effect.m_ttl>0)step=Math.Min(step,Math.Max(expiryEpsilon,(effect.m_ttl-effect.m_time)/ageRate+expiryEpsilon));
+                            void Event(double delay)=>step=Math.Min(step,Math.Max(expiryEpsilon,delay+expiryEpsilon));
+                            if(effect is SE_Stats stats)
+                            {
+                                if(stats.m_tickInterval>0)Event(stats.m_tickInterval-stats.m_tickTimer);
+                                if(stats.m_healthOverTimeTicks>0&&stats.m_healthOverTimeInterval>0)Event(stats.m_healthOverTimeInterval-stats.m_healthOverTimeTimer);
+                                if(stats.m_staminaOverTime!=0&&stats.m_time<stats.m_staminaOverTimeDuration)step=Math.Min(step,stats.m_staminaOverTimeDuration-stats.m_time);
+                                if(stats.m_eitrOverTime!=0&&stats.m_time<stats.m_eitrOverTimeDuration)step=Math.Min(step,stats.m_eitrOverTimeDuration-stats.m_time);
+                            }
+                            if(effect is SE_Wet water&&!player.m_tolerateWater&&water.m_damageInterval>0)Event(water.m_damageInterval-water.m_timer);
+                            if(effect is SE_Smoke smoke&&smoke.m_damageInterval>0)Event(smoke.m_damageInterval-smoke.m_timer);
                             effect.UpdateStatusEffect((float)step);remaining=Math.Max(0,remaining-step);
                         }
+                        if(frame.Death!=null)break;
                         if(effect.IsDone())Change(frame,new[]{new PlayerChange("status",true,id)});
                         else Change(frame,GameStatusCodec.Delta(frame.State,effect,new ZDOID(Convert.ToInt64(header.Values[4]),checked((uint)Convert.ToInt64(header.Values[5])))));
                     }
                 }));
-                return new Result{Changes=frame.Changes.ToArray(),LastHit=frame.LastHit,Damage=frame.Damage,Lethal=PlayerResources.Read(frame.State,"health")<=0};
+                return new Result{Changes=frame.Changes.ToArray(),LastHit=frame.LastHit,Damage=frame.Damage,Lethal=PlayerResources.Read(frame.State,"health")<=0,Death=frame.Death,Publish=()=>{foreach(var action in frame.Publish)action();}};
             }
             finally{current=previous;}
+        }
+        [HarmonyPatch(typeof(Character),nameof(Character.Damage))]
+        private static class Impact
+        {
+            [HarmonyPriority(Priority.First+300)]
+            private static bool Prefix(Character __instance,HitData hit)
+            {
+                if(current==null||__instance!=current.Player)return true;
+                var plan=GamePlayerHit.Prepare(current.State,current.Player,hit);
+                if(plan!=null)
+                {
+                    double before=PlayerResources.Read(current.State,"health");Change(current,plan.Change.Player.Changes);
+                    current.Damage+=(float)Math.Max(0,before-PlayerResources.Read(current.State,"health"));current.LastHit=hit.Clone();current.Publish.Add(plan.Publish);
+                    if(GameDeathProgress.IsDead(current.State))current.Death=plan;
+                }
+                return false;
+            }
+        }
+        [HarmonyPatch]
+        private static class Resources
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(Character),nameof(Character.Heal));
+                foreach(string name in new[]{"AddStamina","AddEitr","UseStamina"})yield return AccessTools.Method(typeof(Player),name);
+            }
+            [HarmonyPriority(Priority.First+300)]
+            private static bool Prefix(Character __instance,MethodBase __originalMethod,float __0)
+            {
+                if(current==null||__instance!=current.Player)return true;
+                if(float.IsNaN(__0)||float.IsInfinity(__0))throw new InvalidOperationException("Invalid periodic resource amount");
+                string method=__originalMethod.Name,key=method=="Heal"?"health":method=="AddEitr"?"eitr":"stamina";
+                bool spend=method=="UseStamina";double value=PlayerResources.Read(current.State,key);
+                if(key=="health"&&value<=0)return false;
+                value=Math.Max(0,Math.Min(PlayerResources.Read(current.State,"max_"+key),value+(spend?-Math.Max(0,__0)*Game.m_staminaRate:__0)));
+                Change(current,new[]{PlayerResources.Row(key,value)});
+                if(spend&&__0>0)Change(current,new[]{PlayerResources.Row(PlayerResources.StaminaDelay,current.Player.m_staminaRegenDelay)});
+                return false;
+            }
         }
         [HarmonyPatch(typeof(Character),nameof(Character.ApplyDamage))]
         private static class Health
