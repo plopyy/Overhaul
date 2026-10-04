@@ -237,6 +237,7 @@ namespace Overhaul.Persistence
             try
             {
                 PlayerCatapultGame.Tick();
+                PlayerFishingCastGame.Tick();
                 PublishDeferredActionObjects(Time.time);
                 if(Time.realtimeSinceStartup>=nextCapture){Capture();writer.RequestFlush();nextCapture=Time.realtimeSinceStartup+5;}
                 string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] Write or backup failed; failed operations will be retried: "+error);}
