@@ -14,6 +14,8 @@ namespace Overhaul.Persistence
         private readonly InventoryMoveService server;
         private readonly PlayerProgressService progress;
         private readonly PlayerServerActions serverActions;
+        private readonly GameMapSession mapSession;
+        private bool mapFailed;
         private const string ServerActionResponse="Overhaul_ServerItemsChanged";
         private PlayerSnapshot canonical;
         private ZDOID knownActor;
@@ -154,8 +156,8 @@ namespace Overhaul.Persistence
         private readonly InventoryMoveGame.Access access;
         internal readonly InventoryMoveController Controller;
         private bool disposed;
-        internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished) && (serverActions==null || serverActions.Finished);
-        internal bool StorageFailed=>server?.StorageFailed==true || progress?.Failed==true || serverActions?.Failed==true;
+        internal bool Finished => disposed && (server == null || !server.Busy) && (progress==null || progress.Finished) && (serverActions==null || serverActions.Finished) && (mapSession==null||mapSession.Finished||mapFailed);
+        internal bool StorageFailed=>mapFailed || server?.StorageFailed==true || progress?.Failed==true || serverActions?.Failed==true;
         internal bool Progress(ZDOID actor,Func<PlayerSnapshot,System.Collections.Generic.IEnumerable<PlayerChange>> action,Action confirmed=null)
         {return !disposed && progress!=null && PlayerSessionGame.Actor(rpc)?.m_uid==actor && progress.Enqueue(action,confirmed);}
         internal Container Container { get; private set; }
@@ -180,6 +182,14 @@ namespace Overhaul.Persistence
             // Map blocks belong to admission/persistence, not the frequently updated
             // action view. Avoid copying the explored map on every resource tick.
             canonical=new PlayerSnapshot(session.Snapshot.Revision,session.Snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));
+            mapSession=new GameMapSession(writer,session.Identity,session.Snapshot,rows=>
+            {if(!disposed)rpc.Invoke("Overhaul_MapChanges",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));});
+            rpc.Register<string,ZPackage>("Overhaul_MapEdit",(sender,token,packet)=>
+            {
+                if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce)return;
+                try{if(packet.Size()>65536)throw new InvalidDataException("Map edit exceeds packet limit");var edit=InventoryMoveProtocol.Reply(packet.GetArray());if(edit.Nonce!=nonce||edit.Player==null)throw new InvalidDataException("Invalid map edit");mapSession.Edit(edit.Player.Changes.ToArray());}
+                catch(Exception error){Fail(error);}
+            });
             progress=new PlayerProgressService(session.Identity,writer,batch=>
             {Committed(batch,false);if(!disposed)Send(ProgressResponse,InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=batch}));},Fail);
             serverActions=new PlayerServerActions(session.Identity,writer,batch=>
@@ -225,6 +235,13 @@ namespace Overhaul.Persistence
             rpc.Register<ZPackage>(Response, Receive);
             rpc.Register<ZPackage>(ProgressResponse,ReceiveProgress);
             rpc.Register<ZPackage>(ServerActionResponse,ReceiveServerAction);
+            GameMapView.Clear();
+            rpc.Register<string,ZPackage>("Overhaul_MapChanges",(sender,token,packet)=>
+            {
+                if(disposed||!ReferenceEquals(sender,rpc)||token!=nonce)return;
+                try{var reply=InventoryMoveProtocol.Reply(packet.GetArray());if(reply.Nonce!=nonce||!reply.Accepted||reply.Player==null)throw new InvalidDataException("Invalid map confirmation");GameMapView.Receive(reply.Player.Changes.ToArray());}
+                catch(Exception error){Fail(error);}
+            });
             rpc.Register<string,ZPackage>("Overhaul_SpawnPoint",(sender,token,packet)=>{if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameSpawnControl.Receive(packet);});
             rpc.Register<string,ZPackage>("Overhaul_MovementView",(sender,token,packet)=>
             {if(!disposed&&ReferenceEquals(sender,rpc)&&token==nonce)GameMovementView.Receive(packet);});
@@ -301,6 +318,7 @@ namespace Overhaul.Persistence
         internal void MovementControl(ZPackage packet){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MovementControl",nonce,packet);}
         internal void SpawnRequest(int epoch){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_RequestSpawn",nonce,epoch);}
         internal void ArrivalControl(ZDOID actor,bool skip){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_ArrivalControl",nonce,actor,skip);}
+        internal void MapEdit(PlayerChange[] rows){if(!disposed&&Controller!=null)rpc.Invoke("Overhaul_MapEdit",nonce,new ZPackage(InventoryMoveProtocol.Encode(new InventoryMoveReply{Nonce=nonce,Accepted=true,Player=new PlayerBatch(Guid.NewGuid().ToString("N"),0,rows)})));}
         internal void FishingControl(bool reel,bool cancel){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingControl",nonce,reel,cancel);}
         private void Apply(InventoryMoveReply reply)
         {
@@ -358,6 +376,8 @@ namespace Overhaul.Persistence
         internal void Tick()
         {
             if (!disposed && !rpc.IsConnected()) Dispose();
+            if(mapSession!=null&&!mapFailed)
+            {try{mapSession.Tick(disposed?null:PlayerSessionGame.Actor(rpc));}catch(Exception error){mapFailed=true;ZNet.m_loadError=true;Fail(error);}}
             if(!disposed && serverActions!=null)
             {
                 QueueSpawn();
@@ -386,7 +406,7 @@ namespace Overhaul.Persistence
             {var request=deferredRequest;deferredRequest=null;server.Receive(request);}
             if (disposed) return;
             Controller?.Tick();
-            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();GameMovementView.Tick();GameMovementControl.ClientTick();GameStaffGuardRuntime.ClientTick();}
+            if(Controller!=null){GameRespawnGame.Tick();PlayerFishingCastGame.ClientTick();GameAttackRuntime.ClientTick();GameBlockControl.ClientTick();GameMovementView.Tick();GameMovementControl.ClientTick();GameStaffGuardRuntime.ClientTick();GameMapPins.Tick();}
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
@@ -399,12 +419,14 @@ namespace Overhaul.Persistence
         {
             ZLog.LogError("[Overhaul inventory] " + error);
             Dispose(); rpc.GetSocket().Close();
-            if (server?.StorageFailed == true || progress?.Failed == true || serverActions?.Failed==true) ZNet.m_loadError = true;
+            if (StorageFailed) ZNet.m_loadError = true;
         }
         private static void Ignore(ZRpc sender, ZPackage package) { }
         public void Dispose()
         {
             if (disposed) return;
+            if(Controller!=null)GameMapPins.Tick();
+            if(mapSession!=null&&!mapFailed){try{mapSession.Tick(PlayerSessionGame.Actor(rpc),true);}catch(Exception error){mapFailed=true;ZNet.m_loadError=true;Debug.LogException(error);}}
             if(server!=null)GameMovementRuntime.SavePosition(PlayerSessionGame.Actor(rpc)?.m_uid??knownActor,true);
             if(serverActions!=null){var actor=PlayerSessionGame.Actor(rpc);if(actor!=null){GameBowDraw.Close(actor);GameWeaponReload.Close(actor);}CaptureWear();QueueWear(true);damageClock.Freeze();QueueDamage(true);}
             QueueResources();disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
@@ -417,7 +439,9 @@ namespace Overhaul.Persistence
             if(server==null)rpc.Register<ZPackage>(ServerActionResponse,Ignore);
             if(server==null)rpc.Register<string,ZPackage>("Overhaul_MovementView",(_,__,___)=>{});
             if(server==null){rpc.Register<string,ZPackage>("Overhaul_SpawnPoint",(_,__,___)=>{});GameSpawnControl.Clear();}
+            if(server==null){rpc.Register<string,ZPackage>("Overhaul_MapChanges",(_,__,___)=>{});GameMapView.Clear();}
             else rpc.Register<string,int>("Overhaul_RequestSpawn",(_,__,___)=>{});
+            if(server!=null){rpc.Register<string,ZPackage>("Overhaul_MapEdit",(_,__,___)=>{});rpc.Register<string,ZDOID,bool>("Overhaul_ArrivalControl",(_,__,___,____)=>{});}
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,bool,Vector3>("Overhaul_BlockControl",(_,__,___,____)=>{});
             if (server != null) rpc.Register<string,ZPackage>("Overhaul_MovementControl",(_,__,___)=>{});

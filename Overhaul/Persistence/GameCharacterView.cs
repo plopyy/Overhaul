@@ -8,7 +8,7 @@ namespace Overhaul.Persistence
     internal static class GameCharacterView
     {
         internal static PlayerSnapshot State { get; private set; }
-        internal static void Initial(PlayerSnapshot snapshot)=>State=snapshot==null?null:new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));
+        internal static void Initial(PlayerSnapshot snapshot){State=snapshot==null?null:new PlayerSnapshot(snapshot.Revision,snapshot.Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)));GameMapPins.Initial(snapshot);}
         internal static void Confirm(PlayerBatch batch,bool inventorySnapshot=false,bool advance=false)
         {
             if(State==null)return;
