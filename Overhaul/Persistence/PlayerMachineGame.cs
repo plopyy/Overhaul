@@ -191,6 +191,23 @@ namespace Overhaul.Persistence
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
         }
         [HarmonyPatch]
+        private static class PendingMutation
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
+                yield return AccessTools.Method(typeof(CookingStation),"RPC_AddItem");
+                yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
+                yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuelAmount");
+                yield return AccessTools.Method(typeof(Fireplace),"RPC_SetFuelAmount");
+                yield return AccessTools.Method(typeof(Fireplace),"RPC_ToggleOn");
+                yield return AccessTools.Method(typeof(Fermenter),"RPC_Tap");
+            }
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(Component __instance,MethodBase __originalMethod,object[] __args) =>
+                !InventoryMoveReservations.Defer(__instance,__originalMethod,__args);
+        }
+        [HarmonyPatch]
         private static class Production
         {
             private static IEnumerable<MethodBase> TargetMethods()

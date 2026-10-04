@@ -19,6 +19,14 @@ namespace Overhaul.Persistence
         private static readonly List<Deferred> deferred = new List<Deferred>();
         private static readonly HashSet<ZDOID> destroyed = new HashSet<ZDOID>();
         private static bool Held(ZDOID id) => GamePersistence.ActionReserved(id) || GamePersistence.InventoryReserved(id);
+        internal static bool Defer(Component target, MethodBase method, object[] arguments, bool once = false)
+        {
+            var view = target ? target.GetComponent<ZNetView>() : null;
+            if (!view || !view.IsValid() || !Held(view.GetZDO().m_uid)) return false;
+            if (!once || !deferred.Any(d => d.Target == target && d.Method == method))
+                deferred.Add(new Deferred { Target = target, Method = method, Arguments = (object[])arguments.Clone(), Id = view.GetZDO().m_uid });
+            return true;
+        }
         internal static void Release(ZDOID id)
         {
             var ready = deferred.Where(d => d.Id == id).ToArray(); deferred.RemoveAll(d => d.Id == id);
@@ -80,11 +88,7 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First)]
             private static bool Prefix(Component __instance, MethodBase __originalMethod, object[] __args)
             {
-                var view = __instance.GetComponent<ZNetView>();
-                if (!view || !view.IsValid() || !GamePersistence.InventoryReserved(view.GetZDO().m_uid) && !GamePersistence.ActionReserved(view.GetZDO().m_uid)) return true;
-                if (!deferred.Any(d => d.Target == __instance && d.Method == __originalMethod))
-                    deferred.Add(new Deferred { Target = __instance, Method = __originalMethod, Arguments = (object[])__args.Clone(), Id = view.GetZDO().m_uid });
-                return false;
+                return !Defer(__instance,__originalMethod,__args,true);
             }
         }
     }
