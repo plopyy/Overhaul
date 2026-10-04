@@ -27,9 +27,9 @@ namespace Overhaul.Persistence
             if(weaponSlot==-1)
             {
                 if(inventory.Keys.Select(k=>Read(inventory,k)).Any(i=>i.m_equipped && i.IsWeapon()))throw new InvalidOperationException("Character already has an equipped weapon");
-                var definition=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>()?.m_unarmedWeapon:null;
-                if(!definition)throw new InvalidOperationException("Unarmed attack definition is unavailable");
-                weapon=definition.m_itemData.Clone();weapon.m_dropPrefab=definition.gameObject;weapon.m_equipped=true;
+                var unarmed=Game.instance?Game.instance.m_playerPrefab?.GetComponent<Player>()?.m_unarmedWeapon:null;
+                if(!unarmed)throw new InvalidOperationException("Unarmed attack definition is unavailable");
+                weapon=unarmed.m_itemData.Clone();weapon.m_dropPrefab=unarmed.gameObject;weapon.m_equipped=true;
             }
             else weapon=Read(inventory,weaponSlot);
             if(weaponSlot!=-1 && (!inventory.Available(weaponSlot) || inventory.Layout.Cosmetic(weaponSlot)) || !weapon.m_equipped || !weapon.IsWeapon() ||
