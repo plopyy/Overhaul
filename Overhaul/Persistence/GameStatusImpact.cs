@@ -19,6 +19,11 @@ namespace Overhaul.Persistence
                 throw new InvalidOperationException("Server impact status is not implemented: "+definition.name);
             var rows=state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id).ToArray();
             bool existing=rows.Any(r=>r.Table=="status");var effect=existing?GameStatusCodec.Restore(rows,player):definition.Clone();
+            if(!existing)
+            {
+                bool allowed=false;GameCombatContext.Run(player,state,null,null,()=>allowed=definition.CanAdd(player));
+                if(!allowed)return Array.Empty<PlayerChange>();
+            }
             effect.m_character=player;effect.m_startEffectInstances=null;
             if(!existing){effect.m_time=0;effect.m_hitVariant=variant;}
             var frame=new Frame{State=state};var previous=current;current=frame;

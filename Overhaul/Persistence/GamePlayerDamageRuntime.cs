@@ -6,14 +6,16 @@ namespace Overhaul.Persistence
 {
     internal static class GamePlayerDamageRuntime
     {
-        private static void Heal(Player player,float amount)
+        private static void Heal(Player player,float amount,bool showText)
         {
             if(amount<=0||float.IsNaN(amount)||float.IsInfinity(amount))return;
             InventoryMoveGame.TimedAction(player,state=>
             {
                 if(PlayerResources.Read(state,"health")<=0||GameDeathProgress.IsDead(state))return null;
                 var rows=PlayerResources.Restore(state,amount,0,0);
-                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>{});
+                float restored=(float)(PlayerResources.Read(PlayerProgressService.Overlay(state,rows),"health")-PlayerResources.Read(state,"health"));
+                return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>
+                {if(showText&&restored>0&&player&&DamageText.instance)DamageText.instance.ShowText(DamageText.TextType.Heal,player.GetTopPoint(),restored,true);});
             });
         }
         private static bool Route(Character character,HitData hit,bool direct)
@@ -50,21 +52,21 @@ namespace Overhaul.Persistence
         [HarmonyPatch(typeof(Character),nameof(Character.Heal))]
         private static class Healing
         {
-            private static bool Prefix(Character __instance,float hp,bool __runOriginal)
+            private static bool Prefix(Character __instance,float hp,bool showText,bool __runOriginal)
             {
                 if(!__runOriginal)return false;if(!(__instance is Player player))return true;
                 if(GameStatusGame.Presenting||PlayerPotionGame.Presenting)return false;
-                if(GameCreatureAuthority.Enabled){Heal(player,hp);return false;}
+                if(GameCreatureAuthority.Enabled){Heal(player,hp,showText);return false;}
                 return !PlayerSessionGame.Managed;
             }
         }
         [HarmonyPatch(typeof(Character),"RPC_Heal")]
         private static class HealingRpc
         {
-            private static bool Prefix(Character __instance,long sender,float hp)
+            private static bool Prefix(Character __instance,long sender,float hp,bool showText)
             {
                 if(!(__instance is Player player))return true;
-                if(GameCreatureAuthority.Enabled){if(sender==ZNet.GetUID())Heal(player,hp);return false;}
+                if(GameCreatureAuthority.Enabled){if(sender==ZNet.GetUID())Heal(player,hp,showText);return false;}
                 return !PlayerSessionGame.Managed;
             }
         }

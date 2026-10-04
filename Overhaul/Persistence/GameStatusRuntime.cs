@@ -31,8 +31,14 @@ namespace Overhaul.Persistence
                 if(GameDeathProgress.IsDead(current)||!request.Reset&&current.Rows.Any(r=>r.Table=="status"&&Convert.ToInt32(r.Values[0])==id))return null;
                 var definition=ObjectDB.instance.GetStatusEffect(id);if(!definition)return null;
                 bool allowed=false;GameCombatContext.Run(player,current,null,null,()=>allowed=definition.CanAdd(player));if(!allowed)return null;
-                var rows=GameStatusImpact.Prepare(current,player,id,request.Level,request.Skill,request.Variant,ZDOID.None);
-                if(rows.Length==0)return null;
+                var rows=GameStatusImpact.Prepare(current,player,id,request.Level,request.Skill,request.Variant,ZDOID.None).ToList();
+                if(request.Reset)
+                {
+                    var after=PlayerProgressService.Overlay(current,rows);var header=after.Rows.SingleOrDefault(r=>r.Table=="status"&&Convert.ToInt32(r.Values[0])==id);
+                    if(header!=null&&Convert.ToInt16(header.Values[6])!=request.Variant)
+                    {var values=header.Values;values[6]=(int)request.Variant;GamePlayerHit.Merge(rows,new[]{new PlayerChange("status",false,values)});}
+                }
+                if(rows.Count==0)return null;
                 return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),current.Revision,rows),new Dictionary<long,ObjectRecord>()),()=>{});
             }))pending.Remove(key);
             return existing;
