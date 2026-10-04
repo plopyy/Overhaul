@@ -55,7 +55,15 @@ namespace Overhaul.Persistence
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.FishCaught).ToString(CultureInfo.InvariantCulture),1));
                 if(drop && item.m_quality<=6)changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.FishCaughtTier0+item.m_quality).ToString(CultureInfo.InvariantCulture),1));
             }
-            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),outputs);
+            var batch=new PlayerBatch(request.Action.Operation,snapshot.Revision,changes);
+            var fishPlan=PlayerActionGame.RemoveWorldObject(view,batch,outputs);
+            if(!caught || !PlayerFishingCastGame.Managed(line))return fishPlan;
+            try
+            {
+                var linePlan=PlayerActionGame.RemoveWorldObject(line.m_nview,batch,Array.Empty<ObjectRecord>());
+                return new PlayerActionPlan(new PlayerWorldAction(batch,fishPlan.Change.Objects.Concat(linePlan.Change.Objects).ToDictionary(p=>p.Key,p=>p.Value)),()=>{fishPlan.Publish();linePlan.Publish();});
+            }
+            catch{GamePersistence.ReleaseAction(new[]{data.m_uid});throw;}
         }
         private static void SendCatch()
         {
@@ -63,10 +71,13 @@ namespace Overhaul.Persistence
             var id=waitingFish.m_nview.GetZDO().m_uid;
             sent=InventoryMoveGame.Client?.Controller.Act(new PlayerActionCommand{Kind=PlayerActionKind.UseOn,Definition=Catch,TargetUser=id.UserID,TargetId=id.ID},0,0,1)==true;
         }
+        internal static void RequestCatch(FishingFloat line,Fish fish)
+        {if(waitingFloat!=line){waitingFloat=line;waitingFish=fish;sent=false;}SendCatch();}
         internal static void Confirm(InventoryMoveRequest request)
         {
             if(request?.Gameplay?.Definition!=Catch)return;
             var line=waitingFloat;var fish=waitingFish;Clear();
+            if(PlayerFishingCastGame.Managed(line))return;
             try
             {
                 if(fish)fish.OnHooked(null);
@@ -80,6 +91,9 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First+200)]
             private static bool Prefix(Fish fish,Character owner,ref string __result)
             {
+                var line=fish?FishingFloat.FindFloat(fish):null;
+                if(PlayerFishingCastGame.Managed(line))
+                {if(line.m_nview.IsOwner())line.m_nview.GetZDO().Set(PlayerFishingCastGame.Ready,1);__result="";return false;}
                 if(owner!=Player.m_localPlayer || !PlayerSessionGame.Managed)return true;
                 __result="";if(!fish)return false;
                 waitingFloat=FishingFloat.FindFloat(fish);waitingFish=fish;sent=false;SendCatch();return false;
@@ -93,10 +107,10 @@ namespace Overhaul.Persistence
         }
         [HarmonyPatch(typeof(FishingFloat),"SetCatch")]
         private static class KeepCatch
-        {private static bool Prefix(FishingFloat __instance,Fish fish)=>!PlayerSessionGame.Managed || __instance!=waitingFloat || fish;}
+        {private static bool Prefix(FishingFloat __instance,Fish fish)=>fish || (!PlayerSessionGame.Managed || __instance!=waitingFloat) && (!PlayerFishingCastGame.Managed(__instance) || __instance.m_nview.GetZDO().GetInt(PlayerFishingCastGame.Ready,0)!=1);}
         [HarmonyPatch(typeof(Fish),nameof(Fish.OnHooked))]
         private static class KeepHook
-        {private static bool Prefix(Fish __instance,FishingFloat ff)=>!PlayerSessionGame.Managed || __instance!=waitingFish || ff;}
+        {private static bool Prefix(Fish __instance,FishingFloat ff){var line=FishingFloat.FindFloat(__instance);return ff || (!PlayerSessionGame.Managed || __instance!=waitingFish) && (!PlayerFishingCastGame.Managed(line) || line.m_nview.GetZDO().GetInt(PlayerFishingCastGame.Ready,0)!=1);}}
         [HarmonyPatch(typeof(ZNetView),nameof(ZNetView.Destroy))]
         private static class KeepFloat
         {private static bool Prefix(ZNetView __instance)=>!PlayerSessionGame.Managed || !waitingFloat || __instance!=waitingFloat.m_nview;}

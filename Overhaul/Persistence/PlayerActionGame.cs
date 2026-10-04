@@ -23,8 +23,12 @@ namespace Overhaul.Persistence
             int slot = request.Action.FromY * 256 + request.Action.FromX;
             switch (command.Kind)
             {
+                case PlayerActionKind.Attack:
+                    if(command.Definition==PlayerFishingCastGame.Cast)return PlayerFishingCastGame.Prepare(actor,request,snapshot,inventory);
+                    throw new InvalidOperationException("Attack authority is not connected yet");
                 case PlayerActionKind.Pickup: return Pickup(actor,request,snapshot,inventory);
                 case PlayerActionKind.UseOn:
+                    if(command.Definition==PlayerFishingCastGame.Return)return PlayerFishingCastGame.Prepare(actor,request,snapshot,inventory);
                     if(command.Definition==PlayerFishingGame.Catch || command.Definition==PlayerFishingGame.Pickup)return PlayerFishingGame.Prepare(actor,request,snapshot,inventory);
                     return command.Definition == PlayerOfferingGame.Interaction ? PlayerOfferingGame.Prepare(actor,request,snapshot,inventory) : PlayerMachineGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);

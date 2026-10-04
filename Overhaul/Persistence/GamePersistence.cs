@@ -53,10 +53,10 @@ namespace Overhaul.Persistence
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
         internal static bool HasReservations => actionReservations.Count != 0 || inventoryReservations.Count != 0;
-        internal static ObjectRecord AllocateActionObject(GameObject prefab,Vector3 position,Quaternion rotation)
+        internal static ObjectRecord AllocateActionObject(GameObject prefab,Vector3 position,Quaternion rotation,bool forcePersistence=false)
         {
             var view = prefab ? prefab.GetComponent<ZNetView>() : null;
-            if (!CanSave() || !view || !view.m_persistent) throw new InvalidOperationException("Persistent world prefab is unavailable");
+            if (!CanSave() || !view || !view.m_persistent && !forcePersistence) throw new InvalidOperationException("Persistent world prefab is unavailable");
             var manager = ZDOMan.instance; ZDOID uid;
             do { uint serial = manager.m_nextUid; manager.m_nextUid = checked(serial+1); uid = new ZDOID(manager.m_sessionID,serial); }
             while (uid.IsNone() || manager.GetZDO(uid) != null);

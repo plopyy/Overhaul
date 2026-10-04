@@ -39,6 +39,8 @@ namespace Overhaul.Persistence
                 (request,state) => PlayerActionGame.Prepare(rpc,session,request,state),
                 (request,result,currentLayout) => PlayerEquipmentGame.PrepareMove(PlayerSessionGame.Actor(rpc),request,result,currentLayout));
             rpc.Register<ZPackage>(Request, Receive);
+            rpc.Register<string,int,int>("Overhaul_FishingDraw",(sender,token,x,y)=>
+            {if(ReferenceEquals(sender,rpc)&&token==nonce)PlayerFishingCastGame.Begin(PlayerSessionGame.Actor(rpc),x,y);});
             rpc.Register<string,string>(CancelEquipmentRequest,(sender,token,operation) =>
             { if (ReferenceEquals(sender,rpc) && token == nonce) server.CancelEquipment(operation); });
             rpc.Register<string>(CloseRequest, (sender, token) => { if (ReferenceEquals(sender, rpc) && token == nonce) access.Close(); });
@@ -59,6 +61,7 @@ namespace Overhaul.Persistence
         { if (!disposed) rpc.Invoke(CloseRequest, nonce); afterOpen = null; closeAfterMove = false; ViewActive = false; }
         internal void CancelEquipment()
         { if (!disposed && Controller?.Pending != null) rpc.Invoke(CancelEquipmentRequest,nonce,Controller.Pending.Action.Operation); }
+        internal void BeginFishingDraw(int x,int y){if(!disposed && Controller!=null)rpc.Invoke("Overhaul_FishingDraw",nonce,x,y);}
         private void Apply(InventoryMoveReply reply)
         {
             var player = Player.m_localPlayer;
@@ -109,6 +112,7 @@ namespace Overhaul.Persistence
             server?.Tick();
             if (disposed) return;
             Controller?.Tick();
+            if(Controller!=null)PlayerFishingCastGame.ClientTick();
             if (closeAfterMove && Controller != null && !Controller.Busy) CloseContainer();
             if (afterOpen.HasValue && Controller != null && !Controller.Busy && Controller.ContainerId != 0)
             {
@@ -128,10 +132,12 @@ namespace Overhaul.Persistence
         {
             if (disposed) return;
             disposed = true; Controller?.Dispose(); server?.Dispose(); access?.Dispose();
-            if(Controller!=null)PlayerFishingGame.Clear();
+            if(Controller!=null){PlayerFishingGame.Clear();PlayerFishingCastGame.Clear();}
+            else {var actor=PlayerSessionGame.Actor(rpc);if(actor!=null)PlayerFishingCastGame.Forget(actor.m_uid);}
             rpc.Register<ZPackage>(server != null ? Request : Response, Ignore);
             if (server != null) rpc.Register<string>(CloseRequest, (_, __) => { });
             if (server != null) rpc.Register<string,string>(CancelEquipmentRequest, (_, __, ___) => { });
+            if (server != null) rpc.Register<string,int,int>("Overhaul_FishingDraw",(_,__,___,____)=>{ });
         }
     }
 }
