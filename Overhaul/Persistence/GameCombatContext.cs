@@ -72,6 +72,18 @@ namespace Overhaul.Persistence
             private static bool Prefix(Character __instance,ref float __result)
             {if(!Matches(__instance))return true;__result=(float)PlayerResources.Read(Current.State,"max_health");return false;}
         }
+        [HarmonyPatch(typeof(Player),nameof(Player.GetMaxStamina))]
+        private static class MaxStamina
+        {
+            private static bool Prefix(Player __instance,ref float __result)
+            {if(!Matches(__instance))return true;__result=(float)PlayerResources.Read(Current.State,"max_stamina");return false;}
+        }
+        [HarmonyPatch(typeof(Player),nameof(Player.GetMaxEitr))]
+        private static class MaxEitr
+        {
+            private static bool Prefix(Player __instance,ref float __result)
+            {if(!Matches(__instance))return true;__result=(float)PlayerResources.Read(Current.State,"max_eitr");return false;}
+        }
         [HarmonyPatch(typeof(Player),nameof(Player.GetEquipmentAttackStaminaModifier))]
         private static class AttackModifier
         {
