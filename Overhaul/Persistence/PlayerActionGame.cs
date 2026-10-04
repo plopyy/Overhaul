@@ -28,7 +28,8 @@ namespace Overhaul.Persistence
                 case PlayerActionKind.Craft: return PlayerCraftGame.Prepare(actor,request,snapshot,inventory);
                 case PlayerActionKind.Consume: return command.TargetId == 0 ? PlayerFoodGame.Prepare(request,snapshot,inventory) : PlayerFoodGame.FromContainer(rpc,request,snapshot);
                 case PlayerActionKind.Buy: case PlayerActionKind.Sell: return PlayerTradeGame.Prepare(actor,request,snapshot,inventory);
-                case PlayerActionKind.Drop: return command.TargetId == 0 ? PlayerDropGame.Prepare(actor,request,snapshot,inventory) : PlayerDropGame.FromContainer(rpc,actor,request,snapshot);
+                case PlayerActionKind.Drop: case PlayerActionKind.Trash:
+                    return command.TargetId == 0 ? PlayerDropGame.Prepare(actor,request,snapshot,inventory) : PlayerDropGame.FromContainer(rpc,actor,request,snapshot);
                 case PlayerActionKind.Repair:
                 {
                     var station = Target(command)?.GetComponent<CraftingStation>();

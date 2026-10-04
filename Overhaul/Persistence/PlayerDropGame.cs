@@ -26,11 +26,16 @@ namespace Overhaul.Persistence
         {
             var record = Remove(actor,request,inventory);
             return new PlayerActionPlan(new PlayerWorldAction(inventory.Delta(request.Action.Operation,snapshot.Revision),
-                new Dictionary<long,ObjectRecord> { [record.Id] = record }),() => GamePersistence.PublishActionObject(record));
+                record == null ? new Dictionary<long,ObjectRecord>() : new Dictionary<long,ObjectRecord> { [record.Id] = record }),
+                () => { if (record != null) GamePersistence.PublishActionObject(record); });
         }
         private static ObjectRecord Remove(ZDO actor,InventoryMoveRequest request,PlayerActionInventory inventory)
         {
             int slot = request.Action.FromY*256+request.Action.FromX;
+            if (request.Gameplay.Kind == PlayerActionKind.Trash)
+            {
+                inventory.Remove(slot,request.Action.Amount,true); return null;
+            }
             var item = PlayerInventoryView.ReadItem(inventory.Item(slot),null,true); item.m_customData = inventory.Data(slot);
             int amount = request.Action.Amount;
             if (amount > item.m_stack) throw new InvalidOperationException("Drop amount exceeds source stack");
@@ -51,14 +56,51 @@ namespace Overhaul.Persistence
                 var delta = bag.Delta(request.Action.Operation,0);
                 if (!lease.Reserve(ContainerVersions.Slots(delta))) throw new InvalidOperationException("Drop source slot is busy");
                 var action = new PlayerWorldAction(new PlayerBatch(request.Action.Operation,snapshot.Revision,Array.Empty<PlayerChange>()),
-                    new Dictionary<long,ObjectRecord> { [record.Id] = record },
+                    record == null ? new Dictionary<long,ObjectRecord>() : new Dictionary<long,ObjectRecord> { [record.Id] = record },
                     new Dictionary<long,PlayerContainerAction> { [lease.ObjectId] = new PlayerContainerAction(before,delta) });
                 return new PlayerActionPlan(action,() =>
                 {
-                    GamePersistence.PublishActionObject(record); lease.Publish(action.CommittedContainers[lease.ObjectId]); lease.Dispose();
+                    if (record != null) GamePersistence.PublishActionObject(record);
+                    lease.Publish(action.CommittedContainers[lease.ObjectId]); lease.Dispose();
                 });
             }
             catch { lease.Dispose(); throw; }
+        }
+        internal static bool Trash(Inventory inventory,ItemDrop.ItemData item,int amount)
+        {
+            var player = Player.m_localPlayer; var endpoint = InventoryMoveGame.Client;
+            if (!player || player.IsTeleporting() || inventory == null || item == null || !inventory.ContainsItem(item) || amount < 1) return false;
+            var id = ZDOID.None;
+            if (inventory != player.GetInventory())
+            {
+                var chest = endpoint?.Container;
+                if (!chest || !endpoint.ManagedView(chest) || inventory != chest.GetInventory() || !chest.m_nview || !chest.m_nview.IsValid()) return false;
+                id = chest.m_nview.GetZDO().m_uid;
+            }
+            return endpoint?.Controller.Act(new PlayerActionCommand { Kind = PlayerActionKind.Trash,TargetUser = id.UserID,TargetId = id.ID },
+                item.m_gridPos.x,item.m_gridPos.y,Math.Min(amount,item.m_stack)) == true;
+        }
+        internal static void TrashFeedback()
+        {
+            try
+            {
+                var gui = InventoryGui.instance;
+                var button = gui ? gui.GetComponentInChildren<AugaUnity.AugaTrasher>(true) : null;
+                if (button && button.SFX) UnityEngine.Object.Instantiate(button.SFX);
+            }
+            catch (Exception error) { ZLog.LogWarning("[Overhaul trash sound] " + error.Message); }
+        }
+        [HarmonyPatch(typeof(AugaUnity.AugaTrasher),"OnClick")]
+        private static class TrashIntent
+        {
+            [HarmonyPriority(Priority.First + 200)]
+            private static bool Prefix(AugaUnity.AugaTrasher __instance)
+            {
+                if (!PlayerSessionGame.Managed) return true;
+                var gui = InventoryGui.instance;
+                if (gui && __instance.Button && __instance.Button.IsInteractable()) Trash(gui.m_dragInventory,gui.m_dragItem,gui.m_dragAmount);
+                return false;
+            }
         }
         [HarmonyPatch(typeof(Humanoid),nameof(Humanoid.DropItem))]
         private static class Intent
