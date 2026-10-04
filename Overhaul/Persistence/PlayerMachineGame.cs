@@ -26,6 +26,7 @@ namespace Overhaul.Persistence
             if (data == null || !data.Persistent || GamePersistence.ActionReserved(data.m_uid) ||
                 Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5f) throw new InvalidOperationException("Machine is unavailable");
             if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
+            if (command.Definition == PlayerRecyclerGame.Interaction) return PlayerRecyclerGame.Prepare(actor,target,request,snapshot);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
             if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             if (command.Definition == PlayerStandGame.Attach || command.Definition == PlayerStandGame.Drop || command.Definition == PlayerStandGame.Rotate || command.Definition == PlayerStandGame.Power)
@@ -294,4 +295,5 @@ namespace Overhaul.Persistence
         }
     }
 }
+
 

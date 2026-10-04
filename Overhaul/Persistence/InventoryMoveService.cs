@@ -115,7 +115,7 @@ namespace Overhaul.Persistence
                         if (actionPlan.Ready != null && (cancelled || disconnected)) throw new InvalidOperationException("Equipment action cancelled");
                         ready = actionPlan.Ready == null || actionPlan.Ready();
                     }
-                    catch (InvalidOperationException) { actionPlan = null; Synchronize(); }
+                    catch (InvalidOperationException) { actionPlan.Cancel?.Invoke(); actionPlan = null; Synchronize(); }
                     if (ready) actionCommit = writer.CommitAction(session.Identity,actionPlan.Change);
                 }
                 if (actionCommit != null && actionCommit.IsCompleted)
@@ -209,3 +209,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+
