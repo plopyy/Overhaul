@@ -22,7 +22,7 @@ namespace Overhaul.Persistence
                 owned=!prefab.GetComponent<Character>() && (prefab.GetComponent<IDestructible>()!=null || prefab.GetComponent<ItemDrop>() ||
                     prefab.GetComponent<Container>() || prefab.GetComponent<TerrainComp>() || prefab.GetComponent<Smelter>() ||
                     prefab.GetComponent<CookingStation>() || prefab.GetComponent<Fermenter>() || prefab.GetComponent<Fireplace>() ||
-                    prefab.GetComponent<Beehive>() || prefab.GetComponent<SapCollector>());
+                    prefab.GetComponent<Beehive>() || prefab.GetComponent<SapCollector>() || prefab.GetComponent<Projectile>() || prefab.GetComponent<Aoe>());
                 prefabs.Add(hash,owned);
             }
             return owned;
@@ -51,6 +51,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(MineRock),"RPC_Hit");
                 yield return AccessTools.Method(typeof(WearNTear),"RPC_Remove");
                 yield return AccessTools.Method(typeof(ItemDrop),"RPC_MakePiece");
+                foreach(string name in new[]{"RPC_OnHit","RPC_Attach","RPC_SetStayTTL"})yield return AccessTools.Method(typeof(Projectile),name);
             }
             private static bool Prefix(Component __instance,long sender,MethodBase __originalMethod,object[] __args)
             {

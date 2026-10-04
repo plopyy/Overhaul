@@ -15,12 +15,12 @@ namespace Overhaul.Persistence
             internal Attack Attack;
             internal ItemDrop.ItemData Weapon,Ammo;
             internal string Identity;
-            internal bool Secondary,Pending,Triggered;
+            internal bool Secondary,Pending,Triggered,BurstPending;
             internal float Began;
             internal AnimatorCullingMode Culling;
         }
         private static readonly Dictionary<ZDOID,Running> running=new Dictionary<ZDOID,Running>();
-        [ThreadStatic] private static bool executing,starting;
+        [ThreadStatic] private static bool executing,starting,firing;
         private static bool Fishing(ItemDrop.ItemData item)=>item!=null && PlayerFishingCastGame.FloatPrefab(item.m_shared.m_attack?.m_attackProjectile);
         private static bool Managed(Player player)=>player && player.m_nview && player.m_nview.IsValid() && InventoryMoveGame.State(player.GetZDOID())!=null;
         private static bool Active(Attack attack)=>executing && GameCombatContext.Matches(attack.m_character);
@@ -40,11 +40,11 @@ namespace Overhaul.Persistence
             var instance=ZNetScene.instance.FindInstance(actor.m_uid);var player=instance?instance.GetComponent<Player>():null;
             if(!player || !player.m_animator || !player.m_zanim || !player.m_animEvent || !player.m_body || player.IsDead() || player.IsTeleporting() || player.InIntro() || player.InDodge() || player.IsStaggering() || player.InMinorAction())
                 throw new InvalidOperationException("Character cannot start this attack");
-            if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() || previous.Pending))
+            if(running.TryGetValue(actor.m_uid,out var previous) && (!previous.Attack.IsDone() || previous.Pending || previous.BurstPending))
                 throw new InvalidOperationException("Previous server attack is still active");
             int slot=request.Action.FromY*256+request.Action.FromX;
             var preview=GameAttackInventory.Trigger(snapshot,slot,request.Gameplay.Alternate,request.Action.Operation);var attack=preview.Definition;
-            if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area ||
+            if(attack.m_attackType!=Attack.AttackType.Horizontal && attack.m_attackType!=Attack.AttackType.Vertical && attack.m_attackType!=Attack.AttackType.Area && attack.m_attackType!=Attack.AttackType.Projectile ||
                 attack.m_bowDraw || attack.m_requiresReload || attack.m_loopingAttack || attack.m_attackUseAdrenaline!=0 || attack.m_selfDamage!=0 || attack.m_attackKillsSelf)
                 throw new InvalidOperationException("This attack requires its additional server combat phase");
             if(!preview.Weapon.m_customData.TryGetValue(GameEquipmentWear.Identity,out var identity))
@@ -94,7 +94,7 @@ namespace Overhaul.Persistence
                     var result=GameAttackInventory.Trigger(state,slot,current.Secondary,Guid.NewGuid().ToString("N"));
                     return new PlayerActionPlan(result.Change,()=>
                     {
-                        if(!current.Player)return;
+                        if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
                         current.Triggered=true;current.Weapon=result.Weapon;current.Ammo=result.Ammo;
                         current.Attack.m_weapon=result.Weapon;
                         InContext(current,state,()=>current.Attack.OnAttackTrigger());
@@ -102,6 +102,27 @@ namespace Overhaul.Persistence
                 }
                 catch(InvalidOperationException){return null;}
             },()=>{current.Pending=false;if(!current.Triggered)Forget(actor);}))current.Pending=false;
+        }
+        private static void Burst(Running current)
+        {
+            if(current.BurstPending)return;
+            current.BurstPending=true;var actor=current.Player.GetZDOID();bool fired=false;
+            if(!InventoryMoveGame.ServerAction(actor,state=>
+            {
+                try
+                {
+                    if(!current.Player || current.Player.IsDead() || current.Player.IsStaggering() || current.Attack.IsDone() || !running.TryGetValue(actor,out var active) || active!=current)return null;
+                    var costs=GameAttackResources.Spend(state,current.Weapon,current.Attack,true);
+                    return new PlayerActionPlan(new PlayerWorldAction(new PlayerBatch(Guid.NewGuid().ToString("N"),state.Revision,costs),new Dictionary<long,ObjectRecord>()),()=>
+                    {
+                        if(!current.Player || current.Player.IsDead() || !running.TryGetValue(actor,out var active) || active!=current)return;
+                        bool previous=firing;firing=true;
+                        try{InContext(current,state,()=>current.Attack.FireProjectileBurst());fired=true;}
+                        finally{firing=previous;}
+                    });
+                }
+                catch(InvalidOperationException){return null;}
+            },()=>{current.BurstPending=false;if(!fired)Forget(actor);}))current.BurstPending=false;
         }
         [HarmonyPatch(typeof(Humanoid),nameof(Humanoid.StartAttack))]
         private static class Intent
@@ -132,7 +153,7 @@ namespace Overhaul.Persistence
                 var state=InventoryMoveGame.State(player.GetZDOID());
                 if(state==null || player.IsDead() || player.IsTeleporting() || Time.time-current.Began>15 || current.Attack.IsDone())
                 {Forget(player.GetZDOID());return;}
-                if(current.Pending)return;
+                if(current.Pending || current.BurstPending)return;
                 InContext(current,state,()=>player.UpdateAttack(fixedDeltaTime));
             }
         }
@@ -156,6 +177,16 @@ namespace Overhaul.Persistence
         }
         [HarmonyPatch(typeof(Attack),"ConsumeItem")]
         private static class WeaponDebit {private static bool Prefix(Attack __instance)=>!Active(__instance);}
+        [HarmonyPatch(typeof(Attack),"FireProjectileBurst")]
+        private static class ProjectileBurst
+        {
+            private static bool Prefix(Attack __instance)
+            {
+                if(!Active(__instance) || !__instance.m_perBurstResourceUsage || firing)return true;
+                if(running.TryGetValue(__instance.m_character.GetZDOID(),out var current))Burst(current);
+                return false;
+            }
+        }
         [HarmonyPatch(typeof(Attack),"HaveAmmo")]
         private static class HaveAmmo
         {
@@ -170,7 +201,10 @@ namespace Overhaul.Persistence
         }
         [HarmonyPatch(typeof(Player),nameof(Player.HaveStamina))]
         private static class HaveStamina
-        {private static bool Prefix(Player __instance,ref bool __result){if(!starting || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
+        {private static bool Prefix(Player __instance,ref bool __result){if(!executing || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
+        [HarmonyPatch(typeof(Player),nameof(Player.HaveEitr))]
+        private static class BurstEitr
+        {private static bool Prefix(Player __instance,ref bool __result){if(!executing || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
         [HarmonyPatch(typeof(Character),nameof(Character.TryUseEitr))]
         private static class HaveEitr
         {private static bool Prefix(Character __instance,ref bool __result){if(!starting || !GameCombatContext.Matches(__instance))return true;__result=true;return false;}}
