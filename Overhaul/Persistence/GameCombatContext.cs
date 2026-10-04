@@ -31,6 +31,16 @@ namespace Overhaul.Persistence
                 __result=true;return false;
             }
         }
+        [HarmonyPatch(typeof(ZNetView),nameof(ZNetView.IsOwner))]
+        private static class NativeViewOwner
+        {
+            // This wrapper may already contain an inlined ZDO.IsOwner call.
+            private static bool Prefix(ZNetView __instance,ref bool __result)
+            {
+                if(!GameCreatureAuthority.Enabled||Current==null||!Current.Player||Current.Player.m_nview!=__instance||!__instance.IsValid())return true;
+                __result=true;return false;
+            }
+        }
         internal static void Run(Player player,PlayerSnapshot snapshot,ItemDrop.ItemData weapon,ItemDrop.ItemData ammo,Action action)
         {
             if(!player || snapshot==null || action==null)throw new ArgumentException("Invalid server combat context");
