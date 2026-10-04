@@ -42,6 +42,7 @@ namespace Overhaul.Persistence
         private Task<bool> commit;
         private PlayerBatch result;
         private bool closing,broken;
+        internal bool Failed=>broken;
         internal bool Busy=>read!=null || commit!=null;
         internal bool Finished=>!Busy && queued.Count==0;
         internal PlayerProgressService(PlayerIdentity identity,PlayerDatabaseWriter writer,Action<PlayerBatch> publish,Action<Exception> failed)
@@ -70,7 +71,9 @@ namespace Overhaul.Persistence
                         {
                             if(row.Table!="skills" && row.Table!="knowledge")throw new InvalidDataException("Invalid server progression table");
                             int keys=PlayerDatabase.Tables.Single(t=>t.Name==row.Table).Keys;
-                            bool Same(PlayerChange old)=>old.Table==row.Table && old.Values.Take(keys).SequenceEqual(row.Values.Take(keys));
+                            bool Same(PlayerChange old)=>old.Table==row.Table && (row.Table=="skills"
+                                ? Convert.ToInt32(old.Values[0])==Convert.ToInt32(row.Values[0])
+                                : old.Values.Take(keys).SequenceEqual(row.Values.Take(keys)));
                             current.RemoveAll(old=>Same(old));if(!row.Delete)current.Add(row);
                             changes.RemoveAll(old=>Same(old));changes.Add(row);
                         }

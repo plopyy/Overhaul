@@ -152,7 +152,7 @@ namespace Overhaul.Persistence
         {
             ZLog.LogError("[Overhaul inventory] " + error);
             Dispose(); rpc.GetSocket().Close();
-            if (server?.StorageFailed == true) ZNet.m_loadError = true;
+            if (server?.StorageFailed == true || progress?.Failed == true) ZNet.m_loadError = true;
         }
         private static void Ignore(ZRpc sender, ZPackage package) { }
         public void Dispose()
