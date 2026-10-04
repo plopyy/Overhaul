@@ -10,6 +10,16 @@ namespace Overhaul.Persistence
     {
         internal const string Dead="server_dead";
         internal static bool IsDead(PlayerSnapshot state)=>state.Rows.Any(r=>r.Table=="state"&&(string)r.Values[0]==Dead&&Convert.ToBoolean(r.Values[1]));
+        internal static IEnumerable<PlayerChange> Advance(PlayerSnapshot state,double seconds)
+        {
+            if(double.IsNaN(seconds)||double.IsInfinity(seconds)||seconds<0)throw new InvalidOperationException("Invalid death protection interval");
+            if(seconds==0||IsDead(state)||PlayerResources.Read(state,"health")<=0)yield break;
+            var row=state.Rows.SingleOrDefault(r=>r.Table=="state"&&(string)r.Values[0]=="time_since_death");
+            if(row==null)yield break;
+            double elapsed=Convert.ToDouble(row.Values[2]);
+            if(double.IsNaN(elapsed)||double.IsInfinity(elapsed)||elapsed<0)throw new InvalidOperationException("Invalid saved death protection time");
+            yield return new PlayerChange("state",false,"time_since_death",null,Math.Min(float.MaxValue,elapsed+seconds),null,null);
+        }
         internal static PlayerChange[] Prepare(PlayerSnapshot state,Vector3 position,HitData hit,bool hardDeath,bool resetSkills,float skillLoss)
         {
             if(IsDead(state))return Array.Empty<PlayerChange>();

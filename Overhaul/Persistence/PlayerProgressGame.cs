@@ -21,6 +21,8 @@ namespace Overhaul.Persistence
         {
             if(actor==null || seconds<=0)return Array.Empty<PlayerChange>();
             var changes=new List<PlayerChange>();
+            if(GameDeathProgress.IsDead(snapshot)||PlayerResources.Read(snapshot,"health")<=0)return changes;
+            changes.AddRange(GameDeathProgress.Advance(snapshot,seconds));
             var foods=snapshot.Rows.Where(r=>r.Table=="food").ToDictionary(r=>Convert.ToInt32(r.Values[0]));
             for(int slot=0;slot<3;slot++)
             {
