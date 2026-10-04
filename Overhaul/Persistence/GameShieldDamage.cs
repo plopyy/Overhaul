@@ -24,6 +24,7 @@ namespace Overhaul.Persistence
                 int id=Convert.ToInt32(header.Values[0]);
                 if(!(ObjectDB.instance.GetStatusEffect(id) is SE_Shield))continue;
                 var shield=(SE_Shield)GameStatusCodec.Restore(state.Rows.Where(r=>(r.Table=="status"||r.Table=="status_data")&&Convert.ToInt32(r.Values[0])==id),player);
+                if(shield is SE_StaffGuard inactive&&(!inactive.m_guardActive||!GameStaffGuardRuntime.Held(player)))continue;
                 bool expired=shield.m_ttl>0&&shield.m_time>shield.m_ttl;
                 bool broken=shield.m_damage>shield.m_totalAbsorbDamage;
                 if(!expired&&!broken)
@@ -37,7 +38,9 @@ namespace Overhaul.Persistence
                     visuals.Add(()=>{if(player)shield.m_hitEffects.Create(hit.m_point,hit.m_dir.sqrMagnitude>0?Quaternion.LookRotation(-hit.m_dir):player.transform.rotation,player.transform);});
                 }
                 PlayerChange[] delta;
-                if(expired||broken)delta=new[]{new PlayerChange("status",true,id)};
+                if(broken&&shield is SE_StaffGuard guard)
+                {GameStaffGuardRules.Break(guard);delta=GameStatusCodec.Delta(current,guard,ZDOID.None);visuals.Add(()=>{if(player)player.Stagger(Vector3.zero);});}
+                else if(expired||broken)delta=new[]{new PlayerChange("status",true,id)};
                 else delta=GameStatusCodec.Delta(current,shield,new ZDOID(Convert.ToInt64(header.Values[4]),checked((uint)Convert.ToInt64(header.Values[5]))));
                 changes.AddRange(delta);current=PlayerProgressService.Overlay(current,delta);
                 if(broken)
@@ -55,3 +58,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+

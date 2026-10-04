@@ -670,7 +670,16 @@ namespace Overhaul
 				return;
 			}
 
-			bool wantsToBlock = block || blockHold;
+            bool wantsToBlock = block || blockHold;
+            if(Persistence.PlayerSessionGame.Managed)
+            {
+                bool staff=IsStaff(player.GetCurrentWeapon());
+                Persistence.GameStaffGuardRuntime.Input(staff&&wantsToBlock&&player.TakeInput());
+                bool frozen=Persistence.GameStaffGuardRuntime.Casting(player)||Persistence.GameStaffGuardRuntime.Stunned(player);
+                if(staff&&wantsToBlock||frozen){block=blockHold=attack=attackHold=secondaryAttack=secondaryAttackHold=false;player.m_blocking=false;player.m_zanim.SetBool(Humanoid.s_blocking,false);}
+                if(frozen){moveDir=Vector3.zero;jump=crouch=run=autoRun=dodge=false;}
+                return;
+            }
 			UpdateInactiveStaffShield(player, Time.deltaTime);
 			UpdateStaffShieldStun(player);
 			if (staffShieldStunActive)
@@ -897,13 +906,15 @@ namespace Overhaul
 
 		public static bool IsStaffShieldStunned(Player player)
 		{
-			return player != null && player == Player.m_localPlayer && staffShieldStunActive
+			if(Persistence.PlayerSessionGame.Managed||Persistence.GameMovementRuntime.Managed(player))return Persistence.GameStaffGuardRuntime.Stunned(player);
+            return player != null && player == Player.m_localPlayer && staffShieldStunActive
 				&& Time.time < staffShieldStunUntil;
 		}
 
 		public static bool IsStaffShieldCasting(Player player)
 		{
-			return player != null && player == Player.m_localPlayer && staffShieldCasting
+			if(Persistence.PlayerSessionGame.Managed||Persistence.GameMovementRuntime.Managed(player))return Persistence.GameStaffGuardRuntime.Casting(player);
+            return player != null && player == Player.m_localPlayer && staffShieldCasting
 				&& Time.time < staffShieldCastUntil;
 		}
 

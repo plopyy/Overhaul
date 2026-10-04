@@ -29,7 +29,7 @@ namespace Overhaul.Persistence
             internal readonly List<Action> Publish=new List<Action>();
         }
         [ThreadStatic] private static Frame current;
-        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React) || effect.GetType()==typeof(SE_Cozy) || effect.GetType()==typeof(SE_Rested));
+        internal static bool Supported(StatusEffect effect)=>effect && (effect is SE_StaffGuard || effect is SE_Burning || effect is SE_Poison || effect.GetType()==typeof(StatusEffect) || effect.GetType()==typeof(SE_Frost) || effect.GetType()==typeof(SE_Shield) || effect.GetType()==typeof(SE_Stats) || effect.GetType()==typeof(SE_Wet) || effect.GetType()==typeof(SE_Smoke) || effect.GetType()==typeof(SE_React) || effect.GetType()==typeof(SE_Cozy) || effect.GetType()==typeof(SE_Rested));
         private static void Change(Frame frame,IEnumerable<PlayerChange> rows)
         {
             var changes=rows.ToArray();
@@ -54,6 +54,12 @@ namespace Overhaul.Persistence
                         if(!rows.Any(r=>r.Table=="status"))continue;
                         var effect=GameStatusCodec.Restore(rows,player);
                         if(!Supported(effect))continue;
+                        if(effect is SE_StaffGuard guard)
+                        {
+                            bool held=GameStaffGuardRuntime.Held(player)&&GameCombatEquipment.Equipped(frame.State).Any(GameStaffGuardRuntime.IsStaff)&&!player.IsTeleporting()&&!player.InDodge()&&!DynamicCombat.IsDashing(player);
+                            GameStaffGuardRules.Advance(guard,held,seconds,global::Overhaul.Utility.OverhaulConfig.StaffShieldRegenerationPerSecond?.Value??5f);
+                            Change(frame,guard.IsDone()?new[]{new PlayerChange("status",true,id)}:GameStatusCodec.Delta(frame.State,guard,ZDOID.None));continue;
+                        }
                         if(!(effect is SE_Burning) && !(effect is SE_Poison) && !(effect is SE_Stats) && !(effect is SE_Smoke))
                         {
                             // These native types only advance their age. Avoid
@@ -188,3 +194,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+
