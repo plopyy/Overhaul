@@ -103,13 +103,17 @@ namespace Overhaul.Persistence
             if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid)) throw new InvalidOperationException("World inventory is unavailable");
             if (!ids.TryGetValue(data.m_uid, out long id)) { id = checked(++nextId); ids.Add(data.m_uid, id); }
             var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
+            bool changed=true;
             if(Players?.Live!=null)
             {
                 var encoded=data.GetByteArray(ZDOVars.s_items,null);
-                Players.Live.Capture(id,encoded==null?Array.Empty<PlayerChange>():PlayerNativeFormat.DecodeInventory(encoded));
+                changed=Players.Live.Capture(id,encoded==null?Array.Empty<PlayerChange>():PlayerNativeFormat.DecodeInventory(encoded));
             }
-            writer.CaptureInventory(snapshot); dirty.Remove(data.m_uid); return id;
+            if(changed){writer.CaptureInventory(snapshot);dirty.Remove(data.m_uid);}else Mark(data.m_uid);
+            return id;
         }
+        internal static void ForgetInventory(ZDO data)
+        {if(data!=null&&ids.TryGetValue(data.m_uid,out long id))Players?.Live?.ForgetChest(id);}
         internal static void ReleaseSlots(ZDO data, IEnumerable<int> cells)
         {
             if (data == null) return;

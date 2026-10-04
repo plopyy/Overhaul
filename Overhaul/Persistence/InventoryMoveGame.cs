@@ -125,6 +125,8 @@ namespace Overhaul.Persistence
                 return null;
             }
             internal static void Clear() => viewers.Clear();
+            internal static void Unload(Container chest)
+            {if(viewers.TryGetValue(chest,out var group)){foreach(var access in group)access.opened=null;viewers.Remove(chest);}}
             internal Access(ZRpc rpc, PlayerAdmission.Session session) { this.rpc = rpc; this.session = session; }
             internal InventoryMoveLease Reserve(InventoryMoveRequest request)
             {
@@ -183,6 +185,15 @@ namespace Overhaul.Persistence
             public void Dispose() => Close();
         }
 
+        [HarmonyPatch(typeof(ZNetView),nameof(ZNetView.ResetZDO))]
+        private static class UnloadContainer
+        {
+            private static void Prefix(ZNetView __instance)
+            {
+                var chest=__instance.GetComponent<Container>();if(!chest)return;
+                GamePersistence.ForgetInventory(__instance.GetZDO());Access.Unload(chest);
+            }
+        }
         [HarmonyPatch(typeof(ZNet), "Update")]
         private static class Pump
         {

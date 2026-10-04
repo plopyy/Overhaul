@@ -28,15 +28,17 @@ namespace Overhaul.Persistence
         private static int Slot(PlayerChange row)=>Convert.ToInt32(row.Values[2])*256+Convert.ToInt32(row.Values[1]);
         private static Dictionary<int,string> Prints(IEnumerable<PlayerChange> rows)=>rows.GroupBy(Slot).ToDictionary(g=>g.Key,g=>
             new PlayerBatch("00000000000000000000000000000000",0,g.OrderBy(r=>r.Table,StringComparer.Ordinal).ThenBy(r=>r.Table=="item_data"?(string)r.Values[3]:"",StringComparer.Ordinal)).Digest());
-        internal void Capture(long id,IEnumerable<PlayerChange> rows)
+        internal void ForgetChest(long id)=>containers.Remove(id);
+        internal bool Capture(long id,IEnumerable<PlayerChange> rows)
         {
             var snapshot=new PlayerSnapshot(0,rows);
-            if(!containers.TryGetValue(id,out var container)){containers.Add(id,new Container{State=snapshot});return;}
+            if(!containers.TryGetValue(id,out var container)){containers.Add(id,new Container{State=snapshot});return true;}
             var before=Prints(container.State.Rows);var after=Prints(snapshot.Rows);
             var changed=before.Keys.Union(after.Keys).Where(k=>!before.TryGetValue(k,out var a)||!after.TryGetValue(k,out var b)||a!=b).ToArray();
-            if(changed.Length==0)return;
+            if(changed.Length==0)return false;
             long revision=checked(container.State.Revision+1);container.State=new PlayerSnapshot(revision,snapshot.Rows);
             foreach(int slot in changed)container.Versions[slot]=revision;
+            return true;
         }
         internal PlayerSnapshot Chest(long id)=>containers.TryGetValue(id,out var c)?c.State:throw new InvalidOperationException("Live container is unavailable");
         internal void Validate(long id,InventoryMoveAction action,IEnumerable<int> slots)
@@ -122,7 +124,9 @@ namespace Overhaul.Persistence
                 pendingProgress.Add(identity.FileName,entry=new PendingProgress{Identity=identity,Revision=batch.ExpectedRevision,Due=DateTime.UtcNow.AddSeconds(30)});
             }
             entry.Rows.AddRange(batch.Changes);
-            Live.Apply(identity,batch,false);return true;
+            Live.Apply(identity,batch,false);
+            if(batch.Changes.Any(r=>r.Table=="spawn"&&(string)r.Values[0]=="logout"))FlushLiveProgress(entry);
+            return true;
         }
     }
 }
