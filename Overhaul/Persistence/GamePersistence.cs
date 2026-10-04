@@ -14,6 +14,36 @@ namespace Overhaul.Persistence
         internal static PlayerDatabaseWriter Players { get; private set; }
         private static readonly Dictionary<ZDOID,HashSet<int>> inventoryReservations = new Dictionary<ZDOID,HashSet<int>>();
         private static readonly HashSet<ZDOID> actionReservations = new HashSet<ZDOID>();
+        private sealed class DeferredOutput
+        {
+            internal ObjectRecord[] Records;
+            internal int Published;
+            internal float Due;
+            internal Action Effects;
+        }
+        private static readonly List<DeferredOutput> deferredOutputs = new List<DeferredOutput>();
+        // These objects are already committed in SQLite. Delaying their live publication
+        // preserves the tap animation without holding the machine or player transaction.
+        // A restart restores the committed outputs directly, including an interrupted tap.
+        internal static void DeferActionObjects(ObjectRecord[] records,float seconds,Action effects)
+        {
+            if (float.IsNaN(seconds) || float.IsInfinity(seconds) || seconds < 0)
+                throw new ArgumentOutOfRangeException(nameof(seconds));
+            deferredOutputs.Add(new DeferredOutput { Records = records,Due = Time.time+seconds,Effects = effects });
+        }
+        internal static void PublishDeferredActionObjects(float now)
+        {
+            for (int i = deferredOutputs.Count-1; i >= 0; i--)
+            {
+                var output = deferredOutputs[i]; if (now < output.Due) continue;
+                while (output.Published < output.Records.Length)
+                {
+                    PublishActionObject(output.Records[output.Published]); output.Published++;
+                }
+                deferredOutputs.RemoveAt(i);
+                try { output.Effects?.Invoke(); } catch (Exception error) { ZLog.LogError("[Overhaul delayed output effects] " + error); }
+            }
+        }
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
         internal static bool HasReservations => actionReservations.Count != 0 || inventoryReservations.Count != 0;
@@ -200,6 +230,7 @@ namespace Overhaul.Persistence
             if(!Active)return;
             try
             {
+                PublishDeferredActionObjects(Time.time);
                 if(Time.realtimeSinceStartup>=nextCapture){Capture();writer.RequestFlush();nextCapture=Time.realtimeSinceStartup+5;}
                 string error=writer.LastError;if(error!=lastError){lastError=error;if(error!=null)ZLog.LogError("[Overhaul SQLite] Write or backup failed; failed operations will be retried: "+error);}
             }
@@ -220,7 +251,7 @@ namespace Overhaul.Persistence
                 {
                     Players=null;
                     try { writer.Dispose(); }
-                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();InventoryMoveReservations.Clear(); }
+                    finally { writer=null;session=null;loading=false;ids.Clear();dirty.Clear();inventoryReservations.Clear();actionReservations.Clear();deferredOutputs.Clear();InventoryMoveReservations.Clear(); }
                 }
             }
         }

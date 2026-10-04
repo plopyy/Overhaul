@@ -10,7 +10,7 @@ namespace Overhaul.Persistence
     internal static class PlayerMachineGame
     {
         internal const string Ore = "smelter.ore", Fuel = "smelter.fuel", CookingFuel = "cooking.fuel", FireFuel = "fire.fuel";
-        internal const string Ferment = "fermenter.input", Processed = "smelter.output";
+        internal const string Ferment = "fermenter.input", Tap = "fermenter.output", Processed = "smelter.output";
         private static bool Enabled => PlayerPersistenceConfig.Enabled?.Value == true;
         private static bool Managed(Humanoid user) => user && user == Player.m_localPlayer && PlayerSessionGame.Managed;
         private static bool Held(Component component)
@@ -27,6 +27,7 @@ namespace Overhaul.Persistence
                 Vector3.Distance(actor.GetPosition(),data.GetPosition()) > 5f) throw new InvalidOperationException("Machine is unavailable");
             if (command.Definition == PlayerCookingGame.Interaction) return PlayerCookingGame.Prepare(actor,target,request,snapshot,inventory);
             if (command.Definition == Processed) return TakeProcessed(target,request,snapshot);
+            if (command.Definition == Tap) return TapFermenter(actor,target,request,snapshot);
             int? selected = command.Alternate ? (int?)(request.Action.FromY * 256 + request.Action.FromX) : null;
             int capacity; float currentFuel = data.GetFloat(ZDOVars.s_fuel,0); IEnumerable<int> allowed;
             bool ore = command.Definition == Ore, oneType = true;
@@ -110,6 +111,35 @@ namespace Overhaul.Persistence
             }
         }
         private static IEnumerable<int> Prefab(ItemDrop item) => item ? new[] { item.gameObject.name.GetStableHashCode() } : Array.Empty<int>();
+        private static PlayerActionPlan TapFermenter(ZDO actor,GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
+        {
+            var fermenter = target.GetComponent<Fermenter>();
+            if (!fermenter || request.Action.Amount != 1 || request.Gameplay.Alternate ||
+                !Storage.ChestAccess.WardAccessAt(target.transform.position,actor.GetLong(ZDOVars.s_playerID,0)) ||
+                fermenter.GetStatus() != Fermenter.Status.Ready)
+                throw new InvalidOperationException("Fermenter is not ready for collection");
+            var data = fermenter.m_nview.GetZDO(); var conversion = fermenter.GetItemConversion(fermenter.GetContent());
+            if (conversion?.m_to == null || conversion.m_producedItems < 1 || conversion.m_producedItems > 128 || !fermenter.m_outputPoint)
+                throw new InvalidOperationException("Invalid fermentation output");
+            var position = fermenter.m_outputPoint.position + Vector3.up*0.3f;
+            var outputs = new List<ObjectRecord>();
+            for (int i = 0; i < conversion.m_producedItems; i++)
+            {
+                var item = conversion.m_to.m_itemData.Clone(); item.m_dropPrefab = conversion.m_to.gameObject;
+                item.m_equipped = false; item.m_worldLevel = Game.m_worldLevel;
+                item.m_cheated = !PlayerProfile.s_bypassCheatChecks &&
+                    (data.GetBool(ZDOVars.s_cheatedQueued,false) || data.GetBool(ZDOVars.s_cheated,false));
+                outputs.Add(PlayerDropGame.Ground(item,position,Quaternion.identity));
+            }
+            using (var world = new PlayerActionObjectGame(data))
+            {
+                world.Set(ZDOVars.s_content,0); world.Set(ZDOVars.s_startTime,0L); world.Set(ZDOVars.s_cheatedQueued,0);
+                return world.FinishWithDelayedObjects(new PlayerBatch(request.Action.Operation,snapshot.Revision,Array.Empty<PlayerChange>()),
+                    outputs,Math.Max(0,fermenter.m_tapDelay),
+                    () => { if (fermenter) fermenter.m_tapEffects.Create(target.transform.position,target.transform.rotation,null,1,-1,default(ZDOID)); },
+                    () => { if (fermenter) fermenter.m_spawnEffects.Create(fermenter.m_outputPoint.position,Quaternion.identity,null,1,-1,default(ZDOID)); });
+            }
+        }
         private static PlayerActionPlan TakeProcessed(GameObject target,InventoryMoveRequest request,PlayerSnapshot snapshot)
         {
             var smelter = target.GetComponent<Smelter>();
@@ -198,8 +228,8 @@ namespace Overhaul.Persistence
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Fermenter __instance,Humanoid user,bool hold,ref bool __result)
             {
-                if (!Managed(user) || __instance.GetContent() != 0) return true;
-                __result = false; if (!hold) Send(__instance,user,null,Ferment,false); return false;
+                if (!Managed(user)) return true;
+                __result = false; if (!hold) Send(__instance,user,null,__instance.GetContent() == 0 ? Ferment : Tap,false); return false;
             }
         }
         [HarmonyPatch(typeof(Fermenter),nameof(Fermenter.UseItem))]
@@ -223,6 +253,7 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_AddItem");
                 yield return AccessTools.Method(typeof(CookingStation),"RPC_RemoveDoneItem");
                 yield return AccessTools.Method(typeof(Smelter),"RPC_EmptyProcessed");
+                yield return AccessTools.Method(typeof(Fermenter),"RPC_Tap");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance) => !Enabled && !Held(__instance);
@@ -237,7 +268,8 @@ namespace Overhaul.Persistence
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_AddFuelAmount");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_SetFuelAmount");
                 yield return AccessTools.Method(typeof(Fireplace),"RPC_ToggleOn");
-                yield return AccessTools.Method(typeof(Fermenter),"RPC_Tap");
+                yield return AccessTools.Method(typeof(Fermenter),"OnDestroyed");
+                yield return AccessTools.Method(typeof(Fermenter),"DelayedTap");
             }
             [HarmonyPriority(Priority.First + 200)]
             private static bool Prefix(Component __instance,MethodBase __originalMethod,object[] __args) =>
