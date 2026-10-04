@@ -56,7 +56,10 @@ namespace Overhaul.Persistence
                             // replay of every physics frame while SQL was busy.
                             double step=Math.Min(remaining,timer>0?timer:.02);
                             bool wet=effect is SE_Burning b && b.m_fireDamageLeft>0 && frame.State.Rows.Any(r=>r.Table=="status"&&Convert.ToInt32(r.Values[0])==SEMan.s_statusEffectWet);
-                            if(effect.m_ttl>0)step=Math.Min(step,Math.Max(.000001,(effect.m_ttl-effect.m_time)/(wet?6d:1d)+.000001));
+                            // Float ages need an expiry step larger than their
+                            // rounding unit; a fixed microsecond stalls at long TTLs.
+                            double expiryEpsilon=Math.Max(.000001,Math.Abs((double)effect.m_ttl)*.000001);
+                            if(effect.m_ttl>0)step=Math.Min(step,Math.Max(expiryEpsilon,(effect.m_ttl-effect.m_time)/(wet?6d:1d)+expiryEpsilon));
                             effect.UpdateStatusEffect((float)step);remaining=Math.Max(0,remaining-step);
                         }
                         if(effect.IsDone())Change(frame,new[]{new PlayerChange("status",true,id)});
