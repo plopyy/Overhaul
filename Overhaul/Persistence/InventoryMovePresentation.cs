@@ -19,7 +19,8 @@ namespace Overhaul.Persistence
             var progression = PlayerCraftProgressGame.Presentation(reply.Player.Changes.Where(r => r.Table == "knowledge" || r.Table == "skills"),player);
             var food = PlayerFoodGame.Presentation(reply.Player.Changes.Where(r => r.Table == "food"),player);
             var potions = PlayerPotionGame.Presentation(reply.Player.Changes.Where(r => r.Table == "effects"),player);
-            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state"),player);
+            var guardian = PlayerStandGame.PowerPresentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]!=PlayerBuildGame.Debt),player);
+            var building = PlayerBuildGame.Presentation(reply.Player.Changes.Where(r => r.Table == "state" && (string)r.Values[0]==PlayerBuildGame.Debt),player);
             bool resize = reply.Player.Changes.Any(r => r.Table == "knowledge" && !r.Delete && (string)r.Values[0] == "uniques" &&
                 ((string)r.Values[1]).StartsWith(Player.InventoryRowsKey+" ",StringComparison.OrdinalIgnoreCase));
             int rows = resize ? InventoryMoveGame.PlayerRows(reply.Player.Changes) : 0;
@@ -52,6 +53,7 @@ namespace Overhaul.Persistence
                 food();
                 potions();
                 guardian();
+                building();
                 // Both contents are installed before callbacks can observe either side of the move.
                 playerInventory.Changed(); if (chest != null) container.Changed();
                 if (player)

@@ -70,6 +70,7 @@ namespace Overhaul.Persistence
             if (!reply.Notification) PlayerEquipmentGame.Confirm(player,Controller.Pending);
             InventoryMovePresentation.Stage(player.GetInventory(), containerInventory, reply, player)();
             if(!reply.Notification)PlayerFishingGame.Confirm(Controller.Pending);
+            if(!reply.Notification && reply.Accepted)PlayerBuildGame.Feedback(player,Controller.Pending);
             if (eating) PlayerFoodGame.Feedback(player,reply.Player);
             if (!reply.Notification && reply.Accepted && Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Trash) PlayerDropGame.TrashFeedback();
             if (!reply.Notification && reply.Accepted && (Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Buy || Controller.Pending?.Gameplay?.Kind == PlayerActionKind.Sell))

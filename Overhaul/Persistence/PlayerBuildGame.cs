@@ -9,6 +9,7 @@ namespace Overhaul.Persistence
     internal static class PlayerBuildGame
     {
         internal const string Repair="build.repair", Remove="build.remove";
+        internal const string Debt="build_remove_debt";
         private static readonly int Placed="overhaul_build_placed".GetStableHashCode();
         internal static PlayerActionPlan Prepare(ZDO actor,InventoryMoveRequest request,PlayerSnapshot snapshot,PlayerActionInventory inventory)
         {
@@ -46,6 +47,7 @@ namespace Overhaul.Persistence
                 if(prefab.GetComponent<PrivateArea>())Add(ZDOVars.s_creatorName,"string",(string)snapshot.Rows.First(r=>r.Table=="state" && (string)r.Values[0]=="player_name").Values[3]);
                 if(resources.Cheated && !PlayerProfile.s_bypassCheatChecks)Add(ZDOVars.s_cheated,"int",1);
                 var changes=inventory.Delta(request.Action.Operation,snapshot.Revision).Changes.ToList();
+                changes.AddRange(Progress(snapshot,table,false));
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.Builds).ToString(),1));
                 changes.Add(PlayerCraftProgressGame.Increment(snapshot,"statistics:0:pieces",piece.m_name,1));
                 return resources.Finish(new PlayerBatch(request.Action.Operation,snapshot.Revision,changes),()=>piece.m_placeEffect?.Create(position,rotation),new[]{output});
@@ -91,7 +93,41 @@ namespace Overhaul.Persistence
             }
             outputs.AddRange(Drops(refunds,piece.m_destroyedLootPrefab,target.transform.position+Vector3.up*piece.m_returnResourceHeightOffset));
             if(outputs.Count>127)throw new InvalidOperationException("Dismantling output exceeds one transaction");
-            return PlayerActionGame.RemoveWorldObject(view,inventory.Delta(request.Action.Operation,snapshot.Revision),outputs);
+            int toolSlot=request.Action.FromY*256+request.Action.FromX;
+            if(tool.m_shared.m_useDurability)
+            {float factor=tool.m_shared.m_placementDurabilitySkill==Skills.SkillType.None?0:PlayerCraftProgressGame.Factor(snapshot,tool.m_shared.m_placementDurabilitySkill);tool.m_durability=Mathf.Max(0,tool.m_durability-tool.m_shared.m_useDurabilityDrain*(1-tool.m_shared.m_placementDurabilityMax*factor)*Game.m_durabilityRate);inventory.Set(toolSlot,PlayerActionGame.Row(tool,toolSlot%256,toolSlot/256).Values);}
+            var delta=inventory.Delta(request.Action.Operation,snapshot.Revision);
+            return PlayerActionGame.RemoveWorldObject(view,new PlayerBatch(delta.Operation,delta.ExpectedRevision,delta.Changes.Concat(Progress(snapshot,tool.m_shared.m_buildPieces,true))),outputs);
+        }
+        internal static IEnumerable<PlayerChange> Progress(PlayerSnapshot snapshot,PieceTable table,bool removing)
+        {
+            if(table.m_skill==Skills.SkillType.None)yield break;
+            var row=snapshot.Rows.FirstOrDefault(r=>r.Table=="state" && (string)r.Values[0]==Debt);int debt=row==null?0:Convert.ToInt32(row.Values[1]);
+            if(debt<0 || debt>20)throw new InvalidOperationException("Invalid building skill debt");
+            if(removing)
+            {
+                if(debt<20){yield return new PlayerChange("state",false,Debt,debt+1,null,null,null);if(table.m_skill==Skills.SkillType.Crafting)yield return PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.BuildPiecesRemoved).ToString(),1);}
+                yield break;
+            }
+            if(table.m_skill==Skills.SkillType.Crafting)yield return PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.BuiltPieces).ToString(),1);
+            if(debt>0)yield return new PlayerChange("state",false,Debt,debt-1,null,null,null);
+            else
+            {foreach(var change in PlayerCraftProgressGame.Raise(snapshot,table.m_skill,1))yield return change;if(table.m_skill==Skills.SkillType.Crafting)yield return PlayerCraftProgressGame.Increment(snapshot,"statistics:0:values",((int)PlayerStatType.BuiltPiecesNoDebt).ToString(),1);}
+        }
+        internal static Action Presentation(IEnumerable<PlayerChange> rows,Player player)
+        {
+            var values=rows.ToArray();if(values.Length==0)return ()=>{};
+            if(!player || values.Length!=1 || values[0].Delete)throw new System.IO.InvalidDataException("Invalid building debt confirmation");
+            int debt=Convert.ToInt32(values[0].Values[1]);if(debt<0 || debt>20)throw new System.IO.InvalidDataException("Invalid building debt value");return ()=>player.m_buildRemoveDebt=debt;
+        }
+        internal static void Feedback(Player player,InventoryMoveRequest request)
+        {
+            if(request?.Gameplay?.Kind!=PlayerActionKind.Build)return;
+            var tool=player.GetInventory().GetItemAt(request.Action.FromX,request.Action.FromY);if(tool==null)return;
+            player.FaceLookDirection();player.m_zanim?.SetTrigger(tool.m_shared.m_attack.m_attackAnimation);player.AddNoise(50);
+            if(request.Gameplay.Definition==Repair || request.Gameplay.Definition==Remove)return;
+            var piece=tool.m_shared.m_buildPieces?.m_pieces.FirstOrDefault(p=>p && p.name==request.Gameplay.Definition)?.GetComponent<Piece>();
+            if(piece){Hud.instance?.m_buildUi?.AddRecentPiece(piece);if(piece.m_randomInitBuildRotation)player.m_placeRotation=UnityEngine.Random.Range(0,16);}
         }
         internal static IEnumerable<ObjectRecord> Drops(IEnumerable<ItemDrop.ItemData> source,GameObject lootPrefab,Vector3 position)
         {
