@@ -65,25 +65,28 @@ namespace Overhaul.Persistence
             if (item.m_shared.m_questItem) changes.Add(new PlayerChange("knowledge",false,"uniques",item.m_shared.m_name,""));
             return RemoveWorldItem(drop,new PlayerBatch(request.Action.Operation,snapshot.Revision,changes));
         }
-        internal static PlayerActionPlan RemoveWorldItem(ItemDrop drop,PlayerBatch player)
+        internal static PlayerActionPlan RemoveWorldItem(ItemDrop drop,PlayerBatch player) => RemoveWorldObject(drop.m_nview,player,Array.Empty<ObjectRecord>());
+        internal static PlayerActionPlan RemoveWorldObject(ZNetView view,PlayerBatch player,IEnumerable<ObjectRecord> outputs,Action effects = null)
         {
-            var view = drop.m_nview; var data = view.GetZDO(); var target = drop.gameObject;
+            var data = view.GetZDO(); var target = view.gameObject; var additions = outputs.ToArray();
             var uid = data.m_uid;
             var record = GamePersistence.ReserveAction(data);
             try
             {
                 // Reserve before submitting; native inventory/world mutations happen only after the commit.
                 data.SetOwner(ZNet.GetUID());
-                return new PlayerActionPlan(new PlayerWorldAction(player,
-                    new Dictionary<long,ObjectRecord> { [record.Id] = null }), () =>
+                var objects = additions.ToDictionary(r => r.Id); objects.Add(record.Id,null);
+                return new PlayerActionPlan(new PlayerWorldAction(player,objects), () =>
                     {
-                        if (!drop || !view.IsValid()) throw new IOException("Reserved ground item disappeared before publication");
+                        if (!view || !view.IsValid()) throw new IOException("Reserved ground item disappeared before publication");
+                        foreach (var output in additions) GamePersistence.PublishActionObject(output);
                         ZNetScene.instance.Destroy(target);
                         // Native Destroy queues the network notification. Remove the local ZDO now so
                         // an intervening world snapshot cannot resurrect the committed pickup.
                         ZDOMan.instance.HandleDestroyedZDO(uid);
                         InventoryMoveReservations.DiscardMutations(uid);
                         GamePersistence.ReleaseAction(new[] { uid });
+                        try { effects?.Invoke(); } catch(Exception error) { ZLog.LogWarning("[Overhaul harvest effects] "+error.Message); }
                     });
             }
             catch { GamePersistence.ReleaseAction(new[] { uid }); throw; }
@@ -148,6 +151,7 @@ namespace Overhaul.Persistence
         private static class PickupGuard { private static void Postfix(ItemDrop __instance,ref bool __result) { if (Held(__instance)) __result = false; } }
     }
 }
+
 
 
 

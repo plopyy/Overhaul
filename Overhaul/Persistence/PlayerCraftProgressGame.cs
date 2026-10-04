@@ -102,6 +102,7 @@ namespace Overhaul.Persistence
                     if (category == "statistics:0:values")
                     { var type = (PlayerStatType)int.Parse(key,CultureInfo.InvariantCulture); effects.Add(() => stats.m_stats[type] = value); }
                     else if (category == "statistics:0:craft") effects.Add(() => stats.m_itemCraftStats[key] = value);
+                    else if (category == "statistics:0:pickable") effects.Add(() => stats.m_pickableStats[key] = value);
                     else if (category == "statistics:0:food") effects.Add(() => stats.m_foodEatenStats[key] = value);
                     else throw new System.IO.InvalidDataException("Unsupported progression effect");
                 }
@@ -111,3 +112,4 @@ namespace Overhaul.Persistence
         }
     }
 }
+
