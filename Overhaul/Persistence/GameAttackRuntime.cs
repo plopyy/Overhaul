@@ -60,7 +60,7 @@ namespace Overhaul.Persistence
                 var current=new Running{Player=player,Attack=attack,Weapon=preview.Weapon,Ammo=preview.Ammo,Identity=identity,
                     Secondary=request.Gameplay.Alternate,Began=Time.time,Culling=player.m_animator.cullingMode};
                 running[actor.m_uid]=current;player.m_animator.cullingMode=AnimatorCullingMode.AlwaysAnimate;
-                player.m_lookDir=rotation*Vector3.forward;
+                player.SetLookDir(rotation*Vector3.forward);
                 InContext(current,snapshot,()=>
                 {
                     starting=true;
