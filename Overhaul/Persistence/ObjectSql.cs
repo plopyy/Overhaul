@@ -9,7 +9,9 @@ namespace Overhaul.Persistence
     {
         private static readonly int Items = NativeFormat.Hash("items"), Rooms = NativeFormat.Hash("roomData"), Terrain = NativeFormat.Hash("TCData");
         internal static Func<int, string> PrefabName = NameCatalog.Prefab;
-        internal static void Write(SqliteDatabase db, ObjectRecord o, bool importing = false)
+        internal static void Write(SqliteDatabase db,ObjectRecord o,bool importing = false) => WriteRecord(db,o,importing,false);
+        internal static void WriteInventoryCapture(SqliteDatabase db,ObjectRecord o) => WriteRecord(db,o,false,true);
+        private static void WriteRecord(SqliteDatabase db, ObjectRecord o, bool importing, bool forceInventory)
         {
             long? oldChunk=null;
             if(!importing)using(var previous=db.Query("SELECT chunk FROM objects WHERE id=?",o.Id))if(previous.Read())oldChunk=previous.Long(0);
@@ -29,7 +31,7 @@ namespace Overhaul.Persistence
                 old.Remove(p.Type + ":" + p.Key);
                 // Derived readable tables only need work when their source data changed.
                 bool derive = p.Type == "bytes" && (p.Key == Items || p.Key == Rooms || p.Key == Terrain);
-                if (derive && !importing) using (var previous = db.Query("SELECT blob FROM properties WHERE object_id=? AND type='bytes' AND key_hash=?", o.Id, p.Key))
+                if (derive && !importing && !(forceInventory && p.Key == Items)) using (var previous = db.Query("SELECT blob FROM properties WHERE object_id=? AND type='bytes' AND key_hash=?", o.Id, p.Key))
                     if (previous.Read() && previous.Blob(0).SequenceEqual((byte[])p.Value)) derive = false;
                 object integer=null, real=null, text=null, x=null, y=null, z=null, w=null, blob=null;
                 switch (p.Type)

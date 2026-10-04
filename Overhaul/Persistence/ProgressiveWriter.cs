@@ -61,7 +61,7 @@ namespace Overhaul.Persistence
             {
                 if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
                 if(commands.Count>=1024)throw new InvalidOperationException("World command queue is full");
-                commands.Enqueue(new Command { Run = db => db.Transaction(() => ObjectSql.Write(db,snapshot)), Fail = _ => { } });
+                commands.Enqueue(new Command { Run = db => db.Transaction(() => ObjectSql.WriteInventoryCapture(db,snapshot)), Fail = _ => { } });
                 submitted++;
             }
             wake.Set();
