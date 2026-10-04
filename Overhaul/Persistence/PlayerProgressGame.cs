@@ -59,13 +59,12 @@ namespace Overhaul.Persistence
             var equipped=GameCombatEquipment.Equipped(snapshot);
             var effects=GameAttackResources.Effects(snapshot);
             float health=definition.m_baseHP,stamina=definition.m_baseStamina,eitr=0,foodHeal=0;
-            float duration=PlayerFoodGame.Multiplier(snapshot.Rows);
             foreach(var row in snapshot.Rows.Where(r=>r.Table=="food"))
             {
                 var prefab=ObjectDB.instance.GetItemPrefab((string)row.Values[1]);var item=prefab?prefab.GetComponent<ItemDrop>():null;
                 if(!item)throw new InvalidOperationException("Active food definition is unavailable");
                 var food=item.m_itemData.m_shared;
-                float factor=Mathf.Pow(Mathf.Clamp01(Convert.ToSingle(row.Values[2])/(food.m_foodBurnTime*duration)),.3f);
+                float factor=Convert.ToSingle(row.Values[2])>0?1:0;
                 health+=food.m_food*factor;stamina+=food.m_foodStamina*factor;eitr+=food.m_foodEitr*factor;foodHeal+=food.m_foodRegen;
             }
             float hpMultiplier=1,staminaMultiplier=1,eitrMultiplier=1,carry=definition.m_maxCarryWeight;
@@ -116,9 +115,9 @@ namespace Overhaul.Persistence
             }
             return ()=>
             {
-                if(values.TryGetValue("max_health",out var hpMax))player.SetMaxHealth(hpMax,true);
-                if(values.TryGetValue("max_stamina",out var staminaMax))player.SetMaxStamina(staminaMax,true);
-                if(values.TryGetValue("max_eitr",out var eitrMax))player.SetMaxEitr(eitrMax,true);
+                if(values.TryGetValue("max_health",out var hpMax))player.SetMaxHealth(hpMax,false);
+                if(values.TryGetValue("max_stamina",out var staminaMax))player.SetMaxStamina(staminaMax,false);
+                if(values.TryGetValue("max_eitr",out var eitrMax))player.SetMaxEitr(eitrMax,false);
                 if(values.TryGetValue("health",out var health))player.SetHealth(health);
                 if(values.TryGetValue("stamina",out var stamina))player.m_stamina=stamina;
                 if(values.TryGetValue("eitr",out var eitr))player.m_eitr=eitr;
