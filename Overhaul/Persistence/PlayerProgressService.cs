@@ -18,6 +18,7 @@ namespace Overhaul.Persistence
     {
         internal Task<bool> CommitProgress(PlayerIdentity identity,PlayerBatch batch)
         {
+            if(Live!=null)return Task.FromResult(AcceptProgress(identity,batch));
             if(shared==null)return Submit(()=>{Get(identity).CommitProgress(batch);return true;},true);
             return SubmitWorld(world=>
             {

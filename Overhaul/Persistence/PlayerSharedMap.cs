@@ -72,7 +72,15 @@ namespace Overhaul.Persistence
     {internal PlayerChange[] MapState()=>ReadTables("map","pins","knowledge","state");}
     internal sealed partial class PlayerDatabaseWriter
     {
-        internal System.Threading.Tasks.Task<PlayerSharedMap.Result> ShareMap(PlayerIdentity identity,byte[] previous,bool write)=>Submit(()=>
-        {var database=Get(identity);var result=PlayerSharedMap.Merge(database.MapState(),previous,write);if(result.Changes.Length!=0)database.CommitMap(result.Changes);return result;},true);
+        internal System.Threading.Tasks.Task<PlayerSharedMap.Result> ShareMap(PlayerIdentity identity,byte[] previous,bool write)
+        {
+            if(Live!=null)
+            {
+                var result=PlayerSharedMap.Merge(Live.Find(identity).Rows,previous,write);
+                if(result.Changes.Length!=0)CommitMap(identity,result.Changes);
+                return System.Threading.Tasks.Task.FromResult(result);
+            }
+            return Submit(()=>{var database=Get(identity);var result=PlayerSharedMap.Merge(database.MapState(),previous,write);if(result.Changes.Length!=0)database.CommitMap(result.Changes);return result;},true);
+        }
     }
 }

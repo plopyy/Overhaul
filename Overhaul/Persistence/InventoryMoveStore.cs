@@ -27,6 +27,7 @@ namespace Overhaul.Persistence
         }
         internal Task<PlayerSnapshot> ContainerState(long objectId)
         {
+            if(Live!=null)return Task.FromResult(Live.Chest(objectId));
             if (shared == null) throw new InvalidOperationException("Container reads require the world executor");
             return SubmitWorld(world =>
             {
@@ -38,6 +39,15 @@ namespace Overhaul.Persistence
         internal Task<InventoryMoveResult> PlanTransfer(PlayerIdentity identity, InventoryMoveAction action,
             InventoryMoveLayout playerLayout, long objectId = 0, InventoryMoveLayout containerLayout = null)
         {
+            if(Live!=null)
+            {
+                var state=Live.Find(identity)??throw new InvalidOperationException("Live character unavailable");
+                if(state.Revision!=action.PlayerRevision)throw new InvalidOperationException("Stale player inventory revision");
+                var prepared=InventoryMoveEngine.Prepare(action,state.Rows.Where(r=>r.Table=="inventory"||r.Table=="item_data"),playerLayout,
+                    action.UsesContainer?Live.Chest(objectId).Rows:null,containerLayout);
+                if(action.UsesContainer)Live.Validate(objectId,action,ContainerVersions.Slots(prepared.Container));
+                return Task.FromResult(prepared);
+            }
             if (shared == null) throw new InvalidOperationException("Inventory transfers require the world executor");
             return SubmitWorld(world =>
             {
@@ -54,6 +64,7 @@ namespace Overhaul.Persistence
         }
         internal Task<InventoryMoveResult> CommitTransfer(PlayerIdentity identity, InventoryMoveAction action, InventoryMoveResult result, long objectId = 0)
         {
+            if(Live!=null)return Task.FromResult(AcceptTransfer(identity,action,result,objectId));
             return SubmitWorld(world =>
             {
                 PrepareTransfers(world);

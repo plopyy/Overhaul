@@ -179,6 +179,7 @@ namespace Overhaul.Persistence
         internal InventoryMoveRpc(ZRpc rpc, PlayerAdmission.Session session, PlayerDatabaseWriter writer, InventoryMoveLayout layout)
         {
             if (!ReferenceEquals(rpc, session.Connection)) throw new ArgumentException("Wrong admitted inventory connection");
+            writer.Live?.Bind(session.Identity,session.Snapshot);
             this.rpc = rpc; nonce = session.Nonce; access = new InventoryMoveGame.Access(rpc, session);
             // Map blocks belong to admission/persistence, not the frequently updated
             // action view. Avoid copying the explored map on every resource tick.

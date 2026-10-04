@@ -95,8 +95,8 @@ namespace Overhaul.Persistence
         internal Task<long> Write(PlayerIdentity identity, PlayerBatch batch) => Submit(() => Get(identity).Apply(batch), true);
         internal Task<PlayerBatch> Move(PlayerIdentity identity, PlayerInventoryMove request, PlayerInventoryRules rules)
             => Submit(() => Get(identity).Move(request, rules), true);
-        internal Task<PlayerSnapshot> InventoryState(PlayerIdentity identity) => Submit(() => Get(identity).InventoryState(), true);
-        internal Task<PlayerSnapshot> Lookup(PlayerIdentity identity) => Submit(() =>
+        internal Task<PlayerSnapshot> InventoryState(PlayerIdentity identity) => Live?.Find(identity)!=null ? Task.FromResult(new PlayerSnapshot(Live.Find(identity).Revision,Live.Find(identity).Rows.Where(r=>r.Table=="inventory"||r.Table=="item_data"))) : Submit(() => Get(identity).InventoryState(), true);
+        internal Task<PlayerSnapshot> Lookup(PlayerIdentity identity) => Live?.Find(identity)!=null ? Task.FromResult(Live.Find(identity)) : Submit(() =>
         {
             var db = Get(identity);
             return db.Complete ? new PlayerSnapshot(db.Revision, db.Read()) : null;

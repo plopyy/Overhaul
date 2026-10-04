@@ -19,7 +19,11 @@ namespace Overhaul.Persistence
     }
     internal sealed partial class PlayerDatabaseWriter
     {
-        internal Task<bool> CommitMap(PlayerIdentity identity,PlayerChange[] rows)=>Submit(()=>{Get(identity).CommitMap(rows);return true;},true);
+        internal Task<bool> CommitMap(PlayerIdentity identity,PlayerChange[] rows)
+        {
+            if(Live==null)return Submit(()=>{Get(identity).CommitMap(rows);return true;},true);
+            Live.Map(identity,rows);shared.Persist(_=>Get(identity).CommitMap(rows));return Task.FromResult(true);
+        }
     }
     internal sealed class GameMapSession
     {

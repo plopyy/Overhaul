@@ -89,11 +89,11 @@ namespace Overhaul.Persistence
     }
     internal sealed partial class PlayerDatabaseWriter
     {
-        internal Task<PlayerSnapshot> ActionState(PlayerIdentity identity) => Submit(() =>
+        internal Task<PlayerSnapshot> ActionState(PlayerIdentity identity) => Live?.Find(identity)!=null ? Task.FromResult(new PlayerSnapshot(Live.Find(identity).Revision,Live.Find(identity).Rows.Where(r=>PlayerDatabase.IsActionTable(r.Table)))) : Submit(() =>
         {
             var db = Get(identity); return new PlayerSnapshot(db.Revision, db.ActionState());
         }, true);
-        internal Task<PlayerBatch> CommitAction(PlayerIdentity identity, PlayerWorldAction action) => SubmitWorld(world =>
+        internal Task<PlayerBatch> CommitAction(PlayerIdentity identity, PlayerWorldAction action) => Live!=null ? Task.FromResult(AcceptAction(identity,action)) : SubmitWorld(world =>
         {
             PrepareTransfers(world); var player = Get(identity);
             if (player.Revision != action.Player.ExpectedRevision) throw new InvalidOperationException("Stale player action revision");

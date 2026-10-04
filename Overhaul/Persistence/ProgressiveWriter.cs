@@ -24,6 +24,7 @@ namespace Overhaul.Persistence
         {
             internal Action<SqliteDatabase> Run;
             internal Action<Exception> Fail;
+            internal bool Retry;
         }
         private readonly Queue<Command> commands = new Queue<Command>();
         private string failureText;
@@ -60,8 +61,8 @@ namespace Overhaul.Persistence
             lock(gate)
             {
                 if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
-                if(commands.Count>=1024)throw new InvalidOperationException("World command queue is full");
-                commands.Enqueue(new Command { Run = db => db.Transaction(() => ObjectSql.WriteInventoryCapture(db,snapshot)), Fail = _ => { } });
+                QueueCapture();
+                commands.Enqueue(new Command { Run = db => db.Transaction(() => ObjectSql.WriteInventoryCapture(db,snapshot)), Fail = _ => { }, Retry=true });
                 submitted++;
             }
             wake.Set();
@@ -75,11 +76,33 @@ namespace Overhaul.Persistence
             {
                 if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
                 if(commands.Count>=1024)throw new InvalidOperationException("World command queue is full");
+                QueueCapture();
                 commands.Enqueue(new Command { Run = db=>{try{completion.SetResult(action(db));}catch(Exception error){completion.SetException(error);}},
                     Fail = error => completion.TrySetException(new IOException("World snapshot failed before inventory command",error)) });
                 submitted++;
             }
             wake.Set();return completion.Task;
+        }
+        // Called under gate. Captures and accepted actions must retain their order,
+        // including after an I/O failure: a newer chest snapshot cannot overtake a debit.
+        private void QueueCapture()
+        {
+            if(pending.Count==0 && world==null)return;
+            var changes=pending;var metadata=world;pending=new Dictionary<long,ObjectRecord>();world=null;
+            commands.Enqueue(new Command{Retry=true,Fail=_=>{},Run=db=>db.Transaction(()=>
+            {
+                foreach(var item in changes)if(item.Value==null)ObjectSql.Delete(db,item.Key);else ObjectSql.Write(db,item.Value);
+                if(metadata!=null)WorldSql.Write(db,metadata);
+            })});
+        }
+        internal void Persist(Action<SqliteDatabase> action)
+        {
+            lock(gate)
+            {
+                if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
+                QueueCapture();commands.Enqueue(new Command{Run=action,Fail=_=>{},Retry=true});submitted++;
+            }
+            wake.Set();
         }
         // Close player connections on their owning thread even when a world snapshot fails.
         // This never runs gameplay writes after a failed snapshot.
@@ -90,6 +113,7 @@ namespace Overhaul.Persistence
             lock(gate)
             {
                 if(stopping||disposed)throw new ObjectDisposedException(nameof(ProgressiveWriter));
+                QueueCapture();
                 commands.Enqueue(new Command { Run = _ => run(), Fail = _ => run() });
                 submitted++;
             }
@@ -109,7 +133,7 @@ namespace Overhaul.Persistence
         }
         private void Run()
         {
-            SqliteDatabase db=null;var batch=new Dictionary<long,ObjectRecord>();WorldRecord metadata=null;
+            SqliteDatabase db=null;
             var actions = new List<Command>();
             try
             {
@@ -118,31 +142,22 @@ namespace Overhaul.Persistence
                     wake.WaitOne(5000);long version;bool createBackup;
                     lock(gate)
                     {
-                        if(batch.Count==0){var empty=batch;batch=pending;pending=empty;}
-                        else {foreach(var item in pending)batch[item.Key]=item.Value;pending.Clear();}
-                        if(world!=null){metadata=world;world=null;}
+                        QueueCapture();
                         version=submitted;createBackup=backup;backup=false;
                         while(commands.Count>0)actions.Add(commands.Dequeue());
                     }
                     try
                     {
                         if(db==null)db=new SqliteDatabase(path);
-                        if(batch.Count>0||metadata!=null)db.Transaction(()=>
-                        {
-                            // Related changes captured in one batch are committed together.
-                            foreach(var item in batch)if(item.Value==null)ObjectSql.Delete(db,item.Key);else ObjectSql.Write(db,item.Value);
-                            if(metadata!=null)WorldSql.Write(db,metadata);
-                        });
-                        batch.Clear();metadata=null;
-                        foreach(var action in actions)action.Run(db);
-                        actions.Clear();
+                        while(actions.Count!=0){actions[0].Run(db);actions.RemoveAt(0);}
                         lock(gate){committed=version;failure=null;failureText=null;Monitor.PulseAll(gate);}
                         if(createBackup)Backup(db);
                     }
                     catch(Exception ex)
                     {
-                        foreach (var action in actions) action.Fail(ex);
-                        actions.Clear();
+                        // Keep accepted mutations and captures, in order, for retry.
+                        // Ordinary reads/cleanup retain their failure contract.
+                        foreach(var action in actions.Where(a=>!a.Retry).ToArray()){action.Fail(ex);actions.Remove(action);}
                         lock(gate){failure=ex;failureText=ex.ToString();backup|=createBackup;Monitor.PulseAll(gate);}
                         db?.Dispose();db=null;
                     }

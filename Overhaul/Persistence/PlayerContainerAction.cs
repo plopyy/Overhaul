@@ -26,6 +26,8 @@ namespace Overhaul.Persistence
                 Canonical(WorldInventorySlots.ReadAll(db,id).Where(r => slots.Contains(Key(r)))).Digest() != Before.Digest())
                 throw new InvalidOperationException("Crafting resource slot changed");
         }
+        internal void Validate(IEnumerable<PlayerChange> rows)
+        {if(Canonical(rows.Where(r=>slots.Contains(Key(r)))).Digest()!=Before.Digest())throw new InvalidOperationException("Crafting resource slot changed");}
         internal PlayerBatch Apply(SqliteDatabase db,long id)
         {
             long revision = ContainerVersions.Revision(db,id);

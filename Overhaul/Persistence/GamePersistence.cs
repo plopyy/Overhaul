@@ -48,7 +48,8 @@ namespace Overhaul.Persistence
         {
             if(!Active || action.Player.Changes.Any() || action.Containers.Count!=0 || action.WorldKeys.Length!=0)throw new InvalidOperationException("Invalid autonomous world action");
             var records=action.Objects;
-            return writer.Submit(db=>{db.Transaction(()=>{foreach(var pair in records){if(pair.Value==null)ObjectSql.Delete(db,pair.Key);else ObjectSql.Write(db,pair.Value);}});return true;});
+            writer.Persist(db=>db.Transaction(()=>{foreach(var pair in records){if(pair.Value==null)ObjectSql.Delete(db,pair.Key);else ObjectSql.Write(db,pair.Value);}}));
+            return System.Threading.Tasks.Task.FromResult(true);
         }
         internal static bool ActionReserved(ZDOID id) => actionReservations.Contains(id);
         internal static bool HasActionReservations => actionReservations.Count != 0;
@@ -102,6 +103,11 @@ namespace Overhaul.Persistence
             if (!CanSave() || data == null || !data.Persistent || ActionReserved(data.m_uid)) throw new InvalidOperationException("World inventory is unavailable");
             if (!ids.TryGetValue(data.m_uid, out long id)) { id = checked(++nextId); ids.Add(data.m_uid, id); }
             var snapshot = GameSnapshot.Capture(data, id); snapshot.ProtectedInventorySlots = ReservedSlots(data.m_uid);
+            if(Players?.Live!=null)
+            {
+                var encoded=data.GetString(ZDOVars.s_items,"");
+                Players.Live.Capture(id,string.IsNullOrEmpty(encoded)?Array.Empty<PlayerChange>():PlayerNativeFormat.DecodeInventory(Convert.FromBase64String(encoded)));
+            }
             writer.CaptureInventory(snapshot); dirty.Remove(data.m_uid); return id;
         }
         internal static void ReleaseSlots(ZDO data, IEnumerable<int> cells)
@@ -184,6 +190,7 @@ namespace Overhaul.Persistence
                 Players=new PlayerDatabaseWriter(directory,writer);
                 // Recovery completes before publishing any world objects or accepting characters.
                 Players.RecoverTransfers().GetAwaiter().GetResult();
+                Players.EnableLiveState();
                 var links=new List<ZDOID>();var manager=net.m_zdoMan;manager.ResetBeforeLoad();
                 using(var db=new SqliteDatabase(path,true))
                 {
