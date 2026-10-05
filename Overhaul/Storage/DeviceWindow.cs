@@ -49,7 +49,7 @@ namespace Overhaul.Storage
         internal void Show(DeviceStore device)
         {
             Restore(); store = device;
-            string prefab = store.Adapter is ArmorInventory ? "StationArmorStand" : store.Adapter.SingleItems ? "StationSingleItemStand" : store.Adapter.Dual ? "StationDualVertical_Separation2" : "StationSingleLateral_Separation2";
+            string prefab = store.Adapter is ArmorInventory ? "StationArmorStand" : store.Adapter is StandInventory ? "StationSingleItemStand" : store.Adapter.Dual ? "StationDualVertical_Separation2" : "StationSingleLateral_Separation2";
             originalGrid = gui.m_containerGrid; originalName = gui.m_containerName;
             originalSize = gui.m_container.sizeDelta; originalPosition = gui.m_container.anchoredPosition;
             foreach (Transform child in gui.m_container)
@@ -77,6 +77,7 @@ namespace Overhaul.Storage
             Text(panel.transform, "FuelLabel", store.Adapter.FuelLabel);
             foreach (var text in panel.transform.Find("Close").GetComponentsInChildren<TMP_Text>(true)) text.text = Localization.instance.Localize("$menu_close");
             panel.transform.Find("Close").GetComponent<Button>().onClick.AddListener(gui.CloseContainer);
+            AddActions();
             materialGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "MaterialInventory");
             if (store.Adapter is ArmorInventory) PrepareArmor();
             fuelGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "FuelInventory");
@@ -91,6 +92,35 @@ namespace Overhaul.Storage
             gui.m_containerGrid = materialGrid; gui.m_containerName = panel.transform.Find("Title").GetComponent<TMP_Text>();
             gui.m_firstContainerUpdate = false; gui.m_containerHoldState = -1; gui.m_containerHoldTime = float.NegativeInfinity; gui.m_waitForContainerStack = false;
             Refresh();
+            DeviceActions.OnShown(store);
+        }
+        private void AddActions()
+        {
+            var close = panel.transform.Find("Close").GetComponent<Button>();
+            var buttons = new List<Button>();
+            var take = Instantiate(close, close.transform.parent, false); take.name = "TakeAll";
+            take.onClick = new Button.ButtonClickedEvent(); take.onClick.AddListener(gui.OnTakeAll);
+            ButtonText(take, "$overhaul_chest_take_all"); buttons.Add(take);
+            if (store.Adapter is ArmorInventory)
+            {
+                var equip = Instantiate(close, close.transform.parent, false); equip.name = "PlaceEquipment";
+                equip.onClick = new Button.ButtonClickedEvent(); equip.onClick.AddListener(() => DeviceActions.PlaceEquipment(store, Player.m_localPlayer));
+                ButtonText(equip, "$overhaul_device_place_equipment"); buttons.Add(equip);
+            }
+            buttons.Add(close);
+            var template = (RectTransform)close.transform;
+            float total = buttons.Count * template.rect.width + (buttons.Count - 1) * 12f;
+            float start = (((RectTransform)panel.transform).rect.width - total) / 2;
+            for (int i = 0; i < buttons.Count; i++)
+            {
+                var rect = (RectTransform)buttons[i].transform;
+                rect.anchoredPosition = new Vector2(start + i * (template.rect.width + 12f), template.anchoredPosition.y);
+            }
+        }
+        private static void ButtonText(Button button, string key)
+        {
+            foreach (var text in button.GetComponentsInChildren<TMP_Text>(true))
+            { text.text = Localization.instance.Localize(key); text.enableAutoSizing = true; text.fontSizeMin = 12; text.fontSizeMax = 18; }
         }
         private void PrepareArmor()
         {

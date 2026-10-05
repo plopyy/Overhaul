@@ -29,7 +29,7 @@ namespace Overhaul.Storage
         {
             DeviceAdapter a = null;
             if (c is Smelter smelter && (smelter.m_maxOre > 0 || smelter.m_maxFuel > 0)) a = new SmelterInventory(smelter);
-            else if (c is CookingStation cooker) a = new CookingInventory(cooker);
+            else if (c is CookingStation cooker) a = Utils.GetPrefabName(c.gameObject) == "piece_oven" ? new OvenInventory(cooker) : new CookingInventory(cooker);
             else if (c is Fermenter fermenter) a = new FermenterInventory(fermenter);
             else if (c is Fireplace fire && !fire.m_infiniteFuel && fire.m_fuelItem) a = new FireInventory(fire);
             else if (c is ShieldGenerator shield && shield.m_fuelItems.Count > 0) a = new ShieldInventory(shield);
@@ -173,7 +173,7 @@ namespace Overhaul.Storage
         internal override void Publish() { base.Publish(); shield.m_maxFuel = 6 * shield.m_fuelItems.Max(f => f.m_itemData.m_shared.m_maxStackSize); }
     }
 
-    internal sealed class CookingInventory : FuelInventoryAdapter
+    internal class CookingInventory : FuelInventoryAdapter
     {
         internal readonly CookingStation Cooker;
         internal CookingInventory(CookingStation source) { Cooker = source; }
@@ -195,7 +195,7 @@ namespace Overhaul.Storage
             }
         }
         internal override void Publish() { base.Publish(); if (DefaultFuel) Cooker.m_maxFuel = 6 * DefaultFuel.m_itemData.m_shared.m_maxStackSize; }
-        internal void Advance()
+        internal virtual void Advance()
         {
             if (!Store.Ready || !Store.Owner || Store.Dropping) return;
             Store.Change(() =>

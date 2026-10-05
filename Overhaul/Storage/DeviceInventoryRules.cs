@@ -10,7 +10,7 @@ namespace Overhaul.Storage
 {
     internal static class DeviceInventoryRules
     {
-        internal sealed class Rule { internal DeviceStore Store; internal bool Fuel; }
+        internal sealed class Rule { internal DeviceStore Store; internal bool Fuel; internal bool Single => !Fuel && Store.Adapter.SingleItems; }
         private static readonly ConditionalWeakTable<Inventory, Rule> Rules = new ConditionalWeakTable<Inventory, Rule>();
         internal static void Register(Inventory inventory, DeviceStore store, bool fuel) => Rules.Add(inventory, new Rule { Store = store, Fuel = fuel });
         internal static void Unregister(Inventory inventory) => Rules.Remove(inventory);
@@ -35,7 +35,7 @@ namespace Overhaul.Storage
             for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
             {
                 var pos = new Vector2i(x, y); var existing = inventory.GetItemAt(x, y);
-                if (Allows(inventory, item, pos) && (existing == null || !rule.Store.Adapter.SingleItems && existing.IsSameType(item) && existing.m_quality == item.m_quality && existing.m_stack < existing.m_shared.m_maxStackSize)) return pos;
+                if (Allows(inventory, item, pos) && (existing == null || !rule.Single && existing.IsSameType(item) && existing.m_quality == item.m_quality && existing.m_stack < existing.m_shared.m_maxStackSize)) return pos;
             }
             return new Vector2i(-1, -1);
         }
@@ -78,7 +78,7 @@ namespace Overhaul.Storage
             {
                 var rule = Active(__instance); if (rule == null) return true;
                 if (!Allows(__instance, item, new Vector2i(x, y))) { __result = false; return false; }
-                if (rule.Store.Adapter.SingleItems)
+                if (rule.Single)
                 {
                     if (__instance.GetItemAt(x, y) != null) { __result = false; return false; }
                     amount = Math.Min(1, amount);
@@ -103,10 +103,10 @@ namespace Overhaul.Storage
                 {
                     if (!Allows(__instance, item, new Vector2i(x, y))) continue;
                     var existing = __instance.GetItemAt(x, y);
-                    if (existing == null) free += rule.Store.Adapter.SingleItems ? 1 : item.m_shared.m_maxStackSize;
-                    else if (!rule.Store.Adapter.SingleItems && existing.IsSameType(item) && existing.m_quality == item.m_quality && existing.m_worldLevel == item.m_worldLevel) free += Math.Max(0, existing.m_shared.m_maxStackSize - existing.m_stack);
+                    if (existing == null) free += rule.Single ? 1 : item.m_shared.m_maxStackSize;
+                    else if (!rule.Single && existing.IsSameType(item) && existing.m_quality == item.m_quality && existing.m_worldLevel == item.m_worldLevel) free += Math.Max(0, existing.m_shared.m_maxStackSize - existing.m_stack);
                 }
-                __result = free >= (rule.Store.Adapter.SingleItems ? 1 : stack <= 0 ? item.m_stack : stack); return false;
+                __result = free >= (rule.Single ? 1 : stack <= 0 ? item.m_stack : stack); return false;
             }
         }
         [HarmonyPatch(typeof(Inventory), "FindEmptySlot")]
@@ -127,7 +127,7 @@ namespace Overhaul.Storage
             private static bool Prefix(Inventory __instance, string name, int quality, float worldLevel, ref ItemDrop.ItemData __result)
             {
                 var rule = Active(__instance); if (rule == null) return true;
-                __result = rule.Store.Adapter.SingleItems ? null : __instance.GetAllItems().FirstOrDefault(i =>
+                __result = rule.Single ? null : __instance.GetAllItems().FirstOrDefault(i =>
                     i.m_shared.m_name == name && i.m_quality == quality && i.m_worldLevel == worldLevel && i.m_stack < i.m_shared.m_maxStackSize && Allows(__instance, i, i.m_gridPos));
                 return false;
             }
@@ -137,7 +137,7 @@ namespace Overhaul.Storage
         {
             private static bool Prefix(Inventory __instance, ItemDrop.ItemData item, ref bool __result)
             {
-                var rule = Active(__instance); if (rule == null || !rule.Store.Adapter.SingleItems) return true;
+                var rule = Active(__instance); if (rule == null || !rule.Single) return true;
                 var pos = Destination(__instance, item);
                 if (pos.x >= 0) __instance.AddItem(item, 1, pos.x, pos.y, false);
                 __result = item.m_stack == 0; return false;
@@ -150,7 +150,7 @@ namespace Overhaul.Storage
             {
                 var rule = Active(__instance); if (rule == null) return true;
                 if (!Allows(__instance, item, pos)) { __result = false; return false; }
-                if (!rule.Store.Adapter.SingleItems) return true;
+                if (!rule.Single) return true;
                 __instance.AddItem(item, 1, pos.x, pos.y, false); __result = item.m_stack == 0; return false;
             }
         }
@@ -161,7 +161,7 @@ namespace Overhaul.Storage
             {
                 var destination = __instance.GetInventory(); var target = Get(destination); var source = Get(fromInventory);
                 if (target != null && !target.Store.Owner || source != null && !source.Store.Owner || !Allows(destination, item, pos)) { __result = false; return false; }
-                if (target != null && target.Store.Adapter.SingleItems) amount = Math.Min(1, amount);
+                if (target != null && target.Single) amount = Math.Min(1, amount);
                 var displaced = destination.GetItemAt(pos.x, pos.y);
                 bool swaps = displaced != null && displaced != item && item.m_stack == amount && (!displaced.IsSameType(item) || item.m_shared.m_maxStackSize == 1);
                 if (swaps && !Allows(fromInventory, displaced, item.m_gridPos)) { __result = false; return false; }

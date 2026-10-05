@@ -14,7 +14,7 @@ namespace Overhaul.Storage
         internal ZNetView View;
         internal Container Container;
         internal Inventory Items, Fuel, Working;
-        internal bool Ready, Dropping;
+        internal bool Ready, Dropping, Loading;
         internal int Changing;
         internal ZDO Data => View && View.IsValid() ? View.GetZDO() : null;
         internal bool Owner => Data != null && View.IsOwner();
@@ -126,7 +126,7 @@ namespace Overhaul.Storage
                 if (Owner) { catapult.PendingOwnership = false; Changed(); }
                 return Ready;
             }
-            Changing++;
+            Changing++; Loading = true;
             try
             {
                 if (!Data.GetBool(markerKey, false))
@@ -156,7 +156,7 @@ namespace Overhaul.Storage
                 if (!reported) { Debug.LogError("Overhaul: cannot load device inventory " + name + ": " + error); reported = true; }
                 return false;
             }
-            finally { Changing--; }
+            finally { Changing--; Loading = false; }
         }
         internal void Tick()
         {
@@ -168,7 +168,7 @@ namespace Overhaul.Storage
             if (hold || !Container || !Load()) return false;
             return Container.Interact(user, false, false);
         }
-        internal string Hover() => Localization.instance.Localize(Adapter.Title + "\n[<color=yellow><b>$KEY_Use</b></color>] $piece_container_open");
+        internal string Hover() => Localization.instance.Localize(Adapter.Title + "\n[<color=yellow><b>$KEY_Use</b></color>] $piece_container_open") + DeviceActions.Hint(this);
         internal void DropAll()
         {
             if (!Ready || !Owner || Dropping) return;

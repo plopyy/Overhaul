@@ -133,6 +133,7 @@ namespace Overhaul.Storage
             if (Keyboard.current.ctrlKey.isPressed || Keyboard.current.altKey.isPressed) return;
             var p = Player.m_localPlayer;
             if (!InputAllowed(p)) return;
+            if (DeviceActions.TryKey(p, Keyboard.current.shiftKey.isPressed)) { consumedFrame = Time.frameCount; return; }
             var chest = Target(p);
             if (!chest) return;
             consumedFrame = Time.frameCount;
