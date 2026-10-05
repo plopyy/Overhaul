@@ -118,6 +118,7 @@ namespace Overhaul.Storage
         }
         internal void Loaded(ItemDrop.ItemData item)
         {
+            item.m_equipped = false;
             Store.Changing++;
             try { Store.Items.RemoveAll(); DeviceStore.ImportItem(Store.Items, item, 0); }
             finally { Store.Changing--; }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
@@ -52,8 +53,10 @@ namespace Overhaul.Storage
             {
                 foreach (var type in new[] { typeof(Switch), typeof(CookingStation), typeof(Fermenter), typeof(Fireplace), typeof(ItemStand) }) yield return AccessTools.Method(type, "UseItem");
             }
-            private static bool Prefix(Component __instance, Humanoid user, ref bool __result)
+            private static bool Prefix(Component __instance, Humanoid user, ItemDrop.ItemData item, ref bool __result)
             {
+                if (__instance is Fireplace fireplace && item?.m_shared != null &&
+                    fireplace.m_fireworkItemList.Exists(f => f.m_fireworkItem && f.m_fireworkItem.m_itemData.m_shared.m_name == item.m_shared.m_name)) return true;
                 var store = DeviceStore.At(__instance.gameObject); if (!store || !store.Ready) return true;
                 __result = store.Open(user, false); return false;
             }
@@ -197,7 +200,9 @@ namespace Overhaul.Storage
             {
                 while (amount > 0)
                 {
-                    var item = source.GetItem(name, quality, worldLevel); if (item == null) break;
+                    var item = source.GetAllItems().FirstOrDefault(i => i.m_shared.m_name == name &&
+                        (quality < 0 || i.m_quality == quality) && (!worldLevel || i.m_worldLevel >= Game.m_worldLevel));
+                    if (item == null) break;
                     int take = Math.Min(item.m_stack, amount);
                     var unit = item.Clone(); unit.m_stack = take;
                     DeviceStore.ImportItem(s.Items, unit);

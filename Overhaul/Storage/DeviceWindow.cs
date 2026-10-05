@@ -17,6 +17,8 @@ namespace Overhaul.Storage
         private DeviceStore store;
         private GameObject panel;
         private InventoryGrid originalGrid, materialGrid, fuelGrid;
+        private InventoryGrid activeGrid;
+        private int inputFrame = -1;
         private TMP_Text originalName;
         private Vector2 originalSize, originalPosition;
         private readonly List<KeyValuePair<GameObject, bool>> hidden = new List<KeyValuePair<GameObject, bool>>();
@@ -78,7 +80,14 @@ namespace Overhaul.Storage
             materialGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "MaterialInventory");
             if (store.Adapter is ArmorInventory) PrepareArmor();
             fuelGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "FuelInventory");
+            activeGrid = materialGrid; inputFrame = -1;
             Bind(materialGrid, store.Items); if (fuelGrid) Bind(fuelGrid, store.Fuel);
+            materialGrid.OnMoveToUpperInventoryGrid = gui.MoveToUpperInventoryGrid;
+            if (fuelGrid)
+            {
+                materialGrid.OnMoveToLowerInventoryGrid = pos => SelectGrid(fuelGrid, pos.x, 0);
+                fuelGrid.OnMoveToUpperInventoryGrid = pos => SelectGrid(materialGrid, pos.x, store.Items.GetHeight() - 1);
+            }
             gui.m_containerGrid = materialGrid; gui.m_containerName = panel.transform.Find("Title").GetComponent<TMP_Text>();
             gui.m_firstContainerUpdate = false; gui.m_containerHoldState = -1; gui.m_containerHoldTime = float.NegativeInfinity; gui.m_waitForContainerStack = false;
             Refresh();
@@ -134,7 +143,58 @@ namespace Overhaul.Storage
             foreach (var pair in hidden) if (pair.Key) pair.Key.SetActive(pair.Value);
             hidden.Clear(); panel.SetActive(false); Destroy(panel); panel = null; store = null; armorAnchors = null;
         }
+        private void SelectGrid(InventoryGrid grid, int x, int y)
+        {
+            activeGrid = grid;
+            grid.SetGamepadSelection(new Vector2i(Mathf.Clamp(x, 0, grid.GetInventory().GetWidth() - 1), y));
+        }
         private void OnDestroy() { if (panel) Destroy(panel); }
+
+        // Both reserves belong to the native container UI group. Only its selected
+        // grid may handle a controller press, including the frame of a transition.
+        [HarmonyPatch(typeof(InventoryGrid), "UpdateGamepad")]
+        private static class GamepadInput
+        {
+            private static bool Prefix(InventoryGrid __instance)
+            {
+                var window = __instance.GetComponentInParent<DeviceWindow>();
+                if (!window || !window.panel || (__instance != window.materialGrid && __instance != window.fuelGrid)) return true;
+                if (__instance != window.activeGrid) return false;
+                if (!ZInput.IsExclusiveGamepadActive() || !__instance.m_uiGroup.IsActive) return true;
+                if (window.inputFrame == Time.frameCount) return false;
+                window.inputFrame = Time.frameCount; return true;
+            }
+        }
+        [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
+        private static class GamepadHighlight
+        {
+            private static void Postfix(InventoryGrid __instance)
+            {
+                var window = __instance.GetComponentInParent<DeviceWindow>();
+                if (!window || !window.panel || __instance == window.activeGrid ||
+                    (__instance != window.materialGrid && __instance != window.fuelGrid) || !ZInput.IsExclusiveGamepadActive()) return;
+                foreach (var element in __instance.m_elements) element.m_selected.SetActive(false);
+            }
+        }
+        [HarmonyPatch(typeof(InventoryGui), "GetSelectedGamepadElement")]
+        private static class GamepadSelection
+        {
+            private static bool Prefix(InventoryGui __instance, ref RectTransform __result)
+            {
+                var window = __instance.GetComponent<DeviceWindow>();
+                if (!window || !window.panel || !window.activeGrid || !window.activeGrid.m_uiGroup.IsActive) return true;
+                __result = window.activeGrid.GetGamepadSelectedElement(); return false;
+            }
+        }
+        [HarmonyPatch(typeof(InventoryGui), "MoveToLowerInventoryGrid")]
+        private static class EnterFromPlayer
+        {
+            private static void Prefix(InventoryGui __instance)
+            {
+                var window = __instance.GetComponent<DeviceWindow>();
+                if (window && window.panel) window.activeGrid = window.materialGrid;
+            }
+        }
 
         [HarmonyPatch(typeof(InventoryGui), "Show")]
         private static class ShowWindow
