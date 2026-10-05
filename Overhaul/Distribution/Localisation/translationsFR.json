@@ -2518,5 +2518,6 @@
   "overhaul_device_ore": "Minerai",
   "overhaul_device_projectile": "Projectile",
   "overhaul_device_wood": "Bois",
-  "overhaul_device_place_equipment": "Placer l'équipement porté"
+  "overhaul_device_place_equipment": "Placer l'équipement porté",
+  "overhaul_device_worn_equipment": "Équipement porté"
 }

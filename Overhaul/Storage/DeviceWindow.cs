@@ -105,7 +105,7 @@ namespace Overhaul.Storage
             {
                 var equip = Instantiate(close, close.transform.parent, false); equip.name = "PlaceEquipment";
                 equip.onClick = new Button.ButtonClickedEvent(); equip.onClick.AddListener(() => DeviceActions.PlaceEquipment(store, Player.m_localPlayer));
-                ButtonText(equip, "$overhaul_device_place_equipment"); buttons.Add(equip);
+                ButtonText(equip, "$overhaul_device_worn_equipment"); buttons.Add(equip);
             }
             buttons.Add(close);
             var template = (RectTransform)close.transform;
