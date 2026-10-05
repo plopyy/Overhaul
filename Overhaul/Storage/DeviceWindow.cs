@@ -114,7 +114,11 @@ namespace Overhaul.Storage
             var rect = (RectTransform)grid.transform;
             if (armorAnchors == null || grid != materialGrid) rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, inventory.GetWidth() * grid.m_elementSpace);
             var scroll = grid.GetComponent<ScrollRect>(); if (scroll) scroll.vertical = inventory.GetHeight() > (grid == materialGrid ? store.Adapter.Height : 2);
-            grid.UpdateInventory(inventory, null, gui.m_dragItem); grid.ResetView();
+            grid.UpdateInventory(inventory, null, gui.m_dragItem);
+            // These prefabs anchor content at the top. Native ResetView switches
+            // its pivot to the center and clips the second row in this layout.
+            grid.m_gridRoot.anchorMin = grid.m_gridRoot.anchorMax = grid.m_gridRoot.pivot = new Vector2(0, 1);
+            grid.m_gridRoot.anchoredPosition = Vector2.zero;
         }
         private void Refresh()
         {
