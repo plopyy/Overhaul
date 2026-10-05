@@ -56,7 +56,7 @@ namespace Overhaul.Storage
             private static bool Prefix(Component __instance, Humanoid user, ItemDrop.ItemData item, ref bool __result)
             {
                 if (__instance is Fireplace fireplace && item?.m_shared != null &&
-                    fireplace.m_fireworkItemList.Exists(f => f.m_fireworkItem && f.m_fireworkItem.m_itemData.m_shared.m_name == item.m_shared.m_name)) return true;
+                    fireplace.m_fireworkItemList.Any(f => f.m_fireworkItem && f.m_fireworkItem.m_itemData.m_shared.m_name == item.m_shared.m_name)) return true;
                 var store = DeviceStore.At(__instance.gameObject); if (!store || !store.Ready) return true;
                 __result = store.Open(user, false); return false;
             }
