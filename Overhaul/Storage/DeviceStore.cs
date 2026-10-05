@@ -135,6 +135,7 @@ namespace Overhaul.Storage
                     Items.RemoveAll(); Fuel.RemoveAll(); Working.RemoveAll();
                     Adapter.Import();
                     Ready = true;
+                    Adapter.Publish();
                     Save();
                 }
                 else
@@ -143,6 +144,7 @@ namespace Overhaul.Storage
                     Read(Fuel, fuelKey, ref fuelBytes);
                     Read(Working, workKey, ref workBytes);
                     Ready = true;
+                    if (Owner) Adapter.Publish();
                 }
                 if (Container) Container.m_lastRevision = Data.DataRevision;
                 reported = false;

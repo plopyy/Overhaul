@@ -75,6 +75,21 @@ namespace Overhaul.Storage
             }
         }
         [HarmonyPatch]
+        private static class RefreshBeforeProduction
+        {
+            private static IEnumerable<MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(Smelter), "UpdateSmelter");
+                yield return AccessTools.Method(typeof(CookingStation), "UpdateCooking");
+                yield return AccessTools.Method(typeof(Fireplace), "UpdateFireplace");
+                yield return AccessTools.Method(typeof(ShieldGenerator), "UpdateShield");
+            }
+            // Ownership can move between peers before the container's next poll.
+            // Read the new owner's stock before any native consumption occurs.
+            [HarmonyPriority(Priority.First)]
+            private static void Prefix(Component __instance) => DeviceStore.Of(__instance)?.Load();
+        }
+        [HarmonyPatch]
         private static class FuelChanged
         {
             private static IEnumerable<MethodBase> TargetMethods()

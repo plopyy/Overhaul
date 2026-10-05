@@ -108,6 +108,9 @@ namespace Overhaul.Storage
             grid.m_uiGroup = originalGrid.m_uiGroup;
             grid.m_onSelected = gui.OnSelectedItem; grid.m_onRightClick = gui.OnRightClickItem;
             grid.m_onReleased = gui.OnReleasedItem;
+            grid.m_onEnter = gui.OnEnterElement;
+            grid.CanDropDragOntoItem = gui.CanDropDragOntoItem;
+            grid.OnSetTouchSelection = selected => { activeGrid = selected; gui.SetTouchSelection(selected); };
             var rect = (RectTransform)grid.transform;
             if (armorAnchors == null || grid != materialGrid) rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, inventory.GetWidth() * grid.m_elementSpace);
             var scroll = grid.GetComponent<ScrollRect>(); if (scroll) scroll.vertical = inventory.GetHeight() > (grid == materialGrid ? store.Adapter.Height : 2);
