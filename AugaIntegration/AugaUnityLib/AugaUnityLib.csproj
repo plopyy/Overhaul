@@ -14,7 +14,7 @@
     <Deterministic>true</Deterministic>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
-    <FrameworkPathOverride>$(MSBuildThisFileDirectory)..\..\..\Libs</FrameworkPathOverride>
+    <FrameworkPathOverride>$(MSBuildThisFileDirectory)..\..\..\..\Libs</FrameworkPathOverride>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -40,75 +40,75 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="assembly_guiutils_publicized">
-      <HintPath>..\..\..\Libs\assembly_guiutils_publicized.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\assembly_guiutils_publicized.dll</HintPath>
     </Reference>
     <Reference Include="assembly_postprocessing_publicized">
-      <HintPath>..\..\..\Libs\assembly_postprocessing_publicized.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\assembly_postprocessing_publicized.dll</HintPath>
     </Reference>
     <Reference Include="ui_lib">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\ui_lib.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\ui_lib.dll</HintPath>
     </Reference>
     <Reference Include="assembly_sunshafts_publicized">
-      <HintPath>..\..\..\Libs\assembly_sunshafts_publicized.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\assembly_sunshafts_publicized.dll</HintPath>
     </Reference>
     <Reference Include="assembly_utils_publicized">
-      <HintPath>..\..\..\Libs\assembly_utils_publicized.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\assembly_utils_publicized.dll</HintPath>
     </Reference>
     <Reference Include="assembly_valheim_publicized">
-      <HintPath>..\..\..\Libs\assembly_valheim_publicized.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\assembly_valheim_publicized.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.InputSystem"><HintPath>..\..\..\Libs\Unity.InputSystem.dll</HintPath></Reference>
+    <Reference Include="Unity.InputSystem"><HintPath>..\..\..\..\Libs\Unity.InputSystem.dll</HintPath></Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\Libs\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine.PhysicsModule"><HintPath>..\..\..\Libs\UnityEngine.PhysicsModule.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="UnityEngine.AnimationModule"><HintPath>..\..\..\Libs\UnityEngine.AnimationModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>..\..\..\..\Libs\UnityEngine.PhysicsModule.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>..\..\..\..\Libs\UnityEngine.AnimationModule.dll</HintPath><Private>False</Private></Reference>
     <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.AudioModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.AudioModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.ImageConversionModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.IMGUIModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.IMGUIModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.InputLegacyModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.InputLegacyModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.TextRenderingModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.UI.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.UI.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Libs\UnityEngine.UIModule.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\UnityEngine.UIModule.dll</HintPath>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
-      <HintPath>..\..\..\Libs\Unity.TextMeshPro.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\Unity.TextMeshPro.dll</HintPath>
     </Reference>
     <Reference Include="netstandard">
-      <HintPath>..\..\..\Libs\netstandard.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\netstandard.dll</HintPath>
     </Reference>
     <Reference Include="gui_framework">
-      <HintPath>..\..\..\Libs\gui_framework.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\gui_framework.dll</HintPath>
     </Reference>
     <Reference Include="SoftReferenceableAssets">
-      <HintPath>..\..\..\Libs\SoftReferenceableAssets.dll</HintPath>
+      <HintPath>..\..\..\..\Libs\SoftReferenceableAssets.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
