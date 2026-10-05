@@ -145,6 +145,9 @@ namespace Overhaul.Storage
         private void Restore()
         {
             if (!panel) return;
+            // Hide() leaves the container active during the inventory's closing
+            // animation. Hide its root before restoring the ordinary chest UI.
+            if (!gui.m_currentContainer) gui.m_container.gameObject.SetActive(false);
             gui.m_containerGrid = originalGrid; gui.m_containerName = originalName;
             gui.m_container.sizeDelta = originalSize; gui.m_container.anchoredPosition = originalPosition;
             foreach (var pair in hidden) if (pair.Key) pair.Key.SetActive(pair.Value);
