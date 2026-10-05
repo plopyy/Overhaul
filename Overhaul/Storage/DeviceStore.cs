@@ -215,7 +215,7 @@ namespace Overhaul.Storage
                 if (!store) return;
                 store.Container = __instance;
                 __instance.m_name = store.Adapter.Title; __instance.m_width = store.Adapter.Width; __instance.m_height = store.Adapter.Height;
-                if (store.View.gameObject != __instance.gameObject) __instance.m_rootObjectOverride = store.View.gameObject;
+                if (store.View.gameObject != __instance.gameObject) __instance.m_rootObjectOverride = store.View;
             }
             private static void Postfix(Container __instance)
             {
