@@ -20,6 +20,10 @@ namespace Overhaul.Storage
                 .Concat(depth.Skip(2).OrderBy(i => Vector3.Dot(source.m_slots[i].position, right))).ToArray();
         }
         internal override bool SingleItems => true;
+        internal void Remember()
+        {
+            for (int cell = 0; cell < Slots.Length; cell++) displayed[cell] = Store.Items.GetItemAt(cell % 2, cell / 2);
+        }
         internal override void Publish()
         {
             base.Publish();

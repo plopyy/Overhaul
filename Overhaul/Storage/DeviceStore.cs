@@ -145,6 +145,7 @@ namespace Overhaul.Storage
                     Read(Working, workKey, ref workBytes);
                     Ready = true;
                     if (Owner) Adapter.Publish();
+                    else if (Adapter is OvenInventory oven) oven.Remember();
                 }
                 if (Container) Container.m_lastRevision = Data.DataRevision;
                 reported = false;
