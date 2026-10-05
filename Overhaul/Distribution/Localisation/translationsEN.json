@@ -2512,5 +2512,6 @@
   "overhaul_device_offering": "Offering",
   "overhaul_device_ore": "Ore",
   "overhaul_device_projectile": "Projectile",
-  "overhaul_device_wood": "Wood"
+  "overhaul_device_wood": "Wood",
+  "overhaul_device_place_equipment": "Place worn equipment"
 }
