@@ -104,7 +104,7 @@ namespace Overhaul.Storage
             if (store.Adapter is ArmorInventory)
             {
                 var equip = Instantiate(close, close.transform.parent, false); equip.name = "PlaceEquipment";
-                equip.onClick = new Button.ButtonClickedEvent(); equip.onClick.AddListener(() => DeviceActions.PlaceEquipment(store, Player.m_localPlayer));
+                equip.onClick = new Button.ButtonClickedEvent(); equip.onClick.AddListener(() => DeviceActions.SwapEquipment(store, Player.m_localPlayer));
                 ButtonText(equip, "$overhaul_device_worn_equipment"); buttons.Add(equip);
             }
             buttons.Add(close);

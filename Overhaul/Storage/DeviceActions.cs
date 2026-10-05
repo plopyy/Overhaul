@@ -1,4 +1,3 @@
-using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
@@ -32,7 +31,7 @@ namespace Overhaul.Storage
             if (equipment)
             {
                 if (!(store.Adapter is ArmorInventory)) return true;
-                if (gui && gui.m_currentContainer == store.Container && store.Owner) PlaceEquipment(store, player);
+                if (gui && gui.m_currentContainer == store.Container && store.Owner) SwapEquipment(store, player);
                 else
                 {
                     pendingEquipment = store; pendingUntil = Time.time + 5;
@@ -47,19 +46,13 @@ namespace Overhaul.Storage
         {
             if (pendingEquipment != store) return;
             pendingEquipment = null;
-            if (Time.time <= pendingUntil) PlaceEquipment(store, Player.m_localPlayer);
+            if (Time.time <= pendingUntil) SwapEquipment(store, Player.m_localPlayer);
         }
-        internal static void PlaceEquipment(DeviceStore store, Player player)
+        internal static void SwapEquipment(DeviceStore store, Player player)
         {
             if (!Access(store, player) || !store.Owner || !(store.Adapter is ArmorInventory)) return;
-            var inventory = player.GetInventory();
-            foreach (var item in inventory.GetEquippedItems().ToArray())
-            {
-                var slot = DeviceInventoryRules.Destination(store.Items, item);
-                if (slot.x < 0 || store.Items.GetItemAt(slot.x, slot.y) != null) continue;
-                player.RemoveEquipAction(item); player.UnequipItem(item, true);
-                if (!store.Items.MoveItemToThis(inventory, item, 1, slot.x, slot.y) && inventory.ContainsItem(item)) player.EquipItem(item, false);
-            }
+            if (player.InAttack() || player.InDodge() || player.IsSwimming() && !player.IsOnGround()) return;
+            if (!DeviceEquipmentSwap.Exchange(store, player)) player.Message(MessageHud.MessageType.Center, "$overhaul_device_swap_failed");
         }
         [HarmonyPatch(typeof(Container), "RPC_TakeAllResponse")]
         private static class TakeClosed

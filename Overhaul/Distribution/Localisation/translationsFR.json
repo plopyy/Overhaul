@@ -2518,6 +2518,7 @@
   "overhaul_device_ore": "Minerai",
   "overhaul_device_projectile": "Projectile",
   "overhaul_device_wood": "Bois",
-  "overhaul_device_place_equipment": "Placer l'équipement porté",
-  "overhaul_device_worn_equipment": "Équipement porté"
+  "overhaul_device_place_equipment": "Intervertir l'équipement",
+  "overhaul_device_worn_equipment": "Intervertir",
+  "overhaul_device_swap_failed": "Échange impossible : vérifiez la place disponible et les équipements."
 }
