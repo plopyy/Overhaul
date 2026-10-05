@@ -92,7 +92,6 @@ namespace Overhaul.Storage
             gui.m_containerGrid = materialGrid; gui.m_containerName = panel.transform.Find("Title").GetComponent<TMP_Text>();
             gui.m_firstContainerUpdate = false; gui.m_containerHoldState = -1; gui.m_containerHoldTime = float.NegativeInfinity; gui.m_waitForContainerStack = false;
             Refresh();
-            DeviceActions.OnShown(store);
         }
         private void AddActions()
         {
@@ -120,7 +119,11 @@ namespace Overhaul.Storage
         private static void ButtonText(Button button, string key)
         {
             foreach (var text in button.GetComponentsInChildren<TMP_Text>(true))
-            { text.text = Localization.instance.Localize(key); text.enableAutoSizing = true; text.fontSizeMin = 12; text.fontSizeMax = 18; }
+            {
+                // One line, shrunk to fit: wrapped labels overlapped in the button's fixed height.
+                text.text = Localization.instance.Localize(key); text.textWrappingMode = TextWrappingModes.NoWrap;
+                text.enableAutoSizing = true; text.fontSizeMin = 10; text.fontSizeMax = 18;
+            }
         }
         private void PrepareArmor()
         {

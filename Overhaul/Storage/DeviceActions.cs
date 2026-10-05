@@ -34,19 +34,14 @@ namespace Overhaul.Storage
                 if (gui && gui.m_currentContainer == store.Container && store.Owner) SwapEquipment(store, player);
                 else
                 {
+                    // Same ownership handshake as take-all, without opening the window.
                     pendingEquipment = store; pendingUntil = Time.time + 5;
-                    if (!store.Open(player, false)) pendingEquipment = null;
+                    if (!store.Load() || !store.Container.TakeAll(player)) pendingEquipment = null;
                 }
             }
             else if (gui && gui.m_currentContainer == store.Container && store.Owner) gui.OnTakeAll();
             else store.Container.TakeAll(player); // Native access/ownership handshake.
             return true;
-        }
-        internal static void OnShown(DeviceStore store)
-        {
-            if (pendingEquipment != store) return;
-            pendingEquipment = null;
-            if (Time.time <= pendingUntil) SwapEquipment(store, Player.m_localPlayer);
         }
         internal static void SwapEquipment(DeviceStore store, Player player)
         {
@@ -57,15 +52,26 @@ namespace Overhaul.Storage
         [HarmonyPatch(typeof(Container), "RPC_TakeAllResponse")]
         private static class TakeClosed
         {
-            private static void Prefix(Container __instance, bool granted)
+            private static bool Prefix(Container __instance, long uid, bool granted)
             {
                 var store = DeviceStore.Of(__instance);
+                if (store && store == pendingEquipment)
+                {
+                    pendingEquipment = null;
+                    if (!granted || Time.time > pendingUntil || !Player.m_localPlayer) return true;
+                    __instance.m_nview.ClaimOwnership();
+                    ZDOMan.instance.ForceSendZDO(uid,__instance.m_nview.GetZDO().m_uid);
+                    store.Load();
+                    SwapEquipment(store, Player.m_localPlayer);
+                    return false;
+                }
                 if (granted && store && store.Ready) store.Load();
+                return true;
             }
-            private static void Postfix(Container __instance, bool granted)
+            private static void Postfix(Container __instance, bool granted, bool __runOriginal)
             {
                 var store = DeviceStore.Of(__instance);
-                if (granted && store && store.Ready && store.Owner && Player.m_localPlayer && store.Adapter.Dual)
+                if (__runOriginal && granted && store && store.Ready && store.Owner && Player.m_localPlayer && store.Adapter.Dual)
                     Player.m_localPlayer.GetInventory().MoveAll(store.Fuel);
             }
         }

@@ -11,12 +11,15 @@ namespace Overhaul.Storage
             var armor = (ArmorInventory)store.Adapter;
             var bag = player.GetInventory();
             var worn = bag.GetEquippedItems().ToArray();
+            // Only the top (vanilla) utility item takes part; extra utility cells keep their accessory.
+            // An incoming accessory is then equipped through vanilla's branch, back into that top cell.
+            var exchangeable = worn.Where(item => item.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Utility || item == player.m_utilityItem).ToArray();
             var outgoing = new ItemDrop.ItemData[7];
             var incoming = new ItemDrop.ItemData[7];
             for (int i = 0; i < 7; i++)
             {
                 var cell = new Vector2i(i, 0);
-                outgoing[i] = worn.FirstOrDefault(item => item.m_stack == 1 && !outgoing.Contains(item) && armor.Accepts(item, false, cell));
+                outgoing[i] = exchangeable.FirstOrDefault(item => item.m_stack == 1 && !outgoing.Contains(item) && armor.Accepts(item, false, cell));
                 incoming[i] = store.Items.GetItemAt(i, 0);
             }
 
@@ -88,7 +91,7 @@ namespace Overhaul.Storage
             // Prefer the matching EQS equipment cell, even with a full backpack. An occupied
             // cosmetic/quick slot is never overwritten. Native FindEmptySlot honors EQS limits.
             foreach (var slot in Slots.slots)
-                if (slot != null && slot.IsEquipmentSlot && slot.ItemFits(item) &&
+                if (slot != null && slot.IsEquipmentSlot && !Slots.IsExtraUtilitySlot(slot) && slot.ItemFits(item) &&
                     slot.GridPosition.y < bag.GetHeight() && slot.GridPosition.x >= 0 &&
                     bag.GetItemAt(slot.GridPosition.x, slot.GridPosition.y) == null)
                     return slot.GridPosition;

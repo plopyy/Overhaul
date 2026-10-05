@@ -85,25 +85,15 @@ namespace Overhaul.Storage
                 {
                     Cooker.GetSlot(Slots[cell], out var name, out _, out var status, out var cheated);
                     if (name.Length == 0 || status == CookingStation.Status.NotDone) continue;
-                    Cooker.SpawnItem(name, Slots[cell], Cooker.transform.position + Cooker.transform.forward * 2, cheated);
+                    // Like vanilla, the finished dish stays in the oven until taken; its cell
+                    // now holds the cooked (or burnt) item and the native slot keeps the visual.
                     var item = Store.Items.GetItemAt(cell % 2, cell / 2);
-                    if (item != null) Store.Items.RemoveItem(item);
-                    Set(cell, "", false); displayed[cell] = null;
+                    if (item?.m_dropPrefab && item.m_dropPrefab.name == name) continue;
+                    if (item != null) Store.Items.m_inventory.Remove(item);
+                    var cooked = DeviceStore.Item(name, 1, cheated); cooked.m_gridPos = new Vector2i(cell % 2, cell / 2);
+                    Store.Items.m_inventory.Add(cooked); displayed[cell] = cooked;
                 }
             });
-        }
-        internal override void BeforeDestroyed()
-        {
-            // DropAll has already set Dropping; finish cooked outputs explicitly.
-            for (int cell = 0; cell < Slots.Length; cell++)
-            {
-                Cooker.GetSlot(Slots[cell], out var name, out _, out var status, out var cheated);
-                if (name.Length == 0 || status == CookingStation.Status.NotDone) continue;
-                Cooker.SpawnItem(name, Slots[cell], Cooker.transform.position + Cooker.transform.forward * 2, cheated);
-                var item = Store.Items.GetItemAt(cell % 2, cell / 2);
-                if (item != null) Store.Items.RemoveItem(item);
-            }
-            base.BeforeDestroyed();
         }
     }
 }
