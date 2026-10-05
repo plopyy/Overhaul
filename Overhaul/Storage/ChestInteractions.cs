@@ -19,7 +19,7 @@ namespace Overhaul.Storage
         internal const int NameLimit = 64;
         static int consumedFrame = -1;
         internal static bool Eligible(Container c) => ChestAccess.Data(c) != null && c.GetComponent<Piece>() &&
-            !c.GetComponent<TombStone>() && !c.GetComponent<Ship>() && !c.GetComponent<Vagon>();
+            !DeviceStore.Of(c) && !c.GetComponent<TombStone>() && !c.GetComponent<Ship>() && !c.GetComponent<Vagon>();
 
         internal static void EnsureName(Container c)
         {

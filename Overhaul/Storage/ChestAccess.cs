@@ -18,7 +18,7 @@ namespace Overhaul.Storage
         internal static ZDO Data(Container c) => c && c.m_nview && c.m_nview.IsValid() ? c.m_nview.GetZDO() : null;
         internal static long Creator(Container c) => Data(c)?.GetLong(ZDOVars.s_creator, 0) ?? 0;
         internal static bool Private(Container c) => Data(c)?.GetBool(PrivateKey, false) == true;
-        internal static bool Eligible(Container c) => Data(c) != null && Creator(c) != 0 && c.GetComponent<Piece>() && !c.GetComponent<TombStone>();
+        internal static bool Eligible(Container c) => Data(c) != null && Creator(c) != 0 && c.GetComponent<Piece>() && !DeviceStore.Of(c) && !c.GetComponent<TombStone>();
         internal static bool Allows(Container c, long player) => !Private(c) || (player != 0 && Creator(c) == player);
         internal static long Now => ZNet.instance ? ZNet.instance.GetTime().Ticks : DateTime.UtcNow.Ticks;
         internal static bool Leased(Container c) => Data(c)?.GetLong(LeaseUntilKey, 0) > Now;
