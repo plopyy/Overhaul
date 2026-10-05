@@ -18,6 +18,7 @@ namespace Overhaul.Storage
 
         internal static bool Expired(ZDO data, long now)
         {
+            if (data.GetBool(ProductionDrops.ProtectedKey, false)) return false;
             long started = data.GetLong(StartedKey, 0);
             if (started <= 0 || started > now)
             {
