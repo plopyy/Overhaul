@@ -41,7 +41,7 @@ namespace Overhaul.Storage
     internal static class FireplaceQuickFillHoverPatch
     {
         private static void Postfix(Fireplace __instance, ref string __result)
-        { if (__instance.m_canRefill && !__instance.m_infiniteFuel && __instance.m_fuelItem) __result += SmelterQuickFill.HoverHint(); }
+        { if (!DeviceStore.Of(__instance) && __instance.m_canRefill && !__instance.m_infiniteFuel && __instance.m_fuelItem) __result += SmelterQuickFill.HoverHint(); }
     }
 
     [HarmonyPatch(typeof(CookingStation), "Awake")]
