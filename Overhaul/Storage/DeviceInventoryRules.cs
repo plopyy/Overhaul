@@ -85,6 +85,52 @@ namespace Overhaul.Storage
                 }
                 return true;
             }
+            private static void Postfix(Inventory __instance, bool __result)
+            {
+                // Native positional insertion only notifies when a local Player exists.
+                // Machine inventories also need notifications on dedicated servers.
+                if (__result && !Player.m_localPlayerExists && Active(__instance) != null) __instance.Changed();
+            }
+        }
+        [HarmonyPatch(typeof(Inventory), "CanAddItem", typeof(ItemDrop.ItemData), typeof(int))]
+        private static class Capacity
+        {
+            private static bool Prefix(Inventory __instance, ItemDrop.ItemData item, int stack, ref bool __result)
+            {
+                var rule = Active(__instance); if (rule == null) return true;
+                int free = 0, width = rule.Fuel ? 3 : rule.Store.Adapter.Width, height = rule.Fuel ? 2 : rule.Store.Adapter.Height;
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                {
+                    if (!Allows(__instance, item, new Vector2i(x, y))) continue;
+                    var existing = __instance.GetItemAt(x, y);
+                    if (existing == null) free += rule.Store.Adapter.SingleItems ? 1 : item.m_shared.m_maxStackSize;
+                    else if (!rule.Store.Adapter.SingleItems && existing.IsSameType(item) && existing.m_quality == item.m_quality && existing.m_worldLevel == item.m_worldLevel) free += Math.Max(0, existing.m_shared.m_maxStackSize - existing.m_stack);
+                }
+                __result = free >= (rule.Store.Adapter.SingleItems ? 1 : stack <= 0 ? item.m_stack : stack); return false;
+            }
+        }
+        [HarmonyPatch(typeof(Inventory), "FindEmptySlot")]
+        private static class EmptySlot
+        {
+            private static bool Prefix(Inventory __instance, ref Vector2i __result)
+            {
+                var rule = Active(__instance); if (rule == null) return true;
+                int width = rule.Fuel ? 3 : rule.Store.Adapter.Width, height = rule.Fuel ? 2 : rule.Store.Adapter.Height;
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                    if (__instance.GetItemAt(x, y) == null) { __result = new Vector2i(x, y); return false; }
+                __result = new Vector2i(-1, -1); return false;
+            }
+        }
+        [HarmonyPatch(typeof(Inventory), "FindFreeStackItem")]
+        private static class FreeStack
+        {
+            private static bool Prefix(Inventory __instance, string name, int quality, float worldLevel, ref ItemDrop.ItemData __result)
+            {
+                var rule = Active(__instance); if (rule == null) return true;
+                __result = rule.Store.Adapter.SingleItems ? null : __instance.GetAllItems().FirstOrDefault(i =>
+                    i.m_shared.m_name == name && i.m_quality == quality && i.m_worldLevel == worldLevel && i.m_stack < i.m_shared.m_maxStackSize && Allows(__instance, i, i.m_gridPos));
+                return false;
+            }
         }
         [HarmonyPatch(typeof(Inventory), "AddItem", typeof(ItemDrop.ItemData))]
         private static class InsertSingle

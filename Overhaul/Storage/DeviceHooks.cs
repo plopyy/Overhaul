@@ -38,10 +38,11 @@ namespace Overhaul.Storage
             {
                 foreach (var type in new[] { typeof(Container), typeof(Switch), typeof(CookingStation), typeof(Fermenter), typeof(Fireplace), typeof(ItemStand) }) yield return AccessTools.Method(type, "GetHoverText");
             }
-            [HarmonyPriority(Priority.Last)]
-            private static void Postfix(Component __instance, ref string __result)
+            [HarmonyPriority(Priority.First)]
+            private static bool Prefix(Component __instance, ref string __result)
             {
-                var store = DeviceStore.At(__instance.gameObject); if (store && store.Ready) __result = store.Hover();
+                var store = DeviceStore.At(__instance.gameObject); if (!store || !store.Ready) return true;
+                __result = store.Hover(); return false;
             }
         }
         [HarmonyPatch]
@@ -88,7 +89,7 @@ namespace Overhaul.Storage
             private static bool Prefix(Smelter __instance, ref int __result)
             {
                 var s = DeviceStore.Of(__instance); if (!s || !s.Ready || !(s.Adapter is SmelterInventory adapter) || !adapter.HasMaterials) return true;
-                __result = s.Items.CountItems(null); return false;
+                __result = s.Items.CountItems(null, -1, false); return false;
             }
         }
         [HarmonyPatch(typeof(Smelter), "GetQueuedOre")]
@@ -124,10 +125,6 @@ namespace Overhaul.Storage
         [HarmonyPatch(typeof(CookingStation), "UpdateCooking")]
         private static class Cook
         {
-            private static void Prefix(CookingStation __instance)
-            {
-                var s = DeviceStore.Of(__instance); if (s && s.Ready && s.Owner) ((CookingInventory)s.Adapter).Advance();
-            }
             private static void Postfix(CookingStation __instance)
             {
                 var s = DeviceStore.Of(__instance); if (s && s.Ready && s.Owner) ((CookingInventory)s.Adapter).Advance();

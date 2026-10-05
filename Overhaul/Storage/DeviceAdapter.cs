@@ -80,7 +80,7 @@ namespace Overhaul.Storage
         {
             if (!Store.Ready || !Store.Owner || Store.Changing != 0 || !DefaultFuel) return;
             float amount = Math.Max(0, Store.Data.GetFloat(ZDOVars.s_fuel, InitialFuel));
-            int whole = Mathf.FloorToInt(amount), count = FuelStock.CountItems(null);
+            int whole = Mathf.FloorToInt(amount), count = FuelStock.CountItems(null, -1, false);
             Store.Change(() =>
             {
                 if (whole < count) Consume(FuelStock, count - whole);
@@ -90,7 +90,7 @@ namespace Overhaul.Storage
         }
         internal override void Publish()
         {
-            if (DefaultFuel) Store.Data.Set(ZDOVars.s_fuel, FuelStock.CountItems(null) + Store.Data.GetFloat(RemainderKey, 0));
+            if (DefaultFuel) Store.Data.Set(ZDOVars.s_fuel, FuelStock.CountItems(null, -1, false) + Store.Data.GetFloat(RemainderKey, 0));
         }
         internal override void BeforeDestroyed()
         {
@@ -113,6 +113,7 @@ namespace Overhaul.Storage
                 var inputs = Machine.m_conversion.Where(c => c.m_from).Select(c => c.m_from).Distinct().ToArray();
                 if (inputs.Length == 1) return Name(inputs[0]);
                 if (Utils.GetPrefabName(Machine.gameObject) == "charcoal_kiln") return Word("wood");
+                if (Utils.GetPrefabName(Machine.gameObject) == "smelter" || Utils.GetPrefabName(Machine.gameObject) == "blastfurnace") return Word("ore");
                 return Word("materials");
             }
         }
@@ -227,10 +228,10 @@ namespace Overhaul.Storage
             {
                 Cooker.GetSlot(i, out var name, out var time, out var status, out var cheated);
                 var active = Store.Working.GetItemAt(i, 0);
-                if (active != null && name.Length > 0 && name != active.m_dropPrefab.name)
+                if (active != null && name.Length > 0 && status != CookingStation.Status.NotDone)
                 {
+                    Cooker.SpawnItem(name, i, Cooker.transform.position + Cooker.transform.forward * 2, cheated);
                     Store.Working.RemoveItem(active);
-                    DeviceStore.ImportItem(Store.Working, DeviceStore.Item(name, 1, cheated), i);
                 }
                 Cooker.SetSlot(i, "", 0, CookingStation.Status.NotDone, false);
             }

@@ -2506,5 +2506,16 @@
   "overhaul_chest_take_all": "Tout prendre",
   "overhaul_key_shift": "Maj",
   "overhaul_feeding_trough": "Mangeoire",
-  "overhaul_feeding_trough_description": "Quatre emplacements pour nourrir les animaux alentour et les apprivoiser. Ils détectent la mangeoire à 20 m et peuvent manger leur nourriture habituelle à 4 m maximum, même sans se déplacer."
+  "overhaul_feeding_trough_description": "Quatre emplacements pour nourrir les animaux alentour et les apprivoiser. Ils détectent la mangeoire à 20 m et peuvent manger leur nourriture habituelle à 4 m maximum, même sans se déplacer.",
+  "overhaul_device_bases": "Bases",
+  "overhaul_device_bones": "Os",
+  "overhaul_device_equipment": "Équipement",
+  "overhaul_device_food": "Plats à cuire",
+  "overhaul_device_item": "Objet",
+  "overhaul_device_materials": "Matériaux",
+  "overhaul_device_moulds": "Moules",
+  "overhaul_device_offering": "Offrande",
+  "overhaul_device_ore": "Minerai",
+  "overhaul_device_projectile": "Projectile",
+  "overhaul_device_wood": "Bois"
 }

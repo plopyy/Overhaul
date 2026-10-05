@@ -98,6 +98,7 @@ namespace Overhaul.Storage
         internal void Save()
         {
             if (!Ready || !Owner) return;
+            Resize(Items, Adapter.Height); Resize(Fuel, 2);
             Write(Items, itemsKey, ref itemsBytes);
             Write(Fuel, fuelKey, ref fuelBytes);
             Write(Working, workKey, ref workBytes);
@@ -114,7 +115,9 @@ namespace Overhaul.Storage
             var bytes = Data.GetByteArray(key, null);
             if (bytes == null || previous != null && previous.SequenceEqual(bytes)) return;
             inventory.Load(new ZPackage(bytes)); previous = bytes;
+            Resize(inventory, inventory == Items ? Adapter.Height : inventory == Fuel ? 2 : 1);
         }
+        private static void Resize(Inventory inventory, int minimum) => inventory.m_height = Math.Max(minimum, inventory.GetAllItems().Select(i => i.m_gridPos.y + 1).DefaultIfEmpty(0).Max());
         internal bool Load()
         {
             if (Data == null || Adapter == null) return false;
@@ -212,6 +215,7 @@ namespace Overhaul.Storage
                 if (!store) return;
                 store.Container = __instance;
                 __instance.m_name = store.Adapter.Title; __instance.m_width = store.Adapter.Width; __instance.m_height = store.Adapter.Height;
+                if (store.View.gameObject != __instance.gameObject) __instance.m_rootObjectOverride = store.View.gameObject;
             }
             private static void Postfix(Container __instance)
             {

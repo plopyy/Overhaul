@@ -2501,5 +2501,16 @@
   "overhaul_chest_take_all": "Take all",
   "overhaul_key_shift": "Shift",
   "overhaul_feeding_trough": "Feeding trough",
-  "overhaul_feeding_trough_description": "Four slots to feed and tame nearby animals. They detect the trough within 20 m and can eat their usual food within 4 m, even without moving."
+  "overhaul_feeding_trough_description": "Four slots to feed and tame nearby animals. They detect the trough within 20 m and can eat their usual food within 4 m, even without moving.",
+  "overhaul_device_bases": "Bases",
+  "overhaul_device_bones": "Bones",
+  "overhaul_device_equipment": "Equipment",
+  "overhaul_device_food": "Food to cook",
+  "overhaul_device_item": "Item",
+  "overhaul_device_materials": "Materials",
+  "overhaul_device_moulds": "Moulds",
+  "overhaul_device_offering": "Offering",
+  "overhaul_device_ore": "Ore",
+  "overhaul_device_projectile": "Projectile",
+  "overhaul_device_wood": "Wood"
 }
