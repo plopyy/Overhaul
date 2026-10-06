@@ -73,6 +73,7 @@ namespace Overhaul.Storage
                 var wear = source.GetComponent<WearNTear>();
                 if (wear && source is Catapult) wear.m_onDestroyed += store.DropAll;
             }
+            DeviceActions.Register(store);
             store.Load();
         }
         private void OnDestroy()

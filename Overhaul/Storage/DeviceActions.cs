@@ -32,11 +32,12 @@ namespace Overhaul.Storage
             {
                 if (!(store.Adapter is ArmorInventory)) return true;
                 if (gui && gui.m_currentContainer == store.Container && store.Owner) SwapEquipment(store, player);
-                else
+                else if (store.Load() && (pendingEquipment != store || Time.time > pendingUntil))
                 {
-                    // Same ownership handshake as take-all, without opening the window.
-                    pendingEquipment = store; pendingUntil = Time.time + 5;
-                    if (!store.Load() || !store.Container.TakeAll(player)) pendingEquipment = null;
+                    // Take-all's ownership handshake without its two-second cooldown or the window.
+                    // One request in flight at a time, for at most half a second.
+                    pendingEquipment = store; pendingUntil = Time.time + .5f;
+                    store.View.InvokeRPC(SwapRequest, player.GetPlayerID());
                 }
             }
             else if (gui && gui.m_currentContainer == store.Container && store.Owner) gui.OnTakeAll();
@@ -49,29 +50,43 @@ namespace Overhaul.Storage
             if (player.InAttack() || player.InDodge() || player.IsSwimming() && !player.IsOnGround()) return;
             if (!DeviceEquipmentSwap.Exchange(store, player)) player.Message(MessageHud.MessageType.Center, "$overhaul_device_swap_failed");
         }
+        private const string SwapRequest = "Overhaul_RequestEquipmentSwap", SwapResponse = "Overhaul_EquipmentSwapResponse";
+        internal static void Register(DeviceStore store)
+        {
+            if (!(store.Adapter is ArmorInventory)) return;
+            store.View.Register<long>(SwapRequest, (uid, playerID) => OnSwapRequest(store, uid, playerID));
+            store.View.Register<bool>(SwapResponse, (uid, granted) => OnSwapResponse(store, uid, granted));
+        }
+        // Owner side: the checks of Container.RPC_RequestTakeAll, minus its cooldown.
+        private static void OnSwapRequest(DeviceStore store, long uid, long playerID)
+        {
+            if (!store.View.IsOwner() || !store.Container) return;
+            bool granted = !(store.Container.IsInUse() && uid != ZNet.GetUID()) && store.Container.CheckAccess(playerID);
+            store.View.InvokeRPC(uid, SwapResponse, granted);
+        }
+        private static void OnSwapResponse(DeviceStore store, long uid, bool granted)
+        {
+            if (pendingEquipment != store) return;
+            pendingEquipment = null;
+            var player = Player.m_localPlayer; if (!player) return;
+            if (!granted) { player.Message(MessageHud.MessageType.Center, "$msg_inuse"); return; }
+            store.View.ClaimOwnership();
+            ZDOMan.instance.ForceSendZDO(uid, store.View.GetZDO().m_uid);
+            store.Load();
+            SwapEquipment(store, player);
+        }
         [HarmonyPatch(typeof(Container), "RPC_TakeAllResponse")]
         private static class TakeClosed
         {
-            private static bool Prefix(Container __instance, long uid, bool granted)
+            private static void Prefix(Container __instance, bool granted)
             {
                 var store = DeviceStore.Of(__instance);
-                if (store && store == pendingEquipment)
-                {
-                    pendingEquipment = null;
-                    if (!granted || Time.time > pendingUntil || !Player.m_localPlayer) return true;
-                    __instance.m_nview.ClaimOwnership();
-                    ZDOMan.instance.ForceSendZDO(uid,__instance.m_nview.GetZDO().m_uid);
-                    store.Load();
-                    SwapEquipment(store, Player.m_localPlayer);
-                    return false;
-                }
                 if (granted && store && store.Ready) store.Load();
-                return true;
             }
-            private static void Postfix(Container __instance, bool granted, bool __runOriginal)
+            private static void Postfix(Container __instance, bool granted)
             {
                 var store = DeviceStore.Of(__instance);
-                if (__runOriginal && granted && store && store.Ready && store.Owner && Player.m_localPlayer && store.Adapter.Dual)
+                if (granted && store && store.Ready && store.Owner && Player.m_localPlayer && store.Adapter.Dual)
                     Player.m_localPlayer.GetInventory().MoveAll(store.Fuel);
             }
         }
