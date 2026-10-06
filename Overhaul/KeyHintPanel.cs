@@ -22,6 +22,7 @@ namespace Overhaul
         private RectTransform box;
         private GridLayoutGroup grid;
         private TMP_FontAsset font;
+        private Material shadowed;
         private Sprite keySprite;
         private Image.Type keyType;
         private Sprite[] mouseSprites;
@@ -64,7 +65,7 @@ namespace Overhaul
             BuildBox();
         }
 
-        private void OnDestroy() { if (box) Destroy(box.gameObject); }
+        private void OnDestroy() { if (box) Destroy(box.gameObject); if (shadowed) Destroy(shadowed); }
 
         private static Sprite MouseSprite(string name)
         {
@@ -82,13 +83,13 @@ namespace Overhaul
 
         private void BuildBox()
         {
-            var go = new GameObject("OverhaulKeyHints", typeof(RectTransform), typeof(Image), typeof(Outline), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+            var go = new GameObject("OverhaulKeyHints", typeof(RectTransform), typeof(Image), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
             box = (RectTransform)go.transform;
             box.SetParent(hints.transform.parent, false);
             box.anchorMin = box.anchorMax = box.pivot = new Vector2(1, 0);
             box.anchoredPosition = new Vector2(-24, 24);
-            go.GetComponent<Image>().color = new Color(0.06f, 0.05f, 0.04f, 0.72f);
-            var outline = go.GetComponent<Outline>(); outline.effectColor = new Color(0.78f, 0.62f, 0.36f, 0.55f); outline.effectDistance = new Vector2(1, -1);
+            // Same translucent black as the selected build piece info (about 25% opaque).
+            go.GetComponent<Image>().color = new Color(0, 0, 0, 0.25f);
             grid = go.GetComponent<GridLayoutGroup>();
             grid.cellSize = new Vector2(205, 24); grid.spacing = new Vector2(10, 3);
             grid.padding = new RectOffset(10, 10, 7, 7);
@@ -271,6 +272,17 @@ namespace Overhaul
             if (font) text.font = font;
             text.text = value; text.fontSize = size; text.color = color; text.raycastTarget = false;
             text.textWrappingMode = TextWrappingModes.NoWrap; text.alignment = TextAlignmentOptions.MidlineLeft;
+            // Readable over bright terrain through the light backdrop; one shared material.
+            if (!shadowed)
+            {
+                shadowed = new Material(text.fontSharedMaterial);
+                shadowed.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+                shadowed.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0, 0, 0, 0.8f));
+                shadowed.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.6f);
+                shadowed.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.6f);
+                shadowed.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.4f);
+            }
+            text.fontSharedMaterial = shadowed;
             return text;
         }
     }
