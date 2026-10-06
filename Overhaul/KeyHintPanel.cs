@@ -88,8 +88,8 @@ namespace Overhaul
             box.SetParent(hints.transform.parent, false);
             box.anchorMin = box.anchorMax = box.pivot = new Vector2(1, 0);
             box.anchoredPosition = new Vector2(-24, 24);
-            // Same translucent black as the selected build piece info (about 25% opaque).
-            go.GetComponent<Image>().color = new Color(0, 0, 0, 0.25f);
+            // Same translucent black as the selected build piece info (40% opaque).
+            go.GetComponent<Image>().color = new Color(0, 0, 0, 0.4f);
             grid = go.GetComponent<GridLayoutGroup>();
             grid.cellSize = new Vector2(205, 24); grid.spacing = new Vector2(10, 3);
             grid.padding = new RectOffset(10, 10, 7, 7);
