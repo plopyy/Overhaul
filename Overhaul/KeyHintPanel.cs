@@ -51,11 +51,12 @@ namespace Overhaul
                 .Where(r => r).ToArray();
             foreach (var root in roots)
             {
-                var group = root.GetComponent<CanvasGroup>() ?? root.AddComponent<CanvasGroup>();
+                var group = root.GetComponent<CanvasGroup>();
+                if (!group) group = root.AddComponent<CanvasGroup>();
                 group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
             }
-            font = hints.GetComponentsInChildren<TMP_Text>(true).Select(t => t.font).FirstOrDefault(f => f);
-            var keyBox = hints.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.sprite && i.GetComponentInChildren<TMP_Text>(true));
+            font = roots.SelectMany(r => r.GetComponentsInChildren<TMP_Text>(true)).Select(t => t.font).FirstOrDefault(f => f);
+            var keyBox = roots.SelectMany(r => r.GetComponentsInChildren<Image>(true)).FirstOrDefault(i => i.sprite && i.GetComponentInChildren<TMP_Text>(true));
             if (keyBox) { keySprite = keyBox.sprite; keyType = keyBox.type; }
             primaryLabel = LabelOf(hints.m_primaryAttackKB);
             secondaryLabel = LabelOf(hints.m_secondaryAttackKB);
@@ -89,7 +90,7 @@ namespace Overhaul
             go.GetComponent<Image>().color = new Color(0.06f, 0.05f, 0.04f, 0.72f);
             var outline = go.GetComponent<Outline>(); outline.effectColor = new Color(0.78f, 0.62f, 0.36f, 0.55f); outline.effectDistance = new Vector2(1, -1);
             grid = go.GetComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(178, 22); grid.spacing = new Vector2(10, 3);
+            grid.cellSize = new Vector2(205, 24); grid.spacing = new Vector2(10, 3);
             grid.padding = new RectOffset(10, 10, 7, 7);
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 2;
             var fit = go.GetComponent<ContentSizeFitter>();
@@ -180,6 +181,7 @@ namespace Overhaul
         private void IndexMouseButtons()
         {
             mouseButtons[""] = -1;
+            if (ZInput.instance == null || Localization.instance == null) return;
             foreach (var entry in ZInput.instance.m_buttons)
             {
                 var action = entry.Value?.ButtonAction;
@@ -222,7 +224,7 @@ namespace Overhaul
                 layout.childControlWidth = layout.childControlHeight = true;
                 layout.childForceExpandWidth = layout.childForceExpandHeight = false;
                 foreach (var token in row.Keys) AddToken(line.transform, token);
-                var label = AddText(line.transform, row.Label, 14, new Color(0.93f, 0.88f, 0.78f));
+                var label = AddText(line.transform, row.Label, 15, new Color(0.93f, 0.88f, 0.78f));
                 label.overflowMode = TextOverflowModes.Ellipsis;
                 var element = label.GetComponent<LayoutElement>(); element.flexibleWidth = 1; element.minWidth = 0;
                 label.margin = new Vector4(4, 0, 0, 0);
@@ -236,10 +238,10 @@ namespace Overhaul
                 var icon = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
                 icon.transform.SetParent(parent, false);
                 var image = icon.GetComponent<Image>(); image.sprite = token.Sprite; image.preserveAspect = true;
-                var size = icon.GetComponent<LayoutElement>(); size.preferredWidth = 16; size.preferredHeight = 20;
+                var size = icon.GetComponent<LayoutElement>(); size.preferredWidth = 17; size.preferredHeight = 21;
                 if (token.Text != null)
                 {
-                    var number = AddText(icon.transform, token.Text, 10, Color.white);
+                    var number = AddText(icon.transform, token.Text, 11, new Color(1f, 0.85f, 0.45f)); number.fontStyle = FontStyles.Bold;
                     Destroy(number.GetComponent<LayoutElement>());
                     var rect = number.rectTransform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
                     number.alignment = TextAlignmentOptions.Center;
@@ -250,13 +252,15 @@ namespace Overhaul
             var key = new GameObject("Key", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             key.transform.SetParent(parent, false);
             var back = key.GetComponent<Image>();
-            if (keySprite) { back.sprite = keySprite; back.type = keyType; } else back.color = new Color(0, 0, 0, 0.8f);
-            var text = AddText(key.transform, token.Text, 12, Color.white);
+            // The native backdrop sprite is white and tinted per prefab: use our own dark tint.
+            if (keySprite) { back.sprite = keySprite; back.type = keyType; }
+            back.color = new Color(0.16f, 0.13f, 0.1f, 0.95f);
+            var text = AddText(key.transform, token.Text, 14, Color.white);
             Destroy(text.GetComponent<LayoutElement>());
             text.alignment = TextAlignmentOptions.Center;
             var textRect = text.rectTransform; textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one; textRect.offsetMin = textRect.offsetMax = Vector2.zero;
             var keySize = key.GetComponent<LayoutElement>();
-            keySize.preferredWidth = Mathf.Max(18, text.GetPreferredValues(token.Text).x + 8); keySize.preferredHeight = 18;
+            keySize.preferredWidth = Mathf.Max(20, text.GetPreferredValues(token.Text).x + 10); keySize.preferredHeight = 20;
         }
 
         private TextMeshProUGUI AddText(Transform parent, string value, float size, Color color)
