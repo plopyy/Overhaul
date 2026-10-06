@@ -60,8 +60,8 @@ namespace Overhaul.Utility
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ResetIntervalHours = config.Bind("Dungeon", "ResetIntervalHours", 120f,
-                new ConfigDescription("Real hours after the first player visit since generation/reset. 120 = 5 days; 0 disables automatic resets. Never-visited locations are skipped. One global expiry check every 5 minutes; occupied dungeons are deferred.",
+            ResetIntervalHours = config.Bind("Dungeon", "ResetIntervalHours", 12f,
+                new ConfigDescription("Real hours after the first player visit since generation/reset. 12 by default; 0 disables automatic resets. Never-visited locations are skipped. One global expiry check every 5 minutes; occupied dungeons are deferred.",
                     new AcceptableValueRange<float>(0f, 87600f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             RoomMultiplier = config.Bind("Dungeon", "RoomMultiplier", 1.5f,
                 new ConfigDescription("Multiplier of original minimum/maximum room parameters. Maximum capped at 96, minimum never above maximum. Excludes Sealed Tower, Infested Citadel and outdoor locations.",
