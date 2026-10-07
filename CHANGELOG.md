@@ -12,6 +12,7 @@
 
 ### Fixed
 - The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)
+- Since Valheim 1.0.17, the end-game credits could stay open invisibly in the background and grey out other windows. They now stay closed unless the end credits are actually playing. (2.2.1.6)
 
 ## 2.2.0 (released)
 First public release.

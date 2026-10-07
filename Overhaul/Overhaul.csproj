@@ -263,7 +263,7 @@
 <Compile Include="..\AugaIntegration\Auga\TranslationLanguage.cs" />
 <Compile Include="..\AugaIntegration\Auga\CharacterSelection_Setup.cs" />
 <Compile Include="..\AugaIntegration\Auga\WorldSelection_Setup.cs" />
-<Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="KeyHintPanel.cs" /><Compile Include="DashSettingToggle.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
+<Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="KeyHintPanel.cs" /><Compile Include="DashSettingToggle.cs" /><Compile Include="EndCreditsFix.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
 <EmbeddedResource Include="..\AugaIntegration\Assets\stationwindows"><LogicalName>Overhaul.stationwindows</LogicalName></EmbeddedResource><EmbeddedResource Include="..\AugaIntegration\Assets\augaassets"><LogicalName>Overhaul.augaassets</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\AugaIntegration\AugaUnityLib\bin\$(Configuration)\Unity.Auga.dll"><LogicalName>Overhaul.Unity.Auga.dll</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\..\..\Libs\fastJSON.dll"><LogicalName>Overhaul.fastJSON.dll</LogicalName></EmbeddedResource>
