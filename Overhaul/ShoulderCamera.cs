@@ -55,6 +55,42 @@ namespace Overhaul
             return Vector3.Dot(delta, ray.direction) > 0.01f ? delta.normalized : fallback;
         }
 
+        // Items dropped from the inventory fly towards the crosshair, like projectiles, instead of the
+        // character's facing. Native arc and speed are kept: only the horizontal direction changes.
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.DropItem))]
+        internal static class DropAim
+        {
+            static ItemDrop dropped;
+            static void Prefix() => dropped = null;
+            static void Postfix(Humanoid __instance, bool __result)
+            {
+                var drop = dropped; dropped = null;
+                var player = __instance as Player;
+                var camera = GameCamera.instance;
+                if (!__result || !drop || !player || player != Player.m_localPlayer || !camera || !camera.m_camera) return;
+                var body = drop.GetComponent<Rigidbody>();
+                if (!body) return;
+                var ray = camera.m_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+                var aim = Aim(ray, player.m_eye.position, player.transform, player.transform.forward);
+                aim.y = 0f;
+                if (aim.sqrMagnitude < 0.01f) return;
+                aim.Normalize();
+                Transform t = player.transform;
+                // Native velocity is (forward + up) * speed; recover that speed (5, or 0.5 for very heavy items).
+                float speed = body.linearVelocity.magnitude / Mathf.Sqrt(2f);
+                drop.transform.position = t.position + aim + t.up;
+                drop.transform.rotation = Quaternion.LookRotation(aim);
+                body.position = drop.transform.position;
+                body.linearVelocity = (aim + Vector3.up) * speed;
+            }
+
+            [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.DropItem))]
+            internal static class Capture
+            {
+                static void Postfix(ItemDrop __result) => dropped = __result;
+            }
+        }
+
         [HarmonyPatch(typeof(Attack), "GetProjectileSpawnPoint")]
         internal static class ProjectileAim
         {
