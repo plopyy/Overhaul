@@ -7,6 +7,8 @@
     <RootNamespace>OverhaulAnimationPreview</RootNamespace>
     <Version>1.0.0</Version>
     <Nullable>disable</Nullable>
+    <!-- Like Overhaul: lets Mono skip access checks on the publicized game members. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Libs>$(MSBuildThisFileDirectory)..\..\..\..\Libs\</Libs>
