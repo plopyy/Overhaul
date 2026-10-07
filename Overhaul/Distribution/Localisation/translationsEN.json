@@ -2447,6 +2447,8 @@
   "class_demo_tab": "Skills",
   "overhaul_move_binding": "Move an object",
   "overhaul_move_binding_tip": "Choose the key used to relocate a building piece and cancel placement.",
+  "overhaul_dash_setting": "Dash (replaces sprint)",
+  "overhaul_dash_setting_tip": "On: the Run key performs a dash that costs stamina. Off: the Run key sprints like in vanilla Valheim, draining stamina.",
   "class_demo_grid_1_2_name": "Vigor 1",
   "class_demo_grid_1_2_body": "Sample vigor talent, tier 1. Explore this branch of the skill tree.",
   "class_demo_grid_1_3_name": "Vigilance 1",

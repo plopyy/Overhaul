@@ -644,7 +644,8 @@ namespace Overhaul
 			}
 
 			bool held = ZInput.GetButton("Run") || ZInput.GetButton("JoyRun");
-			if (ConsumeDashPress(held, player.TakeInput())) StartDash(player);
+			// Still track the key while disabled, so re-enabling never fires a dash for a held key.
+			if (ConsumeDashPress(held, player.TakeInput()) && OverhaulConfig.DashEnabled.Value) StartDash(player);
         }
 
         internal static bool ConsumeDashPress(bool held, bool takeInput)

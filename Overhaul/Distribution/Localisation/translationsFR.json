@@ -2452,6 +2452,8 @@
   "class_demo_tab": "Compétence",
   "overhaul_move_binding": "Déplacer un objet",
   "overhaul_move_binding_tip": "Choisir la touche pour déplacer une construction et annuler son placement.",
+  "overhaul_dash_setting": "Dash (remplace le sprint)",
+  "overhaul_dash_setting_tip": "Activé : la touche Course déclenche un dash qui consomme de l'endurance. Désactivé : la touche Course fait sprinter comme dans Valheim, en consommant de l'endurance.",
   "class_demo_grid_1_2_name": "Vigueur 1",
   "class_demo_grid_1_2_body": "Talent fictif de vigueur, palier 1. Sert à explorer les branches de cet arbre de compétences.",
   "class_demo_grid_1_3_name": "Vigilance 1",

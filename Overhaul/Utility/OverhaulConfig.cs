@@ -19,6 +19,7 @@ namespace Overhaul.Utility
 
         // --- MoveSpeed ---
         public static ConfigEntry<float> BaseMovementSpeed { get; set; }
+		public static ConfigEntry<bool> DashEnabled { get; set; }
 		public static ConfigEntry<float> SneakMovementSpeed { get; set; }
 		public static ConfigEntry<float> DashSpeed { get; set; }
 		public static ConfigEntry<float> DashDuration { get; set; }
@@ -116,6 +117,8 @@ namespace Overhaul.Utility
 					IsAdminOnly = true
 				}
 			}));
+			// Local player preference (Settings > Mods), not a server rule.
+			OverhaulConfig.DashEnabled = config.Bind<bool>("Dash", "DashEnabled", true, "Run key dashes; when disabled it sprints like vanilla Valheim and drains stamina. Default: true");
 			OverhaulConfig.DashSpeed = config.Bind<float>("Dash", "DashSpeed", 20f, new ConfigDescription("Dash movement speed; Default: 20 | Vanilla: 0 (no dash)", new AcceptableValueRange<float>(1f, 100f), new object[]
 			{
 				new ConfigurationManagerAttributes

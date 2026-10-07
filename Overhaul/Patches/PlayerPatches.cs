@@ -78,10 +78,14 @@ namespace Overhaul.Patches
 		[HarmonyPatch(typeof(Character), "UpdateWalking")]
 		private class Character_UpdateWalking_Patch
 		{
+			private static float vanillaSpeed, vanillaRunSpeed;
 			public static bool Prefix(Character __instance, float dt)
 			{
 				if (__instance.IsPlayer())
 				{
+					// Keep vanilla's sprint/jog ratio, so sprinting stays faster than Overhaul's faster jog.
+					if (vanillaSpeed <= 0f) { vanillaSpeed = __instance.m_speed; vanillaRunSpeed = __instance.m_runSpeed; }
+					__instance.m_runSpeed = OverhaulConfig.BaseMovementSpeed.Value * vanillaRunSpeed / vanillaSpeed;
 					__instance.m_speed = OverhaulConfig.BaseMovementSpeed.Value;
 					__instance.m_crouchSpeed = OverhaulConfig.SneakMovementSpeed.Value;
 					Player player = __instance as Player;
@@ -122,8 +126,10 @@ namespace Overhaul.Patches
 		[HarmonyPatch(typeof(Player), "CheckRun")]
 		private class Player_CheckRun_Patch
 		{
+			// The run key dashes instead of sprinting, unless the player turned the dash off.
 			public static bool Prefix(ref bool __result)
 			{
+				if (!OverhaulConfig.DashEnabled.Value) return true;
 				__result = false;
 				return false;
 			}
