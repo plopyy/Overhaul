@@ -33,10 +33,10 @@ namespace Overhaul
             var row = (RectTransform)page.Displays[page.Displays.Length - 1].transform;
             var rect = (RectTransform)toggle.transform;
             rect.anchorMin = row.anchorMin; rect.anchorMax = row.anchorMax; rect.pivot = row.pivot;
-            rect.anchoredPosition = new Vector2(row.anchoredPosition.x, row.anchoredPosition.y - 52);
+            rect.anchoredPosition = new Vector2(row.anchoredPosition.x, row.anchoredPosition.y - RowSpacing);
             rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, row.rect.width);
             var notice = (RectTransform)page.Notice.transform;
-            notice.anchoredPosition = new Vector2(notice.anchoredPosition.x, rect.anchoredPosition.y - 44);
+            notice.anchoredPosition = new Vector2(notice.anchoredPosition.x, rect.anchoredPosition.y - RowSpacing);
 
             var label = toggle.GetComponentsInChildren<TMP_Text>(true).FirstOrDefault();
             if (label) label.text = Localization.instance.Localize("$overhaul_dash_setting");
@@ -45,9 +45,43 @@ namespace Overhaul
             return toggle;
         }
 
+        // Shortcut index 6 ("Take all"), read/written by EquipmentQuickSlotsCompatibility.
+        private const int TakeAllIndex = 6;
+        private const string TakeAllRow = "TakeAll";
+
+        // Appends the "Take all" shortcut row, cloned from the "Move an object" row above it.
+        private static void AddTakeAllRow(AugaModsSettings page)
+        {
+            if (!page.Notice || page.Displays == null || page.Displays.Length != TakeAllIndex) return;
+            var content = page.Notice.transform.parent;
+            if (content.Find(TakeAllRow)) return;
+            var source = page.Displays[TakeAllIndex - 1];
+            var row = Object.Instantiate(source, content, false);
+            row.name = TakeAllRow;
+            var button = row.GetComponentInChildren<Button>(true);
+            button.onClick = new Button.ButtonClickedEvent(); // drop the copied "Move an object" binding
+            button.onClick.AddListener(() => page.BeginBinding(TakeAllIndex));
+            foreach (var text in row.GetComponentsInChildren<TMP_Text>(true))
+                if (!text.transform.IsChildOf(button.transform)) text.text = Localization.instance.Localize("$overhaul_take_all_binding");
+            var tip = row.GetComponent<UITooltip>();
+            if (tip) { tip.m_topic = "$overhaul_take_all_binding"; tip.m_text = "$overhaul_take_all_binding_tip"; }
+            page.BindButtons = page.BindButtons.Concat(new[] { button }).ToArray();
+            page.Displays = page.Displays.Concat(new[] { row }).ToArray();
+            // Tighter rows so the extra row, the Dash checkbox and the help text still fit above the buttons.
+            var top = ((RectTransform)page.Displays[0].transform).anchoredPosition.y;
+            for (int i = 0; i < page.Displays.Length; i++)
+            {
+                var r = (RectTransform)page.Displays[i].transform;
+                r.anchoredPosition = new Vector2(r.anchoredPosition.x, top - RowSpacing * i);
+            }
+        }
+        private const float RowSpacing = 42;
+
         [HarmonyPatch(typeof(AugaModsSettings), nameof(AugaModsSettings.Initialize))]
         private static class Initialize
         {
+            private static void Prefix(AugaModsSettings __instance) => AddTakeAllRow(__instance);
+
             private static void Postfix(AugaModsSettings __instance)
             {
                 var toggle = Find(__instance) ?? Create(__instance);

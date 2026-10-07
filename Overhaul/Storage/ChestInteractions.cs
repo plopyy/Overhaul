@@ -85,8 +85,10 @@ namespace Overhaul.Storage
             TextInput.instance.m_visibleFrame = true;
             return true;
         }
-        internal static KeyControl Key(Keyboard keyboard) => keyboard?.allKeys.FirstOrDefault(k =>
-            string.Equals(k.displayName, "R", StringComparison.OrdinalIgnoreCase)) ?? keyboard?.rKey;
+        // Take-all key from Settings > Mods (printed R by default); Shift + it renames / swaps gear.
+        internal static KeyControl Key(Keyboard keyboard) =>
+            keyboard != null && ZInput.TryKeyCodeToKey(EquipmentAndQuickSlots.ValConfig.EffectiveTakeAllKey.MainKey, out var key) &&
+            key != UnityEngine.InputSystem.Key.None ? keyboard[key] : keyboard?.rKey;
         internal static string KeyLabel => Key(Keyboard.current)?.displayName ?? "R";
         internal static string Hint() => Localization.instance.Localize(
             "\n[<color=yellow><b>" + KeyLabel + "</b></color>] $overhaul_chest_take_all" +

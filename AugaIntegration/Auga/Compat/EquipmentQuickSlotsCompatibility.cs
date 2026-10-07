@@ -29,7 +29,7 @@ namespace Auga
             if(keys==null||labels==null)throw new MissingFieldException("EQS shortcut configuration missing");
             var id=(string)AccessTools.Field(assembly.GetType(PluginType,true),"PluginId").GetRawConstantValue();
             AugaUnity.AugaModsSettings.IsEqsActive=()=>EquipmentAndQuickSlots.EquipmentAndQuickSlots.IsInitialized;
-            AugaUnity.AugaModsSettings.ReadShortcut=i=>i==5?EquipmentAndQuickSlots.ValConfig.EffectiveMoveObjectKey.ToString():i==4?EquipmentAndQuickSlots.ValConfig.ClassWindowKey.Value.ToString():i==3?EquipmentAndQuickSlots.ValConfig.AmmoCycleKey.Value.ToString():((BepInEx.Configuration.ConfigEntry<BepInEx.Configuration.KeyboardShortcut>[])keys.GetValue(null))[i].Value.ToString();
+            AugaUnity.AugaModsSettings.ReadShortcut=i=>i==6?EquipmentAndQuickSlots.ValConfig.EffectiveTakeAllKey.ToString():i==5?EquipmentAndQuickSlots.ValConfig.EffectiveMoveObjectKey.ToString():i==4?EquipmentAndQuickSlots.ValConfig.ClassWindowKey.Value.ToString():i==3?EquipmentAndQuickSlots.ValConfig.AmmoCycleKey.Value.ToString():((BepInEx.Configuration.ConfigEntry<BepInEx.Configuration.KeyboardShortcut>[])keys.GetValue(null))[i].Value.ToString();
             AugaUnity.AugaModsSettings.FormatShortcut=values=>new BepInEx.Configuration.KeyboardShortcut(values[0],values.Skip(1).ToArray()).ToString();
             AugaUnity.AugaModsSettings.DisplayShortcut=value=>{
                 if(string.IsNullOrEmpty(value))return "";
@@ -37,6 +37,7 @@ namespace Auga
                 return string.Join(" + ",new[]{shortcut.MainKey}.Concat(shortcut.Modifiers).Select(AugaUnity.AugaModsSettings.KeyLabel));
             };
             AugaUnity.AugaModsSettings.WriteShortcut=(i,value)=>{
+                if(i==6){EquipmentAndQuickSlots.ValConfig.TakeAllKey.SetSerializedValue(value);EquipmentAndQuickSlots.ValConfig.cfg.Save();return;}
                 if(i==5){EquipmentAndQuickSlots.ValConfig.MoveObjectKey.SetSerializedValue(value);EquipmentAndQuickSlots.ValConfig.cfg.Save();return;}
                 if(i==4){EquipmentAndQuickSlots.ValConfig.ClassWindowKey.SetSerializedValue(value);EquipmentAndQuickSlots.ValConfig.cfg.Save();return;}
                 if(i==3){EquipmentAndQuickSlots.ValConfig.AmmoCycleKey.SetSerializedValue(value);EquipmentAndQuickSlots.ValConfig.cfg.Save();return;}
