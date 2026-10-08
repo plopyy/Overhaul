@@ -94,7 +94,7 @@ namespace Overhaul
                 set = Regex.Replace(set, @"\):</color>", ")</color>");
                 // The Auga font has no U+2023 bullet used by Epic Loot: it would draw as a box.
                 set = Localization.instance.Localize(set.Replace("\u2023", "-")).Trim('\n', ' ');
-                if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = set;
+                if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = SetRows(set);
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
@@ -102,13 +102,14 @@ namespace Overhaul
         // Effects as two-column rows like the other stats: the text on the left, the rolled value on the
         // right, in the rarity colour and without Epic Loot's pip. Shard slots follow in their own colour.
         // Holding Shift adds Epic Loot's detail lines under each effect.
-        private static MethodInfo effectText, detailBlock, rarityHtml;
+        private static MethodInfo effectText, detailBlock, rarityHtml, shardSprite;
         private static void AddEffects(ComplexTooltip tooltip, object magic)
         {
             Type type = magic.GetType();
             effectText = effectText ?? type.GetMethods(BindingFlags.Public | BindingFlags.Static).FirstOrDefault(m => m.Name == "GetEffectText" && m.GetParameters().Length == 4);
             detailBlock = detailBlock ?? type.GetMethod("GetEffectDetailBlock", BindingFlags.Public | BindingFlags.Static);
             rarityHtml = rarityHtml ?? Type.GetType("EpicLoot.EpicLoot, EpicLoot")?.GetMethod("GetRarityColor", BindingFlags.Public | BindingFlags.Static);
+            shardSprite = shardSprite ?? Type.GetType("EpicLoot.ShardStones.ShardTooltipSprites, EpicLoot")?.GetMethod("GetSpriteTag", BindingFlags.Public | BindingFlags.Static);
             if (effectText == null) return;
             object rarity = type.GetField("Rarity").GetValue(magic);
             string legendary = (string)type.GetField("LegendaryID").GetValue(magic);
@@ -139,10 +140,12 @@ namespace Overhaul
                 object shard = socketType.GetField("Effect").GetValue(socket);
                 object source = socketType.GetField("SourceRarity").GetValue(socket);
                 string text = shard != null ? (string)effectText.Invoke(null, new[] { shard, source, (object)false, null }) : "$mod_epicloot_shard_noeffect";
-                lines.Add(Row(text, Html(source), "  "));
+                // The socketed item's own icon, as Epic Loot shows it; a shard glyph when unavailable.
+                string sprite = shardSprite != null ? (string)shardSprite.Invoke(null, new[] { socketType.GetField("SourcePrefab").GetValue(socket) }) : "";
+                lines.Add(Row(text, Html(source), "  ", (string.IsNullOrEmpty(sprite) ? "<color=" + Html(source) + ">\u25C8</color>" : sprite) + " "));
             }
             for (int i = sockets.Count; i < slots; i++)
-                lines.Add("<align=left>  <color=#808080>" + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>");
+                lines.Add("<align=left>  <color=#808080>\u25CA " + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>");
         }
 
         private static string Html(object rarity)
@@ -155,16 +158,39 @@ namespace Overhaul
         // on the same line; a text with several numbers, or a number inside the sentence, stays whole. One
         // text per box: the value sits on the label's last line even when the label wraps.
         private static readonly Regex Value = new Regex(@"^\s*([+\-−]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*:?\s+|\s*:?\s+([+\-−x]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*$");
-        internal static string Row(string text, string color, string indent = "")
+        internal static string Row(string text, string color, string indent = "", string icon = "")
         {
             text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
             Match match = Value.Match(text);
             if (!match.Success || Regex.Matches(text, @"\d+(?:[.,]\d+)?").Count != 1)
-                return "<align=left>" + indent + "<color=" + color + ">" + text + "</color>";
+                return "<align=left>" + indent + icon + "<color=" + color + ">" + text + "</color>";
             string value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
             string label = text.Remove(match.Index, match.Length).Trim(' ', ':', ',');
-            return "<align=left>" + indent + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + color + ">" + value + "</color></b></line-height>";
+        // A number that belongs to the sentence ("below 30 %", "every 5 s") stays in it.
+        if (System.Text.RegularExpressions.Regex.IsMatch(label, @"\b(sous|de|du|des|à|au|aux|par|pendant|toutes|tous|chaque|en|under|below|above|of|for|by|every|at|over)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            return "<align=left>" + indent + icon + "<color=" + color + ">" + text + "</color>";
+            return "<align=left>" + indent + icon + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + color + ">" + value + "</color></b></line-height>";
         }
+        // Set bonus lines "(n) - text value": the value goes right-aligned in bold, like the effects. A colour
+        // opened on one line may run over the next ones, as in Epic Loot's text.
+        internal static string SetRows(string set)
+        {
+            var lines = new List<string>();
+            string color = null;
+            foreach (string line in set.Split('\n'))
+            {
+                Match open = Regex.Match(line, "<color=([^>]+)>");
+                if (open.Success) color = open.Groups[1].Value;
+                string plain = Regex.Replace(line, "<[^>]+>", "");
+                Match bonus = Regex.Match(plain, @"^\s*\((\d+)\)\s*[-\u2023]\s*(.*)$");
+                string c = color ?? "#D1C9C2";
+                if (bonus.Success) lines.Add(Row(bonus.Groups[2].Value, c, "", "<color=" + c + ">(" + bonus.Groups[1].Value + ")</color> "));
+                else lines.Add("<align=left>" + (color != null ? "<color=" + color + ">" + plain + "</color>" : plain));
+                if (line.Contains("</color>") && line.LastIndexOf("</color>") > line.LastIndexOf("<color=")) color = null;
+            }
+            return string.Join("\n", lines);
+        }
+
         // Slots: a rarity tint drawn behind the icon, in Overhaul's own image.
         private static void Paint(Image icon, ItemDrop.ItemData item)
         {
@@ -246,14 +272,14 @@ namespace Overhaul
                 lines.Add(Row(effect, mythic));
             lines.Add("<align=left>Emplacements de shard (3/4)");
             foreach (string effect in new[] { "Dégâts de feu +6 %", "Coût en eitr -4 %", "Gagne de l'adrénaline en infligeant des dégâts de feu" })
-                lines.Add(Row(effect, shard, "  "));
-            lines.Add("<align=left>  <color=#808080>Emplacement vide</color>");
+                lines.Add(Row(effect, shard, "  ", "<color=" + shard + ">\u25C8</color> "));
+            lines.Add("<align=left>  <color=#808080>\u25CA Emplacement vide</color>");
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = string.Join("\n", lines);
-            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
+            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = SetRows(
                 "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
                 "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
                 "<color=" + mythic + ">(2) - Dégâts de feu +10 %</color>\n<color=#808080ff>(3) - Résistance au feu\n(4) - Régénération d'eitr +15 %\n" +
-                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>";
+                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>");
         }
     }
 
