@@ -44,12 +44,12 @@ namespace Overhaul
         [HarmonyPatch]
         private static class NoAdrenaline
         {
-            private static MethodBase Target() => AccessTools.Method(typeof(Player), "ModifyAdrenaline") ?? AccessTools.Method(typeof(Character), "ModifyAdrenaline");
+            private static MethodBase Target() => AccessTools.Method(typeof(Player), "AddAdrenaline");
             private static bool Prepare()
             {
                 if (EpicLootVisuals.Loaded) return false;
                 if (Target() != null) return true;
-                Utility.Log.LogWarning("Adrenaline : ModifyAdrenaline introuvable, adrenaline non desactivee");
+                Utility.Log.LogWarning("Adrenaline : AddAdrenaline introuvable, adrenaline non desactivee");
                 return false;
             }
             private static MethodBase TargetMethod() => Target();
