@@ -87,10 +87,7 @@ namespace Overhaul
                 if (magic == null || magicTooltip == null) return;
                 string rarity = rarityDisplay != null ? (string)rarityDisplay.Invoke(magic, null) : null;
                 if (!string.IsNullOrEmpty(rarity)) tooltip.SetSubtitle(Localization.instance.Localize(rarity) + "\n" + tooltip.GenerateItemSubtext(item));
-                // The rarity is already in the subtitle: drop Epic Loot's "Rarity / Effects" summary line.
-                string effects = Regex.Replace((string)magicTooltip.Invoke(magic, null), @"\n?\$mod_epicloot_itemtooltip_rarity[^\n]*", "");
-                effects = Localization.instance.Localize(effects).Trim('\n');
-                if (effects.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = effects;
+                AddEffects(tooltip, magic);
                 // Set header: just "Name (equipped/size)".
                 string set = magicSetTooltip != null ? (string)magicSetTooltip.Invoke(null, new object[] { item }) : "";
                 set = Regex.Replace(set ?? "", @"\$mod_epicloot_set:\s*", "");
@@ -102,6 +99,72 @@ namespace Overhaul
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
 
+        // Effects as two-column rows like the other stats: the text on the left, the rolled value on the
+        // right, in the rarity colour and without Epic Loot's pip. Shard slots follow in their own colour.
+        // Holding Shift adds Epic Loot's detail lines under each effect.
+        private static MethodInfo effectText, detailBlock, rarityHtml;
+        private static void AddEffects(ComplexTooltip tooltip, object magic)
+        {
+            Type type = magic.GetType();
+            effectText = effectText ?? type.GetMethods(BindingFlags.Public | BindingFlags.Static).FirstOrDefault(m => m.Name == "GetEffectText" && m.GetParameters().Length == 4);
+            detailBlock = detailBlock ?? type.GetMethod("GetEffectDetailBlock", BindingFlags.Public | BindingFlags.Static);
+            rarityHtml = rarityHtml ?? Type.GetType("EpicLoot.EpicLoot, EpicLoot")?.GetMethod("GetRarityColor", BindingFlags.Public | BindingFlags.Static);
+            if (effectText == null) return;
+            object rarity = type.GetField("Rarity").GetValue(magic);
+            string legendary = (string)type.GetField("LegendaryID").GetValue(magic);
+            string color = Html(rarity);
+            bool details = (bool)(type.GetProperty("ShowEffectDetails", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) ?? false);
+            var lines = new List<string>();
+            foreach (object effect in (System.Collections.IEnumerable)type.GetField("Effects").GetValue(magic))
+            {
+                lines.Add(Row((string)effectText.Invoke(null, new[] { effect, rarity, (object)false, legendary }), color));
+                if (details && detailBlock != null)
+                {
+                    string block = Localization.instance.Localize((string)detailBlock.Invoke(null, new[] { effect, rarity, legendary, null, "   " })).TrimEnd('\n');
+                    if (block.Length > 0) lines.Add("<align=left><color=#c0c0c0>" + block + "</color>");
+                }
+            }
+            int slots = (int)type.GetField("SocketCount").GetValue(magic);
+            if (slots > 0) AddSockets(lines, type, magic, slots);
+            if (lines.Count > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = string.Join("\n", lines);
+        }
+
+        private static void AddSockets(List<string> lines, Type type, object magic, int slots)
+        {
+            var sockets = ((System.Collections.IEnumerable)type.GetField("Sockets").GetValue(magic)).Cast<object>().Where(s => s != null).ToList();
+            lines.Add("<align=left>" + Localization.instance.Localize("$mod_epicloot_sockets") + " (" + sockets.Count + "/" + slots + ")");
+            foreach (object socket in sockets)
+            {
+                Type socketType = socket.GetType();
+                object shard = socketType.GetField("Effect").GetValue(socket);
+                object source = socketType.GetField("SourceRarity").GetValue(socket);
+                string text = shard != null ? (string)effectText.Invoke(null, new[] { shard, source, (object)false, null }) : "$mod_epicloot_shard_noeffect";
+                lines.Add(Row(text, Html(source), "  "));
+            }
+            for (int i = sockets.Count; i < slots; i++)
+                lines.Add("<align=left>  <color=#808080>" + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>");
+        }
+
+        private static string Html(object rarity)
+        {
+            try { return rarityHtml != null ? (string)rarityHtml.Invoke(null, new[] { rarity }) : "#ffffff"; }
+            catch { return "#ffffff"; }
+        }
+
+        // A value at the start or the end of the text ("+18 %", "-15 %", "x2", "5 s") is drawn right-aligned
+        // on the same line; a text with several numbers, or a number inside the sentence, stays whole. One
+        // text per box: the value sits on the label's last line even when the label wraps.
+        private static readonly Regex Value = new Regex(@"^\s*([+\-−]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*:?\s+|\s*:?\s+([+\-−x]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*$");
+        internal static string Row(string text, string color, string indent = "")
+        {
+            text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
+            Match match = Value.Match(text);
+            if (!match.Success || Regex.Matches(text, @"\d+(?:[.,]\d+)?").Count != 1)
+                return "<align=left>" + indent + "<color=" + color + ">" + text + "</color>";
+            string value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
+            string label = text.Remove(match.Index, match.Length).Trim(' ', ':', ',');
+            return "<align=left>" + indent + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + color + ">" + value + "</color></b></line-height>";
+        }
         // Slots: a rarity tint drawn behind the icon, in Overhaul's own image.
         private static void Paint(Image icon, ItemDrop.ItemData item)
         {
@@ -177,11 +240,15 @@ namespace Overhaul
             {
                 damage.AddLine("<color=" + label + ">Projectile sup.</color>", "25%", false);
             }
-            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
-                "<color=" + mythic + ">◆ Dégâts de feu +18 %\n◆ Coût en eitr -15 %\n◆ Vitesse d'attaque +10 %\n◆ Chances de coup critique +6 %\n" +
-                "◆ Les attaques enflamment les ennemis touchés\n◆ Régénération d'eitr +12 %\n◆ Les ennemis tués explosent en libérant des flammes</color>\n" +
-                "Emplacements de shard (3/4) :\n  <color=" + shard + ">◈ Dégâts de feu +6 %</color>\n  <color=" + shard + ">◈ Coût en eitr -4 %</color>\n" +
-                "  <color=" + shard + ">◈ Gagne de l'adrénaline en infligeant des dégâts de feu</color>\n  ◊<color=#808080> Emplacement vide</color>";
+            var lines = new List<string>();
+            foreach (string effect in new[] { "Dégâts de feu +18 %", "Coût en eitr -15 %", "Vitesse d'attaque +10 %", "Chances de coup critique +6 %",
+                "Les attaques enflamment les ennemis touchés", "Régénération d'eitr +12 %", "Les ennemis tués explosent en libérant des flammes" })
+                lines.Add(Row(effect, mythic));
+            lines.Add("<align=left>Emplacements de shard (3/4)");
+            foreach (string effect in new[] { "Dégâts de feu +6 %", "Coût en eitr -4 %", "Gagne de l'adrénaline en infligeant des dégâts de feu" })
+                lines.Add(Row(effect, shard, "  "));
+            lines.Add("<align=left>  <color=#808080>Emplacement vide</color>");
+            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = string.Join("\n", lines);
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
                 "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
                 "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
