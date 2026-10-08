@@ -17,6 +17,7 @@
 - Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.10)
 - Dungeon and camp resets are no longer refused because of what is on the surface around them: objects of a neighbouring location are left in place, and a camp whose old layout differs from the reference is still reset. Only a player inside a dungeon can postpone a reset. (2.2.1.11)
 - Surface locations (camps, ruins, Mistlands entrances…) no longer wait for nearby players before resetting: players standing in the reset area are moved just outside it, then the reset goes ahead. (2.2.1.13)
+- Dungeon interiors can no longer overlap: every generated dungeon interior (Hildir's crypt and cave, Mörkhalla, the Ashlands tunnels…), not only those with an Overhaul boss room, moves at its next reset to its own free height lane high above the world. The entrance and exit doors, the interior lighting and weather follow it. A dungeon whose rooms do not fit in a lane keeps its original height. (2.2.1.16)
 
 ## 2.2.0 (released)
 First public release.

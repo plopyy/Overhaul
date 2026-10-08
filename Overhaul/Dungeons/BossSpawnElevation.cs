@@ -13,7 +13,7 @@ namespace Overhaul.Dungeons
         };
         private static void Prefix(ref Vector3 pos,DungeonGenerator dg)
         {
-            if(!dg || !BossDungeonLayout.Enabled(dg) || BossNavigation.Lane(dg.transform.position.y)==0)return;
+            if(!dg || BossNavigation.Lane(dg.transform.position.y)==0)return;
             // Evaluate native spawn restrictions in the original crypt height band.
             // This changes only Randomize's test position, never the generated object's position.
             pos.y-=dg.transform.position.y-5000f;

@@ -102,11 +102,11 @@ namespace Overhaul.Dungeons
         internal static void CommitMarker(ZDO proxy, IEnumerable<ZDO> objects)
         {
             if (objects.Any(z => z != null && z.GetInt(LayoutKey, 0) == 1)) proxy.Set(LayoutKey, 1);
-            foreach (var zdo in objects.Where(z => z != null && z.GetInt(LayoutKey, 0) == 1))
-            {
-                float height = zdo.GetFloat(BossInteriorReservation.HeightKey, 0);
-                if (height > 0) { proxy.Set(BossInteriorReservation.HeightKey, height); break; }
-            }
+            // Boss generator first, then the lane marker of any other reset interior.
+            var marked = objects.Where(z => z != null && z != proxy).OrderByDescending(z => z.GetInt(LayoutKey, 0));
+            float height = marked.Select(z => z.GetFloat(BossInteriorReservation.HeightKey, 0)).FirstOrDefault(h => h > 0);
+            // A non-boss interior regenerated at its native height leaves its former lane.
+            if (height > 0 || proxy.GetInt(LayoutKey, 0) != 1) proxy.Set(BossInteriorReservation.HeightKey, height);
         }
         private sealed class Placement
         {

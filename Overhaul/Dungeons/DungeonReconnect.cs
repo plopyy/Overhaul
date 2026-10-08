@@ -88,7 +88,7 @@ namespace Overhaul.Dungeons
                 }
                 if (saved.y >= 11000)
                 {
-                    if (data == null || data.GetInt(BossDungeonLayout.LayoutKey, 0) != 1 || !BossDungeonLayout.InLane(data, saved)) continue;
+                    if (!BossInteriorReservation.Lane(data) || !BossDungeonLayout.InLane(data, saved)) continue;
                 }
                 else if (ZoneSystem.GetZone(view.transform.position) != zone) continue;
                 if (found) return false; // Ambiguous location: never guess another dungeon.
@@ -189,8 +189,8 @@ namespace Overhaul.Dungeons
             {
                 if (proxy.GetPrefab() != prefab) continue;
                 proxies.Add(proxy);
-                if (proxy.GetInt(BossDungeonLayout.LayoutKey, 0) == 1) marked++;
-                if (proxy.GetInt(BossDungeonLayout.LayoutKey, 0) != 1 ||
+                if (BossInteriorReservation.Lane(proxy)) marked++;
+                if (!BossInteriorReservation.Lane(proxy) ||
                     !BossDungeonLayout.InLane(proxy, saved)) continue;
                 if (found != null) { resolutionDetail = "reservations ambigues"; return null; }
                 found = proxy;

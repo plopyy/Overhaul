@@ -253,7 +253,7 @@ namespace Overhaul.Dungeons
                 {
                     if (position.y >= 11000)
                     {
-                        if (proxy.GetInt(BossDungeonLayout.LayoutKey, 0) != 1 || !BossDungeonLayout.InLane(proxy, position)) continue;
+                        if (!BossInteriorReservation.Lane(proxy) || !BossDungeonLayout.InLane(proxy, position)) continue;
                     }
                     // A dungeon can extend across several terrain zones. Its entrance's
                     // zone is not proof of which interior contains the player.
@@ -497,7 +497,12 @@ namespace Overhaul.Dungeons
                 }
                 int newSeed = DungeonPolicy.NextSeed(proxy.GetInt(SeedKey, proxy.GetInt(ZDOVars.s_seed, 0)), Seeds.Next(int.MinValue + 1, int.MaxValue));
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : preparation du nouveau plan, seed " + newSeed);
-                staged = Stage(proxy, location, previous, false, newSeed);
+                try { staged = Stage(proxy, location, previous, false, newSeed); }
+                catch (LaneMismatch e)
+                {
+                    Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : " + e.Message);
+                    staged = Stage(proxy, location, previous, false, newSeed);
+                }
                 ValidateNew(staged, previous.Count);
                 volumes.AddRange(staged.Volumes);
                 // Cover the actual newly generated extents too (camp layouts can shift within their radius).
@@ -560,6 +565,8 @@ namespace Overhaul.Dungeons
                 // Deliberately conservative vertical extent: covers custom center offsets and all rooms.
                 volumes.Add(zdo.GetInt(BossDungeonLayout.LayoutKey, 0) == 1 ? BossInteriorReservation.Bounds(proxy) : new Bounds(center, generator.m_zoneSize + new Vector3(32, 256, 32)));
             }
+            // The current lane of a moved interior, even when its generator is elsewhere.
+            if (BossInteriorReservation.Lane(proxy)) volumes.Add(BossInteriorReservation.Bounds(proxy));
             Location loc = prefab.GetComponent<Location>();
             Transform interior = BossInteriorPlacement.FindInterior(loc);
             if (loc.m_hasInterior && interior && proxy.GetInt(BossDungeonLayout.LayoutKey, 0) != 1)
@@ -601,7 +608,8 @@ namespace Overhaul.Dungeons
         private static Capture Stage(ZDO proxy, ZoneSystem.ZoneLocation location, Dictionary<int, ZDO> previous, bool replay, int seed)
         {
             var capture = new Capture { Staging = true, Replay = replay, Seed = seed, Epoch = proxy.GetInt(EpochKey, 0) + 1, Parent = proxy };
-            if (!replay && BossDungeonLayout.IsSupported(location.m_prefab.Name))
+            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.Name);
+            if (!replay && (boss || LaneFits(location)))
                 capture.InteriorHeight = BossInteriorReservation.ChooseHeight(proxy);
             foreach (var pair in previous) capture.PreviousGenerators.Add(pair.Key, pair.Value);
             UnityEngine.Random.State random = UnityEngine.Random.state;
@@ -626,6 +634,7 @@ namespace Overhaul.Dungeons
                     Identity(zdo);
                     zdo.Set(PendingKey, 1);
                 }
+                if (capture.InteriorHeight > 0 && !boss) CheckLane(capture, location);
                 success = true;
                 return capture;
             }
@@ -644,6 +653,46 @@ namespace Overhaul.Dungeons
                 if (!success) DestroyObjects(capture.Objects);
             }
         }
+
+        // Generated interiors outside the boss layouts move into a height lane only when their rooms fit
+        // its reservation (288 x 96 x 288 m, also the navigation band). Others keep their native height.
+        private static readonly HashSet<string> laneUnfit = new HashSet<string>(StringComparer.Ordinal);
+
+        private static bool LaneFits(ZoneSystem.ZoneLocation location)
+        {
+            if (laneUnfit.Contains(location.m_prefab.Name)) return false;
+            Location loc = location.m_prefab.Asset ? location.m_prefab.Asset.GetComponent<Location>() : null;
+            if (!loc || !loc.m_hasInterior || !BossInteriorPlacement.FindInterior(loc)) return false;
+            // Native zone heights (often 256 m) are loose bounds: CheckLane measures the rooms actually placed.
+            return location.m_prefab.Asset.GetComponentsInChildren<DungeonGenerator>(true).Length != 0;
+        }
+
+        private static void CheckLane(Capture capture, ZoneSystem.ZoneLocation location)
+        {
+            Bounds lane = BossInteriorReservation.Bounds(capture.Parent);
+            Vector3 center = lane.center; center.y = capture.InteriorHeight; lane.center = center;
+            string outside = null;
+            foreach (Room room in DungeonGenerator.m_placedRooms)
+            {
+                if (!room) continue;
+                // Rooms only turn around the vertical axis: check the vertical extent and the horizontal radius.
+                Vector3 p = room.transform.position;
+                float h = room.m_size.y / 2f, r = new Vector2(room.m_size.x, room.m_size.z).magnitude / 2f;
+                Vector3[] probes = { Vector3.up * h, Vector3.down * h, Vector3.left * r, Vector3.right * r, Vector3.forward * r, Vector3.back * r };
+                if (probes.Any(o => !lane.Contains(p + o))) { outside = room.name + " a " + p; break; }
+            }
+            if (outside == null)
+                foreach (ZDOID id in capture.Objects)
+                {
+                    ZDO zdo = session.GetZDO(id);
+                    if (zdo != null && zdo.GetPosition().y > 3000 && !lane.Contains(zdo.GetPosition())) { outside = "objet a " + zdo.GetPosition(); break; }
+                }
+            if (outside == null) { capture.Objects.Select(session.GetZDO).First(z => z != null).Set(BossInteriorReservation.HeightKey, capture.InteriorHeight); return; }
+            laneUnfit.Add(location.m_prefab.Name);
+            throw new LaneMismatch("interieur hors du couloir de hauteur (" + outside + "), regeneration a la hauteur d'origine");
+        }
+
+        private sealed class LaneMismatch : Exception { internal LaneMismatch(string message) : base(message) { } }
 
         private static bool ValidateReplay(Capture baseline, Dictionary<int, ZDO> previous)
         {

@@ -11,11 +11,13 @@ namespace Overhaul.Dungeons
         private static void Prefix(ZoneSystem.ZoneLocation location, Vector3 pos, ZoneSystem.SpawnMode mode, out State __state)
         {
             __state = null;
-            if (!BossDungeonLayout.IsSupported(location.m_prefab.Name)) return;
-            bool replay = DungeonRuntime.Current != null && DungeonRuntime.Current.Replay;
-            bool use = mode == ZoneSystem.SpawnMode.Client
-                ? BossDungeonLayout.LoadingProxy != null && BossDungeonLayout.LoadingProxy.GetInt(BossDungeonLayout.LayoutKey, 0) == 1
-                : !replay || DungeonRuntime.Current.Parent.GetInt(BossDungeonLayout.LayoutKey, 0) == 1;
+            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.Name);
+            var current = DungeonRuntime.Current;
+            // Boss layouts always use a lane; other interiors only once a reset has moved them into one.
+            bool use = mode == ZoneSystem.SpawnMode.Client ? BossInteriorReservation.Lane(BossDungeonLayout.LoadingProxy)
+                : current == null ? boss
+                : current.Replay ? BossInteriorReservation.Lane(current.Parent)
+                : boss || current.InteriorHeight > 0;
             if (!use) return;
             location.m_prefab.Load();
             try
@@ -60,13 +62,14 @@ namespace Overhaul.Dungeons
         {
             if (!__instance.m_nview || !__instance.m_nview.IsValid() || !__instance.m_instance) return;
             var data = __instance.m_nview.GetZDO();
-            if (data.GetInt(BossDungeonLayout.LayoutKey, 0) != 1) return;
+            bool lane = BossInteriorReservation.Lane(data);
             var location = __instance.m_instance.GetComponent<Location>();
             var interior = location ? BossInteriorPlacement.FindInterior(location) : null;
             if (!interior) return;
             var generator = interior.GetComponentInChildren<DungeonGenerator>(true);
             float currentHeight = generator ? generator.transform.position.y : interior.position.y;
-            if (Mathf.Abs(currentHeight - BossInteriorReservation.Bounds(data).center.y) < 1f) return;
+            // Also refresh an instance still built in a lane the interior has just left.
+            if (lane ? Mathf.Abs(currentHeight - BossInteriorReservation.Bounds(data).center.y) < 1f : currentHeight < 11000) return;
             // A reset keeps the surface proxy. Refresh its static teleport links after the commit.
             UnityEngine.Object.Destroy(__instance.m_instance);
             __instance.m_instance = null; __instance.m_locationNeedsSpawn = true;
@@ -105,7 +108,7 @@ namespace Overhaul.Dungeons
                 var proxy = location.GetComponentInParent<LocationProxy>();
                 if (!proxy || !proxy.m_nview || !proxy.m_nview.IsValid()) continue;
                 var data = proxy.m_nview.GetZDO();
-                if (data.GetInt(BossDungeonLayout.LayoutKey, 0) != 1 || !BossDungeonLayout.InLane(data, point)) continue;
+                if (!BossInteriorReservation.Lane(data) || !BossDungeonLayout.InLane(data, point)) continue;
                 __result = location; return false;
             }
             return true;

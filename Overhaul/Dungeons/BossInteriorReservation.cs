@@ -11,11 +11,16 @@ namespace Overhaul.Dungeons
         internal static readonly int HistoryKey = "overhaul_interior_history_v1".GetStableHashCode();
         internal const int Lanes = 256;
 
+        // A location whose interior was moved into a reserved height lane (boss layout or any reset interior).
+        internal static bool Lane(ZDO proxy)
+        { return proxy != null && (proxy.GetInt(BossDungeonLayout.LayoutKey, 0) == 1 || proxy.GetFloat(HeightKey, 0) > 0); }
+
         internal static Bounds Bounds(ZDO proxy)
         {
             var bounds = BossDungeonLayout.BoundsFor(proxy.GetPosition());
             var center = bounds.center;
-            center.y = proxy.GetFloat(HeightKey, center.y);
+            float height = proxy.GetFloat(HeightKey, 0);
+            if (height > 0) center.y = height;
             bounds.center = center;
             return bounds;
         }
@@ -55,7 +60,7 @@ namespace Overhaul.Dungeons
             foreach (var other in ZDOMan.instance.m_objectsByID.Values)
             {
                 if (other == proxy) continue;
-                if (other.GetInt(BossDungeonLayout.LayoutKey, 0) == 1 && other.GetInt(ZDOVars.s_location, 0) != 0)
+                if (Lane(other) && other.GetInt(ZDOVars.s_location, 0) != 0)
                     obstacles.Add(Bounds(other));
                 obstacles.AddRange(History(other));
                 if (other.GetPosition().y < 11000 || (owner.Length != 0 && other.GetString(DungeonRuntime.OwnerKey, "") == owner)) continue;
