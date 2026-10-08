@@ -95,7 +95,8 @@ namespace Overhaul
                 string set = magicSetTooltip != null ? (string)magicSetTooltip.Invoke(null, new object[] { item }) : "";
                 set = Regex.Replace(set ?? "", @"\$mod_epicloot_set:\s*", "");
                 set = Regex.Replace(set, @"\):</color>", ")</color>");
-                set = Localization.instance.Localize(set).Trim('\n', ' ');
+                // The Auga font has no U+2023 bullet used by Epic Loot: it would draw as a box.
+                set = Localization.instance.Localize(set.Replace("\u2023", "-")).Trim('\n', ' ');
                 if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = set;
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
@@ -188,8 +189,8 @@ namespace Overhaul
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
                 "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
                 "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
-                "<color=" + mythic + ">(2) ‣ Dégâts de feu +10 %</color>\n<color=#808080ff>(3) ‣ Résistance au feu\n(4) ‣ Régénération d'eitr +15 %\n" +
-                "(5) ‣ Les coups critiques libèrent une explosion de flammes\n(6) ‣ Invoque un esprit de feu lorsque la vie passe sous 30 %</color>";
+                "<color=" + mythic + ">(2) - Dégâts de feu +10 %</color>\n<color=#808080ff>(3) - Résistance au feu\n(4) - Régénération d'eitr +15 %\n" +
+                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>";
         }
     }
 
