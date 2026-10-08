@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 ## 2.2.1 (in progress)
 
@@ -14,8 +14,9 @@
 ### Fixed
 - The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)
 - Since Valheim 1.0.17, the end-game credits could stay open invisibly in the background and grey out other windows. They now stay closed unless the end credits are actually playing. (2.2.1.6)
-- Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.8)
-- Dungeon and camp resets are no longer refused because of what is on the surface around them: objects of a neighbouring location are left in place, and a camp whose old layout differs from the reference is still reset. Only a player inside can postpone a reset. (2.2.1.9)
+- Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.10)
+- Dungeon and camp resets are no longer refused because of what is on the surface around them: objects of a neighbouring location are left in place, and a camp whose old layout differs from the reference is still reset. Only a player inside a dungeon can postpone a reset. (2.2.1.11)
+- Surface locations (camps, ruins, Mistlands entrances…) no longer wait for nearby players before resetting: players standing in the reset area are moved just outside it, then the reset goes ahead. (2.2.1.13)
 
 ## 2.2.0 (released)
 First public release.

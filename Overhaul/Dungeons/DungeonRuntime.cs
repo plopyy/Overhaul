@@ -454,7 +454,7 @@ namespace Overhaul.Dungeons
                 }
                 List<Bounds> volumes = ScopeInteriorVolumes(proxy, BuildVolumes(proxy, prefab, previous.Values, exterior), generators.Length != 0);
                 List<Bounds> occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!PlayersClear(occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
+                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : debut de preparation du reset");
                 if (!proxy.GetBool(TrackedKey, false))
                 {
@@ -518,7 +518,7 @@ namespace Overhaul.Dungeons
                     if (zdo.GetPosition().y > 3000) old.Add(id);
                 }
                 occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!PlayersClear(occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
+                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
                 var tombs = world.Select(session.GetZDO).Where(z => z != null && IsTomb(z) &&
                     ((Inside(occupied, z.GetPosition()) && (z.GetPosition().y <= 3000 || InResetInterior(proxy, z, occupied, generators.Length != 0))) || old.Contains(z.m_uid))).ToList();
                 old = old.Distinct().Where(id => { ZDO z = session.GetZDO(id); return z != null && !IsTomb(z) && !IsPlayer(z); }).ToList();

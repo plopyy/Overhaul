@@ -248,6 +248,7 @@ namespace Overhaul.Dungeons
 
         internal static void Register(ZNetPeer peer)
         {
+            peer.m_rpc.Register<Vector3, Quaternion>(DungeonRuntime.SurfaceMoveRequest, DungeonRuntime.ReceiveSurfaceMove);
             peer.m_rpc.Register<Vector3>(ResolveRequest, (rpc, saved) =>
             {
                 if (!ZNet.instance || !ZNet.instance.IsServer() || ZNet.instance.GetPeer(rpc) == null || !Character.InInterior(saved)) return;
