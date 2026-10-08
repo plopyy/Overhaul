@@ -288,6 +288,51 @@ namespace Overhaul
         internal static void RefreshStacks()
         {
             foreach (var shared in NativeStacks.Keys.ToArray()) NormalizeStack(shared);
+            if (Player.m_localPlayer) SplitStacks(Player.m_localPlayer);
+        }
+
+        // With vanilla stack sizes, stacks above the limit (kept from stacks of 100) are split in the
+        // player's inventory, including stacks just taken from a chest. What does not fit is dropped at their feet.
+        private static bool splitting;
+        internal static void SplitStacks(Player player)
+        {
+            if (splitting || Utility.OverhaulConfig.StackSize100 == null || Utility.OverhaulConfig.StackSize100.Value) return;
+            Inventory inventory = player.GetInventory();
+            if (inventory == null) return;
+            splitting = true;
+            try
+            {
+                bool changed = false;
+                foreach (ItemDrop.ItemData item in inventory.GetAllItems().ToArray())
+                {
+                    int max = item.m_shared.m_maxStackSize;
+                    if (max < 1 || item.m_stack <= max) continue;
+                    int excess = item.m_stack - max;
+                    item.m_stack = max;
+                    changed = true;
+                    while (excess > 0)
+                    {
+                        ItemDrop.ItemData part = item.Clone();
+                        part.m_stack = Math.Min(max, excess);
+                        excess -= part.m_stack;
+                        Vector2i slot = inventory.FindEmptySlot(inventory.TopFirst(part));
+                        if (slot.x >= 0) { part.m_gridPos = slot; inventory.m_inventory.Add(part); }
+                        else ItemDrop.DropItem(part, part.m_stack, player.transform.position + player.transform.forward + Vector3.up, Quaternion.identity);
+                    }
+                }
+                if (changed) inventory.Changed();
+            }
+            finally { splitting = false; }
+        }
+
+        [HarmonyPatch(typeof(Inventory), "Changed")]
+        private static class SplitOnChange
+        {
+            private static void Postfix(Inventory __instance)
+            {
+                Player player = Player.m_localPlayer;
+                if (!splitting && player && player.GetInventory() == __instance) SplitStacks(player);
+            }
         }
         internal static bool Has(ItemDrop.ItemData item, string field)
         {

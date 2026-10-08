@@ -4,6 +4,7 @@
 
 ### Added
 - Server option `[Items] StackSize100`, on by default: turn it off to keep the vanilla stack sizes instead of stacks of 100. It applies right away, even when changed during a game. (2.2.1.18)
+  With the option off, stacks bigger than the vanilla limit in your inventory, or taken from a chest, are split into normal stacks (100 wood becomes 2 × 50); what does not fit is dropped at your feet. (2.2.1.19)
 - Settings > Mods: **Dash (replaces sprint)** option, on by default. When turned off, the Run key sprints like in vanilla Valheim and drains stamina; sprint speed is scaled to Overhaul's faster jog, so sprinting stays faster than jogging. Per-player setting. (2.2.1.1)
 - Settings > Mods: the **Take all** key can be changed (printed R key by default). Shift + this key still renames a chest and swaps gear with an armor stand, and on-screen hints show the chosen key. (2.2.1.3)
 
