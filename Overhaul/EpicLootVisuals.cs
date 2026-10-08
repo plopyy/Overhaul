@@ -23,7 +23,7 @@ namespace Overhaul
 
         private static bool ready;
         private static Func<ItemDrop.ItemData, string> rarityColor;
-        private static MethodInfo decoratedName, getMagicItem, magicTooltip, rarityDisplay;
+        private static MethodInfo decoratedName, getMagicItem, magicTooltip, rarityDisplay, magicSetTooltip;
 
         // Called once every plugin has loaded (Epic Loot patches in its Awake).
         internal static void Initialize()
@@ -37,7 +37,10 @@ namespace Overhaul
                 MethodInfo color = api?.GetMethod("GetItemRarityColor", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
                 if (color != null) rarityColor = (Func<ItemDrop.ItemData, string>)Delegate.CreateDelegate(typeof(Func<ItemDrop.ItemData, string>), color);
                 decoratedName = api?.GetMethod("GetItemDecoratedName", BindingFlags.Public | BindingFlags.Static);
-                getMagicItem = Type.GetType("EpicLoot.ItemDataExtensions, EpicLoot")?.GetMethod("GetMagicItem", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
+                Type extensions = Type.GetType("EpicLoot.ItemDataExtensions, EpicLoot");
+                getMagicItem = extensions?.GetMethod("GetMagicItem", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
+                // Legendary/mythic sets only: vanilla sets already have their own Auga box.
+                magicSetTooltip = extensions?.GetMethod("GetMagicSetTooltip", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
                 Type magicItem = getMagicItem?.ReturnType;
                 magicTooltip = magicItem?.GetMethod("GetTooltip", Type.EmptyTypes);
                 rarityDisplay = magicItem?.GetMethod("GetRarityDisplay", Type.EmptyTypes);
@@ -88,6 +91,8 @@ namespace Overhaul
                 tooltip.AddDivider();
                 var box = tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab);
                 box.Text.text = effects;
+                string set = magicSetTooltip != null ? Localization.instance.Localize((string)magicSetTooltip.Invoke(null, new object[] { item })).Trim('\n') : "";
+                if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = set;
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
