@@ -221,18 +221,12 @@ namespace Overhaul.Storage
         }
         [HarmonyPatch(typeof(Menu),"Update")]
         private static class MenuInput {private static bool Prefix()=>!Active&&closedFrame!=Time.frameCount;}
+        // Station upgrades may touch each other: the native minimum spacing between upgrades is removed,
+        // for placement and for moves. The maximum distance to their station stays native.
         [HarmonyPatch(typeof(StationExtension),nameof(StationExtension.OtherExtensionInRange))]
         private static class ExtensionSpace
         {
-            private static bool Prefix(StationExtension __instance,float radius,ref bool __result)
-            {
-                if(!inNative||!Target)return true;
-                __result=false;
-                foreach(var extension in StationExtension.m_allExtensions)
-                    if(extension&&extension!=__instance&&!extension.transform.IsChildOf(Target.transform)&&
-                        Vector3.Distance(extension.transform.position,__instance.transform.position)<radius){__result=true;break;}
-                return false;
-            }
+            private static bool Prefix(ref bool __result){__result=false;return false;}
         }
         [HarmonyPatch(typeof(Player),"Interact")]
         private static class Interact {private static bool Prefix(Player __instance)=>__instance!=Player.m_localPlayer||!Active;}
