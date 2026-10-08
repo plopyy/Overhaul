@@ -466,8 +466,7 @@ namespace Overhaul.Dungeons
                         // room plan does not need to be reproducible to replace that interior.
                         // Replay is only used to identify the unchanged surface objects in this case.
                         bool samePlan = ValidateReplay(baseline, previous);
-                        if (!samePlan && !locationComponent.m_hasInterior)
-                        { Report(proxy, name, "ancien plan exterieur different de la reference : migration refusee", true); return; }
+                        // A different surface plan never blocks the reset: only the objects matching the replay are replaced.
                         var candidates = baseline.Objects.Select(session.GetZDO).Where(z => z != null).GroupBy(z => z.GetPrefab()).ToDictionary(g => g.Key, g => g.Select(z => z.GetPosition()).ToArray());
                         foreach (ZDOID id in world)
                         {
@@ -514,12 +513,8 @@ namespace Overhaul.Dungeons
                     if (zdo == null || zdo == proxy || !Inside(volumes, zdo.GetPosition())) continue;
                     if (zdo.GetPosition().y > 3000 && !InResetInterior(proxy, zdo, volumes, generators.Length != 0)) continue;
                     string otherOwner = zdo.GetString(OwnerKey, "");
-                    if (otherOwner.Length != 0 && otherOwner != owner)
-                    {
-                        if (zdo.GetPosition().y > 3000) continue; // Never collect another interior's objects.
-                        GameObject other = ZNetScene.instance ? ZNetScene.instance.GetPrefab(zdo.GetPrefab()) : null;
-                        Report(proxy, name, "chevauchement exterieur avec un autre lieu suivi : " + (other ? other.name : zdo.GetPrefab().ToString()) + " a " + zdo.GetPosition() + ", lieu " + otherOwner, true); return;
-                    }
+                    // Another location's objects are left in place; they never block this reset.
+                    if (otherOwner.Length != 0 && otherOwner != owner) continue;
                     if (zdo.GetPosition().y > 3000) old.Add(id);
                 }
                 occupied = OccupiedVolumes(locationComponent, volumes);
