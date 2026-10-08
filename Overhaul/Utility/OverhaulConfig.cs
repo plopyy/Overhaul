@@ -49,6 +49,7 @@ namespace Overhaul.Utility
 		public static ConfigEntry<float> BlockStaminaDrain { get; set; }
 		public static ConfigEntry<bool> BowUseStamina { get; set; }
         public static ConfigEntry<bool> CrouchedBowAiming { get; set; }
+        public static ConfigEntry<bool> StackSize100 { get; private set; }
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
 
 		public static void Bind(ConfigFile config)
@@ -70,6 +71,10 @@ namespace Overhaul.Utility
             ResetLocations = config.Bind("Dungeon", "ResetLocations", Dungeons.DungeonPolicy.DefaultResetLocations,
                 new ConfigDescription("Comma-separated supported location prefab IDs eligible for reset. Remove an ID to exclude it. Infested Citadel and Meadows villages/farm are always excluded. Unknown IDs are ignored.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            StackSize100 = config.Bind("Items", "StackSize100", true,
+                new ConfigDescription("Raise every stackable item below 100 to stacks of 100. Set false to keep the vanilla stack sizes.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            StackSize100.SettingChanged += (sender, args) => AlterItemStat.RefreshStacks();
             OverhaulConfig.PickupRange = config.Bind<float>("PickupRange", "PickupRange", 5f, new ConfigDescription("Area pickup range; Default: 5 | Vanilla: 0 (single target)", new AcceptableValueRange<float>(1f, 50f), new object[]
             {
                 new ConfigurationManagerAttributes

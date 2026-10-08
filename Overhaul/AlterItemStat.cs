@@ -275,10 +275,19 @@ namespace Overhaul
             if (definition != null) item.m_shared = Variant(definition, item.m_quality);
             NormalizeStack(item?.m_shared);
         }
+        // Native stack sizes, remembered so the option can be turned off again during a session.
+        private static readonly Dictionary<ItemDrop.ItemData.SharedData, int> NativeStacks = new Dictionary<ItemDrop.ItemData.SharedData, int>();
         internal static void NormalizeStack(ItemDrop.ItemData.SharedData shared)
         {
-            if (shared != null && shared.m_maxStackSize > 1 && shared.m_maxStackSize < 100)
-                shared.m_maxStackSize = 100;
+            if (shared == null) return;
+            int native;
+            if (!NativeStacks.TryGetValue(shared, out native)) NativeStacks[shared] = native = shared.m_maxStackSize;
+            bool raise = Utility.OverhaulConfig.StackSize100 == null || Utility.OverhaulConfig.StackSize100.Value;
+            shared.m_maxStackSize = raise && native > 1 && native < 100 ? 100 : native;
+        }
+        internal static void RefreshStacks()
+        {
+            foreach (var shared in NativeStacks.Keys.ToArray()) NormalizeStack(shared);
         }
         internal static bool Has(ItemDrop.ItemData item, string field)
         {
