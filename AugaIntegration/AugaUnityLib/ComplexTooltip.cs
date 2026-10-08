@@ -678,7 +678,8 @@ namespace AugaUnity
         {
             var min = Mathf.RoundToInt(damage * minFactor);
             var max = Mathf.RoundToInt(damage * maxFactor);
-            return $"{Mathf.RoundToInt(damage)} <color={ParentheticalColor}>({min}-{max})</color>";
+            // Only the damage actually dealt with the current skill; the base value is left out.
+            return $"{min}-{max}";
         }
 
         public virtual void AddBlockingTextBox(ItemDrop.ItemData item, int quality, bool upgrade)
