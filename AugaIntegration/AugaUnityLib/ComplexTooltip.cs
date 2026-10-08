@@ -190,8 +190,41 @@ namespace AugaUnity
         protected int _variant;
         protected string _originalTooltip;
 
+        // Wider text boxes (Overhaul): thinner side margins and a slightly wider tooltip, so fewer stat
+        // lines wrap. Content width goes from 264 to 336.
+        private const int SideMargin = 14, ExtraWidth = 40;
+        private bool _widened;
+        protected virtual void Widen()
+        {
+            if (_widened || TextBoxContainer == null) return;
+            _widened = true;
+            var body = TextBoxContainer.parent as RectTransform;
+            var group = body ? body.GetComponent<HorizontalOrVerticalLayoutGroup>() : null;
+            if (group == null || group.padding.left <= SideMargin) return;
+            float oldWidth = TextBoxContainer.rect.width;
+            float gain = (group.padding.left - SideMargin) * 2 + ExtraWidth;
+            group.padding.left = SideMargin; group.padding.right = SideMargin;
+            body.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, body.rect.width + ExtraWidth);
+            foreach (RectTransform child in body)
+                if (Mathf.Abs(child.rect.width - oldWidth) < 1f)
+                    Grow(child, gain);
+        }
+
+        // Widens an element and, below it, every fixed-width element that spans most of its parent
+        // (titles, text rows, right-hand value columns, the text box templates).
+        private static void Grow(RectTransform rect, float gain)
+        {
+            float width = rect.rect.width;
+            if (Mathf.Approximately(rect.anchorMin.x, rect.anchorMax.x))
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width + gain);
+            foreach (RectTransform child in rect)
+                if (child.rect.width > width * 0.6f)
+                    Grow(child, gain);
+        }
+
         public virtual void Start()
         {
+            Widen();
             TwoColumnTextBoxPrefab.gameObject.SetActive(false);
             CenteredTextBoxPrefab.gameObject.SetActive(false);
 
