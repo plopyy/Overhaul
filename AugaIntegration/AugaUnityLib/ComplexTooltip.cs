@@ -640,18 +640,20 @@ namespace AugaUnity
                 AddDamageLine(textBox, item, "$inventory_slash", damage.m_slash, previousDamage.m_slash, min, max, upgrade);
             if (damage.m_pierce != 0.0f)
                 AddDamageLine(textBox, item, "$inventory_pierce", damage.m_pierce, previousDamage.m_pierce, min, max, upgrade);
-            if (damage.m_fire != 0.0f)
-                AddDamageLine(textBox, item, "$inventory_fire", damage.m_fire, previousDamage.m_fire, min, max, upgrade);
-            if (damage.m_frost != 0.0f)
-                AddDamageLine(textBox, item, "$inventory_frost", damage.m_frost, previousDamage.m_frost, min, max, upgrade);
-            if (damage.m_lightning != 0.0f)
-                AddDamageLine(textBox, item, "$inventory_lightning", damage.m_lightning, previousDamage.m_lightning, min, max, upgrade);
-            if (damage.m_poison != 0.0f)
-                AddDamageLine(textBox, item, "$inventory_poison", damage.m_poison, previousDamage.m_poison, min, max, upgrade);
+            // The Overhaul element stat adds flat damage to every hit: it is added to the range of the same
+            // element, or shown as that element's line when the weapon has none of it.
+            float Bonus(string id) => item.IsWeapon() && ElementStatBonus != null ? ElementStatBonus(Player.m_localPlayer, id) : 0f;
+            float fire = Bonus("element_fire"), frost = Bonus("element_frost"), poison = Bonus("element_poison"), lightning = Bonus("element_spirit");
+            if (damage.m_fire != 0.0f || fire > 0)
+                AddDamageLine(textBox, item, "$inventory_fire", damage.m_fire, previousDamage.m_fire, min, max, upgrade, fire);
+            if (damage.m_frost != 0.0f || frost > 0)
+                AddDamageLine(textBox, item, "$inventory_frost", damage.m_frost, previousDamage.m_frost, min, max, upgrade, frost);
+            if (damage.m_lightning != 0.0f || lightning > 0)
+                AddDamageLine(textBox, item, "$inventory_lightning", damage.m_lightning, previousDamage.m_lightning, min, max, upgrade, lightning);
+            if (damage.m_poison != 0.0f || poison > 0)
+                AddDamageLine(textBox, item, "$inventory_poison", damage.m_poison, previousDamage.m_poison, min, max, upgrade, poison);
             if (damage.m_spirit != 0.0f)
                 AddDamageLine(textBox, item, "$inventory_spirit", damage.m_spirit, previousDamage.m_spirit, min, max, upgrade);
-
-            if(item.IsWeapon()) AddElementStatLines(textBox, Player.m_localPlayer);
             if (item.m_shared.m_attackForce > 0)
                 TextBoxAddPreprocessedLine(textBox, item, "$item_knockback", item.m_shared.m_attackForce);
             AddProjectileStatLine(textBox, Player.m_localPlayer,item);
@@ -659,7 +661,7 @@ namespace AugaUnity
                 TextBoxAddPreprocessedLine(textBox, item, "$item_backstab", $"{item.m_shared.m_backstabBonus}x");
         }
 
-        private void AddDamageLine(TooltipTextBox textBox, ItemDrop.ItemData item, string label, float damage, float previousDamage, float min, float max, bool upgrade)
+        private void AddDamageLine(TooltipTextBox textBox, ItemDrop.ItemData item, string label, float damage, float previousDamage, float min, float max, bool upgrade, float bonus = 0f)
         {
             var color=ElementColor(label);
             if (upgrade)
@@ -668,7 +670,9 @@ namespace AugaUnity
             }
             else
             {
-                var value=GetDamageRangeString(damage, min, max);
+                var low = Mathf.RoundToInt(damage * min + bonus);
+                var high = Mathf.RoundToInt(damage * max + bonus);
+                var value = low == high ? low.ToString() : $"{low}-{high}";
                 if(color!=null)value=$"<color={color}>"+value.Replace($"<color={ParentheticalColor}>","").Replace("</color>","")+"</color>";
                 TextBoxAddPreprocessedLine(textBox, item, label, value);
             }

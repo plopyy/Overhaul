@@ -167,7 +167,7 @@ namespace Overhaul
         private static void LayoutTest(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
             if (item?.m_shared == null || (item.m_shared.m_skillType != Skills.SkillType.ElementalMagic && item.m_shared.m_skillType != Skills.SkillType.BloodMagic)) return;
-            // Worst case: one element stat line (they do not stack), the projectile line, the most effects, shard slots and the largest set.
+            // Worst case: the projectile line (the element stat is merged into its damage line), the most effects, shard slots and the largest set.
             const string mythic = "#ff7f2a", shard = "#d078ff", label = "#FFF0AD";
             tooltip.SetTopic("<color=" + mythic + ">" + tooltip.Topic.text + "</color>");
             tooltip.SetSubtitle("<color=" + mythic + ">Mythique</color>\n" + tooltip.Subtitle.text);
@@ -175,7 +175,6 @@ namespace Overhaul
             var damage = tooltip.TextBoxContainer.GetComponentsInChildren<TooltipTextBox>(true).FirstOrDefault(b => b.Text && b.Text.text.Contains(knockback));
             if (damage)
             {
-                damage.AddLine("<color=" + label + ">Feu (stat)</color>", "<color=#FF703D>12</color>", false);
                 damage.AddLine("<color=" + label + ">Projectile sup.</color>", "25%", false);
             }
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
