@@ -343,6 +343,8 @@ namespace Overhaul.Dungeons
             if (!requested && visited == 0) return;
             if (!selected.Contains(name)) { if (requested) proxy.Set(RequestedKey, false); return; }
             if (!requested && OverhaulConfig.ResetIntervalHours.Value <= 0) return;
+            float retry;
+            if (!requested && refusedUntil.TryGetValue(proxy.m_uid, out retry) && Time.realtimeSinceStartup < retry) return;
             long now = DateTime.UtcNow.Ticks;
             if (!requested && !DungeonPolicy.IsDue(visited, now, OverhaulConfig.ResetIntervalHours.Value)) return;
             BeginPreparation(proxy, location, false, requested);
@@ -406,8 +408,14 @@ namespace Overhaul.Dungeons
             finally { EndPreparation(); }
         }
 
-        private static void Report(ZDO proxy, string name, string reason)
+        // A refused automatic reset waits before the next attempt: each attempt generates a whole
+        // dungeon and its terrain, which can freeze the server for minutes.
+        private static readonly Dictionary<ZDOID, float> refusedUntil = new Dictionary<ZDOID, float>();
+        private const float RefusedRetrySeconds = 6 * 3600f;
+
+        private static void Report(ZDO proxy, string name, string reason, bool refused = false)
         {
+            if (refused) refusedUntil[proxy.m_uid] = Time.realtimeSinceStartup + RefusedRetrySeconds;
             if (reason.StartsWith("joueur", StringComparison.Ordinal) && playerBlockDetail != null)
                 reason += " : " + playerBlockDetail;
             string old;
@@ -441,7 +449,7 @@ namespace Overhaul.Dungeons
                     int hash = generator.name.GetStableHashCode();
                     ZDO[] matches = world.Select(session.GetZDO).Where(z => z != null && z.GetPrefab() == hash &&
                         ZoneSystem.GetZone(z.GetPosition()) == ZoneSystem.GetZone(proxy.GetPosition())).ToArray();
-                    if (matches.Length != 1) { Report(proxy, name, "generateur absent ou ambigu : " + generator.name); return; }
+                    if (matches.Length != 1) { Report(proxy, name, "generateur absent ou ambigu : " + generator.name, true); return; }
                     previous.Add(hash, matches[0]);
                 }
                 List<Bounds> volumes = ScopeInteriorVolumes(proxy, BuildVolumes(proxy, prefab, previous.Values, exterior), generators.Length != 0);
@@ -459,7 +467,7 @@ namespace Overhaul.Dungeons
                         // Replay is only used to identify the unchanged surface objects in this case.
                         bool samePlan = ValidateReplay(baseline, previous);
                         if (!samePlan && !locationComponent.m_hasInterior)
-                        { Report(proxy, name, "ancien plan exterieur different de la reference : migration refusee"); return; }
+                        { Report(proxy, name, "ancien plan exterieur different de la reference : migration refusee", true); return; }
                         var candidates = baseline.Objects.Select(session.GetZDO).Where(z => z != null).GroupBy(z => z.GetPrefab()).ToDictionary(g => g.Key, g => g.Select(z => z.GetPosition()).ToArray());
                         foreach (ZDOID id in world)
                         {
@@ -509,7 +517,8 @@ namespace Overhaul.Dungeons
                     if (otherOwner.Length != 0 && otherOwner != owner)
                     {
                         if (zdo.GetPosition().y > 3000) continue; // Never collect another interior's objects.
-                        Report(proxy, name, "chevauchement exterieur avec un autre lieu suivi"); return;
+                        GameObject other = ZNetScene.instance ? ZNetScene.instance.GetPrefab(zdo.GetPrefab()) : null;
+                        Report(proxy, name, "chevauchement exterieur avec un autre lieu suivi : " + (other ? other.name : zdo.GetPrefab().ToString()) + " a " + zdo.GetPosition() + ", lieu " + otherOwner, true); return;
                     }
                     if (zdo.GetPosition().y > 3000) old.Add(id);
                 }
