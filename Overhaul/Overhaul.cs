@@ -75,7 +75,7 @@ namespace Overhaul
             XPortal.XPortal.Initialize();
 		}
 
-        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); }
+        public void Update() { Replication.PlayerReplica.Tick(); XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); }
 
         public void LateUpdate()
         {

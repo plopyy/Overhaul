@@ -48,6 +48,7 @@ namespace Overhaul.Utility
 		public static ConfigEntry<float> BlockStaminaDrain { get; set; }
 		public static ConfigEntry<bool> BowUseStamina { get; set; }
         public static ConfigEntry<bool> CrouchedBowAiming { get; set; }
+        public static ConfigEntry<bool> PlayerReplication { get; private set; }
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
 
 		public static void Bind(ConfigFile config)
@@ -59,6 +60,9 @@ namespace Overhaul.Utility
                     new AcceptableValueRange<float>(0f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            PlayerReplication = config.Bind("Rework", "PlayerReplication", true,
+                new ConfigDescription("Rework test: copy the player's profile data (skills for now) into the character's network object, so the server holds it in memory. Read only on the server; saves are unchanged. Set false to disable.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             ResetIntervalHours = config.Bind("Dungeon", "ResetIntervalHours", 120f,
                 new ConfigDescription("Real hours after the first player visit since generation/reset. 120 = 5 days; 0 disables automatic resets. Never-visited locations are skipped. One global expiry check every 5 minutes; occupied dungeons are deferred.",
