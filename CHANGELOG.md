@@ -18,6 +18,7 @@
 ### Fixed
 - Epic Loot compatibility: Epic Loot no longer draws its own item display over the Auga interface (second tooltip window running off the screen, broken tooltip text). Overhaul shows magic items itself: a rarity tint behind the icon in the inventory, chests and hotbar, and in the tooltip the rarity-coloured name, the rarity in the subtitle and a box with the magic effects and shard slots. Item tooltips are scaled down when they would be taller than the screen. (2.2.1.26)
 - Epic Loot: legendary and mythic set bonuses get their own box in the tooltip, under the magic effects. (2.2.1.27)
+- TEMPORARY test (to remove before release): every staff tooltip shows sample Epic Loot boxes (6 effects, shard slots, mythic set), with or without Epic Loot, to check the tooltip height in game. (2.2.1.28)
 - Epic Loot: With Epic Loot installed, the adrenaline bar is kept for its adrenaline enchantments; trinket bonuses stay permanent either way. (2.2.1.24)
 - Without Epic Loot, adrenaline gains are now really blocked (2.2.1.21 to 2.2.1.24 only hid the bar). (2.2.1.25)
 - The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)

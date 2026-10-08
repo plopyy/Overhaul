@@ -147,7 +147,34 @@ namespace Overhaul
         }
 
         [HarmonyPatch(typeof(FejdStartup), "Awake")]
-        private static class AfterPluginsLoaded { private static void Postfix() => Initialize(); }
+        private static class AfterPluginsLoaded
+        {
+            private static void Postfix()
+            {
+                Initialize();
+                if (!layoutTest) { layoutTest = true; ComplexTooltip.OnComplexTooltipGeneratedForItem += LayoutTest; }
+            }
+        }
+
+        // TEMPORARY layout test: every staff shows the boxes of a mythic Epic Loot item with shard slots and
+        // a set (sample text), with or without Epic Loot, to judge the tooltip height in game.
+        private static bool layoutTest;
+        private static void LayoutTest(ComplexTooltip tooltip, ItemDrop.ItemData item)
+        {
+            if (item?.m_shared == null || (item.m_shared.m_skillType != Skills.SkillType.ElementalMagic && item.m_shared.m_skillType != Skills.SkillType.BloodMagic)) return;
+            const string mythic = "#ff7f2a", shard = "#d078ff";
+            tooltip.SetTopic("<color=" + mythic + ">" + tooltip.Topic.text + "</color>");
+            tooltip.SetSubtitle("<color=" + mythic + ">Mythique</color>, " + tooltip.Subtitle.text);
+            tooltip.AddDivider();
+            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
+                "<color=" + mythic + ">◆ Dégâts de feu +18 %\n◆ Coût en eitr -15 %\n◆ Vitesse d'attaque +10 %\n◆ Chances de coup critique +6 %\n" +
+                "◆ Les attaques enflamment les ennemis touchés\n◆ Régénération d'eitr +12 %</color>\n" +
+                "Emplacements de shard (1/2) :\n  <color=" + shard + ">◈ Dégâts de feu +6 %</color>\n  ◊<color=#808080> Emplacement vide</color>\n" +
+                "Rareté : <color=" + mythic + ">Mythique</color><pos=75%>Effets : <color=" + mythic + ">6</color>";
+            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
+                "<color=" + mythic + ">Ensemble mythique : Fureur de Surtr (2/4)</color>\n" +
+                "<color=#ffffff>(2) Dégâts de feu +10 %</color>\n<color=#808080>(3) Résistance au feu\n(4) Les coups critiques libèrent une explosion de flammes</color>";
+        }
     }
 
     // The Auga tooltip never grows past the screen: when it is taller, it is scaled down to fit.
