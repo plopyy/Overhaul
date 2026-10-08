@@ -50,6 +50,7 @@ namespace Overhaul
             AI.MobBehaviorConfig.Initialize();
             AugaUnity.ComplexTooltip.FoodDuration = Leveling.NutritionDuration.Preview;
             AugaUnity.ComplexTooltip.ElementStatBonus = (player, stat) => Leveling.LevelingEffects.Bonus(player, stat);
+            AugaUnity.ComplexTooltip.StaffShield = DynamicCombat.StaffShieldAbsorb;
             AugaUnity.ComplexTooltip.HasProjectileStat = player =>
             {
                 var state=Leveling.LevelingEffects.State(player);

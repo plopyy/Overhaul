@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using AugaUnity;
 using BepInEx.Bootstrap;
 using HarmonyLib;
@@ -85,13 +86,16 @@ namespace Overhaul
                 object magic = getMagicItem?.Invoke(null, new object[] { item });
                 if (magic == null || magicTooltip == null) return;
                 string rarity = rarityDisplay != null ? (string)rarityDisplay.Invoke(magic, null) : null;
-                if (!string.IsNullOrEmpty(rarity)) tooltip.SetSubtitle(Localization.instance.Localize(rarity) + ", " + tooltip.GenerateItemSubtext(item));
-                string effects = Localization.instance.Localize((string)magicTooltip.Invoke(magic, null)).Trim('\n');
-                if (effects.Length == 0) return;
-                tooltip.AddDivider();
-                var box = tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab);
-                box.Text.text = effects;
-                string set = magicSetTooltip != null ? Localization.instance.Localize((string)magicSetTooltip.Invoke(null, new object[] { item })).Trim('\n') : "";
+                if (!string.IsNullOrEmpty(rarity)) tooltip.SetSubtitle(Localization.instance.Localize(rarity) + "\n" + tooltip.GenerateItemSubtext(item));
+                // The rarity is already in the subtitle: drop Epic Loot's "Rarity / Effects" summary line.
+                string effects = Regex.Replace((string)magicTooltip.Invoke(magic, null), @"\n?\$mod_epicloot_itemtooltip_rarity[^\n]*", "");
+                effects = Localization.instance.Localize(effects).Trim('\n');
+                if (effects.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = effects;
+                // Set header: just "Name (equipped/size)".
+                string set = magicSetTooltip != null ? (string)magicSetTooltip.Invoke(null, new object[] { item }) : "";
+                set = Regex.Replace(set ?? "", @"\$mod_epicloot_set:\s*", "");
+                set = Regex.Replace(set, @"\):</color>", ")</color>");
+                set = Localization.instance.Localize(set).Trim('\n', ' ');
                 if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = set;
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
@@ -162,18 +166,30 @@ namespace Overhaul
         private static void LayoutTest(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
             if (item?.m_shared == null || (item.m_shared.m_skillType != Skills.SkillType.ElementalMagic && item.m_shared.m_skillType != Skills.SkillType.BloodMagic)) return;
-            const string mythic = "#ff7f2a", shard = "#d078ff";
+            // Worst case: every Overhaul stat line, the most effects, shard slots and the largest set.
+            const string mythic = "#ff7f2a", shard = "#d078ff", label = "#FFF0AD";
             tooltip.SetTopic("<color=" + mythic + ">" + tooltip.Topic.text + "</color>");
-            tooltip.SetSubtitle("<color=" + mythic + ">Mythique</color>, " + tooltip.Subtitle.text);
-            tooltip.AddDivider();
+            tooltip.SetSubtitle("<color=" + mythic + ">Mythique</color>\n" + tooltip.Subtitle.text);
+            string knockback = Localization.instance.Localize("$item_knockback");
+            var damage = tooltip.TextBoxContainer.GetComponentsInChildren<TooltipTextBox>(true).FirstOrDefault(b => b.Text && b.Text.text.Contains(knockback));
+            if (damage)
+            {
+                damage.AddLine("<color=" + label + ">Feu (stat)</color>", "<color=#FF703D>12</color>", false);
+                damage.AddLine("<color=" + label + ">Givre (stat)</color>", "<color=#65B5FF>8</color>", false);
+                damage.AddLine("<color=" + label + ">Poison (stat)</color>", "<color=#78D65A>6</color>", false);
+                damage.AddLine("<color=" + label + ">Foudre (stat)</color>", "<color=#FFE45C>10</color>", false);
+                damage.AddLine("<color=" + label + ">Projectile sup.</color>", "25%", false);
+            }
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
                 "<color=" + mythic + ">◆ Dégâts de feu +18 %\n◆ Coût en eitr -15 %\n◆ Vitesse d'attaque +10 %\n◆ Chances de coup critique +6 %\n" +
-                "◆ Les attaques enflamment les ennemis touchés\n◆ Régénération d'eitr +12 %</color>\n" +
-                "Emplacements de shard (1/2) :\n  <color=" + shard + ">◈ Dégâts de feu +6 %</color>\n  ◊<color=#808080> Emplacement vide</color>\n" +
-                "Rareté : <color=" + mythic + ">Mythique</color><pos=75%>Effets : <color=" + mythic + ">6</color>";
+                "◆ Les attaques enflamment les ennemis touchés\n◆ Régénération d'eitr +12 %\n◆ Les ennemis tués explosent en libérant des flammes</color>\n" +
+                "Emplacements de shard (3/4) :\n  <color=" + shard + ">◈ Dégâts de feu +6 %</color>\n  <color=" + shard + ">◈ Coût en eitr -4 %</color>\n" +
+                "  <color=" + shard + ">◈ Gagne de l'adrénaline en infligeant des dégâts de feu</color>\n  ◊<color=#808080> Emplacement vide</color>";
             tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text =
-                "<color=" + mythic + ">Ensemble mythique : Fureur de Surtr (2/4)</color>\n" +
-                "<color=#ffffff>(2) Dégâts de feu +10 %</color>\n<color=#808080>(3) Résistance au feu\n(4) Les coups critiques libèrent une explosion de flammes</color>";
+                "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
+                "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
+                "<color=" + mythic + ">(2) ‣ Dégâts de feu +10 %</color>\n<color=#808080ff>(3) ‣ Résistance au feu\n(4) ‣ Régénération d'eitr +15 %\n" +
+                "(5) ‣ Les coups critiques libèrent une explosion de flammes\n(6) ‣ Invoque un esprit de feu lorsque la vie passe sous 30 %</color>";
         }
     }
 

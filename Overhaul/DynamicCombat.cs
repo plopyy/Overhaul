@@ -768,6 +768,14 @@ namespace Overhaul
 			PlayMovementState(player.m_animator);
 		}
 
+		// Shield absorbed by the staff spell, shown in the item tooltip; null for any other item.
+		internal static float? StaffShieldAbsorb(ItemDrop.ItemData item, int quality)
+		{
+			if (!IsStaff(item)) return null;
+			if (quality < 0) quality = item.m_quality;
+			return StaffShieldBaseAbsorb + Mathf.Max(0, quality - 1) * StaffShieldAbsorbPerUpgradeLevel;
+		}
+
 		private static bool IsStaff(ItemDrop.ItemData item)
 		{
 			return item != null && item.IsWeapon() && item.m_dropPrefab != null

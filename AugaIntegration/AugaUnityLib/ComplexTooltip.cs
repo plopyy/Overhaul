@@ -97,6 +97,8 @@ namespace AugaUnity
     {
         public static Func<Player, string, float> ElementStatBonus;
         public static Func<Player, bool> HasProjectileStat;
+        // Overhaul staff shield absorb for an item and quality (null when the item is not a staff).
+        public static Func<ItemDrop.ItemData, int, float?> StaffShield;
         private const string StatLabelColor = "#FFF0AD";
         public static bool UsesProjectiles(ItemDrop.ItemData item)
         {
@@ -311,6 +313,16 @@ namespace AugaUnity
             Localization.instance.Localize(transform);
 
             OnComplexTooltipGeneratedForItem?.Invoke(this, item);
+            AddCrafterBox(item, quality);
+        }
+
+        // The crafter goes at the very bottom, under the boxes other mods add.
+        protected virtual void AddCrafterBox(ItemDrop.ItemData item, int quality)
+        {
+            if ((quality >= 0 && quality != item.m_quality) || item.m_crafterID == 0L) return;
+            var textBox = AddTextBox(TwoColumnTextBoxPrefab);
+            TextBoxAddPreprocessedLine(textBox, item, "$item_crafter", item.m_crafterName);
+            Localization.instance.Localize(textBox.transform);
         }
 
         public virtual void SetItemNoTextBoxes(ItemDrop.ItemData item, int quality = -1, int variant = -1)
@@ -424,12 +436,6 @@ namespace AugaUnity
                 TextBoxAddPreprocessedLine(textBox, item, "<color=aqua>$item_dlc</color>");
             }
 
-            if (!upgrade && item.m_crafterID != 0L)
-            {
-                var textBox = AddTextBox(TwoColumnTextBoxPrefab);
-                TextBoxAddPreprocessedLine(textBox, item, "$item_crafter", item.m_crafterName);
-            }
-
             var skillLevel = Player.m_localPlayer.GetSkillLevel(item.m_shared.m_skillType);
             var statusEffectTooltip = item.GetStatusEffectTooltip(quality, skillLevel);
             var showExtraText = true;
@@ -485,10 +491,6 @@ namespace AugaUnity
                     TextBoxAddPreprocessedLine(textBox, item, "$item_value", item.GetValue(), item.m_shared.m_value);
                 }
                 
-                if (item.m_shared.m_maxQuality > 1)
-                {
-                    TextBoxAddPreprocessedLine(textBox, item, "$item_quality", quality, upgrade);
-                }
 
                 if (item.m_shared.m_useDurability)
                 {
@@ -505,50 +507,38 @@ namespace AugaUnity
                     else
                     {
                         TextBoxAddPreprocessedLine(textBox, item, "$item_durability", $"{durabilityPercent}%", $"{durability}/{maxDurability}");
-                        if (item.m_shared.m_canBeReparied)
-                        {
-                            var recipe = ObjectDB.instance.GetRecipe(item);
-                            if (recipe != null)
-                            {
-                                TextBoxAddPreprocessedLine(textBox, item, "$item_repairlevel", recipe.m_minStationLevel);
-                            }
-                        }
                     }
                 }
 
                 TextBoxAddPreprocessedLine(textBox, item, "$item_weight", item.GetWeight().ToString("0.0"));
-            }
-
-            if (!item.m_shared.m_teleportable || item.m_shared.m_movementModifier != 0 || item.m_shared.m_eitrRegenModifier != 0)
-            {
-                var textBox = AddTextBox(CenteredTextBoxPrefab);
-
-                if (!item.m_shared.m_teleportable)
-                {
-                    TextBoxAddPreprocessedLine(textBox, item, "$item_noteleport");
-                }
 
                 if (item.m_shared.m_eitrRegenModifier != 0)
                 {
                     var eitrRegenModifier = (item.m_shared.m_eitrRegenModifier * 100).ToString("+0;-0");
                     var totalEitrRegenModifier = (Player.m_localPlayer.GetEquipmentEitrRegenModifier() * 100).ToString("+0;-0");
-                    TextBoxAddPreprocessedLine(textBox, item, $"$item_eitrregen_modifier: <color=#D1C9C2>{eitrRegenModifier}%</color> ($item_total: <color={ParentheticalColor}>{totalEitrRegenModifier}%</color>)");
+                    TextBoxAddPreprocessedLine(textBox, item, "$overhaul_eitrregen_short", $"{eitrRegenModifier}%", $"$item_total {totalEitrRegenModifier}%");
                 }
 
                 if (item.m_shared.m_movementModifier != 0)
                 {
                     var movementModifier = (item.m_shared.m_movementModifier * 100).ToString("+0;-0");
                     var totalEquipmentMovementModifier = (Player.m_localPlayer.GetEquipmentMovementModifier() * 100).ToString("+0;-0");
-                    TextBoxAddPreprocessedLine(textBox, item, $"$item_movement_modifier: <color=#D1C9C2>{movementModifier}%</color> ($item_total: <color={ParentheticalColor}>{totalEquipmentMovementModifier}%</color>)");
+                    TextBoxAddPreprocessedLine(textBox, item, "$overhaul_movespeed_short", $"{movementModifier}%", $"$item_total {totalEquipmentMovementModifier}%");
                 }
+            }
+
+            if (!item.m_shared.m_teleportable)
+            {
+                var textBox = AddTextBox(CenteredTextBoxPrefab);
+                TextBoxAddPreprocessedLine(textBox, item, "$item_noteleport");
             }
 
             var setStatusEffect = item.GetSetStatusEffectTooltip(quality, skillLevel);
             if (!string.IsNullOrEmpty(setStatusEffect))
             {
                 var textBox = AddTextBox(LeftAlignedTextBoxPrefab);
-                TextBoxAddPreprocessedLine(textBox, item, $"$auga_set_bonus ({item.m_shared.m_setSize} $item_parts)");
-                TextBoxAddPreprocessedLine(textBox, item, $"<color=orange>{item.m_shared.m_setStatusEffect.m_name}</color>");
+                var equipped = Player.m_localPlayer.GetInventory().GetEquippedItems().Count(i => i.m_shared.m_setName == item.m_shared.m_setName);
+                TextBoxAddPreprocessedLine(textBox, item, $"<color=orange>{item.m_shared.m_setStatusEffect.m_name}</color> ({equipped}/{item.m_shared.m_setSize})");
                 TextBoxAddPreprocessedLine(textBox, item, setStatusEffect);
                 // The set bonus has its own Auga box; do not copy it again as mod-added text.
                 var nativeSetBlock = $"\n\n$item_seteffect (<color=orange>{item.m_shared.m_setSize}</color> $item_parts):<color=orange>{item.m_shared.m_setStatusEffect.m_name}</color>\n{setStatusEffect}";
@@ -693,6 +683,15 @@ namespace AugaUnity
 
         public virtual void AddBlockingTextBox(ItemDrop.ItemData item, int quality, bool upgrade)
         {
+            // Overhaul staffs cast a shield instead of blocking: one line replaces the blocking stats.
+            var shield = StaffShield?.Invoke(item, quality);
+            if (shield != null)
+            {
+                var shieldBox = AddTextBox(TwoColumnTextBoxPrefab);
+                TextBoxAddPreprocessedLine(shieldBox, item, "$overhaul_staff_shield", shield.Value.ToString("0"));
+                return;
+            }
+
             var blockPower = item.GetBlockPowerTooltip(quality);
             var previousBlockPower = item.GetBlockPowerTooltip(item.m_quality);
 
