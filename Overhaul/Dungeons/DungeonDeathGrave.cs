@@ -34,7 +34,7 @@ namespace Overhaul.Dungeons
                 if(!proxy || !proxy.m_instance)continue;
                 var data=view.GetZDO();
                 if(death.y>=11000)
-                {if(data==null || data.GetInt(BossDungeonLayout.LayoutKey,0)!=1 || !BossDungeonLayout.InLane(data,death))continue;}
+                {if(!BossInteriorReservation.Lane(data) || !BossDungeonLayout.InLane(data,death))continue;}
                 else if(ZoneSystem.GetZone(view.transform.position)!=ZoneSystem.GetZone(death))continue;
                 foreach(var teleport in proxy.m_instance.GetComponentsInChildren<Teleport>())
                 {

@@ -151,11 +151,31 @@ namespace XPortal.UI
             }
 
             GUIManager.BlockInput(active);
+            if (active) TakeUIFocus();
             mainPanel.SetActive(active);
             if (active)
             {
                 ActivateInputField();
             }
+        }
+
+        // UIGroupHandler makes every group but the highest-priority active one non-interactable.
+        // Another visible group with a higher priority greyed out this whole panel, so it could not
+        // even be closed: rank the panel above every active group while it is shown.
+        private void TakeUIFocus()
+        {
+            if (!mainPanel.GetComponent<CanvasGroup>()) mainPanel.AddComponent<CanvasGroup>();
+            var handler = mainPanel.GetComponent<UIGroupHandler>();
+            if (!handler) handler = mainPanel.AddComponent<UIGroupHandler>();
+            int highest = int.MinValue;
+            foreach (var group in UIGroupHandler.m_groups)
+            {
+                if (!group || group == handler || !group.gameObject.activeInHierarchy || group.m_groupPriority <= handler.m_groupPriority) continue;
+                Log.Info($"Portal window outranked by UI group '{group.name}' (priority {group.m_groupPriority}); raising it above");
+                highest = Mathf.Max(highest, group.m_groupPriority);
+            }
+            if (highest != int.MinValue) handler.m_groupPriority = highest + 1;
+            handler.m_userActive = true;
         }
 
         private void ActivateInputField(bool delayed = true, object state = null)

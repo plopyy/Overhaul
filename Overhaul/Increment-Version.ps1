@@ -8,7 +8,8 @@ foreach ($part in @('Major', 'Minor', 'Patch', 'Revision')) {
         throw "Invalid version component: $part"
     }
 }
-$series = '{0}.{1}' -f $state.Major, $state.Minor
+# A new Major, Minor or Patch (a public release) restarts the build revision at 0.
+$series = '{0}.{1}.{2}' -f $state.Major, $state.Minor, $state.Patch
 if ($series -ne $state.LastSeries) {
     $state.Revision = 0
 } else {

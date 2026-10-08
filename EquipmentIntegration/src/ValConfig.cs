@@ -25,16 +25,18 @@ namespace EquipmentAndQuickSlots {
         public static ConfigEntry<KeyboardShortcut> AmmoCycleKey;
         public static ConfigEntry<KeyboardShortcut> ClassWindowKey;
         public static ConfigEntry<KeyboardShortcut> MoveObjectKey;
-        public static KeyboardShortcut EffectiveMoveObjectKey {
-            get {
-                if(MoveObjectKey!=null&&MoveObjectKey.Value.MainKey!=KeyCode.None)return MoveObjectKey.Value;
-                var keyboard=UnityEngine.InputSystem.Keyboard.current;
-                if(keyboard==null)return new KeyboardShortcut(KeyCode.H);
-                foreach(var code in (KeyCode[])System.Enum.GetValues(typeof(KeyCode)))
-                    if(ZInput.TryKeyCodeToKey(code,out var key)&&key!=UnityEngine.InputSystem.Key.None&&
-                        string.Equals(keyboard[key].displayName,"H",System.StringComparison.OrdinalIgnoreCase))return new KeyboardShortcut(code);
-                return new KeyboardShortcut(KeyCode.F6);
-            }
+        public static KeyboardShortcut EffectiveMoveObjectKey=>Effective(MoveObjectKey,"H",KeyCode.F6);
+        public static ConfigEntry<KeyboardShortcut> TakeAllKey;
+        public static KeyboardShortcut EffectiveTakeAllKey=>Effective(TakeAllKey,"R",KeyCode.R);
+        // None selects the key printed with this letter on the current keyboard layout.
+        static KeyboardShortcut Effective(ConfigEntry<KeyboardShortcut> entry,string letter,KeyCode fallback) {
+            if(entry!=null&&entry.Value.MainKey!=KeyCode.None)return entry.Value;
+            var keyboard=UnityEngine.InputSystem.Keyboard.current;
+            if(keyboard==null)return new KeyboardShortcut((KeyCode)System.Enum.Parse(typeof(KeyCode),letter));
+            foreach(var code in (KeyCode[])System.Enum.GetValues(typeof(KeyCode)))
+                if(ZInput.TryKeyCodeToKey(code,out var key)&&key!=UnityEngine.InputSystem.Key.None&&
+                    string.Equals(keyboard[key].displayName,letter,System.StringComparison.OrdinalIgnoreCase))return new KeyboardShortcut(code);
+            return new KeyboardShortcut(fallback);
         }
 
         // Add Server synced config entries under here
@@ -147,6 +149,7 @@ namespace EquipmentAndQuickSlots {
             ClassWindowKey=Config.Bind("Hotkeys","Class window",new KeyboardShortcut(KeyCode.P),"Open the class window.");
             ClassWindowKey.SettingChanged+=(_,_)=>PreventSimilarHotkeys.FillSimilarHotkey();
             MoveObjectKey=Config.Bind("Hotkeys","Move object",new KeyboardShortcut(KeyCode.None),"Relocate a useful building piece. None automatically selects the printed H key for the current keyboard layout (F6 if unavailable). Rebind in Mods / Overhaul.");
+            TakeAllKey=Config.Bind("Hotkeys","Take all",new KeyboardShortcut(KeyCode.None),"Take everything from the aimed or open chest or machine. Shift + this key renames a chest or swaps gear with an armor stand. None automatically selects the printed R key for the current keyboard layout. Rebind in Mods / Overhaul.");
             QuickSlotsEnabled = BindServerConfig("Toggles", "Enable Quick Slots", true, "Enable the quick slots. Disabling this while items are in the slots will attempt to move them to your inventory.");
             QuickSlotsEnabled.SettingChanged += (_, _) => Slots.OnSlotActivationChanged();
             QuickSlotCount = BindServerConfig("Quick Slots", "Quick Slot Count", 3, "Number of quick slots available.", false, 0, MaxQuickSlots);

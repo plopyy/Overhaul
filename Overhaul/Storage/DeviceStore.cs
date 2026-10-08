@@ -73,6 +73,7 @@ namespace Overhaul.Storage
                 var wear = source.GetComponent<WearNTear>();
                 if (wear && source is Catapult) wear.m_onDestroyed += store.DropAll;
             }
+            DeviceActions.Register(store);
             store.Load();
         }
         private void OnDestroy()
@@ -145,7 +146,6 @@ namespace Overhaul.Storage
                     Read(Working, workKey, ref workBytes);
                     Ready = true;
                     if (Owner) Adapter.Publish();
-                    else if (Adapter is OvenInventory oven) oven.Remember();
                 }
                 if (Container) Container.m_lastRevision = Data.DataRevision;
                 reported = false;

@@ -1,7 +1,31 @@
-# Changelog (rework)
+﻿# Changelog
 
-## 2.3.0 (in progress)
+## 2.3.0 (rework, in progress)
 
 ### Added
 - Multiplayer rework groundwork: the character's skills are copied into its network object, so the dedicated server keeps them in memory while the player is connected. The game still runs and saves exactly as before; the server only reads this copy, and logs it when a player joins. Can be turned off with `[Rework] PlayerReplication`. (2.3.0.1)
 - The copy now holds all the character data the game saves (inventory, skills, recipes, stations, materials, trophies, food, health, mod data), not only skills. The map is not included. (2.3.0.2)
+
+### Merged from main
+Everything listed under 2.2.1 below (up to 2.2.1.16). (2.3.0.3)
+## 2.2.1 (in progress)
+
+### Added
+- Settings > Mods: **Dash (replaces sprint)** option, on by default. When turned off, the Run key sprints like in vanilla Valheim and drains stamina; sprint speed is scaled to Overhaul's faster jog, so sprinting stays faster than jogging. Per-player setting. (2.2.1.1)
+- Settings > Mods: the **Take all** key can be changed (printed R key by default). Shift + this key still renames a chest and swaps gear with an armor stand, and on-screen hints show the chosen key. (2.2.1.3)
+
+### Changed
+- Oven: each of the 4 slots takes a stack of one raw dish. The first one cooks in its place in the oven, is ejected in front of it once cooked (like other production machines, never despawning), then the next one starts. Cooked dishes left in the oven by earlier versions are ejected too. (2.2.1.7)
+- Items dropped from the inventory fly towards the crosshair instead of the character's facing, keeping the vanilla arc and speed. (2.2.1.4)
+- Settings > Mods: shortcut rows are slightly closer together, so the new row, the Dash option and the help text fit above the buttons. (2.2.1.3)
+
+### Fixed
+- The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)
+- Since Valheim 1.0.17, the end-game credits could stay open invisibly in the background and grey out other windows. They now stay closed unless the end credits are actually playing. (2.2.1.6)
+- Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.10)
+- Dungeon and camp resets are no longer refused because of what is on the surface around them: objects of a neighbouring location are left in place, and a camp whose old layout differs from the reference is still reset. Only a player inside a dungeon can postpone a reset. (2.2.1.11)
+- Surface locations (camps, ruins, Mistlands entrancesâ€¦) no longer wait for nearby players before resetting: players standing in the reset area are moved just outside it, then the reset goes ahead. (2.2.1.13)
+- Dungeon interiors can no longer overlap: every generated dungeon interior (Hildir's crypt and cave, MÃ¶rkhalla, the Ashlands tunnelsâ€¦), not only those with an Overhaul boss room, moves at its next reset to its own free height lane high above the world. The entrance and exit doors, the interior lighting and weather follow it. A dungeon whose rooms do not fit in a lane keeps its original height. (2.2.1.16)
+
+## 2.2.0 (released)
+First public release.

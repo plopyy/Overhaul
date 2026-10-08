@@ -19,6 +19,7 @@ namespace Overhaul.Utility
 
         // --- MoveSpeed ---
         public static ConfigEntry<float> BaseMovementSpeed { get; set; }
+		public static ConfigEntry<bool> DashEnabled { get; set; }
 		public static ConfigEntry<float> SneakMovementSpeed { get; set; }
 		public static ConfigEntry<float> DashSpeed { get; set; }
 		public static ConfigEntry<float> DashDuration { get; set; }
@@ -62,10 +63,10 @@ namespace Overhaul.Utility
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             PlayerReplication = config.Bind("Rework", "PlayerReplication", true,
-                new ConfigDescription("Rework test: copy the player's profile data (skills for now) into the character's network object, so the server holds it in memory. Read only on the server; saves are unchanged. Set false to disable.",
+                new ConfigDescription("Rework test: copy the character data the game saves (inventory, skills, recipes...) into the character's network object, so the server holds it in memory. Read only on the server; saves are unchanged. Set false to disable.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
-            ResetIntervalHours = config.Bind("Dungeon", "ResetIntervalHours", 120f,
-                new ConfigDescription("Real hours after the first player visit since generation/reset. 120 = 5 days; 0 disables automatic resets. Never-visited locations are skipped. One global expiry check every 5 minutes; occupied dungeons are deferred.",
+            ResetIntervalHours = config.Bind("Dungeon", "ResetIntervalHours", 12f,
+                new ConfigDescription("Real hours after the first player visit since generation/reset. 12 by default; 0 disables automatic resets. Never-visited locations are skipped. One global expiry check every 5 minutes; occupied dungeons are deferred.",
                     new AcceptableValueRange<float>(0f, 87600f), new ConfigurationManagerAttributes { IsAdminOnly = true }));
             RoomMultiplier = config.Bind("Dungeon", "RoomMultiplier", 1.5f,
                 new ConfigDescription("Multiplier of original minimum/maximum room parameters. Maximum capped at 96, minimum never above maximum. Excludes Sealed Tower, Infested Citadel and outdoor locations.",
@@ -120,6 +121,8 @@ namespace Overhaul.Utility
 					IsAdminOnly = true
 				}
 			}));
+			// Local player preference (Settings > Mods), not a server rule.
+			OverhaulConfig.DashEnabled = config.Bind<bool>("Dash", "DashEnabled", true, "Run key dashes; when disabled it sprints like vanilla Valheim and drains stamina. Default: true");
 			OverhaulConfig.DashSpeed = config.Bind<float>("Dash", "DashSpeed", 20f, new ConfigDescription("Dash movement speed; Default: 20 | Vanilla: 0 (no dash)", new AcceptableValueRange<float>(1f, 100f), new object[]
 			{
 				new ConfigurationManagerAttributes

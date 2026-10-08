@@ -253,7 +253,7 @@ namespace Overhaul.Dungeons
                 {
                     if (position.y >= 11000)
                     {
-                        if (proxy.GetInt(BossDungeonLayout.LayoutKey, 0) != 1 || !BossDungeonLayout.InLane(proxy, position)) continue;
+                        if (!BossInteriorReservation.Lane(proxy) || !BossDungeonLayout.InLane(proxy, position)) continue;
                     }
                     // A dungeon can extend across several terrain zones. Its entrance's
                     // zone is not proof of which interior contains the player.
@@ -343,6 +343,8 @@ namespace Overhaul.Dungeons
             if (!requested && visited == 0) return;
             if (!selected.Contains(name)) { if (requested) proxy.Set(RequestedKey, false); return; }
             if (!requested && OverhaulConfig.ResetIntervalHours.Value <= 0) return;
+            float retry;
+            if (!requested && refusedUntil.TryGetValue(proxy.m_uid, out retry) && Time.realtimeSinceStartup < retry) return;
             long now = DateTime.UtcNow.Ticks;
             if (!requested && !DungeonPolicy.IsDue(visited, now, OverhaulConfig.ResetIntervalHours.Value)) return;
             BeginPreparation(proxy, location, false, requested);
@@ -406,8 +408,14 @@ namespace Overhaul.Dungeons
             finally { EndPreparation(); }
         }
 
-        private static void Report(ZDO proxy, string name, string reason)
+        // A refused automatic reset waits before the next attempt: each attempt generates a whole
+        // dungeon and its terrain, which can freeze the server for minutes.
+        private static readonly Dictionary<ZDOID, float> refusedUntil = new Dictionary<ZDOID, float>();
+        private const float RefusedRetrySeconds = 6 * 3600f;
+
+        private static void Report(ZDO proxy, string name, string reason, bool refused = false)
         {
+            if (refused) refusedUntil[proxy.m_uid] = Time.realtimeSinceStartup + RefusedRetrySeconds;
             if (reason.StartsWith("joueur", StringComparison.Ordinal) && playerBlockDetail != null)
                 reason += " : " + playerBlockDetail;
             string old;
@@ -441,12 +449,12 @@ namespace Overhaul.Dungeons
                     int hash = generator.name.GetStableHashCode();
                     ZDO[] matches = world.Select(session.GetZDO).Where(z => z != null && z.GetPrefab() == hash &&
                         ZoneSystem.GetZone(z.GetPosition()) == ZoneSystem.GetZone(proxy.GetPosition())).ToArray();
-                    if (matches.Length != 1) { Report(proxy, name, "generateur absent ou ambigu : " + generator.name); return; }
+                    if (matches.Length != 1) { Report(proxy, name, "generateur absent ou ambigu : " + generator.name, true); return; }
                     previous.Add(hash, matches[0]);
                 }
                 List<Bounds> volumes = ScopeInteriorVolumes(proxy, BuildVolumes(proxy, prefab, previous.Values, exterior), generators.Length != 0);
                 List<Bounds> occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!PlayersClear(occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
+                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : debut de preparation du reset");
                 if (!proxy.GetBool(TrackedKey, false))
                 {
@@ -458,8 +466,7 @@ namespace Overhaul.Dungeons
                         // room plan does not need to be reproducible to replace that interior.
                         // Replay is only used to identify the unchanged surface objects in this case.
                         bool samePlan = ValidateReplay(baseline, previous);
-                        if (!samePlan && !locationComponent.m_hasInterior)
-                        { Report(proxy, name, "ancien plan exterieur different de la reference : migration refusee"); return; }
+                        // A different surface plan never blocks the reset: only the objects matching the replay are replaced.
                         var candidates = baseline.Objects.Select(session.GetZDO).Where(z => z != null).GroupBy(z => z.GetPrefab()).ToDictionary(g => g.Key, g => g.Select(z => z.GetPosition()).ToArray());
                         foreach (ZDOID id in world)
                         {
@@ -490,7 +497,12 @@ namespace Overhaul.Dungeons
                 }
                 int newSeed = DungeonPolicy.NextSeed(proxy.GetInt(SeedKey, proxy.GetInt(ZDOVars.s_seed, 0)), Seeds.Next(int.MinValue + 1, int.MaxValue));
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : preparation du nouveau plan, seed " + newSeed);
-                staged = Stage(proxy, location, previous, false, newSeed);
+                try { staged = Stage(proxy, location, previous, false, newSeed); }
+                catch (LaneMismatch e)
+                {
+                    Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : " + e.Message);
+                    staged = Stage(proxy, location, previous, false, newSeed);
+                }
                 ValidateNew(staged, previous.Count);
                 volumes.AddRange(staged.Volumes);
                 // Cover the actual newly generated extents too (camp layouts can shift within their radius).
@@ -506,15 +518,12 @@ namespace Overhaul.Dungeons
                     if (zdo == null || zdo == proxy || !Inside(volumes, zdo.GetPosition())) continue;
                     if (zdo.GetPosition().y > 3000 && !InResetInterior(proxy, zdo, volumes, generators.Length != 0)) continue;
                     string otherOwner = zdo.GetString(OwnerKey, "");
-                    if (otherOwner.Length != 0 && otherOwner != owner)
-                    {
-                        if (zdo.GetPosition().y > 3000) continue; // Never collect another interior's objects.
-                        Report(proxy, name, "chevauchement exterieur avec un autre lieu suivi"); return;
-                    }
+                    // Another location's objects are left in place; they never block this reset.
+                    if (otherOwner.Length != 0 && otherOwner != owner) continue;
                     if (zdo.GetPosition().y > 3000) old.Add(id);
                 }
                 occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!PlayersClear(occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
+                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
                 var tombs = world.Select(session.GetZDO).Where(z => z != null && IsTomb(z) &&
                     ((Inside(occupied, z.GetPosition()) && (z.GetPosition().y <= 3000 || InResetInterior(proxy, z, occupied, generators.Length != 0))) || old.Contains(z.m_uid))).ToList();
                 old = old.Distinct().Where(id => { ZDO z = session.GetZDO(id); return z != null && !IsTomb(z) && !IsPlayer(z); }).ToList();
@@ -556,6 +565,8 @@ namespace Overhaul.Dungeons
                 // Deliberately conservative vertical extent: covers custom center offsets and all rooms.
                 volumes.Add(zdo.GetInt(BossDungeonLayout.LayoutKey, 0) == 1 ? BossInteriorReservation.Bounds(proxy) : new Bounds(center, generator.m_zoneSize + new Vector3(32, 256, 32)));
             }
+            // The current lane of a moved interior, even when its generator is elsewhere.
+            if (BossInteriorReservation.Lane(proxy)) volumes.Add(BossInteriorReservation.Bounds(proxy));
             Location loc = prefab.GetComponent<Location>();
             Transform interior = BossInteriorPlacement.FindInterior(loc);
             if (loc.m_hasInterior && interior && proxy.GetInt(BossDungeonLayout.LayoutKey, 0) != 1)
@@ -597,7 +608,8 @@ namespace Overhaul.Dungeons
         private static Capture Stage(ZDO proxy, ZoneSystem.ZoneLocation location, Dictionary<int, ZDO> previous, bool replay, int seed)
         {
             var capture = new Capture { Staging = true, Replay = replay, Seed = seed, Epoch = proxy.GetInt(EpochKey, 0) + 1, Parent = proxy };
-            if (!replay && BossDungeonLayout.IsSupported(location.m_prefab.Name))
+            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.Name);
+            if (!replay && (boss || LaneFits(location)))
                 capture.InteriorHeight = BossInteriorReservation.ChooseHeight(proxy);
             foreach (var pair in previous) capture.PreviousGenerators.Add(pair.Key, pair.Value);
             UnityEngine.Random.State random = UnityEngine.Random.state;
@@ -622,6 +634,7 @@ namespace Overhaul.Dungeons
                     Identity(zdo);
                     zdo.Set(PendingKey, 1);
                 }
+                if (capture.InteriorHeight > 0 && !boss) CheckLane(capture, location);
                 success = true;
                 return capture;
             }
@@ -640,6 +653,46 @@ namespace Overhaul.Dungeons
                 if (!success) DestroyObjects(capture.Objects);
             }
         }
+
+        // Generated interiors outside the boss layouts move into a height lane only when their rooms fit
+        // its reservation (288 x 96 x 288 m, also the navigation band). Others keep their native height.
+        private static readonly HashSet<string> laneUnfit = new HashSet<string>(StringComparer.Ordinal);
+
+        private static bool LaneFits(ZoneSystem.ZoneLocation location)
+        {
+            if (laneUnfit.Contains(location.m_prefab.Name)) return false;
+            Location loc = location.m_prefab.Asset ? location.m_prefab.Asset.GetComponent<Location>() : null;
+            if (!loc || !loc.m_hasInterior || !BossInteriorPlacement.FindInterior(loc)) return false;
+            // Native zone heights (often 256 m) are loose bounds: CheckLane measures the rooms actually placed.
+            return location.m_prefab.Asset.GetComponentsInChildren<DungeonGenerator>(true).Length != 0;
+        }
+
+        private static void CheckLane(Capture capture, ZoneSystem.ZoneLocation location)
+        {
+            Bounds lane = BossInteriorReservation.Bounds(capture.Parent);
+            Vector3 center = lane.center; center.y = capture.InteriorHeight; lane.center = center;
+            string outside = null;
+            foreach (Room room in DungeonGenerator.m_placedRooms)
+            {
+                if (!room) continue;
+                // Rooms only turn around the vertical axis: check the vertical extent and the horizontal radius.
+                Vector3 p = room.transform.position;
+                float h = room.m_size.y / 2f, r = new Vector2(room.m_size.x, room.m_size.z).magnitude / 2f;
+                Vector3[] probes = { Vector3.up * h, Vector3.down * h, Vector3.left * r, Vector3.right * r, Vector3.forward * r, Vector3.back * r };
+                if (probes.Any(o => !lane.Contains(p + o))) { outside = room.name + " a " + p; break; }
+            }
+            if (outside == null)
+                foreach (ZDOID id in capture.Objects)
+                {
+                    ZDO zdo = session.GetZDO(id);
+                    if (zdo != null && zdo.GetPosition().y > 3000 && !lane.Contains(zdo.GetPosition())) { outside = "objet a " + zdo.GetPosition(); break; }
+                }
+            if (outside == null) { capture.Objects.Select(session.GetZDO).First(z => z != null).Set(BossInteriorReservation.HeightKey, capture.InteriorHeight); return; }
+            laneUnfit.Add(location.m_prefab.Name);
+            throw new LaneMismatch("interieur hors du couloir de hauteur (" + outside + "), regeneration a la hauteur d'origine");
+        }
+
+        private sealed class LaneMismatch : Exception { internal LaneMismatch(string message) : base(message) { } }
 
         private static bool ValidateReplay(Capture baseline, Dictionary<int, ZDO> previous)
         {

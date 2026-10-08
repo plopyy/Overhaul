@@ -37,8 +37,9 @@ namespace AugaUnity {
   public AugaBindingDisplay[] Displays;
   public Button EqsTab;
   public TMP_Text Notice;
-  readonly string[] pending=new string[6];
-  readonly bool[] dirty=new bool[6];
+  // Sized from BindButtons: Overhaul can append shortcut rows at runtime.
+  string[] pending=new string[0];
+  bool[] dirty=new bool[0];
   int capture=-1;
   bool restoreNavigation;
   // ZInput accepts legacy KeyCode values, but unmapped keys resolve to Key.None
@@ -52,6 +53,7 @@ namespace AugaUnity {
   public void Initialize(){owner=GetComponentInParent<Settings>();Reload();}
   void Reload(){
    bool available=Available;RefreshVisibility();
+   if(pending.Length!=BindButtons.Length){pending=new string[BindButtons.Length];dirty=new bool[BindButtons.Length];}
    for(int i=0;i<BindButtons.Length;i++){pending[i]=available?ReadShortcut(i):"";dirty[i]=false;BindButtons[i].interactable=available;Displays[i].SetText(DisplayShortcut!=null?DisplayShortcut(pending[i]):pending[i]);}
    Notice.text=Localization.instance.Localize(available?"$auga_mods_eqs_help":"$auga_mods_eqs_missing");
   }

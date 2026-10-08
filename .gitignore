@@ -1,6 +1,7 @@
 # Local notes: the project README is the only Markdown tracked here.
 *.[mM][dD]
 !/README.md
+!/CHANGELOG.md
 
 # Artwork and Photoshop sources
 *.[pP][nN][gG]
@@ -31,3 +32,6 @@
 *.tmp
 *.bak
 
+# Developer tools: their README and the Assimp libraries needed to build them.
+!/DevTools/*/README.md
+!/DevTools/AnimationPreview/lib/*.dll
