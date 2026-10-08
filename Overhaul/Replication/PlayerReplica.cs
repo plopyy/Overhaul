@@ -21,6 +21,15 @@ namespace Overhaul.Replication
         // One entry per replicated part of the profile; added one at a time and checked separately.
         internal static readonly List<Domain> Domains = new List<Domain>
         {
+            // Everything the native .fch save stores for the character (Player.Save): inventory, skills,
+            // recipes, stations, materials, trophies, food, health, mod custom data... The map is not included.
+            new Domain
+            {
+                Name = "player",
+                Key = "overhaul_replica_player_v1".GetStableHashCode(),
+                Capture = player => { var package = new ZPackage(); player.Save(package); return package.GetArray(); },
+                Describe = bytes => (bytes.Length / 1024f).ToString("0.0") + " Ko",
+            },
             new Domain
             {
                 Name = "skills",
