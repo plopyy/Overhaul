@@ -94,7 +94,7 @@ namespace Overhaul
                 set = Regex.Replace(set, @"\):</color>", ")</color>");
                 // The Auga font has no U+2023 bullet used by Epic Loot: it would draw as a box.
                 set = Localization.instance.Localize(set.Replace("\u2023", "-")).Trim('\n', ' ');
-                if (set.Length > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = SetRows(set);
+                if (set.Length > 0) AddRows(tooltip, SetRows(set));
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
@@ -115,25 +115,25 @@ namespace Overhaul
             string legendary = (string)type.GetField("LegendaryID").GetValue(magic);
             string color = Html(rarity);
             bool details = (bool)(type.GetProperty("ShowEffectDetails", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) ?? false);
-            var lines = new List<string>();
+            var rows = new List<RowText>();
             foreach (object effect in (System.Collections.IEnumerable)type.GetField("Effects").GetValue(magic))
             {
-                lines.Add(Row((string)effectText.Invoke(null, new[] { effect, rarity, (object)false, legendary }), color));
+                rows.Add(Row((string)effectText.Invoke(null, new[] { effect, rarity, (object)false, legendary }), color));
                 if (details && detailBlock != null)
                 {
                     string block = Localization.instance.Localize((string)detailBlock.Invoke(null, new[] { effect, rarity, legendary, null, "   " })).TrimEnd('\n');
-                    if (block.Length > 0) lines.Add("<align=left><color=#c0c0c0>" + block + "</color>");
+                    if (block.Length > 0) rows.Add(new RowText("<color=#c0c0c0>" + block + "</color>"));
                 }
             }
             int slots = (int)type.GetField("SocketCount").GetValue(magic);
-            if (slots > 0) AddSockets(lines, type, magic, slots);
-            if (lines.Count > 0) tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = string.Join("\n", lines);
+            if (slots > 0) AddSockets(rows, type, magic, slots);
+            AddRows(tooltip, rows);
         }
 
-        private static void AddSockets(List<string> lines, Type type, object magic, int slots)
+        private static void AddSockets(List<RowText> rows, Type type, object magic, int slots)
         {
             var sockets = ((System.Collections.IEnumerable)type.GetField("Sockets").GetValue(magic)).Cast<object>().Where(s => s != null).ToList();
-            lines.Add("<align=left>" + Localization.instance.Localize("$mod_epicloot_sockets") + " (" + sockets.Count + "/" + slots + ")");
+            rows.Add(new RowText(Localization.instance.Localize("$mod_epicloot_sockets") + " (" + sockets.Count + "/" + slots + ")"));
             foreach (object socket in sockets)
             {
                 Type socketType = socket.GetType();
@@ -142,10 +142,10 @@ namespace Overhaul
                 string text = shard != null ? (string)effectText.Invoke(null, new[] { shard, source, (object)false, null }) : "$mod_epicloot_shard_noeffect";
                 // The socketed item's own icon, as Epic Loot shows it; a shard glyph when unavailable.
                 string sprite = shardSprite != null ? (string)shardSprite.Invoke(null, new[] { socketType.GetField("SourcePrefab").GetValue(socket) }) : "";
-                lines.Add(Row(text, Html(source), "  ", (string.IsNullOrEmpty(sprite) ? "<color=" + Html(source) + ">\u25C8</color>" : sprite) + " "));
+                rows.Add(Row(text, Html(source), "  ", (string.IsNullOrEmpty(sprite) ? "<color=" + Html(source) + ">◈</color>" : sprite) + " "));
             }
             for (int i = sockets.Count; i < slots; i++)
-                lines.Add("<align=left>  <color=#808080>\u25CA " + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>");
+                rows.Add(new RowText("  <color=#808080>◊ " + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>"));
         }
 
         private static string Html(object rarity)
@@ -154,51 +154,107 @@ namespace Overhaul
             catch { return "#ffffff"; }
         }
 
-        // A value at the start or the end of the text ("+18 %", "-15 %", "x2", "5 s") is drawn right-aligned
-        // on the same line; a text with several numbers, or a number inside the sentence, stays whole. One
-        // text per box: the value sits on the label's last line even when the label wraps.
+        internal sealed class RowText
+        {
+            internal string Left, Right;
+            internal RowText(string left, string right = null) { Left = left; Right = right; }
+        }
+
+        // A value at the start or the end of the text ("+18 %", "-15 %", "x2", "5 s") goes to the right
+        // column; a text with several numbers, or a number that belongs to the sentence, stays whole.
         private static readonly Regex Value = new Regex(@"^\s*([+\-−]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*:?\s+|\s*:?\s+([+\-−x]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*$");
-        // Values use the regular stat colour; elemental effects keep their element's colour, as in the damage lines.
-        static string ValueColor(string label)
+        private static readonly Regex Preposition = new Regex(@"\b(sous|de|du|des|à|au|aux|par|pendant|toutes|tous|chaque|en|under|below|above|of|for|by|every|at|over)$", RegexOptions.IgnoreCase);
+        internal static RowText Row(string text, string color, string indent = "", string icon = "")
+        {
+            text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
+            Match match = Value.Match(text);
+            string whole = indent + icon + "<color=" + color + ">" + text + "</color>";
+            if (!match.Success || Regex.Matches(text, @"\d+(?:[.,]\d+)?").Count != 1) return new RowText(whole);
+            string value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
+            string label = text.Remove(match.Index, match.Length).Trim(' ', ':', ',');
+            if (Preposition.IsMatch(label)) return new RowText(whole);
+            string element = ElementColor(label);
+            return new RowText(indent + icon + "<color=" + color + ">" + label + "</color>", element != null ? "<color=" + element + ">" + value + "</color>" : value);
+        }
+
+        // Elemental values keep their element's colour, as in the damage lines; the others use the
+        // native value style of the two-column box (bold font, shadow, regular colour).
+        private static string ElementColor(string label)
         {
             string l = label.ToLowerInvariant();
             if (l.Contains("feu") || l.Contains("fire")) return "#FF703D";
             if (l.Contains("givre") || l.Contains("froid") || l.Contains("frost")) return "#65B5FF";
             if (l.Contains("poison")) return "#78D65A";
             if (l.Contains("foudre") || l.Contains("lightning")) return "#FFE45C";
-            return "#FFFFFF";
+            return null;
         }
-        internal static string Row(string text, string color, string indent = "", string icon = "")
-        {
-            text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
-            Match match = Value.Match(text);
-            if (!match.Success || Regex.Matches(text, @"\d+(?:[.,]\d+)?").Count != 1)
-                return "<align=left>" + indent + icon + "<color=" + color + ">" + text + "</color>";
-            string value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
-            string label = text.Remove(match.Index, match.Length).Trim(' ', ':', ',');
-        // A number that belongs to the sentence ("below 30 %", "every 5 s") stays in it.
-        if (System.Text.RegularExpressions.Regex.IsMatch(label, @"\b(sous|de|du|des|à|au|aux|par|pendant|toutes|tous|chaque|en|under|below|above|of|for|by|every|at|over)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
-            return "<align=left>" + indent + icon + "<color=" + color + ">" + text + "</color>";
-            return "<align=left>" + indent + icon + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + ValueColor(label) + ">" + value + "</color></b></line-height>";
-        }
-        // Set bonus lines "(n) - text value": the value goes right-aligned in bold, like the effects. A colour
+
+        // Set bonus lines "(n) - text value": the value goes to the right column, like the effects. A colour
         // opened on one line may run over the next ones, as in Epic Loot's text.
-        internal static string SetRows(string set)
+        internal static List<RowText> SetRows(string set)
         {
-            var lines = new List<string>();
+            var rows = new List<RowText>();
             string color = null;
             foreach (string line in set.Split('\n'))
             {
                 Match open = Regex.Match(line, "<color=([^>]+)>");
                 if (open.Success) color = open.Groups[1].Value;
                 string plain = Regex.Replace(line, "<[^>]+>", "");
-                Match bonus = Regex.Match(plain, @"^\s*\((\d+)\)\s*[-\u2023]\s*(.*)$");
+                Match bonus = Regex.Match(plain, @"^\s*\((\d+)\)\s*[-‣]\s*(.*)$");
                 string c = color ?? "#D1C9C2";
-                if (bonus.Success) lines.Add(Row(bonus.Groups[2].Value, c, "", "<color=" + c + ">(" + bonus.Groups[1].Value + ")</color> "));
-                else lines.Add("<align=left>" + (color != null ? "<color=" + color + ">" + plain + "</color>" : plain));
+                if (bonus.Success) rows.Add(Row(bonus.Groups[2].Value, c, "", "<color=" + c + ">(" + bonus.Groups[1].Value + ")</color> "));
+                else rows.Add(new RowText(color != null ? "<color=" + color + ">" + plain + "</color>" : plain));
                 if (line.Contains("</color>") && line.LastIndexOf("</color>") > line.LastIndexOf("<color=")) color = null;
             }
-            return string.Join("\n", lines);
+            return rows;
+        }
+
+        // Rows go into a native two-column box, so the values use exactly the regular value style. The
+        // right column gets empty lines for every wrapped line of a label, so each value stays in front.
+        internal static void AddRows(ComplexTooltip tooltip, List<RowText> rows)
+        {
+            if (rows.Count == 0) return;
+            var box = tooltip.AddTextBox(tooltip.TwoColumnTextBoxPrefab);
+            box.gameObject.AddComponent<RowAligner>().Rows = rows;
+            RowAligner.Fill(box, rows);
+        }
+
+        internal sealed class RowAligner : MonoBehaviour
+        {
+            internal List<RowText> Rows;
+            private TooltipTextBox box;
+            private float width = -1;
+            private void LateUpdate()
+            {
+                if (!box) box = GetComponent<TooltipTextBox>();
+                float current = box && box.Text ? box.Text.rectTransform.rect.width : 0;
+                if (current <= 0 || Mathf.Approximately(current, width)) return;
+                width = current;
+                Fill(box, Rows);
+            }
+
+            internal static void Fill(TooltipTextBox box, List<RowText> rows)
+            {
+                box.Text.text = string.Join("\n", rows.Select(r => r.Left));
+                box.RightColumnText.text = string.Join("\n", rows.Select(r => r.Right ?? ""));
+                if (box.Text.rectTransform.rect.width <= 0) return;
+                box.Text.ForceMeshUpdate();
+                TMPro.TMP_TextInfo info = box.Text.textInfo;
+                var right = new System.Text.StringBuilder();
+                int cursor = 0;
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    // A sprite is one character; every other tag is invisible.
+                    int length = Regex.Replace(Regex.Replace(rows[i].Left, "<sprite[^>]*>", "#"), "<[^>]+>", "").Length;
+                    int first = Mathf.Min(cursor, info.characterCount - 1), last = Mathf.Min(cursor + Mathf.Max(0, length - 1), info.characterCount - 1);
+                    int lines = first < 0 ? 1 : info.characterInfo[last].lineNumber - info.characterInfo[first].lineNumber + 1;
+                    if (i > 0) right.Append('\n');
+                    right.Append(rows[i].Right ?? "");
+                    for (int extra = 1; extra < lines; extra++) right.Append('\n');
+                    cursor += length + 1;
+                }
+                box.RightColumnText.text = right.ToString();
+            }
         }
 
         // Slots: a rarity tint drawn behind the icon, in Overhaul's own image.
@@ -276,20 +332,20 @@ namespace Overhaul
             {
                 damage.AddLine("<color=" + label + ">Projectile sup.</color>", "25%", false);
             }
-            var lines = new List<string>();
+            var lines = new List<RowText>();
             foreach (string effect in new[] { "Dégâts de feu +18 %", "Coût en eitr -15 %", "Vitesse d'attaque +10 %", "Chances de coup critique +6 %",
                 "Les attaques enflamment les ennemis touchés", "Régénération d'eitr +12 %", "Les ennemis tués explosent en libérant des flammes" })
                 lines.Add(Row(effect, mythic));
-            lines.Add("<align=left>Emplacements de shard (3/4)");
+            lines.Add(new RowText("Emplacements de shard (3/4)"));
             foreach (string effect in new[] { "Dégâts de feu +6 %", "Coût en eitr -4 %", "Gagne de l'adrénaline en infligeant des dégâts de feu" })
                 lines.Add(Row(effect, shard, "  ", "<color=" + shard + ">\u25C8</color> "));
-            lines.Add("<align=left>  <color=#808080>\u25CA Emplacement vide</color>");
-            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = string.Join("\n", lines);
-            tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab).Text.text = SetRows(
+            lines.Add(new RowText("  <color=#808080>\u25CA Emplacement vide</color>"));
+            AddRows(tooltip, lines);
+            AddRows(tooltip, SetRows(
                 "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
                 "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
                 "<color=" + mythic + ">(2) - Dégâts de feu +10 %</color>\n<color=#808080ff>(3) - Résistance au feu\n(4) - Régénération d'eitr +15 %\n" +
-                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>");
+                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>"));
         }
     }
 
