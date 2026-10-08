@@ -6,6 +6,7 @@ namespace Overhaul
 {
     // Trinkets give their bonus permanently while worn, like any other equipment, instead of only for a
     // few seconds when the adrenaline bar is full. Adrenaline is disabled: trinkets no longer fill it.
+    // With Epic Loot, whose enchantments are built on adrenaline, the bar stays as a resource for them.
     internal static class PermanentTrinkets
     {
         internal static void Apply(ObjectDB database)
@@ -30,7 +31,7 @@ namespace Overhaul
                     }
                     shared.m_fullAdrenalineSE = null;
                 }
-                shared.m_maxAdrenaline = 0; // No adrenaline bar.
+                if (!EpicLootVisuals.Loaded) shared.m_maxAdrenaline = 0; // No adrenaline bar.
             }
         }
 
@@ -46,6 +47,7 @@ namespace Overhaul
             private static MethodBase Target() => AccessTools.Method(typeof(Player), "ModifyAdrenaline") ?? AccessTools.Method(typeof(Character), "ModifyAdrenaline");
             private static bool Prepare()
             {
+                if (EpicLootVisuals.Loaded) return false;
                 if (Target() != null) return true;
                 Utility.Log.LogWarning("Adrenaline : ModifyAdrenaline introuvable, adrenaline non desactivee");
                 return false;
