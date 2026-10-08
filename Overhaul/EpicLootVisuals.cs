@@ -158,6 +158,16 @@ namespace Overhaul
         // on the same line; a text with several numbers, or a number inside the sentence, stays whole. One
         // text per box: the value sits on the label's last line even when the label wraps.
         private static readonly Regex Value = new Regex(@"^\s*([+\-−]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*:?\s+|\s*:?\s+([+\-−x]?\d+(?:[.,]\d+)?\s?(?:%|x|s)?)\s*$");
+        // Values use the regular stat colour; elemental effects keep their element's colour, as in the damage lines.
+        static string ValueColor(string label)
+        {
+            string l = label.ToLowerInvariant();
+            if (l.Contains("feu") || l.Contains("fire")) return "#FF703D";
+            if (l.Contains("givre") || l.Contains("froid") || l.Contains("frost")) return "#65B5FF";
+            if (l.Contains("poison")) return "#78D65A";
+            if (l.Contains("foudre") || l.Contains("lightning")) return "#FFE45C";
+            return "#FFFFFF";
+        }
         internal static string Row(string text, string color, string indent = "", string icon = "")
         {
             text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
@@ -169,7 +179,7 @@ namespace Overhaul
         // A number that belongs to the sentence ("below 30 %", "every 5 s") stays in it.
         if (System.Text.RegularExpressions.Regex.IsMatch(label, @"\b(sous|de|du|des|à|au|aux|par|pendant|toutes|tous|chaque|en|under|below|above|of|for|by|every|at|over)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
             return "<align=left>" + indent + icon + "<color=" + color + ">" + text + "</color>";
-            return "<align=left>" + indent + icon + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + color + ">" + value + "</color></b></line-height>";
+            return "<align=left>" + indent + icon + "<color=" + color + ">" + label + "</color><line-height=0>\n<align=right><b><color=" + ValueColor(label) + ">" + value + "</color></b></line-height>";
         }
         // Set bonus lines "(n) - text value": the value goes right-aligned in bold, like the effects. A colour
         // opened on one line may run over the next ones, as in Epic Loot's text.
