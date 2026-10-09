@@ -42,7 +42,7 @@ namespace Overhaul
 
         // Applies the style to one cell. rarity: the rarity colour, or null for an item without rarity.
         // hud: a hotbar cell, whose background is its "bkg" child and uses the HUD background design.
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false)
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false)
         {
             if (!cell || !icon || !Ready()) return;
             Sprite design = hud && hudBackground ? hudBackground : background;
@@ -85,7 +85,7 @@ namespace Overhaul
                 borderImage.gameObject.SetActive(hasItem);
                 borderImage.color = rarity ?? BaseBorder;
             }
-            Quality(cell, rarity ?? BaseBorder);
+            Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
         }
 
         private static Image Child(GameObject cell, string name, Sprite sprite, int index)
@@ -104,7 +104,7 @@ namespace Overhaul
         }
 
         // Quality badge: the design's diamond, 33 px, its top 14 px above the cell, centred; the number follows.
-        private static void Quality(GameObject cell, Color borderColor)
+        private static void Quality(GameObject cell, Color borderColor, bool shown)
         {
             Transform badge = cell.transform.Find("quality_bkg"), number = cell.transform.Find("quality");
             if (!badge) return;
@@ -113,7 +113,8 @@ namespace Overhaul
             Place((RectTransform)badge, QualitySize);
             // The badge border, coloured like the cell border (base colour, or the rarity colour).
             Image badgeBorder = Child(badge.gameObject, "OverhaulQualityBorder", qualityBorder, badge.childCount);
-            if (badgeBorder) badgeBorder.color = borderColor;
+            // Shown like Auga's own badge: only for an item that can be upgraded (max quality above 1).
+            if (badgeBorder) { badgeBorder.color = borderColor; badgeBorder.enabled = shown; }
             if (number)
             {
                 Place((RectTransform)number, ((RectTransform)number).sizeDelta.y);
@@ -142,7 +143,7 @@ namespace Overhaul
                 {
                     if (!element) continue;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item));
+                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1);
                 }
             }
         }
