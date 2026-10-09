@@ -171,6 +171,10 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\trough-layout.tsv"><LogicalName>Overhaul.Assets.trough-layout.tsv</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Slots\slot_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_bg.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Slots\slot_item_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_item_bg.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Slots\slot_item_border.png"><LogicalName>Overhaul.Assets.Slots.slot_item_border.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Slots\slot_quality_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_quality_bg.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
@@ -264,7 +268,7 @@
 <Compile Include="..\AugaIntegration\Auga\TranslationLanguage.cs" />
 <Compile Include="..\AugaIntegration\Auga\CharacterSelection_Setup.cs" />
 <Compile Include="..\AugaIntegration\Auga\WorldSelection_Setup.cs" />
-<Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="KeyHintPanel.cs" /><Compile Include="DashSettingToggle.cs" /><Compile Include="EndCreditsFix.cs" /><Compile Include="PermanentTrinkets.cs" /><Compile Include="EpicLootVisuals.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
+<Compile Include="TarDrain.cs" /><Compile Include="CropFarming.cs" /><Compile Include="DvergerCirclet.cs" /><Compile Include="TreeSeedDrops.cs" /><Compile Include="MountainFirDrops.cs" /><Compile Include="IntegratedUi.cs" /><Compile Include="KeyHintPanel.cs" /><Compile Include="DashSettingToggle.cs" /><Compile Include="EndCreditsFix.cs" /><Compile Include="PermanentTrinkets.cs" /><Compile Include="EpicLootVisuals.cs" /><Compile Include="ItemSlotStyle.cs" /><Compile Include="..\AugaIntegration\Auga\Construction_Setup.cs" />
 <EmbeddedResource Include="..\AugaIntegration\Assets\stationwindows"><LogicalName>Overhaul.stationwindows</LogicalName></EmbeddedResource><EmbeddedResource Include="..\AugaIntegration\Assets\augaassets"><LogicalName>Overhaul.augaassets</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\AugaIntegration\AugaUnityLib\bin\$(Configuration)\Unity.Auga.dll"><LogicalName>Overhaul.Unity.Auga.dll</LogicalName></EmbeddedResource>
 <EmbeddedResource Include="..\..\..\Libs\fastJSON.dll"><LogicalName>Overhaul.fastJSON.dll</LogicalName></EmbeddedResource>
