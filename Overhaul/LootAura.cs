@@ -29,7 +29,7 @@ namespace Overhaul
         public static GameObject Spawn(int level, Vector3 position, Transform follow = null)
         {
             if (level < 1 || level > Levels || !Ready() || !prefabs[level - 1]) return null;
-            GameObject aura = Object.Instantiate(prefabs[level - 1], position + Vector3.up * Lift, Quaternion.identity);
+            GameObject aura = Object.Instantiate(prefabs[level - 1], (follow ? Ground(position) : position) + Vector3.up * Lift, Quaternion.identity);
             aura.transform.localScale = Vector3.one * Scale;
             foreach (var system in aura.GetComponentsInChildren<ParticleSystem>(true))
             {
@@ -40,32 +40,60 @@ namespace Overhaul
             return aura;
         }
 
+        private static int groundMask;
+        // The surface under the item (terrain, floors, rocks), or the item itself when nothing is below.
+        private static Vector3 Ground(Vector3 position)
+        {
+            if (groundMask == 0) groundMask = LayerMask.GetMask("terrain", "Default", "static_solid", "piece");
+            return Physics.Raycast(position + Vector3.up * .5f, Vector3.down, out RaycastHit hit, 3f, groundMask) ? hit.point : position;
+        }
+
         private class Upright : MonoBehaviour
         {
             public Transform Target;
             private void LateUpdate()
             {
                 if (!Target) { Destroy(gameObject); return; }
-                transform.SetPositionAndRotation(Target.position + Vector3.up * Lift, Quaternion.identity);
+                transform.SetPositionAndRotation(Ground(Target.position) + Vector3.up * Lift, Quaternion.identity);
             }
         }
 
-        // Test: the six levels side by side in front of the local player, removed after a minute.
-        internal static string Preview()
+        // Test: every item lying on the ground gets a random level, fixed by its world id
+        // (IsEquipment will restrict it to equipment once Overhaul rarities exist).
+        [HarmonyLib.HarmonyPatch(typeof(ItemDrop), "Start")]
+        private static class GroundItem
         {
-            Player player = Player.m_localPlayer;
-            if (!player) return "Overhaul : commande a lancer depuis un personnage connecte.";
-            if (!Ready()) return "Overhaul : effets de loot introuvables.";
-            Vector3 forward = Vector3.ProjectOnPlane(player.transform.forward, Vector3.up).normalized;
-            Vector3 right = Vector3.Cross(forward, Vector3.up);
-            for (int i = 0; i < Levels; i++)
+            private static void Postfix(ItemDrop __instance)
             {
-                Vector3 p = player.transform.position + forward * 4f + right * ((i - 2.5f) * 1.2f);
-                if (ZoneSystem.instance) p.y = ZoneSystem.instance.GetGroundHeight(p);
-                GameObject aura = Spawn(i + 1, p);
-                if (aura) Object.Destroy(aura, 60f);
+                if (ZNet.instance && ZNet.instance.IsDedicated()) return;
+                if (!__instance || !__instance.m_nview || !__instance.m_nview.IsValid()) return;
+                int level = 1 + (int)((uint)__instance.m_nview.GetZDO().m_uid.GetHashCode() % Levels);
+                Spawn(level, __instance.transform.position, __instance.transform);
             }
-            return "Overhaul : 6 auras de loot affichees pendant 60 s.";
+        }
+
+        // Equipment, weapons, shields and tools; resources, food, trophies and the like keep the vanilla look.
+        internal static bool IsEquipment(ItemDrop.ItemData item)
+        {
+            switch (item?.m_shared?.m_itemType)
+            {
+                case ItemDrop.ItemData.ItemType.OneHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft:
+                case ItemDrop.ItemData.ItemType.Bow:
+                case ItemDrop.ItemData.ItemType.Shield:
+                case ItemDrop.ItemData.ItemType.Helmet:
+                case ItemDrop.ItemData.ItemType.Chest:
+                case ItemDrop.ItemData.ItemType.Legs:
+                case ItemDrop.ItemData.ItemType.Shoulder:
+                case ItemDrop.ItemData.ItemType.Utility:
+                case ItemDrop.ItemData.ItemType.Trinket:
+                case ItemDrop.ItemData.ItemType.Tool:
+                case ItemDrop.ItemData.ItemType.Torch:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
