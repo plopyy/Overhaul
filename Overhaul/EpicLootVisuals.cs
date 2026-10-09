@@ -264,6 +264,105 @@ namespace Overhaul
         }
 
         internal static void AddRows(ComplexTooltip tooltip, List<TooltipRow> rows) => TooltipRowAligner.Add(tooltip, rows);
+        // Rarity marking in the Auga style: the cell's own outline sprite in the rarity colour (under the
+        // selection frame) and a diagonal gradient, 0 % top-left to 80 % bottom-right, clipped to the cell
+        // shape and drawn under the icon. Nothing for items without a rarity.
+        private const float GradientMax = 0.8f;
+        private static Texture2D gradient;
+        private static void Decorate(GameObject cell, Image icon, ItemDrop.ItemData item)
+        {
+            if (!cell || !icon) return;
+            Color? rarity = Rarity(item);
+            Transform fill = cell.transform.Find("OverhaulRarityGradient"), outline = cell.transform.Find("OverhaulRarityOutline");
+            if (rarity == null)
+            {
+                if (fill) fill.gameObject.SetActive(false);
+                if (outline) outline.gameObject.SetActive(false);
+                return;
+            }
+            if (!fill) fill = CreateGradient(cell, icon);
+            if (!outline) outline = CreateOutline(cell);
+            Color color = rarity.Value;
+            if (fill)
+            {
+                fill.gameObject.SetActive(true);
+                Color tint = color; tint.a = GradientMax;
+                fill.GetComponentInChildren<RawImage>(true).color = tint;
+            }
+            if (outline)
+            {
+                outline.gameObject.SetActive(true);
+                outline.GetComponent<Image>().color = color;
+            }
+        }
+
+        private static Transform CreateGradient(GameObject cell, Image icon)
+        {
+            Image shape = cell.GetComponent<Image>();
+            if (!shape || !shape.sprite) return null;
+            if (!gradient)
+            {
+                gradient = new Texture2D(64, 64, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+                for (int y = 0; y < 64; y++)
+                    for (int x = 0; x < 64; x++)
+                        gradient.SetPixel(x, y, new Color(1, 1, 1, (x / 63f + (1 - y / 63f)) / 2f));
+                gradient.Apply();
+            }
+            var mask = new GameObject("OverhaulRarityGradient", typeof(RectTransform), typeof(Image), typeof(Mask));
+            mask.transform.SetParent(cell.transform, false);
+            mask.transform.SetSiblingIndex(icon.transform.GetSiblingIndex());
+            Stretch((RectTransform)mask.transform);
+            Image maskImage = mask.GetComponent<Image>();
+            maskImage.sprite = shape.sprite; maskImage.type = shape.type; maskImage.raycastTarget = false;
+            mask.GetComponent<Mask>().showMaskGraphic = false;
+            var fill = new GameObject("Fill", typeof(RectTransform), typeof(RawImage));
+            fill.transform.SetParent(mask.transform, false);
+            Stretch((RectTransform)fill.transform);
+            RawImage raw = fill.GetComponent<RawImage>();
+            raw.texture = gradient; raw.raycastTarget = false;
+            return mask.transform;
+        }
+
+        private static Transform CreateOutline(GameObject cell)
+        {
+            Transform selected = cell.transform.Find("selected");
+            if (!selected || !selected.GetComponent<Image>()) return null;
+            GameObject outline = UnityEngine.Object.Instantiate(selected.gameObject, cell.transform);
+            outline.name = "OverhaulRarityOutline";
+            outline.transform.SetSiblingIndex(selected.GetSiblingIndex());
+            outline.GetComponent<Image>().raycastTarget = false;
+            return outline.transform;
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+        }
+
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.UpdateGui))]
+        private static class GridRarity
+        {
+            private static bool Prepare() => Loaded;
+            private static void Postfix(InventoryGrid __instance)
+            {
+                Inventory inventory = __instance.GetInventory();
+                if (!ready || inventory == null) return;
+                foreach (var element in __instance.m_elements)
+                    if (element) Decorate(element.gameObject, element.m_icon, element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null);
+            }
+        }
+
+        [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
+        private static class HotbarRarity
+        {
+            private static bool Prepare() => Loaded;
+            private static void Postfix(HotkeyBar __instance, Player player)
+            {
+                if (!ready || !player) return;
+                for (int i = 0; i < __instance.m_elements.Count; i++)
+                    Decorate(__instance.m_elements[i].m_go, __instance.m_elements[i].m_icon, __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i));
+            }
+        }
 
         [HarmonyPatch(typeof(FejdStartup), "Awake")]
         private static class AfterPluginsLoaded
