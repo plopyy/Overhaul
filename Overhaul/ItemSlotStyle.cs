@@ -19,7 +19,7 @@ namespace Overhaul
         private static readonly Color BaseBorder = new Color32(0x70, 0x63, 0x56, 0xFF);
         private const string GlowName = "OverhaulItemGlow", BorderName = "OverhaulItemBorder";
 
-        private static Sprite background, glow, border, quality, qualityBorder;
+        private static Sprite background, hudBackground, glow, border, quality, qualityBorder;
 
         private static Sprite Load(string name)
         {
@@ -36,18 +36,20 @@ namespace Overhaul
 
         private static bool Ready()
         {
-            if (!background) { background = Load("slot_bg"); glow = Load("slot_item_bg"); border = Load("slot_item_border"); quality = Load("slot_quality_bg"); qualityBorder = Load("slot_quality_border"); }
+            if (!background) { background = Load("slot_bg"); hudBackground = Load("slot_HUD_bg"); glow = Load("slot_item_bg"); border = Load("slot_item_border"); quality = Load("slot_quality_bg"); qualityBorder = Load("slot_quality_border"); }
             return background;
         }
 
         // Applies the style to one cell. rarity: the rarity colour, or null for an item without rarity.
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity)
+        // hud: a hotbar cell, whose background is its "bkg" child and uses the HUD background design.
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false)
         {
             if (!cell || !icon || !Ready()) return;
-            Image slot = cell.GetComponent<Image>();
-            if (slot && slot.sprite != background)
+            Sprite design = hud && hudBackground ? hudBackground : background;
+            Image slot = hud ? cell.transform.Find("bkg")?.GetComponent<Image>() : cell.GetComponent<Image>();
+            if (slot && slot.sprite != design)
             {
-                slot.sprite = background; slot.type = Image.Type.Simple; slot.color = Color.white;
+                slot.sprite = design; slot.type = Image.Type.Simple; slot.color = Color.white;
                 // The cell's button tints the background; its normal state shows the design colour as is,
                 // hover and press keep their relative change.
                 Button button = cell.GetComponent<Button>();
@@ -154,7 +156,7 @@ namespace Overhaul
                 for (int i = 0; i < __instance.m_elements.Count; i++)
                 {
                     ItemDrop.ItemData item = __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i);
-                    Apply(__instance.m_elements[i].m_go, __instance.m_elements[i].m_icon, item != null, EpicLootVisuals.RarityOf(item));
+                    Apply(__instance.m_elements[i].m_go, __instance.m_elements[i].m_icon, item != null, EpicLootVisuals.RarityOf(item), true);
                 }
             }
         }
