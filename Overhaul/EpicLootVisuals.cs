@@ -20,7 +20,6 @@ namespace Overhaul
     {
         internal const string Guid = "randyknapp.mods.epicloot";
         internal static bool Loaded => Chainloader.PluginInfos.ContainsKey(Guid);
-        private const string BackgroundName = "OverhaulRarity";
 
         private static bool ready;
         private static Func<ItemDrop.ItemData, string> rarityColor;
@@ -264,58 +263,6 @@ namespace Overhaul
         }
 
         internal static void AddRows(ComplexTooltip tooltip, List<TooltipRow> rows) => TooltipRowAligner.Add(tooltip, rows);
-
-        // Slots: a rarity tint drawn behind the icon, in Overhaul's own image.
-        private static void Paint(Image icon, ItemDrop.ItemData item)
-        {
-            if (!icon || !icon.transform.parent) return;
-            Color? color = Rarity(item);
-            Transform existing = icon.transform.parent.Find(BackgroundName);
-            if (color == null) { if (existing) existing.gameObject.SetActive(false); return; }
-            Image background;
-            if (existing) background = existing.GetComponent<Image>();
-            else
-            {
-                var go = new GameObject(BackgroundName, typeof(RectTransform), typeof(Image));
-                go.transform.SetParent(icon.transform.parent, false);
-                go.transform.SetSiblingIndex(icon.transform.GetSiblingIndex());
-                var rect = (RectTransform)go.transform;
-                rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = new Vector2(3, 3); rect.offsetMax = new Vector2(-3, -3);
-                background = go.GetComponent<Image>();
-                background.raycastTarget = false;
-                // The slot's own shape, so the tint follows the Auga cell instead of a plain square.
-                Image slot = icon.transform.parent.GetComponent<Image>();
-                if (slot && slot.sprite) { background.sprite = slot.sprite; background.type = slot.type; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero; }
-            }
-            Color tint = color.Value; tint.a = 0.30f;
-            background.color = tint;
-            background.gameObject.SetActive(true);
-        }
-
-        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.UpdateGui))]
-        private static class GridBackgrounds
-        {
-            private static bool Prepare() => Loaded;
-            private static void Postfix(InventoryGrid __instance)
-            {
-                Inventory inventory = __instance.GetInventory();
-                if (!ready || inventory == null) return;
-                foreach (var element in __instance.m_elements)
-                    if (element) Paint(element.m_icon, element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null);
-            }
-        }
-
-        [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
-        private static class HotbarBackgrounds
-        {
-            private static bool Prepare() => Loaded;
-            private static void Postfix(HotkeyBar __instance, Player player)
-            {
-                if (!ready || !player) return;
-                for (int i = 0; i < __instance.m_elements.Count; i++)
-                    Paint(__instance.m_elements[i].m_icon, __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i));
-            }
-        }
 
         [HarmonyPatch(typeof(FejdStartup), "Awake")]
         private static class AfterPluginsLoaded
