@@ -80,6 +80,7 @@ namespace Overhaul
         // Applies the style to one cell. rarity: the rarity colour, or null for an item without rarity.
         // hud: a hotbar cell, whose background is its "bkg" child and uses the HUD background design.
         // The slot border image, also used for the selection frames (ammo selection, gamepad selection).
+        private const float HoverLighten = .4f;
         public static Sprite BorderSprite => Ready() ? border : null;
 
         // position: where the cell sits in its window, 0 = left edge, 1 = right edge (-1: unknown, design colour).
@@ -122,11 +123,13 @@ namespace Overhaul
                 glowImage.gameObject.SetActive(hasItem && rarity != null);
                 if (rarity != null) glowImage.color = rarity.Value;
             }
-            // The border marks items with a rarity; any hovered cell, empty or not, shows it too.
+            // The border marks items with a rarity; any hovered cell, empty or not, shows it too (base colour).
             if (borderImage)
             {
                 borderImage.gameObject.SetActive((hasItem && rarity != null) || hovered);
-                borderImage.color = hasItem ? (rarity ?? BaseBorder) : BaseBorder;
+                Color tint = hasItem && rarity != null ? rarity.Value : BaseBorder;
+                // A rarity border is always shown: hovering lightens it instead.
+                borderImage.color = hovered && hasItem && rarity != null ? Color.Lerp(tint, Color.white, HoverLighten) : tint;
             }
             Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
             Selection(cell);
