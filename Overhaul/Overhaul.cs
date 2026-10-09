@@ -84,6 +84,7 @@ namespace Overhaul
             Persistence.GamePersistence.Tick();
             Storage.VehicleMarkers.Tick();
             Storage.CircletFog.Tick();
+            Storage.CircletMist.Tick();
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.LateUpdate();
             Commands.AdminCommands.Tick();
             Dungeons.DungeonRuntime.Tick();

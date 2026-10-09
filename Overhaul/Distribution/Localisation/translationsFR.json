@@ -2394,7 +2394,7 @@
   "overhaul_hoe_drain_tar_description": "Retire du goudron liquide dans un rayon de 2 m pour 5 pierres. Nécessite une houe de niveau 3 ou plus. Ne modifie ni le terrain ni les objets.",
   "overhaul_hoe_tar_quality": "Nécessite une houe de niveau 3 ou plus.",
   "overhaul_spirit_circlet": "Diadème d'esprit",
-  "overhaul_spirit_circlet_description": "Un diadème imprégné de la lumière d'un esprit. Éclaire les alentours et dissipe entièrement de votre vue le brouillard, la brume, la fumée et la poussière.",
+  "overhaul_spirit_circlet_description": "Un diadème imprégné de la lumière d'un esprit. Éclaire les alentours et éclaircit la brume des Terres brumeuses autour de vous.",
   "overhaul_hoe_no_tar": "Aucun goudron liquide dans la zone ciblée.",
   "overhaul_projectile_extra": "Projectile sup.",
   "overhaul_staff_shield": "Bouclier élém.",

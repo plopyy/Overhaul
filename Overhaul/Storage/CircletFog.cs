@@ -41,8 +41,16 @@ namespace Overhaul.Storage
                 opacity = Mathf.Min(opacity, ItemOpacity(MultiUtility.GetExtra(player, i)));
             return opacity;
         }
-        private static float ItemOpacity(ItemDrop.ItemData item) => DvergerCirclet.IsSpirit(item) ? 0f :
+        // The spirit circlet only thins the Mistlands mist (CircletMist); the other fog, smoke and dust stay as they are.
+        private static float ItemOpacity(ItemDrop.ItemData item) => DvergerCirclet.IsSpirit(item) ? 1f :
             DvergerCirclet.IsCirclet(item) || item?.m_shared?.m_name == "$item_helmet_dverger" ? .5f : 1f;
+        internal static bool SpiritWorn(Player player)
+        {
+            if (DvergerCirclet.IsSpirit(player.m_helmetItem) || DvergerCirclet.IsSpirit(player.m_utilityItem)) return true;
+            for (int i = 0; i < MultiUtility.GetExtraCount(player); i++)
+                if (DvergerCirclet.IsSpirit(MultiUtility.GetExtra(player, i))) return true;
+            return false;
+        }
         internal static bool IsFog(Material material)
         {
             if (!material || !material.HasProperty(ColorId)) return false;
