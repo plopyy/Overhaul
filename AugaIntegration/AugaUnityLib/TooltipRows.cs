@@ -43,6 +43,11 @@ namespace AugaUnity
             box.Text.text = string.Join("\n", rows.Select(r => r.Left));
             box.RightColumnText.text = string.Join("\n", rows.Select(r => r.Right ?? ""));
             if (box.Text.rectTransform.rect.width <= 0) return;
+            // Labels wrap before the widest value instead of running under it.
+            float valueWidth = 0;
+            foreach (var row in rows)
+                if (!string.IsNullOrEmpty(row.Right)) valueWidth = Mathf.Max(valueWidth, box.RightColumnText.GetPreferredValues(row.Right).x);
+            var margin = box.Text.margin; margin.z = valueWidth > 0 ? valueWidth + 8 : 0; box.Text.margin = margin;
             box.Text.ForceMeshUpdate();
             TMPro.TMP_TextInfo info = box.Text.textInfo;
             var right = new StringBuilder();

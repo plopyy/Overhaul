@@ -3,7 +3,7 @@
 ## 2.2.1 (in progress)
 
 ### Added
-- **Epic Loot compatibility.** Epic Loot's own item display, which broke the Auga interface, is replaced by Overhaul's: rarity tint behind magic items in the inventory, chests and hotbar, and Auga tooltips showing the rarity, the magic effects, shard slots and legendary/mythic set bonuses like the other stats. Item tooltips are reorganised to make room (wider, more compact, damage shown as the actual range with the elemental stat included, staff shield instead of blocking stats, remaining stats such as the chance to apply an effect shown with their value on the right) and scaled down if still taller than the screen. (2.2.1.47)
+- **Epic Loot compatibility.** Epic Loot's own item display, which broke the Auga interface, is replaced by Overhaul's: rarity tint behind magic items in the inventory, chests and hotbar, and Auga tooltips showing the rarity, the magic effects, shard slots and legendary/mythic set bonuses like the other stats. Item tooltips are reorganised to make room (wider, more compact, damage shown as the actual range with the elemental stat included, staff shield instead of blocking stats, remaining stats such as the chance to apply an effect shown with their value on the right) and scaled down if still taller than the screen. (2.2.1.49)
 - Server option `[Items] StackSize100`, on by default: turn it off to keep the vanilla stack sizes instead of stacks of 100. It applies right away, even when changed during a game. (2.2.1.18)
   With the option off, stacks bigger than the vanilla limit in your inventory, or taken from a chest, are split into normal stacks (100 wood becomes 2 Ã— 50); what does not fit is dropped at your feet. (2.2.1.19)
 - Settings > Mods: **Dash (replaces sprint)** option, on by default. When turned off, the Run key sprints like in vanilla Valheim and drains stamina; sprint speed is scaled to Overhaul's faster jog, so sprinting stays faster than jogging. Per-player setting. (2.2.1.1)
@@ -17,7 +17,7 @@
 - Settings > Mods: shortcut rows are slightly closer together, so the new row, the Dash option and the help text fit above the buttons. (2.2.1.3)
 
 ### Fixed
-- TEMPORARY test (to remove before release): every staff tooltip shows sample Epic Loot boxes and every Overhaul stat line (worst case: extra projectile, 7 effects, 4 shard slots, 6-piece set), with or without Epic Loot, to check the tooltip height in game. (2.2.1.28 to 2.2.1.34)
+- TEMPORARY test (to remove before release): every staff tooltip shows a sample mythic Epic Loot item (7 effects, 4 shard slots, 6-piece set, Epic Loot's French texts), displayed by the same code as real Epic Loot items, with or without Epic Loot. (2.2.1.28 to 2.2.1.49)
 - The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)
 - Since Valheim 1.0.17, the end-game credits could stay open invisibly in the background and grey out other windows. They now stay closed unless the end credits are actually playing. (2.2.1.6)
 - Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.10)

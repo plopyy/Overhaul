@@ -76,76 +76,99 @@ namespace Overhaul
             return !string.IsNullOrEmpty(html) && ColorUtility.TryParseHtmlString(html, out Color color) ? color : (Color?)null;
         }
 
-        // Tooltip: rarity-coloured name, rarity in the subtitle, then the effects and shard slots in their own box.
+        // What the tooltip shows for a magic item, read from Epic Loot (or, for the staff layout test, sample
+        // data in Epic Loot's formats). Both go through Show, so the test displays exactly like real items.
+        internal sealed class MagicDisplay
+        {
+            internal string Topic;                     // decorated name (already coloured)
+            internal string Rarity;                    // rarity display, e.g. "<color=#ff7f2a>Mythique</color>"
+            internal string Color;                     // rarity colour of the effect lines
+            internal readonly List<string> Effects = new List<string>();
+            internal readonly List<string> Details = new List<string>();      // Shift: detail block per effect, or null
+            internal readonly List<(string Text, string Color, string Icon)> Sockets = new List<(string, string, string)>();
+            internal int Slots;
+            internal string Set;                       // Epic Loot's raw set text (GetMagicSetTooltip)
+        }
+
+        // Tooltip: rarity-coloured name, rarity on its own line, then effects with shard slots and the set,
+        // as two-column rows.
         private static void ExtendTooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
             try
             {
                 if (Rarity(item) == null) return;
-                if (decoratedName != null) tooltip.SetTopic(Localization.instance.Localize((string)decoratedName.Invoke(null, new object[] { item, null })));
-                object magic = getMagicItem?.Invoke(null, new object[] { item });
-                if (magic == null || magicTooltip == null) return;
-                string rarity = rarityDisplay != null ? (string)rarityDisplay.Invoke(magic, null) : null;
-                if (!string.IsNullOrEmpty(rarity)) tooltip.SetSubtitle(Localization.instance.Localize(rarity) + "\n" + tooltip.GenerateItemSubtext(item));
-                AddEffects(tooltip, magic);
-                // Set header: just "Name (equipped/size)".
-                string set = magicSetTooltip != null ? (string)magicSetTooltip.Invoke(null, new object[] { item }) : "";
-                set = Regex.Replace(set ?? "", @"\$mod_epicloot_set:\s*", "");
-                set = Regex.Replace(set, @"\):</color>", ")</color>");
-                // The Auga font has no U+2023 bullet used by Epic Loot: it would draw as a box.
-                set = Localization.instance.Localize(set.Replace("\u2023", "-")).Trim('\n', ' ');
-                if (set.Length > 0) AddRows(tooltip, SetRows(set));
+                MagicDisplay display = Read(item);
+                if (display != null) Show(tooltip, item, display);
             }
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
 
-        // Effects as two-column rows like the other stats: the text on the left, the rolled value on the
-        // right, in the rarity colour and without Epic Loot's pip. Shard slots follow in their own colour.
-        // Holding Shift adds Epic Loot's detail lines under each effect.
-        private static MethodInfo effectText, detailBlock, rarityHtml, shardSprite;
-        private static void AddEffects(ComplexTooltip tooltip, object magic)
+        internal static void Show(ComplexTooltip tooltip, ItemDrop.ItemData item, MagicDisplay display)
         {
+            if (!string.IsNullOrEmpty(display.Topic)) tooltip.SetTopic(Localization.instance.Localize(display.Topic));
+            if (!string.IsNullOrEmpty(display.Rarity)) tooltip.SetSubtitle(Localization.instance.Localize(display.Rarity) + "\n" + tooltip.GenerateItemSubtext(item));
+            var rows = new List<TooltipRow>();
+            for (int i = 0; i < display.Effects.Count; i++)
+            {
+                rows.Add(Row(display.Effects[i], display.Color));
+                string block = i < display.Details.Count ? display.Details[i] : null;
+                if (!string.IsNullOrEmpty(block)) rows.Add(new TooltipRow("<color=#c0c0c0>" + Localization.instance.Localize(block).TrimEnd('\n') + "</color>"));
+            }
+            if (display.Slots > 0)
+            {
+                rows.Add(new TooltipRow(Localization.instance.Localize("$mod_epicloot_sockets") + " (" + display.Sockets.Count + "/" + display.Slots + ")"));
+                foreach (var socket in display.Sockets)
+                    rows.Add(Row(socket.Text, socket.Color, "  ", (string.IsNullOrEmpty(socket.Icon) ? "<color=" + socket.Color + ">◈</color>" : socket.Icon) + " "));
+                for (int i = display.Sockets.Count; i < display.Slots; i++)
+                    rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>"));
+            }
+            AddRows(tooltip, rows);
+            // Set header: just "Name (equipped/size)".
+            string set = Regex.Replace(display.Set ?? "", @"\$mod_epicloot_set:\s*", "");
+            set = Regex.Replace(set, @"\):</color>", ")</color>");
+            // The Auga font has no U+2023 bullet used by Epic Loot: it would draw as a box.
+            set = Localization.instance.Localize(set.Replace("‣", "-")).Trim('\n', ' ');
+            if (set.Length > 0) AddRows(tooltip, SetRows(set));
+        }
+
+        private static MethodInfo effectText, detailBlock, rarityHtml, shardSprite;
+        private static MagicDisplay Read(ItemDrop.ItemData item)
+        {
+            object magic = getMagicItem?.Invoke(null, new object[] { item });
+            if (magic == null) return null;
             Type type = magic.GetType();
             effectText = effectText ?? type.GetMethods(BindingFlags.Public | BindingFlags.Static).FirstOrDefault(m => m.Name == "GetEffectText" && m.GetParameters().Length == 4);
             detailBlock = detailBlock ?? type.GetMethod("GetEffectDetailBlock", BindingFlags.Public | BindingFlags.Static);
             rarityHtml = rarityHtml ?? Type.GetType("EpicLoot.EpicLoot, EpicLoot")?.GetMethod("GetRarityColor", BindingFlags.Public | BindingFlags.Static);
             shardSprite = shardSprite ?? Type.GetType("EpicLoot.ShardStones.ShardTooltipSprites, EpicLoot")?.GetMethod("GetSpriteTag", BindingFlags.Public | BindingFlags.Static);
-            if (effectText == null) return;
             object rarity = type.GetField("Rarity").GetValue(magic);
             string legendary = (string)type.GetField("LegendaryID").GetValue(magic);
-            string color = Html(rarity);
             bool details = (bool)(type.GetProperty("ShowEffectDetails", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) ?? false);
-            var rows = new List<TooltipRow>();
-            foreach (object effect in (System.Collections.IEnumerable)type.GetField("Effects").GetValue(magic))
+            var display = new MagicDisplay
             {
-                rows.Add(Row((string)effectText.Invoke(null, new[] { effect, rarity, (object)false, legendary }), color));
-                if (details && detailBlock != null)
+                Topic = decoratedName != null ? (string)decoratedName.Invoke(null, new object[] { item, null }) : null,
+                Rarity = rarityDisplay != null ? (string)rarityDisplay.Invoke(magic, null) : null,
+                Color = Html(rarity),
+                Slots = (int)type.GetField("SocketCount").GetValue(magic),
+                Set = magicSetTooltip != null ? (string)magicSetTooltip.Invoke(null, new object[] { item }) : null,
+            };
+            if (effectText != null)
+                foreach (object effect in (System.Collections.IEnumerable)type.GetField("Effects").GetValue(magic))
                 {
-                    string block = Localization.instance.Localize((string)detailBlock.Invoke(null, new[] { effect, rarity, legendary, null, "   " })).TrimEnd('\n');
-                    if (block.Length > 0) rows.Add(new TooltipRow("<color=#c0c0c0>" + block + "</color>"));
+                    display.Effects.Add((string)effectText.Invoke(null, new[] { effect, rarity, (object)false, legendary }));
+                    display.Details.Add(details && detailBlock != null ? (string)detailBlock.Invoke(null, new[] { effect, rarity, legendary, null, "   " }) : null);
                 }
-            }
-            int slots = (int)type.GetField("SocketCount").GetValue(magic);
-            if (slots > 0) AddSockets(rows, type, magic, slots);
-            AddRows(tooltip, rows);
-        }
-
-        private static void AddSockets(List<TooltipRow> rows, Type type, object magic, int slots)
-        {
-            var sockets = ((System.Collections.IEnumerable)type.GetField("Sockets").GetValue(magic)).Cast<object>().Where(s => s != null).ToList();
-            rows.Add(new TooltipRow(Localization.instance.Localize("$mod_epicloot_sockets") + " (" + sockets.Count + "/" + slots + ")"));
-            foreach (object socket in sockets)
+            foreach (object socket in ((System.Collections.IEnumerable)type.GetField("Sockets").GetValue(magic)).Cast<object>().Where(s => s != null))
             {
                 Type socketType = socket.GetType();
                 object shard = socketType.GetField("Effect").GetValue(socket);
                 object source = socketType.GetField("SourceRarity").GetValue(socket);
-                string text = shard != null ? (string)effectText.Invoke(null, new[] { shard, source, (object)false, null }) : "$mod_epicloot_shard_noeffect";
+                string text = shard != null && effectText != null ? (string)effectText.Invoke(null, new[] { shard, source, (object)false, null }) : "$mod_epicloot_shard_noeffect";
                 // The socketed item's own icon, as Epic Loot shows it; a shard glyph when unavailable.
                 string sprite = shardSprite != null ? (string)shardSprite.Invoke(null, new[] { socketType.GetField("SourcePrefab").GetValue(socket) }) : "";
-                rows.Add(Row(text, Html(source), "  ", (string.IsNullOrEmpty(sprite) ? "<color=" + Html(source) + ">◈</color>" : sprite) + " "));
+                display.Sockets.Add((text, Html(source), sprite));
             }
-            for (int i = sockets.Count; i < slots; i++)
-                rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$mod_epicloot_empty_socket") + "</color>"));
+            return display;
         }
 
         private static string Html(object rarity)
@@ -270,32 +293,37 @@ namespace Overhaul
         private static void LayoutTest(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
             if (item?.m_shared == null || (item.m_shared.m_skillType != Skills.SkillType.ElementalMagic && item.m_shared.m_skillType != Skills.SkillType.BloodMagic)) return;
-            // Worst case: the projectile line (the element stat is merged into its damage line), the most effects, shard slots and the largest set.
-            const string mythic = "#ff7f2a", shard = "#d078ff", label = "#FFF0AD";
-            tooltip.SetTopic("<color=" + mythic + ">" + tooltip.Topic.text + "</color>");
-            tooltip.SetSubtitle("<color=" + mythic + ">Mythique</color>\n" + tooltip.Subtitle.text);
-            string knockback = Localization.instance.Localize("$item_knockback");
-            var damage = tooltip.TextBoxContainer.GetComponentsInChildren<TooltipTextBox>(true).FirstOrDefault(b => b.Text && b.Text.text.Contains(knockback));
-            if (damage)
+            // Worst case in Epic Loot's own formats and French texts (values in place of {0}), shown by the
+            // same code as a real magic item: 7 effects, 4 shard slots (3 filled), a 6-piece set.
+            if (!Loaded)
             {
-                damage.AddLine("<color=" + label + ">Projectile sup.</color>", "25%", false);
+                Localization.instance.AddWord("mod_epicloot_sockets", "Emplacements d'éclat");
+                Localization.instance.AddWord("mod_epicloot_empty_socket", "Emplacement d'éclat vide");
             }
-            var lines = new List<TooltipRow>();
-            foreach (string effect in new[] { "Dégâts de feu +18 %", "Coût en eitr -15 %", "Vitesse d'attaque +10 %", "Chances de coup critique +6 %",
-                "Les attaques enflamment les ennemis touchés", "Régénération d'eitr +12 %", "Les ennemis tués explosent en libérant des flammes" })
-                lines.Add(Row(effect, mythic));
-            lines.Add(new TooltipRow("Emplacements de shard (3/4)"));
-            foreach (string effect in new[] { "Dégâts de feu +6 %", "Coût en eitr -4 %", "Gagne de l'adrénaline en infligeant des dégâts de feu" })
-                lines.Add(Row(effect, shard, "  ", "<color=" + shard + ">\u25C8</color> "));
-            lines.Add(new TooltipRow("  <color=#808080>\u25CA Emplacement vide</color>"));
-            AddRows(tooltip, lines);
-            AddRows(tooltip, SetRows(
-                "<color=" + mythic + ">Fureur de Surtr (2/6)</color>\n" +
-                "  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres\n  Plastron de Surtr\n  Jambières de Surtr\n  Anneau des braises</color>\n" +
-                "<color=" + mythic + ">(2) - Dégâts de feu +10 %</color>\n<color=#808080ff>(3) - Résistance au feu\n(4) - Régénération d'eitr +15 %\n" +
-                "(5) - Les coups critiques libèrent une explosion de flammes\n(6) - Invoque un esprit de feu lorsque la vie passe sous 30 %</color>"));
-        }
-    }
+            const string mythic = "#ff7f2a", epic = "#d078ff", legendary = "#18e7a9";
+            var display = new MagicDisplay
+            {
+                Topic = "<color=" + mythic + ">" + Localization.instance.Localize(item.m_shared.m_name) + "</color>",
+                Rarity = "<color=" + mythic + ">Mythique</color>",
+                Color = mythic,
+                Slots = 4,
+                Set = "\n\n<color=" + mythic + "> $mod_epicloot_set: Fureur de Surtr (2/6):</color>" +
+                      "\n  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres</color>" +
+                      "\n  <color=#808080ff>Plastron de Surtr</color>\n  <color=#808080ff>Jambières de Surtr</color>\n  <color=#808080ff>Anneau des braises</color>" +
+                      "\n<color=" + mythic + ">(2) \u2023 Tous les dégâts +10%</color>\n<color=#808080ff>(3) \u2023 Imprégner les dégâts de feu 15%</color>" +
+                      "\n<color=#808080ff>(4) \u2023 Augmenter la régénération de stamina de 20%</color>" +
+                      "\n<color=#808080ff>(5) \u2023 Les breuvages s'appliquent instantanément en cas de santé critique</color>" +
+                      "\n<color=#808080ff>(6) \u2023 Réduire le temps de recharge du pouvoir Forsaken de 25%</color>",
+            };
+            display.Effects.AddRange(new[] {
+                "Imprégner les dégâts de feu 18%", "Augmenter les dégâts élémentaires infligés +12%", "Augmente la vitesse d'attaque de 10%",
+                "Augmenter la vitesse de déplacement de 8%", "Réduire l'utilisation d'Eitr d'attaque de 15%",
+                "Augmenter la régénération de santé de 30% (Santé critique)", "Les breuvages s'appliquent instantanément en cas de santé critique" });
+            display.Sockets.Add(("Imprégner les dégâts de feu 6%", epic, null));
+            display.Sockets.Add(("Tous les dégâts +4%", legendary, null));
+            display.Sockets.Add(("{0:0.#}% de chance de ne pas consommer de munitions".Replace("{0:0.#}", "20"), epic, null));
+            Show(tooltip, item, display);
+        }    }
 
     // The Auga tooltip never grows past the screen: when it is taller, it is scaled down to fit.
     internal sealed class TooltipScreenFit : MonoBehaviour
