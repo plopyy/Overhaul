@@ -122,7 +122,7 @@ namespace Overhaul
                 glowImage.gameObject.SetActive(hasItem && rarity != null);
                 if (rarity != null) glowImage.color = rarity.Value;
             }
-            // The border marks items with a rarity; any other hovered cell (item, or empty equipment slot) shows it too.
+            // The border marks items with a rarity; any hovered cell, empty or not, shows it too.
             if (borderImage)
             {
                 borderImage.gameObject.SetActive((hasItem && rarity != null) || hovered);
@@ -228,16 +228,9 @@ namespace Overhaul
                     // The equipment window shows what is worn: no "equipped" marker in the grids.
                     if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered && (item != null || InEquipment(element.transform)), WindowPosition(element.transform));
+                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform));
                 }
             }
-        }
-
-        // Equipment & Quick Slots cells are moved into the Auga equipment window.
-        private static bool InEquipment(Transform cell)
-        {
-            for (Transform t = cell.parent; t; t = t.parent) if (t.name == "AugaEquipment") return true;
-            return false;
         }
 
         [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
