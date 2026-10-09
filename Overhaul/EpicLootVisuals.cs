@@ -283,47 +283,10 @@ namespace Overhaul
             private static void Postfix()
             {
                 Initialize();
-                if (!layoutTest) { layoutTest = true; ComplexTooltip.OnComplexTooltipGeneratedForItem += LayoutTest; }
             }
         }
 
-        // TEMPORARY layout test: every staff shows the boxes of a mythic Epic Loot item with shard slots and
-        // a set (sample text), with or without Epic Loot, to judge the tooltip height in game.
-        private static bool layoutTest;
-        private static void LayoutTest(ComplexTooltip tooltip, ItemDrop.ItemData item)
-        {
-            if (item?.m_shared == null || (item.m_shared.m_skillType != Skills.SkillType.ElementalMagic && item.m_shared.m_skillType != Skills.SkillType.BloodMagic)) return;
-            // Worst case in Epic Loot's own formats and French texts (values in place of {0}), shown by the
-            // same code as a real magic item: 7 effects, 4 shard slots (3 filled), a 6-piece set.
-            if (!Loaded)
-            {
-                Localization.instance.AddWord("mod_epicloot_sockets", "Emplacements d'éclat");
-                Localization.instance.AddWord("mod_epicloot_empty_socket", "Emplacement d'éclat vide");
-            }
-            const string mythic = "#ff7f2a", epic = "#d078ff", legendary = "#18e7a9";
-            var display = new MagicDisplay
-            {
-                Topic = "<color=" + mythic + ">" + Localization.instance.Localize(item.m_shared.m_name) + "</color>",
-                Rarity = "<color=" + mythic + ">Mythique</color>",
-                Color = mythic,
-                Slots = 4,
-                Set = "\n\n<color=" + mythic + "> $mod_epicloot_set: Fureur de Surtr (2/6):</color>" +
-                      "\n  <color=white>Bâton des braises</color>\n  <color=white>Couronne de Surtr</color>\n  <color=#808080ff>Cape de cendres</color>" +
-                      "\n  <color=#808080ff>Plastron de Surtr</color>\n  <color=#808080ff>Jambières de Surtr</color>\n  <color=#808080ff>Anneau des braises</color>" +
-                      "\n<color=" + mythic + ">(2) \u2023 Tous les dégâts +10%</color>\n<color=#808080ff>(3) \u2023 Imprégner les dégâts de feu 15%</color>" +
-                      "\n<color=#808080ff>(4) \u2023 Augmenter la régénération de stamina de 20%</color>" +
-                      "\n<color=#808080ff>(5) \u2023 Les breuvages s'appliquent instantanément en cas de santé critique</color>" +
-                      "\n<color=#808080ff>(6) \u2023 Réduire le temps de recharge du pouvoir Forsaken de 25%</color>",
-            };
-            display.Effects.AddRange(new[] {
-                "Imprégner les dégâts de feu 18%", "Augmenter les dégâts élémentaires infligés +12%", "Augmente la vitesse d'attaque de 10%",
-                "Augmenter la vitesse de déplacement de 8%", "Réduire l'utilisation d'Eitr d'attaque de 15%",
-                "Augmenter la régénération de santé de 30% (Santé critique)", "Les breuvages s'appliquent instantanément en cas de santé critique" });
-            display.Sockets.Add(("Imprégner les dégâts de feu 6%", epic, null));
-            display.Sockets.Add(("Tous les dégâts +4%", legendary, null));
-            display.Sockets.Add(("{0:0.#}% de chance de ne pas consommer de munitions".Replace("{0:0.#}", "20"), epic, null));
-            Show(tooltip, item, display);
-        }    }
+    }
 
     // The Auga tooltip never grows past the screen: when it is taller, it is scaled down to fit.
     internal sealed class TooltipScreenFit : MonoBehaviour
