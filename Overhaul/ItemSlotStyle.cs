@@ -19,7 +19,7 @@ namespace Overhaul
         private static readonly Color BaseBorder = new Color32(0x70, 0x63, 0x56, 0xFF);
         private const string GlowName = "OverhaulItemGlow", BorderName = "OverhaulItemBorder";
 
-        private static Sprite background, glow, border, quality;
+        private static Sprite background, glow, border, quality, qualityBorder;
 
         private static Sprite Load(string name)
         {
@@ -36,7 +36,7 @@ namespace Overhaul
 
         private static bool Ready()
         {
-            if (!background) { background = Load("slot_bg"); glow = Load("slot_item_bg"); border = Load("slot_item_border"); quality = Load("slot_quality_bg"); }
+            if (!background) { background = Load("slot_bg"); glow = Load("slot_item_bg"); border = Load("slot_item_border"); quality = Load("slot_quality_bg"); qualityBorder = Load("slot_quality_border"); }
             return background;
         }
 
@@ -83,7 +83,7 @@ namespace Overhaul
                 borderImage.gameObject.SetActive(hasItem);
                 borderImage.color = rarity ?? BaseBorder;
             }
-            Quality(cell);
+            Quality(cell, rarity ?? BaseBorder);
         }
 
         private static Image Child(GameObject cell, string name, Sprite sprite, int index)
@@ -102,13 +102,16 @@ namespace Overhaul
         }
 
         // Quality badge: the design's diamond, 33 px, its top 14 px above the cell, centred; the number follows.
-        private static void Quality(GameObject cell)
+        private static void Quality(GameObject cell, Color borderColor)
         {
             Transform badge = cell.transform.Find("quality_bkg"), number = cell.transform.Find("quality");
             if (!badge) return;
             var badgeImage = badge.GetComponent<Image>();
             if (badgeImage && quality && badgeImage.sprite != quality) { badgeImage.sprite = quality; badgeImage.color = Color.white; }
             Place((RectTransform)badge, QualitySize);
+            // The badge border, coloured like the cell border (base colour, or the rarity colour).
+            Image badgeBorder = Child(badge.gameObject, "OverhaulQualityBorder", qualityBorder, badge.childCount);
+            if (badgeBorder) badgeBorder.color = borderColor;
             if (number)
             {
                 Place((RectTransform)number, ((RectTransform)number).sizeDelta.y);

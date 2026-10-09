@@ -175,6 +175,7 @@
     <EmbeddedResource Include="Assets\Slots\slot_item_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_item_bg.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\Slots\slot_item_border.png"><LogicalName>Overhaul.Assets.Slots.slot_item_border.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\Slots\slot_quality_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_quality_bg.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Slots\slot_quality_border.png"><LogicalName>Overhaul.Assets.Slots.slot_quality_border.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
