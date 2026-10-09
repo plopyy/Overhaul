@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace Overhaul
 {
-    // Ground auras of Overhaul's rarities (6 levels, from the "Unique Loot Drops Vol. 1" pack, Vertical02 style).
+    // Ground auras of Overhaul rarities (7 levels, the 7th an iridescent crystal version of the 6th, from the "Unique Loot Drops Vol. 1" pack, Vertical02 style).
     // The bundle is embedded in Overhaul.dll and loaded on first use.
     public static class LootAura
     {
-        public const int Levels = 6;
+        public const int Levels = 7;
         // The pack is made for large scenes: shrunk to item size and lifted so the ground ring is not buried.
         private const float Scale = .35f;
         // The pack places its ground ring 0.701 below the prefab origin: lift it back to the ground, plus 3 cm.
