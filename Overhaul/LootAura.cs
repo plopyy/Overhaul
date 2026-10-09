@@ -79,9 +79,13 @@ namespace Overhaul
                 factor = wanted; mode = boost;
                 for (int i = 0; i < systems.Length; i++)
                 {
-                    if (!systems[i] || systems[i].name.StartsWith("Black")) continue;
+                    if (!systems[i]) continue;
+                    // The coloured layers are already fully opaque: Opacity darkens the dark backing layer instead,
+                    // which gives the colours contrast against a bright scene.
+                    bool backing = systems[i].name.StartsWith("Black");
                     var main = systems[i].main;
                     var c = colors[i];
+                    if (backing) { main.startColor = Backing(c, factor); continue; }
                     if (c.mode == ParticleSystemGradientMode.Color) main.startColor = Saturate(c.color, factor);
                     else if (c.gradient != null)
                     {
@@ -92,6 +96,15 @@ namespace Overhaul
                 }
             }
 
+            private const float DayBacking = 1.8f;
+            private ParticleSystem.MinMaxGradient Backing(ParticleSystem.MinMaxGradient c, float light)
+            {
+                float boost = mode == "Opacity" ? Mathf.Lerp(1f, DayBacking, light) : 1f;
+                if (c.mode == ParticleSystemGradientMode.Color) { Color k = c.color; k.a = Mathf.Clamp01(k.a * boost); return k; }
+                if (c.mode == ParticleSystemGradientMode.TwoColors) { Color a = c.colorMin, b = c.colorMax; a.a = Mathf.Clamp01(a.a * boost); b.a = Mathf.Clamp01(b.a * boost); return new ParticleSystem.MinMaxGradient(a, b); }
+                return c;
+            }
+
             // light: 0 at night, 1 at noon.
             private Color Saturate(Color c, float light)
             {
@@ -100,7 +113,7 @@ namespace Overhaul
                 float boost = Mathf.Lerp(1f, DayBoost, light);
                 // Brightness goes past 1 (HDR): additive layers stay bright in the sun.
                 Color r = Color.HSVToRGB(h, s, mode == "Brightness" ? v * boost : v, true);
-                r.a = mode == "Opacity" ? Mathf.Clamp01(c.a * boost) : c.a;
+                r.a = c.a;
                 return r;
             }
         }
