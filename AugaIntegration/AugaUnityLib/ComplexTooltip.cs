@@ -606,7 +606,8 @@ namespace AugaUnity
                 if (line.Contains("$item_movement_modifier") || line.Contains("$item_eitrregen_modifier")) continue;
                 if (line.Contains("$item_chancetoapplyse") && i + 1 < lines.Count && !lines[i + 1].Contains(":"))
                 {
-                    string chance = System.Text.RegularExpressions.Regex.Replace(line.Substring(line.IndexOf(':') + 1), "<[^>]+>", "").Trim();
+                    // The percentage, whatever surrounds it ("$item_chancetoapplyse 25%", with or without a colon).
+                    string chance = System.Text.RegularExpressions.Regex.Match(System.Text.RegularExpressions.Regex.Replace(line, "<[^>]+>", ""), @"\d+(?:[.,]\d+)?\s?%").Value;
                     string effect = lines[++i].Trim();
                     rows.Add(new TooltipRow(string.Format(Localization.instance.Localize("$overhaul_effect_chance"), Localization.instance.Localize(effect)), chance));
                     continue;
