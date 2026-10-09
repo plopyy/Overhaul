@@ -104,6 +104,13 @@ namespace Overhaul.Commands
                     args.Context.AddString("Overhaul : piece d'ensemble " + id + (mythicSet ? "" : " (ensemble legendaire, generee en Mythique)"));
                     Console.instance.TryRunCommand("magicitemmythic " + id, false, true);
                 }));
+            new Terminal.ConsoleCommand(Prefix + "checktooltips",
+                "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    args.Context.AddString(TooltipAudit.Run());
+                }));
             new Terminal.ConsoleCommand(ResetDungeonsCommand,
                 "Demande le reset des lieux generes, visites ou non, actives dans Dungeon.ResetLocations (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
