@@ -218,8 +218,11 @@ namespace AugaUnity
             if (Mathf.Approximately(rect.anchorMin.x, rect.anchorMax.x))
                 rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width + gain);
             foreach (RectTransform child in rect)
-                if (child.rect.width > width * 0.6f)
-                    Grow(child, gain);
+                {
+                    if (child.rect.width > width * 0.6f) Grow(child, gain);
+                    // Small elements placed from the left edge (the quality badge) stay centred with the rest.
+                    else if (child.anchorMin.x == 0 && child.anchorMax.x == 0) child.anchoredPosition += new Vector2(gain / 2, 0);
+                }
         }
 
         public virtual void Start()
