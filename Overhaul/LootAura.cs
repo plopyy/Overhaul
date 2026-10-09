@@ -13,11 +13,9 @@ namespace Overhaul
         private static bool Ready()
         {
             if (bundle) return true;
-            using (var stream = typeof(LootAura).Assembly.GetManifestResourceStream("Overhaul.Assets.LootAura.overhaul_lootaura"))
-            {
-                if (stream == null) return false;
-                bundle = AssetBundle.LoadFromStream(stream);
-            }
+            // Owned bytes: a bundle loaded from a stream needs that stream alive for its whole life.
+            try { bundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.LootAura.overhaul_lootaura"); }
+            catch (System.Exception e) { Utility.Log.LogWarning("Loot auras unavailable: " + e.Message); return false; }
             if (!bundle) return false;
             for (int i = 0; i < Levels; i++) prefabs[i] = bundle.LoadAsset<GameObject>("OverhaulLootAura" + (i + 1));
             return true;
