@@ -91,19 +91,6 @@ namespace Overhaul.Commands
                     server.m_rpc.Invoke(ResetLevelRequest,target);
                     args.Context.AddString("Overhaul : demande de remise a zero envoyee au serveur.");
                 }));
-            new Terminal.ConsoleCommand(Prefix + "mythicset",
-                "Test Epic Loot : fait apparaitre une piece d'equipement mythique aleatoire appartenant a un ensemble (admin serveur + devcommands, Epic Loot requis).",
-                (Terminal.ConsoleEvent)(args =>
-                {
-                    if (!EpicLootVisuals.Loaded) { args.Context.AddString("Overhaul : Epic Loot n'est pas installe, commande sans effet."); return; }
-                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
-                    string id = RandomSetPiece(out bool mythicSet);
-                    if (id == null) { args.Context.AddString("Overhaul : aucun ensemble Epic Loot configure."); return; }
-                    // Epic Loot's own command and generation; a legendary set piece is rolled as Mythic when the
-                    // configuration has no mythic set (Epic Loot's default configuration has none).
-                    args.Context.AddString("Overhaul : piece d'ensemble " + id + (mythicSet ? "" : " (ensemble legendaire, generee en Mythique)"));
-                    Console.instance.TryRunCommand("magicitemmythic " + id, false, true);
-                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
@@ -123,21 +110,6 @@ namespace Overhaul.Commands
                     server.m_rpc.Invoke(Request);
                     args.Context.AddString("Overhaul : demande envoyee au serveur pour verification admin.");
                 }));
-        }
-
-        // A random piece of an Epic Loot mythic set, or of a legendary set when none is configured.
-        private static string RandomSetPiece(out bool mythicSet)
-        {
-            mythicSet = false;
-            System.Type helper = System.Type.GetType("EpicLoot.LegendarySystem.UniqueLegendaryHelper, EpicLoot");
-            var mythic = helper?.GetField("MythicSets")?.GetValue(null) as System.Collections.IDictionary;
-            var legendary = helper?.GetField("LegendarySets")?.GetValue(null) as System.Collections.IDictionary;
-            var sets = mythic != null && mythic.Count > 0 ? mythic : legendary;
-            if (sets == null || sets.Count == 0) return null;
-            mythicSet = sets == mythic;
-            object set = sets.Values.Cast<object>().ElementAt(UnityEngine.Random.Range(0, sets.Count));
-            var ids = (set.GetType().GetField("LegendaryIDs")?.GetValue(set) as System.Collections.IEnumerable)?.Cast<string>().ToList();
-            return ids == null || ids.Count == 0 ? null : ids[UnityEngine.Random.Range(0, ids.Count)];
         }
 
         internal static bool Authorized(ZRpc rpc)
