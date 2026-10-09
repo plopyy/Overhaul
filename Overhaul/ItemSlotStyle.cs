@@ -84,7 +84,7 @@ namespace Overhaul
         public static Sprite BorderSprite => Ready() ? border : null;
 
         // position: where the cell sits in its window, 0 = left edge, 1 = right edge (-1: unknown, design colour).
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false, float position = -1)
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false, float position = -1, bool equipped = false)
         {
             if (!cell || !icon || !Ready()) return;
             Sprite design = hud && hudBackground ? hudBackground : background;
@@ -124,12 +124,13 @@ namespace Overhaul
                 if (rarity != null) glowImage.color = rarity.Value;
             }
             // The border marks items with a rarity; any hovered cell, empty or not, shows it too (base colour).
+            // In the hotbar, the equipped weapon or tool has a pure white border instead of the blue background.
             if (borderImage)
             {
-                borderImage.gameObject.SetActive((hasItem && rarity != null) || hovered);
+                borderImage.gameObject.SetActive((hasItem && (rarity != null || equipped)) || hovered);
                 Color tint = hasItem && rarity != null ? rarity.Value : BaseBorder;
                 // A rarity border is always shown: hovering lightens it instead.
-                borderImage.color = hovered && hasItem && rarity != null ? Color.Lerp(tint, Color.white, HoverLighten) : tint;
+                borderImage.color = hasItem && equipped ? Color.white : hovered && hasItem && rarity != null ? Color.Lerp(tint, Color.white, HoverLighten) : tint;
             }
             Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
             Selection(cell);
@@ -245,7 +246,9 @@ namespace Overhaul
                 for (int i = 0; i < __instance.m_elements.Count; i++)
                 {
                     ItemDrop.ItemData item = __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i);
-                    Apply(__instance.m_elements[i].m_go, __instance.m_elements[i].m_icon, item != null, EpicLootVisuals.RarityOf(item), true);
+                    var element = __instance.m_elements[i];
+                    if (element.m_equiped) element.m_equiped.SetActive(false);
+                    Apply(element.m_go, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), true, equipped: item != null && item.m_equipped);
                 }
             }
         }
