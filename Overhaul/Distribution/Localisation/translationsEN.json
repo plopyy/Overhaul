@@ -2393,6 +2393,7 @@
   "overhaul_hoe_no_tar": "No liquid tar in the targeted area.",
   "overhaul_projectile_extra": "Extra projectile",
   "overhaul_staff_shield": "Elem. shield",
+  "overhaul_effect_chance": "{0} chance",
   "overhaul_movespeed_short": "Move speed",
   "overhaul_eitrregen_short": "Eitr regen",
   "overhaul_map_ship": "Ship",

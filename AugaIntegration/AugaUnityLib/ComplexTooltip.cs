@@ -581,13 +581,43 @@ namespace AugaUnity
             var extraText = GetExtraTextFromTooltip();
             if (!string.IsNullOrEmpty(extraText) && showExtraText)
             {
-                if (LeftAlignedTextBoxPrefab != null)
+                var rows = ExtraRows(extraText);
+                if (rows.Count > 0)
                 {
                     AddDivider();
-                    var textBox = AddTextBox(LeftAlignedTextBoxPrefab);
-                    textBox.Text.text = extraText;
+                    TooltipRowAligner.Add(this, rows);
                 }
             }
+        }
+
+        // The remaining native tooltip lines as two-column rows: "label: value" puts the value on the right,
+        // the attack status chance and its effect name become one "Chance of <effect>" row, and the movement
+        // and eitr regen lines, already in the other info box, are dropped.
+        private static List<TooltipRow> ExtraRows(string text)
+        {
+            var rows = new List<TooltipRow>();
+            var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Trim().Length > 0).ToList();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i];
+                if (line.Contains("$item_movement_modifier") || line.Contains("$item_eitrregen_modifier")) continue;
+                if (line.Contains("$item_chancetoapplyse") && i + 1 < lines.Count && !lines[i + 1].Contains(":"))
+                {
+                    string chance = System.Text.RegularExpressions.Regex.Replace(line.Substring(line.IndexOf(':') + 1), "<[^>]+>", "").Trim();
+                    string effect = lines[++i].Trim();
+                    rows.Add(new TooltipRow(string.Format(Localization.instance.Localize("$overhaul_effect_chance"), Localization.instance.Localize(effect)), chance));
+                    continue;
+                }
+                int colon = line.IndexOf(':');
+                if (colon > 0 && colon < line.Length - 1)
+                {
+                    string value = line.Substring(colon + 1).Trim();
+                    // Localized here: the row aligner rewrites the texts after the tooltip has been localized.
+                    rows.Add(new TooltipRow(Localization.instance.Localize(line.Substring(0, colon).Trim()), Localization.instance.Localize(System.Text.RegularExpressions.Regex.Replace(value, "</?color[^>]*>", ""))));
+                }
+                else rows.Add(new TooltipRow(line));
+            }
+            return rows;
         }
 
         private string GetExtraTextFromTooltip()

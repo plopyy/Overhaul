@@ -112,7 +112,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EquipmentSlotHint.cs" /><Compile Include="AddItemIconMaterial.cs" />
+    <Compile Include="EquipmentSlotHint.cs" /><Compile Include="TooltipRows.cs" /><Compile Include="AddItemIconMaterial.cs" />
     <Compile Include="AlwaysUpper.cs" />
     <Compile Include="AugaBarberController.cs" />
     <Compile Include="AugaBindingDisplay.cs" />
