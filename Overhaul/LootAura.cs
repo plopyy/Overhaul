@@ -7,6 +7,9 @@ namespace Overhaul
     public static class LootAura
     {
         public const int Levels = 6;
+        // The pack is made for large scenes: shrunk to item size and lifted so the ground ring is not buried.
+        private const float Scale = .35f;
+        private const float Lift = .1f;
         private static AssetBundle bundle;
         private static readonly GameObject[] prefabs = new GameObject[Levels];
 
@@ -25,7 +28,13 @@ namespace Overhaul
         public static GameObject Spawn(int level, Vector3 position, Transform follow = null)
         {
             if (level < 1 || level > Levels || !Ready() || !prefabs[level - 1]) return null;
-            GameObject aura = Object.Instantiate(prefabs[level - 1], position, Quaternion.identity);
+            GameObject aura = Object.Instantiate(prefabs[level - 1], position + Vector3.up * Lift, Quaternion.identity);
+            aura.transform.localScale = Vector3.one * Scale;
+            foreach (var system in aura.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = system.main;
+                main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            }
             if (follow) aura.AddComponent<Upright>().Target = follow;
             return aura;
         }
@@ -36,7 +45,7 @@ namespace Overhaul
             private void LateUpdate()
             {
                 if (!Target) { Destroy(gameObject); return; }
-                transform.SetPositionAndRotation(Target.position, Quaternion.identity);
+                transform.SetPositionAndRotation(Target.position + Vector3.up * Lift, Quaternion.identity);
             }
         }
 
@@ -47,10 +56,10 @@ namespace Overhaul
             if (!player) return "Overhaul : commande a lancer depuis un personnage connecte.";
             if (!Ready()) return "Overhaul : effets de loot introuvables.";
             Vector3 forward = Vector3.ProjectOnPlane(player.transform.forward, Vector3.up).normalized;
-            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            Vector3 right = Vector3.Cross(forward, Vector3.up);
             for (int i = 0; i < Levels; i++)
             {
-                Vector3 p = player.transform.position + forward * 6f + right * ((i - 2.5f) * 2f);
+                Vector3 p = player.transform.position + forward * 4f + right * ((i - 2.5f) * 1.2f);
                 if (ZoneSystem.instance) p.y = ZoneSystem.instance.GetGroundHeight(p);
                 GameObject aura = Spawn(i + 1, p);
                 if (aura) Object.Destroy(aura, 60f);
