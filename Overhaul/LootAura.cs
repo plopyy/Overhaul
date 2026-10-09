@@ -49,15 +49,16 @@ namespace Overhaul
             return Physics.Raycast(position + Vector3.up * .5f, Vector3.down, out RaycastHit hit, 3f, groundMask) ? hit.point : position;
         }
 
-        // Auras read well at night but fade in daylight: their opacity rises with the light of the day,
+        // Auras read well at night but fade in daylight: their opacity or their light (config LootAura.DaylightBoost) rises with the day,
         // and the crystal aura, built with softened tones for the night, also gets its full saturation at noon.
         private class Daylight : MonoBehaviour
         {
-            private const float DayOpacity = 1.8f, DaySaturation = 1f / .65f;
+            private const float DayBoost = 1.8f, DaySaturation = 1f / .65f;
             public bool Crystal;
             private ParticleSystem[] systems;
             private ParticleSystem.MinMaxGradient[] colors;
             private float factor = -1, next;
+            private string mode;
 
             private void Awake()
             {
@@ -73,8 +74,9 @@ namespace Overhaul
                 // 0 at night, 1 at noon, following the sun.
                 float light = Mathf.Clamp01(Mathf.Sin((EnvMan.instance.GetDayFraction() - .25f) * 2f * Mathf.PI) * 1.5f + .3f);
                 float wanted = light;
-                if (Mathf.Abs(wanted - factor) < .02f) return;
-                factor = wanted;
+                string boost = Utility.OverhaulConfig.LootAuraDaylight?.Value ?? "Opacity";
+                if (Mathf.Abs(wanted - factor) < .02f && boost == mode) return;
+                factor = wanted; mode = boost;
                 for (int i = 0; i < systems.Length; i++)
                 {
                     if (!systems[i] || systems[i].name.StartsWith("Black")) continue;
@@ -95,8 +97,10 @@ namespace Overhaul
             {
                 Color.RGBToHSV(c, out float h, out float s, out float v);
                 if (Crystal) s = Mathf.Clamp01(s * Mathf.Lerp(1f, DaySaturation, light));
-                Color r = Color.HSVToRGB(h, s, v, true);
-                r.a = Mathf.Clamp01(c.a * Mathf.Lerp(1f, DayOpacity, light));
+                float boost = Mathf.Lerp(1f, DayBoost, light);
+                // Brightness goes past 1 (HDR): additive layers stay bright in the sun.
+                Color r = Color.HSVToRGB(h, s, mode == "Brightness" ? v * boost : v, true);
+                r.a = mode == "Opacity" ? Mathf.Clamp01(c.a * boost) : c.a;
                 return r;
             }
         }
