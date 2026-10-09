@@ -104,25 +104,7 @@ namespace Overhaul
             }
         }
 
-        // Test: every loot item lying on the ground (dropped, thrown, from creatures or containers) gets a random level, fixed by its world id
-        // (IsEquipment will restrict it to equipment once Overhaul rarities exist).
-        [HarmonyLib.HarmonyPatch(typeof(ItemDrop), "Start")]
-        private static class GroundItem
-        {
-            private static void Postfix(ItemDrop __instance)
-            {
-                if (ZNet.instance && ZNet.instance.IsDedicated()) return;
-                if (!__instance || !__instance.m_nview || !__instance.m_nview.IsValid()) return;
-                // Only loose loot: world pickables (flowers, mushrooms...) and fixed items are not loot.
-                if (__instance.GetComponent<Pickable>() || __instance.GetComponentInParent<Piece>()) return;
-                Rigidbody body = __instance.GetComponent<Rigidbody>();
-                if (!body || body.isKinematic) return;
-                int level = 1 + (int)((uint)__instance.m_nview.GetZDO().m_uid.GetHashCode() % Levels);
-                Spawn(level, __instance.transform.position, __instance.transform);
-            }
-        }
-
-        // Equipment, weapons, shields and tools; resources, food, trophies and the like keep the vanilla look.
+        // Items that will carry an aura: equipment, weapons, shields and tools; resources, food, trophies and the like keep the vanilla look.
         internal static bool IsEquipment(ItemDrop.ItemData item)
         {
             switch (item?.m_shared?.m_itemType)
