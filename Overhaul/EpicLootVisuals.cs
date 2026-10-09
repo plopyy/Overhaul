@@ -38,6 +38,7 @@ namespace Overhaul
                 MethodInfo color = api?.GetMethod("GetItemRarityColor", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
                 if (color != null) rarityColor = (Func<ItemDrop.ItemData, string>)Delegate.CreateDelegate(typeof(Func<ItemDrop.ItemData, string>), color);
                 decoratedName = api?.GetMethod("GetItemDecoratedName", BindingFlags.Public | BindingFlags.Static);
+                tryGetRarity = api?.GetMethod("TryGetRarity", BindingFlags.Public | BindingFlags.Static);
                 Type extensions = Type.GetType("EpicLoot.ItemDataExtensions, EpicLoot");
                 getMagicItem = extensions?.GetMethod("GetMagicItem", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(ItemDrop.ItemData) }, null);
                 // Legendary/mythic sets only: vanilla sets already have their own Auga box.
@@ -68,9 +69,16 @@ namespace Overhaul
                 harmony.Unpatch(method, HarmonyPatchType.All, Guid);
         }
 
+        private static MethodInfo tryGetRarity;
         private static Color? Rarity(ItemDrop.ItemData item)
         {
             if (item == null || rarityColor == null) return null;
+            // Only items with a rarity: Epic Loot answers white for every other item.
+            if (tryGetRarity != null)
+            {
+                var args = new object[] { item, 0 };
+                try { if (!(bool)tryGetRarity.Invoke(null, args)) return null; } catch { return null; }
+            }
             string html;
             try { html = rarityColor(item); } catch { return null; }
             return !string.IsNullOrEmpty(html) && ColorUtility.TryParseHtmlString(html, out Color color) ? color : (Color?)null;
@@ -275,8 +283,11 @@ namespace Overhaul
                 rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = new Vector2(3, 3); rect.offsetMax = new Vector2(-3, -3);
                 background = go.GetComponent<Image>();
                 background.raycastTarget = false;
+                // The slot's own shape, so the tint follows the Auga cell instead of a plain square.
+                Image slot = icon.transform.parent.GetComponent<Image>();
+                if (slot && slot.sprite) { background.sprite = slot.sprite; background.type = slot.type; rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero; }
             }
-            Color tint = color.Value; tint.a = 0.35f;
+            Color tint = color.Value; tint.a = 0.30f;
             background.color = tint;
             background.gameObject.SetActive(true);
         }
