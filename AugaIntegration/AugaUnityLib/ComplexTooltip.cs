@@ -609,7 +609,7 @@ namespace AugaUnity
                     // The percentage, whatever surrounds it ("$item_chancetoapplyse 25%", with or without a colon).
                     string chance = System.Text.RegularExpressions.Regex.Match(System.Text.RegularExpressions.Regex.Replace(line, "<[^>]+>", ""), @"\d+(?:[.,]\d+)?\s?%").Value;
                     string effect = lines[++i].Trim();
-                    rows.Add(new TooltipRow(string.Format(Localization.instance.Localize("$overhaul_effect_chance"), Localization.instance.Localize(effect)), chance));
+                    rows.Add(new TooltipRow(string.Format(Localization.instance.Localize("$overhaul_effect_chance"), LocalizeKeys(effect)), chance));
                     continue;
                 }
                 int colon = line.IndexOf(':');
@@ -617,12 +617,15 @@ namespace AugaUnity
                 {
                     string value = line.Substring(colon + 1).Trim();
                     // Localized here: the row aligner rewrites the texts after the tooltip has been localized.
-                    rows.Add(new TooltipRow(Localization.instance.Localize(line.Substring(0, colon).Trim()), Localization.instance.Localize(System.Text.RegularExpressions.Regex.Replace(value, "</?color[^>]*>", ""))));
+                    rows.Add(new TooltipRow(LocalizeKeys(line.Substring(0, colon).Trim()), LocalizeKeys(System.Text.RegularExpressions.Regex.Replace(value, "</?color[^>]*>", ""))));
                 }
                 else rows.Add(new TooltipRow(line));
             }
             return rows;
         }
+
+        // Each $key on its own: a key glued to a colour tag ("$se_x</color>") is not found by a whole-line Localize.
+        private static string LocalizeKeys(string text) => System.Text.RegularExpressions.Regex.Replace(text, @"\$[A-Za-z0-9_]+", m => Localization.instance.Localize(m.Value));
 
         private string GetExtraTextFromTooltip()
         {

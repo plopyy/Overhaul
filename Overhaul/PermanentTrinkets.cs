@@ -9,6 +9,35 @@ namespace Overhaul
     // With Epic Loot, whose enchantments are built on adrenaline, the bar stays as a resource for them.
     internal static class PermanentTrinkets
     {
+        // Health, stamina and eitr gained once by the native trinket burst, given as maximum values instead.
+        internal static readonly System.Collections.Generic.Dictionary<string, Vector3> MaxBonus = new System.Collections.Generic.Dictionary<string, Vector3>();
+
+        [HarmonyPatch(typeof(Player), nameof(Player.GetTotalFoodValue))]
+        private static class MaxValues
+        {
+            private static void Postfix(Player __instance, ref float hp, ref float stamina, ref float eitr)
+            {
+                if (MaxBonus.Count == 0 || __instance.GetInventory() == null) return;
+                foreach (ItemDrop.ItemData item in __instance.GetInventory().GetEquippedItems())
+                {
+                    StatusEffect effect = item.m_shared.m_equipStatusEffect;
+                    if (effect && MaxBonus.TryGetValue(effect.name, out Vector3 bonus)) { hp += bonus.x; stamina += bonus.y; eitr += bonus.z; }
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(SE_Stats), nameof(SE_Stats.GetTooltipString))]
+        private static class MaxValuesTooltip
+        {
+            private static void Postfix(SE_Stats __instance, ref string __result)
+            {
+                if (!MaxBonus.TryGetValue(__instance.name, out Vector3 bonus)) return;
+                if (bonus.x > 0) __result += "\n$overhaul_trinket_max_health: <color=orange>+" + bonus.x.ToString("0") + "</color>";
+                if (bonus.y > 0) __result += "\n$overhaul_trinket_max_stamina: <color=orange>+" + bonus.y.ToString("0") + "</color>";
+                if (bonus.z > 0) __result += "\n$overhaul_trinket_max_eitr: <color=orange>+" + bonus.z.ToString("0") + "</color>";
+            }
+        }
+
         internal static void Apply(ObjectDB database)
         {
             if (!database) return;
@@ -27,6 +56,12 @@ namespace Overhaul
                         StatusEffect permanent = Object.Instantiate(bonus);
                         permanent.name = bonus.name;
                         permanent.m_ttl = 0;
+                        // A one-off gain made sense for a short burst; worn permanently it becomes a maximum bonus.
+                        if (permanent is SE_Stats stats && (stats.m_healthUpFront > 0 || stats.m_staminaUpFront > 0 || stats.m_eitrUpFront > 0))
+                        {
+                            MaxBonus[permanent.name] = new Vector3(stats.m_healthUpFront, stats.m_staminaUpFront, stats.m_eitrUpFront);
+                            stats.m_healthUpFront = 0; stats.m_staminaUpFront = 0; stats.m_eitrUpFront = 0;
+                        }
                         shared.m_equipStatusEffect = permanent;
                     }
                     shared.m_fullAdrenalineSE = null;
