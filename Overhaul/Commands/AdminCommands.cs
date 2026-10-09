@@ -104,6 +104,16 @@ namespace Overhaul.Commands
                     args.Context.AddString("Overhaul : piece d'ensemble " + id + (mythicSet ? "" : " (ensemble legendaire, generee en Mythique)"));
                     Console.instance.TryRunCommand("magicitemmythic " + id, false, true);
                 }));
+            new Terminal.ConsoleCommand(Prefix + "aurabooster",
+                "Test : passe au mode suivant de renfort des auras de loot en plein jour (Opacity, Brightness, None).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    var entry = Utility.OverhaulConfig.LootAuraDaylight;
+                    if (entry == null) return;
+                    string[] modes = { "Opacity", "Brightness", "None" };
+                    entry.Value = modes[(System.Array.IndexOf(modes, entry.Value) + 1) % modes.Length];
+                    args.Context.AddString("Overhaul : renfort des auras de loot en plein jour = " + entry.Value);
+                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
