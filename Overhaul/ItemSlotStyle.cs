@@ -30,8 +30,45 @@ namespace Overhaul
                 stream.Read(bytes, 0, bytes.Length);
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = name, wrapMode = TextureWrapMode.Clamp };
                 texture.LoadImage(bytes);
+                Bleed(texture);
                 return Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f), 100f);
             }
+        }
+
+        // Transparent pixels take the colour of their nearest visible neighbour (alpha bleeding): the
+        // smoothing applied when the UI is scaled then never mixes a hidden colour (white here) into the edges.
+        private static void Bleed(Texture2D texture)
+        {
+            int w = texture.width, h = texture.height;
+            Color32[] pixels = texture.GetPixels32();
+            var known = new bool[pixels.Length];
+            for (int i = 0; i < pixels.Length; i++) known[i] = pixels[i].a > 0;
+            for (int pass = 0; pass < 8; pass++)
+            {
+                var next = (bool[])known.Clone();
+                bool changed = false;
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        int i = y * w + x;
+                        if (known[i]) continue;
+                        int r = 0, g = 0, b = 0, n = 0;
+                        for (int dy = -1; dy <= 1; dy++)
+                            for (int dx = -1; dx <= 1; dx++)
+                            {
+                                int nx = x + dx, ny = y + dy;
+                                if (nx < 0 || ny < 0 || nx >= w || ny >= h || !known[ny * w + nx]) continue;
+                                Color32 c = pixels[ny * w + nx]; r += c.r; g += c.g; b += c.b; n++;
+                            }
+                        if (n == 0) continue;
+                        pixels[i] = new Color32((byte)(r / n), (byte)(g / n), (byte)(b / n), 0);
+                        next[i] = true; changed = true;
+                    }
+                known = next;
+                if (!changed) break;
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false);
         }
 
         private static bool Ready()
