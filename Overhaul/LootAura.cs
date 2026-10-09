@@ -9,7 +9,7 @@ namespace Overhaul
         public const int Levels = 6;
         // The pack is made for large scenes: shrunk to item size and lifted so the ground ring is not buried.
         private const float Scale = .35f;
-        private const float Lift = .1f;
+        private const float Lift = .2f;
         private static AssetBundle bundle;
         private static readonly GameObject[] prefabs = new GameObject[Levels];
 
