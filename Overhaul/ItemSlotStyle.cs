@@ -82,7 +82,8 @@ namespace Overhaul
         // The slot border image, also used for the selection frames (ammo selection, gamepad selection).
         public static Sprite BorderSprite => Ready() ? border : null;
 
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false)
+        // position: where the cell sits in its window, 0 = left edge, 1 = right edge (-1: unknown, design colour).
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false, float position = -1)
         {
             if (!cell || !icon || !Ready()) return;
             Sprite design = hud && hudBackground ? hudBackground : background;
@@ -105,6 +106,7 @@ namespace Overhaul
                 }
                 slot.canvasRenderer.SetColor(Color.white);
             }
+            if (slot && !hud) slot.color = Shade(position);
 
             var iconRect = (RectTransform)icon.transform;
             if (iconRect.sizeDelta != new Vector2(IconSize, IconSize))
@@ -128,6 +130,33 @@ namespace Overhaul
             }
             Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
             Selection(cell);
+        }
+
+        // Auga windows darken from right to left (#241E17 to #4B3E33). A fixed slot colour vanishes into
+        // the middle of them, so each slot is kept at 72 % of the window colour behind it.
+        private static readonly Color WindowLeft = new Color32(0x24, 0x1E, 0x17, 255), WindowRight = new Color32(0x4B, 0x3E, 0x33, 255);
+        private static readonly Color Design = new Color32(0x39, 0x30, 0x26, 255);
+        private const float SlotDarkness = 0.72f;
+        public static Color Shade(float position)
+        {
+            if (position < 0) return Color.white;
+            Color want = Color.Lerp(WindowLeft, WindowRight, Mathf.Clamp01(position)) * SlotDarkness;
+            return new Color(Mathf.Min(1, want.r / Design.r), Mathf.Min(1, want.g / Design.g), Mathf.Min(1, want.b / Design.b), 1);
+        }
+
+        // The window a cell belongs to: the nearest ancestor holding a "Bkg" or "Background" image.
+        private static readonly Vector3[] corners = new Vector3[4];
+        public static float WindowPosition(Transform cell)
+        {
+            for (Transform parent = cell.parent; parent; parent = parent.parent)
+            {
+                Transform background = parent.Find("Bkg") ?? parent.Find("Background");
+                if (!(background is RectTransform rect)) continue;
+                rect.GetWorldCorners(corners);
+                float width = corners[2].x - corners[0].x;
+                return width > 0 ? (cell.position.x - corners[0].x) / width : -1;
+            }
+            return -1;
         }
 
         // The selection frame takes the slot border shape instead of Auga's octagon (its colour is kept).
@@ -199,7 +228,7 @@ namespace Overhaul
                     // The equipment window shows what is worn: no "equipped" marker in the grids.
                     if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered);
+                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform));
                 }
             }
         }
