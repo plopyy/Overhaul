@@ -49,11 +49,11 @@ namespace Overhaul
             return Physics.Raycast(position + Vector3.up * .5f, Vector3.down, out RaycastHit hit, 3f, groundMask) ? hit.point : position;
         }
 
-        // Additive auras read well at night but fade in daylight: their intensity rises with the light of the day,
+        // Auras read well at night but fade in daylight: their opacity rises with the light of the day,
         // and the crystal aura, built with softened tones for the night, also gets its full saturation at noon.
         private class Daylight : MonoBehaviour
         {
-            private const float DayIntensity = 1.8f, DaySaturation = 1f / .65f;
+            private const float DayOpacity = 1.8f, DaySaturation = 1f / .65f;
             public bool Crystal;
             private ParticleSystem[] systems;
             private ParticleSystem.MinMaxGradient[] colors;
@@ -90,13 +90,13 @@ namespace Overhaul
                 }
             }
 
-            // light: 0 at night, 1 at noon. The intensity goes past 1 (HDR) so additive layers stay bright in the sun.
+            // light: 0 at night, 1 at noon.
             private Color Saturate(Color c, float light)
             {
                 Color.RGBToHSV(c, out float h, out float s, out float v);
                 if (Crystal) s = Mathf.Clamp01(s * Mathf.Lerp(1f, DaySaturation, light));
-                Color r = Color.HSVToRGB(h, s, v * Mathf.Lerp(1f, DayIntensity, light), true);
-                r.a = c.a;
+                Color r = Color.HSVToRGB(h, s, v, true);
+                r.a = Mathf.Clamp01(c.a * Mathf.Lerp(1f, DayOpacity, light));
                 return r;
             }
         }
