@@ -104,6 +104,13 @@ namespace Overhaul.Commands
                     args.Context.AddString("Overhaul : piece d'ensemble " + id + (mythicSet ? "" : " (ensemble legendaire, generee en Mythique)"));
                     Console.instance.TryRunCommand("magicitemmythic " + id, false, true);
                 }));
+            new Terminal.ConsoleCommand(Prefix + "lootauras",
+                "Test : affiche les 6 auras de loot devant le joueur pendant 60 s (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    args.Context.AddString(LootAura.Preview());
+                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>

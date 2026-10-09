@@ -35,3 +35,4 @@
 # Developer tools: their README and the Assimp libraries needed to build them.
 !/DevTools/*/README.md
 !/DevTools/AnimationPreview/lib/*.dll
+Overhaul/Assets/LootAura/
