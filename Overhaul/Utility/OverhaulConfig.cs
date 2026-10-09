@@ -50,7 +50,6 @@ namespace Overhaul.Utility
 		public static ConfigEntry<bool> BowUseStamina { get; set; }
         public static ConfigEntry<bool> CrouchedBowAiming { get; set; }
         public static ConfigEntry<bool> StackSize100 { get; private set; }
-        public static ConfigEntry<string> LootAuraDaylight { get; private set; }
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
 
 		public static void Bind(ConfigFile config)
@@ -76,9 +75,6 @@ namespace Overhaul.Utility
                 new ConfigDescription("Raise every stackable item below 100 to stacks of 100. Set false to keep the vanilla stack sizes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             StackSize100.SettingChanged += (sender, args) => AlterItemStat.RefreshStacks();
-            LootAuraDaylight = config.Bind("LootAura", "DaylightBoost", "Opacity",
-                new ConfigDescription("How loot auras stay visible in daylight (test): Opacity raises their opacity, Brightness raises their light, None keeps them as at night.",
-                    new AcceptableValueList<string>("Opacity", "Brightness", "None")));
             OverhaulConfig.PickupRange = config.Bind<float>("PickupRange", "PickupRange", 5f, new ConfigDescription("Area pickup range; Default: 5 | Vanilla: 0 (single target)", new AcceptableValueRange<float>(1f, 50f), new object[]
             {
                 new ConfigurationManagerAttributes

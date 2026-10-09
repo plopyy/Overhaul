@@ -49,16 +49,15 @@ namespace Overhaul
             return Physics.Raycast(position + Vector3.up * .5f, Vector3.down, out RaycastHit hit, 3f, groundMask) ? hit.point : position;
         }
 
-        // Auras read well at night but fade in daylight: their opacity or their light (config LootAura.DaylightBoost) rises with the day,
-        // and the crystal aura, built with softened tones for the night, also gets its full saturation at noon.
+        // Auras read well at night but fade in daylight: their dark backing layer grows more opaque with the light of the day,
+        // which gives the colours contrast; the crystal aura, built with softened tones for the night, also gets its full saturation at noon.
         private class Daylight : MonoBehaviour
         {
-            private const float DayBoost = 1.8f, DaySaturation = 1f / .65f;
+            private const float DayBacking = 2.1f, DaySaturation = 1f / .65f;
             public bool Crystal;
             private ParticleSystem[] systems;
             private ParticleSystem.MinMaxGradient[] colors;
             private float factor = -1, next;
-            private string mode;
 
             private void Awake()
             {
@@ -74,14 +73,12 @@ namespace Overhaul
                 // 0 at night, 1 at noon, following the sun.
                 float light = Mathf.Clamp01(Mathf.Sin((EnvMan.instance.GetDayFraction() - .25f) * 2f * Mathf.PI) * 1.5f + .3f);
                 float wanted = light;
-                string boost = Utility.OverhaulConfig.LootAuraDaylight?.Value ?? "Opacity";
-                if (Mathf.Abs(wanted - factor) < .02f && boost == mode) return;
-                factor = wanted; mode = boost;
+                if (Mathf.Abs(wanted - factor) < .02f) return;
+                factor = wanted;
                 for (int i = 0; i < systems.Length; i++)
                 {
                     if (!systems[i]) continue;
-                    // The coloured layers are already fully opaque: Opacity darkens the dark backing layer instead,
-                    // which gives the colours contrast against a bright scene.
+                    // The coloured layers are already fully opaque: the dark backing layer is the one that changes.
                     bool backing = systems[i].name.StartsWith("Black");
                     var main = systems[i].main;
                     var c = colors[i];
@@ -96,10 +93,9 @@ namespace Overhaul
                 }
             }
 
-            private const float DayBacking = 1.8f;
             private ParticleSystem.MinMaxGradient Backing(ParticleSystem.MinMaxGradient c, float light)
             {
-                float boost = mode == "Opacity" ? Mathf.Lerp(1f, DayBacking, light) : 1f;
+                float boost = Mathf.Lerp(1f, DayBacking, light);
                 if (c.mode == ParticleSystemGradientMode.Color) { Color k = c.color; k.a = Mathf.Clamp01(k.a * boost); return k; }
                 if (c.mode == ParticleSystemGradientMode.TwoColors) { Color a = c.colorMin, b = c.colorMax; a.a = Mathf.Clamp01(a.a * boost); b.a = Mathf.Clamp01(b.a * boost); return new ParticleSystem.MinMaxGradient(a, b); }
                 return c;
@@ -110,9 +106,7 @@ namespace Overhaul
             {
                 Color.RGBToHSV(c, out float h, out float s, out float v);
                 if (Crystal) s = Mathf.Clamp01(s * Mathf.Lerp(1f, DaySaturation, light));
-                float boost = Mathf.Lerp(1f, DayBoost, light);
-                // Brightness goes past 1 (HDR): additive layers stay bright in the sun.
-                Color r = Color.HSVToRGB(h, s, mode == "Brightness" ? v * boost : v, true);
+                Color r = Color.HSVToRGB(h, s, v, true);
                 r.a = c.a;
                 return r;
             }
