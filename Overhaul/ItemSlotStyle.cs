@@ -79,7 +79,10 @@ namespace Overhaul
 
         // Applies the style to one cell. rarity: the rarity colour, or null for an item without rarity.
         // hud: a hotbar cell, whose background is its "bkg" child and uses the HUD background design.
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false)
+        // The slot border image, also used for the selection frames (ammo selection, gamepad selection).
+        public static Sprite BorderSprite => Ready() ? border : null;
+
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false)
         {
             if (!cell || !icon || !Ready()) return;
             Sprite design = hud && hudBackground ? hudBackground : background;
@@ -117,12 +120,25 @@ namespace Overhaul
                 glowImage.gameObject.SetActive(hasItem && rarity != null);
                 if (rarity != null) glowImage.color = rarity.Value;
             }
+            // The border marks items with a rarity; any other item only shows it while hovered.
             if (borderImage)
             {
-                borderImage.gameObject.SetActive(hasItem);
+                borderImage.gameObject.SetActive(hasItem && (rarity != null || hovered));
                 borderImage.color = rarity ?? BaseBorder;
             }
             Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
+            Selection(cell);
+        }
+
+        // The selection frame takes the slot border shape instead of Auga's octagon (its colour is kept).
+        private static void Selection(GameObject cell)
+        {
+            Transform selected = cell.transform.Find("selected");
+            Image frame = selected ? selected.GetComponent<Image>() : null;
+            if (!frame || frame.sprite == border) return;
+            frame.sprite = border; frame.type = Image.Type.Simple;
+            var rect = (RectTransform)selected;
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
         private static Image Child(GameObject cell, string name, Sprite sprite, int index)
@@ -176,11 +192,14 @@ namespace Overhaul
             {
                 Inventory inventory = __instance.GetInventory();
                 if (inventory == null) return;
+                var hovered = __instance.GetHoveredElement();
                 foreach (var element in __instance.m_elements)
                 {
                     if (!element) continue;
+                    // The equipment window shows what is worn: no "equipped" marker in the grids.
+                    if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1);
+                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered);
                 }
             }
         }

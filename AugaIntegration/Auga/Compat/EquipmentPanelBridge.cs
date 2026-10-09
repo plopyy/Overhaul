@@ -163,9 +163,13 @@ namespace Auga
             var child = element.transform.Find("AmmoActive");
             if (!child && selected)
             {
-                child = UnityEngine.Object.Instantiate(element.transform.Find("selected").gameObject, element.transform, false).transform;
-                child.name = "AmmoActive";
-                foreach (var graphic in child.GetComponentsInChildren<Graphic>(true)) { graphic.color = new Color(1f,.78f,.3f,.8f); graphic.raycastTarget = false; }
+                // The selected ammo slot is framed with the slot border design, in a golden tint.
+                var frame = new GameObject("AmmoActive", typeof(RectTransform), typeof(Image));
+                child = frame.transform;
+                child.SetParent(element.transform, false);
+                var rect = (RectTransform)child; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+                var image = frame.GetComponent<Image>();
+                image.sprite = Overhaul.ItemSlotStyle.BorderSprite; image.color = new Color(1f, .78f, .3f, 1f); image.raycastTarget = false;
             }
             if (child) child.gameObject.SetActive(selected);
         }
