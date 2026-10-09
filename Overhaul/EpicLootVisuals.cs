@@ -104,6 +104,7 @@ namespace Overhaul
             try
             {
                 if (Rarity(item) == null) return;
+                ApplyTextOverrides(); // Before Epic Loot builds the name and rarity texts.
                 MagicDisplay display = Read(item);
                 if (display != null) Show(tooltip, item, display);
             }
