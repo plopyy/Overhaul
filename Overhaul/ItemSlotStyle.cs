@@ -14,6 +14,8 @@ namespace Overhaul
         private const float IconSize = 64f / PixelsPerUnit;              // 64 px
         private const float QualitySize = 33f / PixelsPerUnit;           // 33 px
         private const float QualityAbove = 14f / PixelsPerUnit;          // badge top 14 px above the cell
+        private const float QualityFont = 18f / PixelsPerUnit;           // 18 px, bold
+        private const float QualityRaise = 1.5f / PixelsPerUnit;         // number 1.5 px higher than the badge centre
         private static readonly Color BaseBorder = new Color32(0x70, 0x63, 0x56, 0xFF);
         private const string GlowName = "OverhaulItemGlow", BorderName = "OverhaulItemBorder";
 
@@ -107,7 +109,13 @@ namespace Overhaul
             var badgeImage = badge.GetComponent<Image>();
             if (badgeImage && quality && badgeImage.sprite != quality) { badgeImage.sprite = quality; badgeImage.color = Color.white; }
             Place((RectTransform)badge, QualitySize);
-            if (number) Place((RectTransform)number, ((RectTransform)number).sizeDelta.y);
+            if (number)
+            {
+                Place((RectTransform)number, ((RectTransform)number).sizeDelta.y);
+                ((RectTransform)number).anchoredPosition += new Vector2(0, QualityRaise);
+                var text = number.GetComponent<TMPro.TMP_Text>();
+                if (text) { text.enableAutoSizing = false; text.fontSize = QualityFont; text.fontStyle |= TMPro.FontStyles.Bold; text.alignment = TMPro.TextAlignmentOptions.Center; }
+            }
         }
 
         private static void Place(RectTransform rect, float height)
