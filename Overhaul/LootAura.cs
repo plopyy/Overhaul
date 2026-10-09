@@ -37,7 +37,7 @@ namespace Overhaul
                 main.scalingMode = ParticleSystemScalingMode.Hierarchy;
             }
             if (follow) aura.AddComponent<Upright>().Target = follow;
-            aura.AddComponent<Daylight>().Crystal = level == Levels;
+            aura.AddComponent<Daylight>();
             return aura;
         }
 
@@ -49,12 +49,11 @@ namespace Overhaul
             return Physics.Raycast(position + Vector3.up * .5f, Vector3.down, out RaycastHit hit, 3f, groundMask) ? hit.point : position;
         }
 
-        // Auras read well at night but fade in daylight: their dark backing layer grows more opaque with the light of the day,
-        // which gives the colours contrast; the crystal aura, built with softened tones for the night, also gets its full saturation at noon.
+        // Auras read well at night but fade in daylight: their dark backing layer grows more opaque
+        // with the light of the day, which gives the colours contrast.
         private class Daylight : MonoBehaviour
         {
-            private const float DayBacking = 2.1f, DaySaturation = 1f / .65f;
-            public bool Crystal;
+            private const float DayBacking = 2.1f;
             private ParticleSystem[] systems;
             private ParticleSystem.MinMaxGradient[] colors;
             private float factor = -1, next;
@@ -78,18 +77,10 @@ namespace Overhaul
                 for (int i = 0; i < systems.Length; i++)
                 {
                     if (!systems[i]) continue;
-                    // The coloured layers are already fully opaque: the dark backing layer is the one that changes.
-                    bool backing = systems[i].name.StartsWith("Black");
+                    // The coloured layers are already fully opaque: only the dark backing layer changes.
+                    if (!systems[i].name.StartsWith("Black")) continue;
                     var main = systems[i].main;
-                    var c = colors[i];
-                    if (backing) { main.startColor = Backing(c, factor); continue; }
-                    if (c.mode == ParticleSystemGradientMode.Color) main.startColor = Saturate(c.color, factor);
-                    else if (c.gradient != null)
-                    {
-                        var g = new Gradient { mode = c.gradient.mode };
-                        g.SetKeys(System.Array.ConvertAll(c.gradient.colorKeys, k => new GradientColorKey(Saturate(k.color, factor), k.time)), c.gradient.alphaKeys);
-                        main.startColor = new ParticleSystem.MinMaxGradient(g) { mode = c.mode };
-                    }
+                    main.startColor = Backing(colors[i], factor);
                 }
             }
 
@@ -101,15 +92,6 @@ namespace Overhaul
                 return c;
             }
 
-            // light: 0 at night, 1 at noon.
-            private Color Saturate(Color c, float light)
-            {
-                Color.RGBToHSV(c, out float h, out float s, out float v);
-                if (Crystal) s = Mathf.Clamp01(s * Mathf.Lerp(1f, DaySaturation, light));
-                Color r = Color.HSVToRGB(h, s, v, true);
-                r.a = c.a;
-                return r;
-            }
         }
 
         private class Upright : MonoBehaviour
