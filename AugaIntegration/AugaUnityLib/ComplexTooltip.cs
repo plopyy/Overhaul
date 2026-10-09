@@ -619,7 +619,7 @@ namespace AugaUnity
                     // Localized here: the row aligner rewrites the texts after the tooltip has been localized.
                     rows.Add(new TooltipRow(LocalizeKeys(line.Substring(0, colon).Trim()), LocalizeKeys(System.Text.RegularExpressions.Regex.Replace(value, "</?color[^>]*>", ""))));
                 }
-                else rows.Add(new TooltipRow(line));
+                else rows.Add(new TooltipRow(LocalizeKeys(line)));
             }
             return rows;
         }
