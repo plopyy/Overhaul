@@ -1,28 +1,23 @@
-﻿# Changelog
+# Changelog
 
 ## 2.2.1 (in progress)
 
 ### Added
+- **Epic Loot compatibility.** Epic Loot's own item display, which broke the Auga interface, is replaced by Overhaul's: rarity tint behind magic items in the inventory, chests and hotbar, and Auga tooltips showing the rarity, the magic effects, shard slots and legendary/mythic set bonuses like the other stats. Item tooltips are reorganised to make room (wider, more compact, damage shown as the actual range with the elemental stat included, staff shield instead of blocking stats) and scaled down if still taller than the screen. (2.2.1.46)
 - Server option `[Items] StackSize100`, on by default: turn it off to keep the vanilla stack sizes instead of stacks of 100. It applies right away, even when changed during a game. (2.2.1.18)
   With the option off, stacks bigger than the vanilla limit in your inventory, or taken from a chest, are split into normal stacks (100 wood becomes 2 × 50); what does not fit is dropped at your feet. (2.2.1.19)
 - Settings > Mods: **Dash (replaces sprint)** option, on by default. When turned off, the Run key sprints like in vanilla Valheim and drains stamina; sprint speed is scaled to Overhaul's faster jog, so sprinting stays faster than jogging. Per-player setting. (2.2.1.1)
 - Settings > Mods: the **Take all** key can be changed (printed R key by default). Shift + this key still renames a chest and swaps gear with an armor stand, and on-screen hints show the chosen key. (2.2.1.3)
 
 ### Changed
-- Trinkets give their bonus permanently while worn, like any other equipment, instead of only for a few seconds once the adrenaline bar is full. Adrenaline is disabled for now: no more adrenaline bar. (2.2.1.21)
+- Trinkets give their bonus permanently while worn, like any other equipment, instead of only for a few seconds once the adrenaline bar is full. Adrenaline is disabled for now: no more adrenaline bar (kept when Epic Loot is installed, for its adrenaline enchantments). (2.2.1.25)
 - Station upgrades (workbench, forge…) can be placed or moved right next to each other: the "too close to another upgrade" limit is removed. They must still be within reach of their station. (2.2.1.17)
 - Oven: each of the 4 slots takes a stack of one raw dish. The first one cooks in its place in the oven, is ejected in front of it once cooked (like other production machines, never despawning), then the next one starts. Cooked dishes left in the oven by earlier versions are ejected too. (2.2.1.7)
 - Items dropped from the inventory fly towards the crosshair instead of the character's facing, keeping the vanilla arc and speed. (2.2.1.4)
 - Settings > Mods: shortcut rows are slightly closer together, so the new row, the Dash option and the help text fit above the buttons. (2.2.1.3)
 
 ### Fixed
-- Epic Loot compatibility: Epic Loot no longer draws its own item display over the Auga interface (second tooltip window running off the screen, broken tooltip text). Overhaul shows magic items itself: a rarity tint behind the icon in the inventory, chests and hotbar, and in the tooltip the rarity-coloured name, the rarity in the subtitle and a box with the magic effects and shard slots. Item tooltips are scaled down when they would be taller than the screen. (2.2.1.26)
-- Epic Loot: legendary and mythic set bonuses get their own box in the tooltip, under the magic effects. (2.2.1.27)
-- Item tooltips are wider inside: thinner side margins and a slightly wider tooltip give the text boxes 27 % more room, so fewer lines wrap (2.2.1.36).
-- Item tooltips are more compact: damage lines show only the damage you actually deal (46-82) instead of the base value followed by that range (2.2.1.32), and the flat damage of the elemental stat is added to the matching element line instead of a separate "(stat)" line (2.2.1.34); the crafter moves to the bottom; quality (already shown on the icon) and repair station level (any workbench repairs everything) are gone; staffs show their elemental shield instead of the blocking stats they no longer use; movement speed and eitr regeneration are regular two-column lines; a set shows "Set name (equipped/size)". With Epic Loot, the rarity has its own line under the name, the magic effects follow the stats without a divider, and the redundant "Rarity / Effects" line is gone. (2.2.1.29) Magic effects and shards are listed like the other stats, without the coloured pips, with their value right-aligned in bold (2.2.1.39); shard slots keep their icon (2.2.1.40); set bonuses also show their value right-aligned in bold, while a number that belongs to the sentence stays in it (2.2.1.42). Their values use exactly the regular stat style (same bold font, shadow and colour, in a native two-column box that keeps each value in front of its label when the label wraps), except elemental ones (fire, frost, poison, lightning) which keep their element colour (2.2.1.46). Set bonus lines no longer show a box instead of their bullet. (2.2.1.30)
 - TEMPORARY test (to remove before release): every staff tooltip shows sample Epic Loot boxes and every Overhaul stat line (worst case: extra projectile, 7 effects, 4 shard slots, 6-piece set), with or without Epic Loot, to check the tooltip height in game. (2.2.1.28 to 2.2.1.34)
-- Epic Loot: With Epic Loot installed, the adrenaline bar is kept for its adrenaline enchantments; trinket bonuses stay permanent either way. (2.2.1.24)
-- Without Epic Loot, adrenaline gains are now really blocked (2.2.1.21 to 2.2.1.24 only hid the bar). (2.2.1.25)
 - The portal window could open greyed out, with its buttons and destination list disabled and no way to close it: another active interface group outranked it. The portal window now always takes the focus while it is open. (2.2.1.5)
 - Since Valheim 1.0.17, the end-game credits could stay open invisibly in the background and grey out other windows. They now stay closed unless the end credits are actually playing. (2.2.1.6)
 - Dedicated server: a dungeon whose reset was refused (for example because it touches another tracked location) was retried every 5 minutes, regenerating a whole dungeon and its terrain each time. This could freeze the server for several minutes, disconnect players and block shutdown. A refused reset now waits 6 hours before the next attempt, and the log names the object that blocks it. (2.2.1.10)
