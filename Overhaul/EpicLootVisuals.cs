@@ -103,8 +103,28 @@ namespace Overhaul
             catch (Exception e) { Utility.Log.LogWarning("Epic Loot : infobulle incomplete : " + e.Message); }
         }
 
+        // Shorter effect texts: every "overhaul_el_<Epic Loot key>" translation of Overhaul replaces that Epic Loot
+        // key in the current language. Re-applied when the language changes or Epic Loot reloads its words.
+        private const string OverridePrefix = "overhaul_el_";
+        private static string overriddenLanguage, sampleKey, sampleText;
+        private static void ApplyTextOverrides()
+        {
+            Localization localization = Localization.instance;
+            if (localization == null) return;
+            string language = localization.GetSelectedLanguage();
+            if (language == overriddenLanguage && (sampleKey == null || localization.m_translations.TryGetValue(sampleKey, out string current) && current == sampleText)) return;
+            overriddenLanguage = language; sampleKey = null;
+            foreach (var pair in localization.m_translations.Where(p => p.Key.StartsWith(OverridePrefix, StringComparison.Ordinal)).ToArray())
+            {
+                string key = pair.Key.Substring(OverridePrefix.Length);
+                localization.AddWord(key, pair.Value);
+                sampleKey = key; sampleText = pair.Value;
+            }
+        }
+
         internal static void Show(ComplexTooltip tooltip, ItemDrop.ItemData item, MagicDisplay display)
         {
+            ApplyTextOverrides();
             if (!string.IsNullOrEmpty(display.Topic)) tooltip.SetTopic(Localization.instance.Localize(display.Topic));
             if (!string.IsNullOrEmpty(display.Rarity)) tooltip.SetSubtitle(Localization.instance.Localize(display.Rarity) + "\n" + tooltip.GenerateItemSubtext(item));
             var rows = new List<TooltipRow>();
@@ -184,11 +204,20 @@ namespace Overhaul
         internal static TooltipRow Row(string text, string color, string indent = "", string icon = "")
         {
             text = Regex.Replace(Localization.instance.Localize(text ?? ""), "<[^>]+>", "").Trim();
+            // "Movement Speed +5% (Health Critical)": the condition stays with the label.
+            Match condition = Regex.Match(text, @"^(.*\S)\s+([+\-−]?\d+(?:[.,]\d+)?\s?%)\s*(\([^)]*\))$");
+            if (condition.Success) text = condition.Groups[1].Value + " " + condition.Groups[3].Value + " " + condition.Groups[2].Value;
             Match match = Value.Match(text);
             string whole = indent + icon + "<color=" + color + ">" + text + "</color>";
             if (!match.Success || Regex.Matches(text, @"\d+(?:[.,]\d+)?").Count != 1) return new TooltipRow(whole);
             string value = (match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value).Trim();
             string label = text.Remove(match.Index, match.Length).Trim(' ', ':', ',');
+            // "+18 % de dégâts la nuit": the label starts after the value, without its "de".
+            if (match.Groups[1].Success)
+            {
+                label = Regex.Replace(label, @"^(de |d'|du |des )", "", RegexOptions.IgnoreCase);
+                if (label.Length > 0) label = char.ToUpper(label[0]) + label.Substring(1);
+            }
             if (Preposition.IsMatch(label)) return new TooltipRow(whole);
             string element = ElementColor(label);
             return new TooltipRow(indent + icon + "<color=" + color + ">" + label + "</color>", element != null ? "<color=" + element + ">" + value + "</color>" : value);
