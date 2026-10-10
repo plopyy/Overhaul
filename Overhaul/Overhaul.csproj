@@ -160,6 +160,7 @@
     <Compile Include="Properties\BuildVersion.g.cs" />
     <Compile Include="NetworkVersion.cs" />
     <Compile Include="Utility\Log.cs" />
+    <Compile Include="Utility\ShutdownTrace.cs" />
     <Compile Include="Utility\OverhaulConfig.cs" />
     <Compile Include="Utility\WeaponAttackSpeeds.cs" />
     <Compile Include="Utility\EmbeddedAssets.cs" /><Compile Include="Utility\ConfigSections.cs" />
