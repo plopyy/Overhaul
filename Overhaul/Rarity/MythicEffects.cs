@@ -87,7 +87,9 @@ namespace Overhaul.Rarity
                 var camera = Utils.GetMainCamera();
                 int extra = weapon != null ? Extra(weapon) : 0;
                 if (extra > 0 && camera && __instance.m_crosshair && __instance.m_crosshair.enabled)
-                    count = Mathf.Max(1, weapon.m_shared.m_attack.m_projectiles) + extra + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"));
+                    // Base projectiles, the mythic ones, the enchantment lines (ProjectileCount) and the leveling bonus once its chance reaches 100 %.
+                    count = Mathf.Max(1, weapon.m_shared.m_attack.m_projectiles) + extra + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                        + (Leveling.LevelingEffects.Bonus(player, "projectile") >= 1 ? 1 : 0);
                 int shown = 0;
                 for (int i = 0; i < count; i++)
                 {
