@@ -31,20 +31,10 @@ namespace Overhaul.Rarity
                 return left.Concat(new[] { Colors[0] }).Concat(right).ToArray();
             }
         }
-        // Colours a text character by character along the gradient (a single colour when the rarity has only one).
-        internal string Paint(string text)
-        {
-            if (Colors.Length < 2 || string.IsNullOrEmpty(text)) return "<color=#" + ColorUtility.ToHtmlStringRGB(Color) + ">" + text + "</color>";
-            var colors = Gradient; var builder = new System.Text.StringBuilder();
-            for (int i = 0; i < text.Length; i++)
-            {
-                if (char.IsWhiteSpace(text[i])) { builder.Append(text[i]); continue; }
-                float position = (text.Length == 1 ? .5f : i / (float)(text.Length - 1)) * (colors.Length - 1);
-                int index = Mathf.Min((int)position, colors.Length - 2);
-                builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(Color.Lerp(colors[index], colors[index + 1], position - index))).Append('>').Append(text[i]).Append("</color>");
-            }
-            return builder.ToString();
-        }
+        // Text in the rarity colour. A multicolour rarity marks the text with a reserved colour that the
+        // tooltip's TextGradient replaces with the 45° gradient.
+        internal const string GradientMark = "#010203";
+        internal string Paint(string text) => "<color=" + (Colors.Length > 1 ? GradientMark : "#" + ColorUtility.ToHtmlStringRGB(Color)) + ">" + text + "</color>";
         internal string Name => Localization.instance != null && Localization.instance.GetSelectedLanguage() == "French" ? NameFr : NameEn;
     }
 

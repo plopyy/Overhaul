@@ -192,35 +192,53 @@ namespace Overhaul
             image.color = Color.Lerp(color, Color.white, lighten);
         }
 
+        // 45° gradient over an image, top left to bottom right. Reference: an area shared by several images
+        // (a divider made of strokes and an ornament) so they form one gradient; by default the image itself.
         internal sealed class SlotGradient : BaseMeshEffect
         {
             public Color[] Colors;
+            public RectTransform Reference;
             public override void ModifyMesh(VertexHelper mesh)
             {
                 if (!IsActive() || Colors == null || Colors.Length < 2 || mesh.currentVertCount == 0) return;
                 var vertex = new UIVertex();
-                float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
-                for (int i = 0; i < mesh.currentVertCount; i++)
+                Rect area;
+                Matrix4x4 toArea = Matrix4x4.identity;
+                if (Reference)
                 {
-                    mesh.PopulateUIVertex(ref vertex, i);
-                    minX = Mathf.Min(minX, vertex.position.x); maxX = Mathf.Max(maxX, vertex.position.x);
-                    minY = Mathf.Min(minY, vertex.position.y); maxY = Mathf.Max(maxY, vertex.position.y);
+                    area = Reference.rect;
+                    toArea = Reference.worldToLocalMatrix * transform.localToWorldMatrix;
+                }
+                else
+                {
+                    float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+                    for (int i = 0; i < mesh.currentVertCount; i++)
+                    {
+                        mesh.PopulateUIVertex(ref vertex, i);
+                        minX = Mathf.Min(minX, vertex.position.x); maxX = Mathf.Max(maxX, vertex.position.x);
+                        minY = Mathf.Min(minY, vertex.position.y); maxY = Mathf.Max(maxY, vertex.position.y);
+                    }
+                    area = Rect.MinMaxRect(minX, minY, maxX, maxY);
                 }
                 for (int i = 0; i < mesh.currentVertCount; i++)
                 {
                     mesh.PopulateUIVertex(ref vertex, i);
-                    float t = (Mathf.InverseLerp(minX, maxX, vertex.position.x) + Mathf.InverseLerp(maxY, minY, vertex.position.y)) / 2f;
-                    vertex.color = (Color32)((Color)vertex.color * Evaluate(t));
+                    Vector3 p = toArea.MultiplyPoint3x4(vertex.position);
+                    vertex.color = (Color32)((Color)vertex.color * Diagonal(Colors, area, p));
                     mesh.SetUIVertex(vertex, i);
                 }
             }
+        }
 
-            private Color Evaluate(float t)
-            {
-                float position = Mathf.Clamp01(t) * (Colors.Length - 1);
-                int index = Mathf.Min((int)position, Colors.Length - 2);
-                return Color.Lerp(Colors[index], Colors[index + 1], position - index);
-            }
+        // Colour at a point of a 45° gradient over an area: it runs along the top-left to bottom-right direction
+        // at a true 45°, whatever the proportions of the area.
+        internal static Color Diagonal(Color[] colors, Rect area, Vector2 point)
+        {
+            float span = area.width + area.height;
+            float t = span <= 0 ? .5f : ((point.x - area.xMin) + (area.yMax - point.y)) / span;
+            float position = Mathf.Clamp01(t) * (colors.Length - 1);
+            int index = Mathf.Min((int)position, colors.Length - 2);
+            return Color.Lerp(colors[index], colors[index + 1], position - index);
         }
 
         // Cells are styled during UI updates, sometimes inside a layout rebuild: a new GameObject given a RectTransform

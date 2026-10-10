@@ -195,6 +195,7 @@ namespace Overhaul.Rarity
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
             if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);
+            tint.Texts(tooltip, rarity);
         }
     }
 
@@ -205,22 +206,22 @@ namespace Overhaul.Rarity
         private Color topic;
         private Image[] dividers;
         private Color[] originals;
+        private RectTransform[] roots;
 
         public void Apply(ComplexTooltip tooltip, RarityDef rarity)
         {
             if (dividers == null)
             {
                 topic = tooltip.Topic.color;
-                // Only the light strokes are tinted: dark parts (the fill that hides the line behind the diamond) keep their colour.
-                dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true))
-                    .Where(i => i.color.maxColorComponent > .5f).ToArray();
+                dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true)).ToArray();
+                roots = dividers.Select(d => (RectTransform)(tooltip.NormalDivider && d.transform.IsChildOf(tooltip.NormalDivider.transform) ? tooltip.NormalDivider.transform : tooltip.BottomDivider.transform)).ToArray();
                 originals = dividers.Select(d => d.color).ToArray();
             }
             Color[] colors = rarity == null ? null : rarity.Gradient;
             tooltip.Topic.enableVertexGradient = false;
             // A multicolour name is painted letter by letter; a single colour tints the whole text.
-            if (colors != null && colors.Length > 1) { tooltip.Topic.color = Color.white; tooltip.Topic.text = rarity.Paint(System.Text.RegularExpressions.Regex.Replace(tooltip.Topic.text, "<[^>]*>", "")); }
-            else tooltip.Topic.color = rarity != null ? rarity.Color : topic;
+            tooltip.Topic.color = topic;
+            if (rarity != null) tooltip.Topic.text = rarity.Paint(System.Text.RegularExpressions.Regex.Replace(tooltip.Topic.text, "<[^>]*>", ""));
             for (int i = 0; i < dividers.Length; i++)
             {
                 if (!dividers[i]) continue;
@@ -228,7 +229,8 @@ namespace Overhaul.Rarity
                 if (colors != null && colors.Length > 1)
                 {
                     if (!gradient) gradient = dividers[i].gameObject.AddComponent<ItemSlotStyle.SlotGradient>();
-                    gradient.Colors = colors; gradient.enabled = true;
+                    // One gradient over the whole divider, not one per stroke.
+                    gradient.Colors = colors; gradient.Reference = roots[i]; gradient.enabled = true;
                     dividers[i].color = new Color(1, 1, 1, originals[i].a);
                 }
                 else
@@ -237,6 +239,64 @@ namespace Overhaul.Rarity
                     dividers[i].color = rarity != null ? new Color(rarity.Color.r, rarity.Color.g, rarity.Color.b, originals[i].a) : originals[i];
                 }
                 dividers[i].SetVerticesDirty();
+            }
+        }
+
+        // Texts painted with the gradient mark (name, rarity, enchantment lines) get the 45° gradient; every text
+        // of the tooltip is watched since the rows are created on the fly.
+        public void Texts(ComplexTooltip tooltip, RarityDef rarity)
+        {
+            Color[] colors = rarity != null && rarity.Colors.Length > 1 ? rarity.Gradient : null;
+            foreach (var text in tooltip.GetComponentsInChildren<TMPro.TMP_Text>(true))
+            {
+                var gradient = text.GetComponent<TextGradient>();
+                if (colors == null) { if (gradient) gradient.Colors = null; continue; }
+                if (!gradient) gradient = text.gameObject.AddComponent<TextGradient>();
+                gradient.Colors = colors;
+                text.SetVerticesDirty();
+            }
+        }
+    }
+
+    // Replaces the characters written in the gradient mark colour with one 45° gradient spanning them all.
+    internal sealed class TextGradient : MonoBehaviour
+    {
+        private static readonly Color32 Mark = new Color32(1, 2, 3, 255);
+        public Color[] Colors;
+        private TMPro.TMP_Text text;
+
+        private void OnEnable() { text = GetComponent<TMPro.TMP_Text>(); if (text) text.OnPreRenderText += Paint; }
+        private void OnDisable() { if (text) text.OnPreRenderText -= Paint; }
+
+        private static bool Marked(Color32 c) => c.r == Mark.r && c.g == Mark.g && c.b == Mark.b;
+
+        private void Paint(TMPro.TMP_TextInfo info)
+        {
+            if (Colors == null || Colors.Length < 2) return;
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+            bool any = false;
+            for (int i = 0; i < info.characterCount; i++)
+            {
+                var c = info.characterInfo[i];
+                if (!c.isVisible || !Marked(c.color)) continue;
+                any = true;
+                minX = Mathf.Min(minX, c.bottomLeft.x); maxX = Mathf.Max(maxX, c.topRight.x);
+                minY = Mathf.Min(minY, c.bottomLeft.y); maxY = Mathf.Max(maxY, c.topRight.y);
+            }
+            if (!any) return;
+            var area = Rect.MinMaxRect(minX, minY, maxX, maxY);
+            for (int i = 0; i < info.characterCount; i++)
+            {
+                var c = info.characterInfo[i];
+                if (!c.isVisible || !Marked(c.color)) continue;
+                var mesh = info.meshInfo[c.materialReferenceIndex];
+                for (int v = 0; v < 4; v++)
+                {
+                    int index = c.vertexIndex + v;
+                    Color32 color = ItemSlotStyle.Diagonal(Colors, area, mesh.vertices[index]);
+                    color.a = mesh.colors32[index].a;
+                    mesh.colors32[index] = color;
+                }
             }
         }
     }

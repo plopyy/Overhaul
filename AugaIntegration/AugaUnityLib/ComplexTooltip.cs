@@ -217,6 +217,8 @@ namespace AugaUnity
             float width = rect.rect.width;
             if (Mathf.Approximately(rect.anchorMin.x, rect.anchorMax.x))
                 rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width + gain);
+            // A divider sizes its own side strokes (HorizontalDividerFitter): moving them would push one under the diamond.
+            if (rect.GetComponent<HorizontalDividerFitter>() != null) return;
             foreach (RectTransform child in rect)
                 {
                     if (child.rect.width > width * 0.6f) Grow(child, gain);
