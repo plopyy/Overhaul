@@ -47,11 +47,11 @@ namespace Overhaul.Rarity
             return item.m_shared != null && Prefabs.TryGetValue(item.m_shared.m_name, out string name) ? name : null;
         }
 
-        // Gear categories for EnchantItemTypes. Weapons and Armor stand for their whole group.
-        private static readonly string[] Known = { "Weapon", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool" };
+        // Gear categories for EnchantItemTypes. AllWeapons and Armor stand for their whole group.
+        private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool" };
         private static readonly Dictionary<string, string[]> Groups = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            { "Weapons", new[] { "Weapon", "Bow", "Staff" } },
+            { "AllWeapons", new[] { "Melee", "Bow", "Staff" } },
             { "Armor", new[] { "Helmet", "Chest", "Legs", "Cape" } },
         };
 
@@ -68,7 +68,7 @@ namespace Overhaul.Rarity
         }
 
         // The gear category of an item: tools (pickaxes, fishing rod, hammer...), staffs (magic skills), bows and
-        // crossbows, other weapons, shields, the armour slots and trinkets.
+        // crossbows, melee weapons, shields, the armour slots and trinkets.
         internal static string Category(ItemDrop.ItemData item)
         {
             var shared = item.m_shared;
@@ -89,7 +89,7 @@ namespace Overhaul.Rarity
             }
             if (shared.m_itemType == ItemDrop.ItemData.ItemType.Bow) return "Bow";
             // The scythe harvests: it counts as a tool.
-            return shared.m_name == "$item_scythe" ? "Tool" : "Weapon";
+            return shared.m_name == "$item_scythe" ? "Tool" : "Melee";
         }
 
         // Distinct enchantments (effects of Effects.cfg with EnchantRarityMin at most as strong as the rarity and
