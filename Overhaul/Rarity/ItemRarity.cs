@@ -3,6 +3,7 @@ using System.Linq;
 using AugaUnity;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Overhaul.Rarity
 {
@@ -96,10 +97,17 @@ namespace Overhaul.Rarity
         }
 
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetArmor), typeof(int), typeof(float))]
-        private static class Armor { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result *= Multiplier(__instance); }
+        private static class Armor { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result = Raise(__result, __instance); }
 
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetBaseBlockPower), typeof(int))]
-        private static class Block { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result *= Multiplier(__instance); }
+        private static class Block { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result = Raise(__result, __instance); }
+
+        // Raised values are kept to one decimal, so tooltips do not show float noise such as 7,349999.
+        private static float Raise(float value, ItemDrop.ItemData item)
+        {
+            float multiplier = Multiplier(item);
+            return multiplier == 1f ? value : Mathf.Round(value * multiplier * 10f) / 10f;
+        }
 
         // Creature loot from the MobLoot sections: each loot list rolls its chance, then drops its quantity
         // of items picked in its list, each with a rarity rolled from the list's weights.
@@ -171,16 +179,65 @@ namespace Overhaul.Rarity
         private static void Tooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
             var rarity = Of(item);
+            // The tooltip is reused for every item: restore the default colours first.
+            var tint = tooltip.GetComponent<TooltipRarityTint>() ?? tooltip.gameObject.AddComponent<TooltipRarityTint>();
+            tint.Apply(tooltip, rarity);
             if (rarity == null) return;
-            tooltip.SetSubtitle("<color=#" + ColorUtility.ToHtmlStringRGB(rarity.Color) + ">" + rarity.Name + "</color>\n" + tooltip.GenerateItemSubtext(item));
+            string color = "#" + ColorUtility.ToHtmlStringRGB(rarity.Color);
+            tooltip.SetSubtitle("<color=" + color + ">" + rarity.Name + "</color>\n" + tooltip.GenerateItemSubtext(item));
             var rows = new List<TooltipRow>();
-            // Enchantment lines; an empty one shows as "Empty bonus +0" until the enchantment list exists.
+            // Enchantment lines in the rarity colour; an empty one shows as "Empty bonus +0" until the enchantment list exists.
             foreach (string enchant in Enchants(item))
-                rows.Add(enchant == EmptyEnchant ? new TooltipRow(Localization.instance.Localize("$overhaul_rarity_empty_enchant"), "+0") : new TooltipRow(enchant));
+                rows.Add(new TooltipRow("<color=" + color + ">" + (enchant == EmptyEnchant ? Localization.instance.Localize("$overhaul_rarity_empty_enchant") : enchant) + "</color>",
+                    enchant == EmptyEnchant ? "<color=" + color + ">+0</color>" : null));
             if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
             if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);
+        }
+    }
+
+    // Item name and the top and bottom dividers of a tooltip in the rarity colour (a 45° gradient for a
+    // multicolour rarity); the default colours come back for an item without rarity.
+    internal sealed class TooltipRarityTint : MonoBehaviour
+    {
+        private Color topic;
+        private Image[] dividers;
+        private Color[] originals;
+
+        public void Apply(ComplexTooltip tooltip, RarityDef rarity)
+        {
+            if (dividers == null)
+            {
+                topic = tooltip.Topic.color;
+                dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true)).ToArray();
+                originals = dividers.Select(d => d.color).ToArray();
+            }
+            Color[] colors = rarity == null ? null : rarity.Colors;
+            tooltip.Topic.enableVertexGradient = colors != null && colors.Length > 1;
+            if (colors != null && colors.Length > 1)
+            {
+                tooltip.Topic.color = Color.white;
+                tooltip.Topic.colorGradient = new TMPro.VertexGradient(colors[0], colors[1], colors[1], colors[colors.Length - 1]);
+            }
+            else tooltip.Topic.color = rarity != null ? rarity.Color : topic;
+            for (int i = 0; i < dividers.Length; i++)
+            {
+                if (!dividers[i]) continue;
+                var gradient = dividers[i].GetComponent<ItemSlotStyle.SlotGradient>();
+                if (colors != null && colors.Length > 1)
+                {
+                    if (!gradient) gradient = dividers[i].gameObject.AddComponent<ItemSlotStyle.SlotGradient>();
+                    gradient.Colors = colors; gradient.enabled = true;
+                    dividers[i].color = new Color(1, 1, 1, originals[i].a);
+                }
+                else
+                {
+                    if (gradient) gradient.enabled = false;
+                    dividers[i].color = rarity != null ? new Color(rarity.Color.r, rarity.Color.g, rarity.Color.b, originals[i].a) : originals[i];
+                }
+                dividers[i].SetVerticesDirty();
+            }
         }
     }
 }
