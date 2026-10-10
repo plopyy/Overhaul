@@ -66,8 +66,9 @@ namespace Overhaul.Rarity
             Dictionary<string, string> current = null;
             foreach (string raw in text.Split('\n'))
             {
-                string line = raw.Split('#', ';')[0].Trim();
-                if (line.Length == 0) continue;
+                // Only whole lines are comments: colours are written with a #.
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("#") || line.StartsWith(";")) continue;
                 if (line.StartsWith("[") && line.EndsWith("]") && !line.Contains("="))
                 {
                     current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
