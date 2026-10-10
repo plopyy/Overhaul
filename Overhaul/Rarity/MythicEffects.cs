@@ -101,6 +101,8 @@ namespace Overhaul.Rarity
                     mark.gameObject.SetActive(true);
                 }
                 for (int i = shown; i < Marks.Count; i++) if (Marks[i]) Marks[i].gameObject.SetActive(false);
+                // An even count has no projectile in the centre: the normal crosshair is hidden.
+                if (__instance.m_crosshair) __instance.m_crosshair.canvasRenderer.SetAlpha(count > 0 && count % 2 == 0 ? 0 : 1);
             }
 
             // A smaller copy of the crosshair, created once per index.
