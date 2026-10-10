@@ -84,7 +84,7 @@ namespace Overhaul
         public static Sprite BorderSprite => Ready() ? border : null;
 
         // position: where the cell sits in its window, 0 = left edge, 1 = right edge (-1: unknown, design colour).
-        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false, float position = -1, bool equipped = false)
+        public static void Apply(GameObject cell, Image icon, bool hasItem, Color? rarity, bool hud = false, bool upgradable = false, bool hovered = false, float position = -1, bool equipped = false, Color[] gradient = null)
         {
             if (!cell || !icon || !Ready()) return;
             Sprite design = hud && hudBackground ? hudBackground : background;
@@ -121,7 +121,7 @@ namespace Overhaul
             if (glowImage)
             {
                 glowImage.gameObject.SetActive(hasItem && rarity != null);
-                if (rarity != null) glowImage.color = rarity.Value;
+                if (rarity != null) Tint(glowImage, rarity.Value, gradient, 0);
             }
             // The border marks items with a rarity; any hovered cell, empty or not, shows it too (base colour).
             // In the hotbar, the equipped weapon or tool has a pure white border instead of the blue background.
@@ -130,9 +130,10 @@ namespace Overhaul
                 borderImage.gameObject.SetActive((hasItem && (rarity != null || equipped)) || hovered);
                 Color tint = hasItem && rarity != null ? rarity.Value : BaseBorder;
                 // A rarity border is always shown: hovering lightens it instead.
-                borderImage.color = hasItem && equipped ? Color.white : hovered && hasItem && rarity != null ? Color.Lerp(tint, Color.white, HoverLighten) : tint;
+                if (hasItem && equipped) Tint(borderImage, Color.white, null, 0);
+                else Tint(borderImage, tint, hasItem && rarity != null ? gradient : null, hovered && hasItem && rarity != null ? HoverLighten : 0);
             }
-            Quality(cell, rarity ?? BaseBorder, hasItem && upgradable);
+            Quality(cell, rarity ?? BaseBorder, hasItem && upgradable, hasItem ? gradient : null);
             Selection(cell);
         }
 
@@ -174,6 +175,54 @@ namespace Overhaul
             rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
         }
 
+        // A rarity with several colours is drawn as a diagonal gradient (top left to bottom right) on the image;
+        // lighten: hover lightening toward white.
+        private static void Tint(Image image, Color color, Color[] gradient, float lighten)
+        {
+            var effect = image.GetComponent<SlotGradient>();
+            if (gradient != null && gradient.Length > 1)
+            {
+                if (!effect) effect = image.gameObject.AddComponent<SlotGradient>();
+                var colors = gradient.Select(c => Color.Lerp(c, Color.white, lighten)).ToArray();
+                if (!effect.enabled || effect.Colors == null || !effect.Colors.SequenceEqual(colors)) { effect.Colors = colors; effect.enabled = true; image.SetVerticesDirty(); }
+                image.color = Color.white;
+                return;
+            }
+            if (effect && effect.enabled) { effect.enabled = false; image.SetVerticesDirty(); }
+            image.color = Color.Lerp(color, Color.white, lighten);
+        }
+
+        internal sealed class SlotGradient : BaseMeshEffect
+        {
+            public Color[] Colors;
+            public override void ModifyMesh(VertexHelper mesh)
+            {
+                if (!IsActive() || Colors == null || Colors.Length < 2 || mesh.currentVertCount == 0) return;
+                var vertex = new UIVertex();
+                float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+                for (int i = 0; i < mesh.currentVertCount; i++)
+                {
+                    mesh.PopulateUIVertex(ref vertex, i);
+                    minX = Mathf.Min(minX, vertex.position.x); maxX = Mathf.Max(maxX, vertex.position.x);
+                    minY = Mathf.Min(minY, vertex.position.y); maxY = Mathf.Max(maxY, vertex.position.y);
+                }
+                for (int i = 0; i < mesh.currentVertCount; i++)
+                {
+                    mesh.PopulateUIVertex(ref vertex, i);
+                    float t = (Mathf.InverseLerp(minX, maxX, vertex.position.x) + Mathf.InverseLerp(maxY, minY, vertex.position.y)) / 2f;
+                    vertex.color = (Color32)((Color)vertex.color * Evaluate(t));
+                    mesh.SetUIVertex(vertex, i);
+                }
+            }
+
+            private Color Evaluate(float t)
+            {
+                float position = Mathf.Clamp01(t) * (Colors.Length - 1);
+                int index = Mathf.Min((int)position, Colors.Length - 2);
+                return Color.Lerp(Colors[index], Colors[index + 1], position - index);
+            }
+        }
+
         private static Image Child(GameObject cell, string name, Sprite sprite, int index)
         {
             if (!sprite) return null;
@@ -190,7 +239,7 @@ namespace Overhaul
         }
 
         // Quality badge: the design's diamond, 33 px, its top 14 px above the cell, centred; the number follows.
-        private static void Quality(GameObject cell, Color borderColor, bool shown)
+        private static void Quality(GameObject cell, Color borderColor, bool shown, Color[] gradient)
         {
             Transform badge = cell.transform.Find("quality_bkg"), number = cell.transform.Find("quality");
             if (!badge) return;
@@ -200,7 +249,7 @@ namespace Overhaul
             // The badge border, coloured like the cell border (base colour, or the rarity colour).
             Image badgeBorder = Child(badge.gameObject, "OverhaulQualityBorder", qualityBorder, badge.childCount);
             // Shown like Auga's own badge: only for an item that can be upgraded (max quality above 1).
-            if (badgeBorder) { badgeBorder.color = borderColor; badgeBorder.enabled = shown; }
+            if (badgeBorder) { Tint(badgeBorder, borderColor, gradient, 0); badgeBorder.enabled = shown; }
             if (number)
             {
                 Place((RectTransform)number, ((RectTransform)number).sizeDelta.y);
@@ -232,7 +281,7 @@ namespace Overhaul
                     // The equipment window shows what is worn: no "equipped" marker in the grids.
                     if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform));
+                    Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform), gradient: Rarity.ItemRarity.GradientOf(item));
                 }
             }
         }
@@ -248,7 +297,7 @@ namespace Overhaul
                     ItemDrop.ItemData item = __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i);
                     var element = __instance.m_elements[i];
                     if (element.m_equiped) element.m_equiped.SetActive(false);
-                    Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, equipped: item != null && item.m_equipped);
+                    Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, equipped: item != null && item.m_equipped, gradient: Rarity.ItemRarity.GradientOf(item));
                 }
             }
         }

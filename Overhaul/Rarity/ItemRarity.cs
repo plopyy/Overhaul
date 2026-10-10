@@ -26,6 +26,9 @@ namespace Overhaul.Rarity
         // Slot colour: the Overhaul rarity, else Epic Loot's when it is installed.
         internal static Color? ColorOf(ItemDrop.ItemData item) => Of(item)?.Color ?? EpicLootVisuals.RarityOf(item);
 
+        // Every colour of a multicolour rarity (drawn as a gradient), or null.
+        internal static Color[] GradientOf(ItemDrop.ItemData item) { var rarity = Of(item); return rarity != null && rarity.Colors.Length > 1 ? rarity.Colors : null; }
+
         internal static string[] Enchants(ItemDrop.ItemData item) =>
             item?.m_customData != null && item.m_customData.TryGetValue(EnchantKey, out string value) && value.Length > 0 ? value.Split(',') : new string[0];
 
