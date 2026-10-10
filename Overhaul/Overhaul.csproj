@@ -138,6 +138,7 @@
     <Compile Include="Commands\AdminCommandAccess.cs" />
     <Compile Include="Commands\TooltipAudit.cs" />
     <Compile Include="Commands\ServerWeather.cs" />
+    <Compile Include="Commands\ServerTime.cs" />
     <Compile Include="LootAura.cs" />
     <Compile Include="Commands\MudCollisionTest.cs" />
     <Compile Include="AlterItemStat.cs" />

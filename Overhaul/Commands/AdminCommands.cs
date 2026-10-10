@@ -120,7 +120,7 @@ namespace Overhaul.Commands
             // The game's env command only runs on the hosting machine (onlyServer): this one goes through the server
             // (ServerWeather), which forces the weather for every player.
             new Terminal.ConsoleCommand(Prefix + "weather",
-                "Force la meteo de tout le serveur : o_weather <meteo> (Clear, Rain, ThunderStorm, Misty...) ou o_weather reset (admin serveur + devcommands).",
+                "Change la meteo de tout le serveur jusqu'au prochain changement normal : o_weather <meteo> (Clear, Rain, ThunderStorm, Misty...) ou o_weather reset (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
@@ -131,7 +131,18 @@ namespace Overhaul.Commands
                     string name = names.FirstOrDefault(n => n.Equals(args[1], System.StringComparison.OrdinalIgnoreCase));
                     if (name == null) { args.Context.AddString("Overhaul : meteo inconnue. Meteos : " + string.Join(", ", names)); return; }
                     ServerWeather.Request(name);
-                    args.Context.AddString("Overhaul : meteo " + name + " demandee au serveur pour tous les joueurs (o_weather reset pour revenir).");
+                    args.Context.AddString("Overhaul : meteo " + name + " demandee au serveur pour tous les joueurs (puis la meteo reprend normalement).");
+                }));
+            new Terminal.ConsoleCommand(Prefix + "time",
+                "Avance l'heure de tout le serveur jusqu'au prochain hh:mm : o_time 10:20 (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    string[] parts = args.Length > 1 ? args[1].Split(':') : new string[0];
+                    if (parts.Length != 2 || !int.TryParse(parts[0], out int hours) || !int.TryParse(parts[1], out int minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59)
+                    { args.Context.AddString("Usage : o_time hh:mm (par exemple o_time 10:20)"); return; }
+                    ServerTime.Request(hours * 60 + minutes);
+                    args.Context.AddString("Overhaul : " + hours.ToString("00") + ":" + minutes.ToString("00") + " demande au serveur pour tous les joueurs.");
                 }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
