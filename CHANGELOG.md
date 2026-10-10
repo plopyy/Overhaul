@@ -5,6 +5,9 @@
 ### Added
 - **Rarity system**, driven by RaritySystem.cfg (the server’s file is sent to every player): rarities with their colour, aura, base stat bonus (a % of the damage, armour and block, upgrades included), empty enchantment lines and catalyst slots; catalyst items always carry their rarity; creatures listed in the file drop pieces of their gear with a random rarity. Rarity shown in item slots (multicolour rarities as a 45° gradient, the first colour in the middle), tooltips (item name, dividers and enchantment lines in the rarity colour, with its enchantment lines, empty ones as "Empty bonus +0", and catalyst slots) and as a ground aura. Admin test command o_rarity <item> [rarity]. (2.2.2.14)
 
+### Fixed
+- No more burst of "Destroying components immediately" errors in the log when the inventory is first opened (item slot design). (2.2.2.15)
+
 ### Changed
 - Dvergr circlets: they no longer thin fog, smoke and dust (the Dvergr circlet is back to its light only). The spirit circlet now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times); the rest of the world keeps its fog and smoke. (2.2.2.2)
 

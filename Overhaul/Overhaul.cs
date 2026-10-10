@@ -60,6 +60,7 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
+            ItemSlotStyle.Prepare();
             Rarity.RarityConfig.Initialize();
             Rarity.ItemRarity.Initialize();
             Storage.FeedingTrough.Initialize();

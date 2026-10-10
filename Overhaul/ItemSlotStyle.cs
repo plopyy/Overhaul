@@ -223,13 +223,26 @@ namespace Overhaul
             }
         }
 
+        // Cells are styled during UI updates, sometimes inside a layout rebuild: a new GameObject given a RectTransform
+        // destroys its Transform immediately, which Unity refuses there. Images are copied from a template made once.
+        private static GameObject template;
+        internal static void Prepare() => Template();
+        private static GameObject Template()
+        {
+            if (template) return template;
+            template = new GameObject("OverhaulSlotImage", typeof(RectTransform), typeof(Image));
+            template.SetActive(false);
+            Object.DontDestroyOnLoad(template);
+            return template;
+        }
+
         private static Image Child(GameObject cell, string name, Sprite sprite, int index)
         {
             if (!sprite) return null;
             Transform existing = cell.transform.Find(name);
             if (existing) return existing.GetComponent<Image>();
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(cell.transform, false);
+            var go = Object.Instantiate(Template(), cell.transform, false);
+            go.name = name; go.SetActive(true);
             go.transform.SetSiblingIndex(Mathf.Min(index, cell.transform.childCount - 1));
             var rect = (RectTransform)go.transform;
             rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
