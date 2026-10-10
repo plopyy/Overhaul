@@ -117,21 +117,21 @@ namespace Overhaul.Commands
                     if (item == null) { args.Context.AddString("Overhaul : aucun objet equipe" + (args.Length > 1 ? " de type " + args[1] : " en main") + "."); return; }
                     args.Context.AddString("Overhaul : " + Rarity.ItemRarity.Reroll(item));
                 }));
-            // The game's env command only runs on the hosting machine (onlyServer); the weather is computed on each client,
-            // so this one forces it locally, for testing.
+            // The game's env command only runs on the hosting machine (onlyServer): this one goes through the server
+            // (ServerWeather), which forces the weather for every player.
             new Terminal.ConsoleCommand(Prefix + "weather",
-                "Test : force la meteo de son cote : o_weather <meteo> (Clear, Rain, ThunderStorm, Misty...) ou o_weather reset (admin serveur + devcommands).",
+                "Force la meteo de tout le serveur : o_weather <meteo> (Clear, Rain, ThunderStorm, Misty...) ou o_weather reset (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
                     if (!EnvMan.instance) { args.Context.AddString("Overhaul : aucun monde charge."); return; }
                     var names = EnvMan.instance.m_environments.Select(e => e.m_name).ToList();
                     if (args.Length < 2) { args.Context.AddString("Usage : o_weather <meteo>|reset. Meteos : " + string.Join(", ", names)); return; }
-                    if (args[1].Equals("reset", System.StringComparison.OrdinalIgnoreCase)) { EnvMan.instance.SetForceEnvironment(""); args.Context.AddString("Overhaul : meteo normale."); return; }
+                    if (args[1].Equals("reset", System.StringComparison.OrdinalIgnoreCase)) { ServerWeather.Request(""); args.Context.AddString("Overhaul : retour a la meteo normale demande au serveur."); return; }
                     string name = names.FirstOrDefault(n => n.Equals(args[1], System.StringComparison.OrdinalIgnoreCase));
                     if (name == null) { args.Context.AddString("Overhaul : meteo inconnue. Meteos : " + string.Join(", ", names)); return; }
-                    EnvMan.instance.SetForceEnvironment(name);
-                    args.Context.AddString("Overhaul : meteo forcee sur " + name + " (o_weather reset pour revenir).");
+                    ServerWeather.Request(name);
+                    args.Context.AddString("Overhaul : meteo " + name + " demandee au serveur pour tous les joueurs (o_weather reset pour revenir).");
                 }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
