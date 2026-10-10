@@ -131,7 +131,11 @@ namespace Overhaul
             this._harmony = new Harmony("plopyy.valheim.Overhaul");
             foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
                 if (type.Namespace != null && (type.Namespace == "Overhaul" || type.Namespace.StartsWith("Overhaul.")))
-                    _harmony.CreateClassProcessor(type).Patch();
+                {
+                    // A patch that no longer fits the game (after a Valheim update) is reported and skipped; the others still apply.
+                    try { _harmony.CreateClassProcessor(type).Patch(); }
+                    catch (System.Exception e) { Log.LogError("Patch " + type.FullName + " not applied: " + (e.InnerException ?? e).Message); }
+                }
             //new Harmony(ConfigFile).PatchAll();
             Log.LogInfo(ConfigFile + " Patching complete");
 		}
