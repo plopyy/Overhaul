@@ -2630,5 +2630,22 @@
   "overhaul_device_wood": "Bois",
   "overhaul_device_place_equipment": "Intervertir l'équipement",
   "overhaul_device_worn_equipment": "Intervertir",
-  "overhaul_device_swap_failed": "Échange impossible : vérifiez la place disponible et les équipements."
+  "overhaul_device_swap_failed": "Échange impossible : vérifiez la place disponible et les équipements.",
+  "overhaul_rarity_common": "Ordinaire",
+  "overhaul_rarity_uncommon": "Peu commun",
+  "overhaul_rarity_magic": "Magique",
+  "overhaul_rarity_rare": "Rare",
+  "overhaul_rarity_epic": "Épique",
+  "overhaul_rarity_legendary": "Légendaire",
+  "overhaul_rarity_mythic": "Mythique",
+  "overhaul_enchant_none": "Vide",
+  "overhaul_enchant_eitrmax": "Eitr max",
+  "overhaul_effect_eitrmax": "Eitr max",
+  "overhaul_effect_eitrmax_desc": "Bonus d'Eitr s'ajoutant à la quantité d'Eitr max actuel",
+  "overhaul_effect_eitrregen": "Régen. d'Eitr",
+  "overhaul_effect_eitrregen_desc": "Bonus de régénération d'Eitr en pourcentage s'ajoutant à celle de base",
+  "overhaul_effect_eitrcost": "Coût en Eitr",
+  "overhaul_effect_eitrcost_desc": "Réduction du coût d'Eitr",
+  "overhaul_effect_firedmg": "Feu",
+  "overhaul_effect_firedmg_desc": "Bonus de dégât de feu"
 }

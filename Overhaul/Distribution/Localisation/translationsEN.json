@@ -2527,5 +2527,22 @@
   "overhaul_device_wood": "Wood",
   "overhaul_device_place_equipment": "Swap equipment",
   "overhaul_device_worn_equipment": "Swap equipment",
-  "overhaul_device_swap_failed": "Cannot swap: check available space and equipment."
+  "overhaul_device_swap_failed": "Cannot swap: check available space and equipment.",
+  "overhaul_rarity_common": "Common",
+  "overhaul_rarity_uncommon": "Uncommon",
+  "overhaul_rarity_magic": "Magic",
+  "overhaul_rarity_rare": "Rare",
+  "overhaul_rarity_epic": "Epic",
+  "overhaul_rarity_legendary": "Legendary",
+  "overhaul_rarity_mythic": "Mythic",
+  "overhaul_enchant_none": "Nothing",
+  "overhaul_enchant_eitrmax": "Max Eitr",
+  "overhaul_effect_eitrmax": "Max Eitr",
+  "overhaul_effect_eitrmax_desc": "Eitr bonus added to your current maximum Eitr",
+  "overhaul_effect_eitrregen": "Eitr Regen",
+  "overhaul_effect_eitrregen_desc": "Eitr regeneration bonus, in percent, added to the base regeneration",
+  "overhaul_effect_eitrcost": "Eitr cost",
+  "overhaul_effect_eitrcost_desc": "Eitr cost reduction",
+  "overhaul_effect_firedmg": "Fire",
+  "overhaul_effect_firedmg_desc": "Fire damage bonus"
 }

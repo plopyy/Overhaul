@@ -13,7 +13,7 @@ namespace Overhaul.Rarity
     // The server's file is the reference: it is sent to every client when its character spawns.
     internal sealed class RarityDef
     {
-        internal string Id, NameEn, NameFr, Aura;
+        internal string Id, NameKey, Aura;
         internal int Order, EnchantCount, CatalystSlots;
         internal float BaseStatBonus;
         internal bool CanBeSet;
@@ -35,7 +35,7 @@ namespace Overhaul.Rarity
         // tooltip's TextGradient replaces with the 45° gradient.
         internal const string GradientMark = "#010203";
         internal string Paint(string text) => "<color=" + (Colors.Length > 1 ? GradientMark : "#" + ColorUtility.ToHtmlStringRGB(Color)) + ">" + text + "</color>";
-        internal string Name => Localization.instance != null && Localization.instance.GetSelectedLanguage() == "French" ? NameFr : NameEn;
+        internal string Name => Localization.instance != null ? Localization.instance.Localize("$" + NameKey.TrimStart('$')) : NameKey;
     }
 
     internal sealed class EnchantDef { internal string Id, RarityMin, Effect; }
@@ -103,11 +103,10 @@ namespace Overhaul.Rarity
                 switch (type.ToLowerInvariant())
                 {
                     case "rarity":
-                        string[] names = Get(v, "Name", id).Split('/');
                         data.Rarities.Add(new RarityDef
                         {
                             Id = id, Order = data.Rarities.Count,
-                            NameEn = names[0].Trim(), NameFr = (names.Length > 1 ? names[1] : names[0]).Trim(),
+                            NameKey = Get(v, "Name", id),
                             Aura = Get(v, "AuraAssetName", null),
                             EnchantCount = Int(v, "EnchantBonusCount"), CatalystSlots = Int(v, "CatalystSlot"),
                             BaseStatBonus = Float(v, "BaseStatBonus"),
