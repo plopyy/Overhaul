@@ -271,12 +271,19 @@ namespace Overhaul.Effects
             private static void Finalizer(Attack __instance, int __state) => __instance.m_projectiles -= __state;
         }
 
-        // Explosive projectiles: on impact, the Staff of Embers' fireball explosion at half its size (its hit effects at
-        // scale 0.5) and area damage (the projectile's damage) around the hit point, over half the fireball's radius.
+        // Explosive projectiles: on impact, the Staff of Embers' fireball explosion at half its size and a fixed area damage
+        // (ExplosionDamage) over half the fireball's radius.
         // The weapon carrying ExplosiveProjectile (or a player-wide source) makes its projectiles explode.
         internal static class Explosive
         {
             private const float Scale = .5f;
+            // Fixed damage: fire for creatures, chop and pickaxe so trees, logs and rocks take it too.
+            private const float ExplosionDamage = 20f;
+
+            // Tool tier of the explosion: the axe/pickaxe tier of the weapon's biome (flint 1, bronze 2, iron 3, black metal 4,
+            // flametal 6), so it breaks what that biome's tools break.
+            private static readonly short[] BiomeTiers = { 1, 2, 3, 3, 4, 4, 6, 6 };
+            private static short ToolTier(ItemDrop.ItemData weapon) => BiomeTiers[Mathf.Clamp(weapon != null ? Rarity.Enchantments.Biome(weapon) : 0, 0, BiomeTiers.Length - 1)];
             private sealed class Marked { }
             private static readonly ConditionalWeakTable<Projectile, Marked> Projectiles = new ConditionalWeakTable<Projectile, Marked>();
             private static Projectile fireball;
@@ -331,19 +338,23 @@ namespace Overhaul.Effects
                         foreach (var particles in effect.GetComponentsInChildren<ParticleSystem>(true)) { var main = particles.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
                     }
                     float radius = Mathf.Max(1f, model.m_aoe * Scale);
-                    var targets = new List<Character>();
-                    Character.GetCharactersInRange(hitPoint, radius, targets);
-                    foreach (var target in targets)
+                    // Like the game's own area damage: every destructible around (creatures, trees, logs, rocks...), each once.
+                    var seen = new HashSet<GameObject>();
+                    foreach (var collider in Physics.OverlapSphere(hitPoint, radius, Projectile.s_rayMaskSolids, QueryTriggerInteraction.UseGlobal))
                     {
-                        if (!target || target == __instance.m_owner || target.IsDead() || (__instance.m_owner && !BaseAI.IsEnemy(__instance.m_owner, target))) continue;
+                        var target = Projectile.FindHitObject(collider);
+                        var destructible = target ? target.GetComponent<IDestructible>() : null;
+                        if (destructible == null || !seen.Add(target) || !__instance.IsValidTarget(destructible)) continue;
+                        if (destructible is Character character && (character == __instance.m_owner || character.IsDead() || (__instance.m_owner && !BaseAI.IsEnemy(__instance.m_owner, character)))) continue;
                         var hit = new HitData
                         {
-                            m_damage = __instance.m_damage.Clone(), m_point = target.GetCenterPoint(),
-                            m_dir = (target.transform.position - hitPoint).normalized, m_skill = __instance.m_skill,
+                            m_damage = new HitData.DamageTypes { m_fire = ExplosionDamage, m_chop = ExplosionDamage, m_pickaxe = ExplosionDamage },
+                            m_toolTier = ToolTier(__instance.m_weapon), m_point = collider.ClosestPointOnBounds(hitPoint),
+                            m_dir = (target.transform.position - hitPoint).normalized, m_hitCollider = collider, m_skill = __instance.m_skill,
                             m_pushForce = __instance.m_attackForce * Scale
                         };
                         hit.SetAttacker(__instance.m_owner);
-                        target.Damage(hit);
+                        destructible.Damage(hit);
                     }
                 }
             }
