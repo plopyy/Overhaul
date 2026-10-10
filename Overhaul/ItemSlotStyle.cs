@@ -32,7 +32,7 @@ namespace Overhaul
                 if (rarity != null) Tint(glowImage, rarity.Value, gradient, 0);
             }
             // The border marks items with a rarity; any hovered cell, empty or not, shows it too (base colour).
-            // In the hotbar, the equipped weapon or tool has a pure white border instead of the blue background.
+            // The equipped weapon or tool (hotbar and inventory) has a pure white border instead of the blue marker.
             if (borderImage)
             {
                 borderImage.gameObject.SetActive((hasItem && (rarity != null || equipped)) || hovered);
@@ -153,9 +153,17 @@ namespace Overhaul
                     // The equipment window shows what is worn: no "equipped" marker in the grids.
                     if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform), gradient: Rarity.ItemRarity.GradientOf(item));
+                    Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform),
+                        equipped: item != null && item.m_equipped && !InEquipmentWindow(element.transform), gradient: Rarity.ItemRarity.GradientOf(item));
                 }
             }
+        }
+
+        // The equipment window only holds worn items: the equipped border would be on every one of them.
+        private static bool InEquipmentWindow(Transform cell)
+        {
+            for (Transform t = cell.parent; t; t = t.parent) if (t.name == "AugaEquipment") return true;
+            return false;
         }
 
         [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
