@@ -2535,8 +2535,6 @@
   "overhaul_rarity_epic": "Epic",
   "overhaul_rarity_legendary": "Legendary",
   "overhaul_rarity_mythic": "Mythic",
-  "overhaul_enchant_none": "Nothing",
-  "overhaul_enchant_eitrmax": "Max Eitr",
   "overhaul_effect_eitrmax": "Max Eitr",
   "overhaul_effect_eitrmax_desc": "Eitr bonus added to your current maximum Eitr",
   "overhaul_effect_eitrregen": "Eitr Regen",

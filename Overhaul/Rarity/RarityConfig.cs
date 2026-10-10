@@ -38,14 +38,13 @@ namespace Overhaul.Rarity
         internal string Name => RarityConfig.Localize(NameKey);
     }
 
-    // An enchantment gives its effect (an Effects.cfg id) with one value per biome of the item, in biome order;
+    // An enchantment gives its effect (an Effects.cfg id, which also gives its name) with one value per biome of the item, in biome order;
     // a single value applies to every biome. It can be rolled on items of RarityMin or any stronger rarity.
     internal sealed class EnchantDef
     {
-        internal string Id, RarityMin, NameKey, Effect;
+        internal string Id, RarityMin, Effect;
         internal float[] Values = new float[0];
         internal float Value(int biome) => Values.Length == 0 ? 0 : Values[Mathf.Clamp(biome, 0, Values.Length - 1)];
-        internal string Name => RarityConfig.Localize(NameKey);
     }
 
     // A biome, in progression order: an item belongs to the strongest biome among its recipe materials,
@@ -148,7 +147,7 @@ namespace Overhaul.Rarity
                     case "enchant":
                         data.Enchants[id] = new EnchantDef
                         {
-                            Id = id, RarityMin = Get(v, "RarityMin", null), NameKey = Get(v, "Name", id),
+                            Id = id, RarityMin = Get(v, "RarityMin", null),
                             Effect = Get(v, "Effect", Get(v, "Effet", "")),
                             Values = List(Get(v, "Value", "")).Select(w => ParseFloat(w)).ToArray()
                         };

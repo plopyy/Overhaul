@@ -231,7 +231,7 @@ namespace Overhaul.Rarity
                 bool filled = id != EmptyEnchant && RarityConfig.Current.Enchants.TryGetValue(id, out enchant)
                     && Effects.EffectConfig.Current.Effects.TryGetValue(enchant.Effect ?? "", out effect);
                 rows.Add(filled
-                    ? new TooltipRow(rarity.Paint(enchant.Name), rarity.Paint(effect.Format(enchant.Value(biome))))
+                    ? new TooltipRow(rarity.Paint(effect.Name), rarity.Paint(effect.Format(enchant.Value(biome))))
                     : new TooltipRow(rarity.Paint(Localization.instance.Localize("$overhaul_rarity_empty_enchant")), rarity.Paint("+0")));
             }
             if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));

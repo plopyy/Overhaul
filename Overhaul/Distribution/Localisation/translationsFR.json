@@ -2638,8 +2638,6 @@
   "overhaul_rarity_epic": "Épique",
   "overhaul_rarity_legendary": "Légendaire",
   "overhaul_rarity_mythic": "Mythique",
-  "overhaul_enchant_none": "Vide",
-  "overhaul_enchant_eitrmax": "Eitr max",
   "overhaul_effect_eitrmax": "Eitr max",
   "overhaul_effect_eitrmax_desc": "Bonus d'Eitr s'ajoutant à la quantité d'Eitr max actuel",
   "overhaul_effect_eitrregen": "Régen. d'Eitr",
