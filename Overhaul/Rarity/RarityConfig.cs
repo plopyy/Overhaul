@@ -103,6 +103,7 @@ namespace Overhaul.Rarity
         {
             var sections = new List<KeyValuePair<string, Dictionary<string, string>>>();
             Dictionary<string, string> current = null;
+            string last = null;
             foreach (string raw in text.Split('\n'))
             {
                 // Only whole lines are comments: colours are written with a #.
@@ -110,12 +111,14 @@ namespace Overhaul.Rarity
                 if (line.Length == 0 || line.StartsWith("#") || line.StartsWith(";")) continue;
                 if (line.StartsWith("[") && line.EndsWith("]") && !line.Contains("="))
                 {
-                    current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); last = null;
                     sections.Add(new KeyValuePair<string, Dictionary<string, string>>(line.Substring(1, line.Length - 2).Trim(), current));
                     continue;
                 }
                 int equal = line.IndexOf('=');
-                if (current != null && equal > 0) current[line.Substring(0, equal).Trim()] = line.Substring(equal + 1).Trim();
+                if (current != null && equal > 0) current[last = line.Substring(0, equal).Trim()] = line.Substring(equal + 1).Trim();
+                // A line without "=" continues the previous key's list (one item per line).
+                else if (current != null && last != null) current[last] = current[last].Length == 0 ? line : current[last] + ", " + line;
             }
             return sections;
         }
