@@ -28,7 +28,7 @@ namespace Overhaul.Rarity
         internal static Color? ColorOf(ItemDrop.ItemData item) => Of(item)?.Color ?? EpicLootVisuals.RarityOf(item);
 
         // Every colour of a multicolour rarity (drawn as a gradient), or null.
-        internal static Color[] GradientOf(ItemDrop.ItemData item) { var rarity = Of(item); return rarity != null && rarity.Colors.Length > 1 ? rarity.Colors : null; }
+        internal static Color[] GradientOf(ItemDrop.ItemData item) { var rarity = Of(item); return rarity != null && rarity.Colors.Length > 1 ? rarity.Gradient : null; }
 
         internal static string[] Enchants(ItemDrop.ItemData item) =>
             item?.m_customData != null && item.m_customData.TryGetValue(EnchantKey, out string value) && value.Length > 0 ? value.Split(',') : new string[0];
@@ -67,6 +67,7 @@ namespace Overhaul.Rarity
             if (drop)
             {
                 drop.m_itemData.m_worldLevel = (byte)Game.m_worldLevel;
+                drop.m_itemData.m_durability = drop.m_itemData.GetMaxDurability();
                 Assign(drop.m_itemData, rarity);
                 drop.Save();
             }
@@ -188,8 +189,8 @@ namespace Overhaul.Rarity
             var rows = new List<TooltipRow>();
             // Enchantment lines in the rarity colour; an empty one shows as "Empty bonus +0" until the enchantment list exists.
             foreach (string enchant in Enchants(item))
-                rows.Add(new TooltipRow("<color=" + color + ">" + (enchant == EmptyEnchant ? Localization.instance.Localize("$overhaul_rarity_empty_enchant") : enchant) + "</color>",
-                    enchant == EmptyEnchant ? "<color=" + color + ">+0</color>" : null));
+                rows.Add(new TooltipRow(rarity.Paint(enchant == EmptyEnchant ? Localization.instance.Localize("$overhaul_rarity_empty_enchant") : enchant),
+                    enchant == EmptyEnchant ? rarity.Paint("+0") : null));
             if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
@@ -213,13 +214,10 @@ namespace Overhaul.Rarity
                 dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true)).ToArray();
                 originals = dividers.Select(d => d.color).ToArray();
             }
-            Color[] colors = rarity == null ? null : rarity.Colors;
-            tooltip.Topic.enableVertexGradient = colors != null && colors.Length > 1;
-            if (colors != null && colors.Length > 1)
-            {
-                tooltip.Topic.color = Color.white;
-                tooltip.Topic.colorGradient = new TMPro.VertexGradient(colors[0], colors[1], colors[1], colors[colors.Length - 1]);
-            }
+            Color[] colors = rarity == null ? null : rarity.Gradient;
+            tooltip.Topic.enableVertexGradient = false;
+            // A multicolour name is painted letter by letter; a single colour tints the whole text.
+            if (colors != null && colors.Length > 1) { tooltip.Topic.color = Color.white; tooltip.Topic.text = rarity.Paint(System.Text.RegularExpressions.Regex.Replace(tooltip.Topic.text, "<[^>]*>", "")); }
             else tooltip.Topic.color = rarity != null ? rarity.Color : topic;
             for (int i = 0; i < dividers.Length; i++)
             {

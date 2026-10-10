@@ -19,6 +19,32 @@ namespace Overhaul.Rarity
         internal bool CanBeSet;
         internal Color[] Colors = { Color.white };
         internal Color Color => Colors[0];
+        // Gradient order: the first colour in the middle, the others alternately on each side (2, 1, 3 for three colours).
+        internal Color[] Gradient
+        {
+            get
+            {
+                if (Colors.Length < 2) return Colors;
+                var left = new List<Color>(); var right = new List<Color>();
+                for (int i = 1; i < Colors.Length; i++) (i % 2 == 1 ? left : right).Add(Colors[i]);
+                left.Reverse();
+                return left.Concat(new[] { Colors[0] }).Concat(right).ToArray();
+            }
+        }
+        // Colours a text character by character along the gradient (a single colour when the rarity has only one).
+        internal string Paint(string text)
+        {
+            if (Colors.Length < 2 || string.IsNullOrEmpty(text)) return "<color=#" + ColorUtility.ToHtmlStringRGB(Color) + ">" + text + "</color>";
+            var colors = Gradient; var builder = new System.Text.StringBuilder();
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (char.IsWhiteSpace(text[i])) { builder.Append(text[i]); continue; }
+                float position = (text.Length == 1 ? .5f : i / (float)(text.Length - 1)) * (colors.Length - 1);
+                int index = Mathf.Min((int)position, colors.Length - 2);
+                builder.Append("<color=#").Append(ColorUtility.ToHtmlStringRGB(Color.Lerp(colors[index], colors[index + 1], position - index))).Append('>').Append(text[i]).Append("</color>");
+            }
+            return builder.ToString();
+        }
         internal string Name => Localization.instance != null && Localization.instance.GetSelectedLanguage() == "French" ? NameFr : NameEn;
     }
 
