@@ -13,6 +13,8 @@ namespace Overhaul.Effects
     {
         internal string Id, NameKey, DescriptionKey, EnchantRarityMin;
         internal float[] EnchantValues = new float[0];
+        // Gear categories the enchantment can be rolled on (see Rarity.Enchantments.Category); empty = any gear.
+        internal HashSet<string> EnchantItemTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         internal bool Enchantment => !string.IsNullOrEmpty(EnchantRarityMin) && EnchantValues.Length > 0;
         internal float EnchantValue(int biome) => EnchantValues.Length == 0 ? 0 : EnchantValues[UnityEngine.Mathf.Clamp(biome, 0, EnchantValues.Length - 1)];
         internal float Min = float.MinValue, Max = float.MaxValue;
@@ -59,6 +61,7 @@ namespace Overhaul.Effects
                     Id = id, NameKey = RarityConfig.Get(v, "Name", id), DescriptionKey = RarityConfig.Get(v, "Description", ""),
                     IsPercent = RarityConfig.Get(v, "IsPercent", "false").Equals("true", StringComparison.OrdinalIgnoreCase),
                     EnchantRarityMin = RarityConfig.Get(v, "EnchantRarityMin", null),
+                    EnchantItemTypes = Rarity.Enchantments.Categories(RarityConfig.List(RarityConfig.Get(v, "EnchantItemTypes", ""))),
                     EnchantValues = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(RarityConfig.List(RarityConfig.Get(v, "EnchantBiomeValue", "")), w => RarityConfig.ParseFloat(w)))
                 };
                 // Value = [min/max]

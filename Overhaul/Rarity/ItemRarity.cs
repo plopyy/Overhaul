@@ -67,7 +67,7 @@ namespace Overhaul.Rarity
         {
             if (item == null || rarity == null) return;
             item.m_customData[RarityKey] = rarity.Id;
-            if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enchantments.Roll(rarity));
+            if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enchantments.Roll(item, rarity));
             else item.m_customData.Remove(EnchantKey);
         }
 

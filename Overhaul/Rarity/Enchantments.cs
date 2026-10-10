@@ -47,13 +47,60 @@ namespace Overhaul.Rarity
             return item.m_shared != null && Prefabs.TryGetValue(item.m_shared.m_name, out string name) ? name : null;
         }
 
-        // Distinct enchantments (effects of Effects.cfg with EnchantRarityMin at most as strong as the rarity);
-        // lines left without a candidate stay empty.
-        internal static string[] Roll(RarityDef rarity)
+        // Gear categories for EnchantItemTypes. Weapons and Armor stand for their whole group.
+        private static readonly string[] Known = { "Weapon", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool" };
+        private static readonly Dictionary<string, string[]> Groups = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Weapons", new[] { "Weapon", "Bow", "Staff" } },
+            { "Armor", new[] { "Helmet", "Chest", "Legs", "Cape" } },
+        };
+
+        internal static HashSet<string> Categories(IEnumerable<string> names)
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string name in names)
+            {
+                if (Groups.TryGetValue(name, out var group)) set.UnionWith(group);
+                else if (Known.Contains(name, StringComparer.OrdinalIgnoreCase)) set.Add(name);
+                else Utility.Log.LogWarning("Effects.cfg: unknown EnchantItemTypes value " + name + " (" + string.Join(", ", Known.Concat(Groups.Keys)) + ")");
+            }
+            return set;
+        }
+
+        // The gear category of an item: tools (pickaxes, fishing rod, hammer...), staffs (magic skills), bows and
+        // crossbows, other weapons, shields, the armour slots and trinkets.
+        internal static string Category(ItemDrop.ItemData item)
+        {
+            var shared = item.m_shared;
+            switch (shared.m_itemType)
+            {
+                case ItemDrop.ItemData.ItemType.Shield: return "Shield";
+                case ItemDrop.ItemData.ItemType.Helmet: return "Helmet";
+                case ItemDrop.ItemData.ItemType.Chest: return "Chest";
+                case ItemDrop.ItemData.ItemType.Legs: return "Legs";
+                case ItemDrop.ItemData.ItemType.Shoulder: return "Cape";
+                case ItemDrop.ItemData.ItemType.Trinket: return "Trinket";
+                case ItemDrop.ItemData.ItemType.Tool: return "Tool";
+            }
+            switch (shared.m_skillType)
+            {
+                case Skills.SkillType.Pickaxes: case Skills.SkillType.Fishing: return "Tool";
+                case Skills.SkillType.ElementalMagic: case Skills.SkillType.BloodMagic: return "Staff";
+            }
+            if (shared.m_itemType == ItemDrop.ItemData.ItemType.Bow) return "Bow";
+            // The scythe harvests: it counts as a tool.
+            return shared.m_name == "$item_scythe" ? "Tool" : "Weapon";
+        }
+
+        // Distinct enchantments (effects of Effects.cfg with EnchantRarityMin at most as strong as the rarity and
+        // allowed on the item's category); lines left without a candidate stay empty.
+        internal static string[] Roll(ItemDrop.ItemData item, RarityDef rarity)
         {
             var data = RarityConfig.Current;
+            string category = Category(item);
             var pool = Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
-                && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order).ToList();
+                && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order
+                && (e.EnchantItemTypes.Count == 0 || e.EnchantItemTypes.Contains(category))).ToList();
             var lines = new string[rarity.EnchantCount];
             for (int i = 0; i < lines.Length; i++)
             {
