@@ -67,10 +67,13 @@ namespace Overhaul.Effects
                 if (hit.GetTotalDamage() <= 0) return;
                 float fire = Effects.Get(player, "FireDmg"), frost = Effects.Get(player, "FrostDmg"), lightning = Effects.Get(player, "LightningDmg"),
                     poison = Effects.Get(player, "PoisonDmg"), spirit = Effects.Get(player, "SpiritDmg");
-                // -1 plays every effect variant: elemental damage needs the default one.
-                if (hit.m_variant < 0 && fire + frost + lightning + poison + spirit > 0) hit.m_variant = 0;
                 hit.m_damage.m_fire += fire; hit.m_damage.m_frost += frost; hit.m_damage.m_lightning += lightning;
                 hit.m_damage.m_poison += poison; hit.m_damage.m_spirit += spirit;
+                float physical = Mathf.Max(0, 1 + Pct(player, "PhysicDmg"));
+                hit.m_damage.m_blunt *= physical; hit.m_damage.m_slash *= physical; hit.m_damage.m_pierce *= physical;
+                // -1 plays every effect variant: elemental damage (also from the weapon's own enchantments) needs the default one.
+                var d = hit.m_damage;
+                if (hit.m_variant < 0 && d.m_fire + d.m_frost + d.m_lightning + d.m_poison + d.m_spirit > 0) hit.m_variant = 0;
                 hit.m_backstabBonus *= 1 + Pct(player, "BackstabBonus");
                 hit.m_pushForce *= Mathf.Max(0, 1 + Pct(player, "Knockback"));
                 if (Random.value < Pct(player, "CritChance")) Critical.Mark(hit);
@@ -218,6 +221,9 @@ namespace Overhaul.Effects
             }
         }
 
+        [HarmonyPatch(typeof(Player), nameof(Player.GetBodyArmor))]
+        private static class BodyArmor { private static void Postfix(Player __instance, ref float __result) => __result += Effects.Get(__instance, "Armor"); }
+
         [HarmonyPatch(typeof(SEMan), nameof(SEMan.ModifyMaxCarryWeight))]
         private static class CarryWeight { private static void Postfix(SEMan __instance, ref float limit) => limit += Effects.Get(__instance.m_character, "CarryWeight"); }
 
@@ -270,9 +276,11 @@ namespace Overhaul.Effects
         private static class Explosive
         {
             private const float Radius = 3f;
-            private static void Postfix(Projectile __instance, Character owner)
+            // The weapon carrying ExplosiveProjectile (or a player-wide source) makes its projectiles explode.
+            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
-                if (Local(owner) && __instance.m_aoe <= 0 && Effects.Get(owner, "ExplosiveProjectile") >= 1) __instance.m_aoe = Radius;
+                if (Local(owner) && __instance.m_aoe <= 0 && (Rarity.Enchantments.ItemValue(item, "ExplosiveProjectile") >= 1 || Effects.Get(owner, "ExplosiveProjectile") >= 1))
+                    __instance.m_aoe = Radius;
             }
         }
 

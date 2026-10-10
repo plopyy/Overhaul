@@ -2606,5 +2606,13 @@
   "overhaul_effect_explosiveprojectile": "Explosive projectiles",
   "overhaul_effect_explosiveprojectile_desc": "Projectiles explode on impact",
   "overhaul_effect_castspeed": "Cast speed",
-  "overhaul_effect_castspeed_desc": "Speed bonus for casting, drawing bows and aiming"
+  "overhaul_effect_castspeed_desc": "Speed bonus for casting, drawing bows and aiming",
+  "overhaul_effect_physicdmg": "Physical damage",
+  "overhaul_effect_physicdmg_desc": "Bonus to blunt, pierce and slash damage",
+  "overhaul_effect_armor": "Armor",
+  "overhaul_effect_armor_desc": "Armor added to the item",
+  "overhaul_effect_miningdmg": "Mining damage",
+  "overhaul_effect_miningdmg_desc": "Bonus to the pickaxe damage on rocks and ore",
+  "overhaul_effect_choppingdmg": "Chopping damage",
+  "overhaul_effect_choppingdmg_desc": "Bonus to the axe damage on trees"
 }

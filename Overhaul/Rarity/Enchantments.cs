@@ -48,7 +48,7 @@ namespace Overhaul.Rarity
         }
 
         // Gear categories for EnchantItemTypes. AllWeapons and Armor stand for their whole group.
-        private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool" };
+        private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool", "Pickaxe", "Axe" };
         private static readonly Dictionary<string, string[]> Groups = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             { "AllWeapons", new[] { "Melee", "Bow", "Staff" } },
@@ -72,8 +72,12 @@ namespace Overhaul.Rarity
         internal static string[] Categories(ItemDrop.ItemData item)
         {
             var shared = item.m_shared;
-            if (shared.m_skillType == Skills.SkillType.Axes && shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon) return new[] { "Melee", "Tool" };
-            return new[] { Category(item) };
+            var list = new List<string> { Category(item) };
+            // Pickaxes and axes (one or two-handed) also have their own category for mining and chopping.
+            if (shared.m_skillType == Skills.SkillType.Pickaxes) list.Add("Pickaxe");
+            if (shared.m_skillType == Skills.SkillType.Axes) list.Add("Axe");
+            if (shared.m_skillType == Skills.SkillType.Axes && shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon) list.Add("Tool");
+            return list.ToArray();
         }
 
         private static string Category(ItemDrop.ItemData item)
@@ -178,7 +182,7 @@ namespace Overhaul.Rarity
         private static void Equipment(Player player, Dictionary<string, float> totals)
         {
             foreach (var item in player.GetInventory().GetEquippedItems())
-                foreach (var line in Of(item)) Effects.Effects.Add(totals, line.Effect.Id, line.Value);
+                foreach (var line in Of(item)) if (!Effects.Effects.ItemEffects.Contains(line.Effect.Id)) Effects.Effects.Add(totals, line.Effect.Id, line.Value);
         }
     }
 }

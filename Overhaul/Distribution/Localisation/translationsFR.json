@@ -2709,5 +2709,13 @@
   "overhaul_effect_explosiveprojectile": "Projectiles explosifs",
   "overhaul_effect_explosiveprojectile_desc": "Les projectiles explosent à l'impact",
   "overhaul_effect_castspeed": "Vitesse d'incantation",
-  "overhaul_effect_castspeed_desc": "Bonus de vitesse d'incantation, de bandage des arcs et de visée"
+  "overhaul_effect_castspeed_desc": "Bonus de vitesse d'incantation, de bandage des arcs et de visée",
+  "overhaul_effect_physicdmg": "Dégâts physiques",
+  "overhaul_effect_physicdmg_desc": "Bonus aux dégâts contondants, perforants et tranchants",
+  "overhaul_effect_armor": "Armure",
+  "overhaul_effect_armor_desc": "Armure s'ajoutant à celle de l'objet",
+  "overhaul_effect_miningdmg": "Dégâts de minage",
+  "overhaul_effect_miningdmg_desc": "Bonus aux dégâts de la pioche sur les roches et minerais",
+  "overhaul_effect_choppingdmg": "Dégâts de coupe",
+  "overhaul_effect_choppingdmg_desc": "Bonus aux dégâts de la hache sur les arbres"
 }

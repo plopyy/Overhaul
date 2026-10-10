@@ -138,11 +138,27 @@ namespace Overhaul.Rarity
             {
                 float multiplier = Multiplier(__instance);
                 if (multiplier != 1f) __result.Modify(multiplier);
+                // The item's damage enchantments, after the rarity bonus: elements are flat, the others percents.
+                foreach (var line in Enchantments.Of(__instance))
+                {
+                    float v = line.Value, pct = 1 + v / 100f;
+                    switch (line.Effect.Id)
+                    {
+                        case "FireDmg": __result.m_fire += v; break;
+                        case "FrostDmg": __result.m_frost += v; break;
+                        case "LightningDmg": __result.m_lightning += v; break;
+                        case "PoisonDmg": __result.m_poison += v; break;
+                        case "SpiritDmg": __result.m_spirit += v; break;
+                        case "PhysicDmg": __result.m_blunt *= pct; __result.m_slash *= pct; __result.m_pierce *= pct; break;
+                        case "MiningDmg": __result.m_pickaxe *= pct; break;
+                        case "ChoppingDmg": __result.m_chop *= pct; break;
+                    }
+                }
             }
         }
 
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetArmor), typeof(int), typeof(float))]
-        private static class Armor { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result = Raise(__result, __instance); }
+        private static class Armor { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result = Raise(__result, __instance) + Enchantments.ItemValue(__instance, "Armor"); }
 
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetBaseBlockPower), typeof(int))]
         private static class Block { private static void Postfix(ItemDrop.ItemData __instance, ref float __result) => __result = Raise(__result, __instance); }
@@ -222,6 +238,9 @@ namespace Overhaul.Rarity
         internal static void Initialize()
         {
             ComplexTooltip.OnComplexTooltipGeneratedForItem += Tooltip;
+            // An indestructible item shows an infinite durability.
+            ComplexTooltip.AddItemStatPreprocessor((item, label, value) =>
+                label == "$item_durability" && item != null && Enchantments.ItemValue(item, "Indestructible") >= 1 ? new System.Tuple<string, string>(label, "∞") : new System.Tuple<string, string>(label, value));
             Enchantments.Initialize();
         }
 

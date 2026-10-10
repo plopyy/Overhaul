@@ -15,14 +15,16 @@ namespace Overhaul.Effects
         internal float[] EnchantValues = new float[0];
         // Gear categories the enchantment can be rolled on (see Rarity.Enchantments.Category); empty = any gear.
         internal HashSet<string> EnchantItemTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        internal bool Enchantment => !string.IsNullOrEmpty(EnchantRarityMin) && EnchantValues.Length > 0;
-        internal float EnchantValue(int biome) => EnchantValues.Length == 0 ? 0 : EnchantValues[UnityEngine.Mathf.Clamp(biome, 0, EnchantValues.Length - 1)];
+        // Value = []: an on/off effect of the item carrying it (Indestructible...), shown without a value and never summed.
+        internal bool IsFlag;
+        internal bool Enchantment => !string.IsNullOrEmpty(EnchantRarityMin) && (IsFlag || EnchantValues.Length > 0);
+        internal float EnchantValue(int biome) => IsFlag ? 1 : EnchantValues.Length == 0 ? 0 : EnchantValues[UnityEngine.Mathf.Clamp(biome, 0, EnchantValues.Length - 1)];
         internal float Min = float.MinValue, Max = float.MaxValue;
         internal bool IsPercent;
         internal string Name => RarityConfig.Localize(NameKey);
         internal string Description => RarityConfig.Localize(DescriptionKey);
         // "+10", "-5 %"
-        internal string Format(float value) => (value >= 0 ? "+" : "") + value.ToString("0.#") + (IsPercent ? " %" : "");
+        internal string Format(float value) => IsFlag ? "" : (value >= 0 ? "+" : "") + value.ToString("0.#") + (IsPercent ? " %" : "");
     }
 
     internal sealed class EffectData
@@ -66,6 +68,7 @@ namespace Overhaul.Effects
                 };
                 // Value = [min/max]
                 string[] range = RarityConfig.Get(v, "Value", "").Trim('[', ']').Split('/');
+                effect.IsFlag = RarityConfig.Get(v, "Value", "").Replace(" ", "") == "[]";
                 if (range.Length == 2) { effect.Min = RarityConfig.ParseFloat(range[0], float.MinValue); effect.Max = RarityConfig.ParseFloat(range[1], float.MaxValue); }
                 if (!Effects.Known(id)) Utility.Log.LogWarning("Effects.cfg: effect " + id + " has no code yet, it does nothing");
                 data.Effects[id] = effect;
