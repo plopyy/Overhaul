@@ -184,8 +184,7 @@ namespace Overhaul.Rarity
             var tint = tooltip.GetComponent<TooltipRarityTint>() ?? tooltip.gameObject.AddComponent<TooltipRarityTint>();
             tint.Apply(tooltip, rarity);
             if (rarity == null) return;
-            string color = "#" + ColorUtility.ToHtmlStringRGB(rarity.Color);
-            tooltip.SetSubtitle("<color=" + color + ">" + rarity.Name + "</color>\n" + tooltip.GenerateItemSubtext(item));
+            tooltip.SetSubtitle(rarity.Paint(rarity.Name) + "\n" + tooltip.GenerateItemSubtext(item));
             var rows = new List<TooltipRow>();
             // Enchantment lines in the rarity colour; an empty one shows as "Empty bonus +0" until the enchantment list exists.
             foreach (string enchant in Enchants(item))
