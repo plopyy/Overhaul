@@ -47,14 +47,13 @@ namespace Overhaul.Rarity
             return item.m_shared != null && Prefabs.TryGetValue(item.m_shared.m_name, out string name) ? name : null;
         }
 
-        // Distinct enchantments allowed for the rarity (RarityMin at most as strong) and with a known effect;
+        // Distinct enchantments (effects of Effects.cfg with EnchantRarityMin at most as strong as the rarity);
         // lines left without a candidate stay empty.
         internal static string[] Roll(RarityDef rarity)
         {
             var data = RarityConfig.Current;
-            var pool = data.Enchants.Values.Where(e => e.Id != ItemRarity.EmptyEnchant
-                && (data.Rarity(e.RarityMin)?.Order ?? int.MaxValue) <= rarity.Order
-                && Effects.EffectConfig.Current.Effects.ContainsKey(e.Effect ?? "")).ToList();
+            var pool = Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
+                && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order).ToList();
             var lines = new string[rarity.EnchantCount];
             for (int i = 0; i < lines.Length; i++)
             {
@@ -67,15 +66,14 @@ namespace Overhaul.Rarity
         }
 
         // The item's enchantments with their effect and value, empty lines left out.
-        internal static IEnumerable<(EnchantDef Enchant, Effects.EffectDef Effect, float Value)> Of(ItemDrop.ItemData item)
+        internal static IEnumerable<(Effects.EffectDef Effect, float Value)> Of(ItemDrop.ItemData item)
         {
             int biome = -1;
             foreach (string id in ItemRarity.Enchants(item))
             {
-                if (id == ItemRarity.EmptyEnchant || !RarityConfig.Current.Enchants.TryGetValue(id, out var enchant)) continue;
-                if (!Effects.EffectConfig.Current.Effects.TryGetValue(enchant.Effect ?? "", out var effect)) continue;
+                if (id == ItemRarity.EmptyEnchant || !Effects.EffectConfig.Current.Effects.TryGetValue(id, out var effect) || !effect.Enchantment) continue;
                 if (biome < 0) biome = Biome(item);
-                yield return (enchant, effect, enchant.Value(biome));
+                yield return (effect, effect.EnchantValue(biome));
             }
         }
 

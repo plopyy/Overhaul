@@ -224,15 +224,14 @@ namespace Overhaul.Rarity
             var rows = new List<TooltipRow>();
             if (catalyst) { tint.Texts(tooltip, rarity); return; }
             // Enchantment lines in the rarity colour, with their value for the item's biome; an empty line
-            // (or one whose enchantment or effect left the files) shows as "Empty bonus +0".
+            // (or one whose effect is no longer an enchantment) shows as "Empty bonus +0".
             int biome = Enchantments.Biome(item);
             foreach (string id in Enchants(item))
             {
-                EnchantDef enchant = null; Effects.EffectDef effect = null;
-                bool filled = id != EmptyEnchant && RarityConfig.Current.Enchants.TryGetValue(id, out enchant)
-                    && Effects.EffectConfig.Current.Effects.TryGetValue(enchant.Effect ?? "", out effect);
+                Effects.EffectDef effect = null;
+                bool filled = id != EmptyEnchant && Effects.EffectConfig.Current.Effects.TryGetValue(id, out effect) && effect.Enchantment;
                 rows.Add(filled
-                    ? new TooltipRow(rarity.Paint(effect.Name), rarity.Paint(effect.Format(enchant.Value(biome))))
+                    ? new TooltipRow(rarity.Paint(effect.Name), rarity.Paint(effect.Format(effect.EnchantValue(biome))))
                     : new TooltipRow(rarity.Paint(Localization.instance.Localize("$overhaul_rarity_empty_enchant")), rarity.Paint("+0")));
             }
             if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));

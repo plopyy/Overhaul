@@ -7,9 +7,14 @@ using Overhaul.Rarity;
 namespace Overhaul.Effects
 {
     // One effect of Effects.cfg: every source (enchantments today) adds to its total, which is kept within [Min/Max].
+    // An effect with EnchantRarityMin and EnchantBiomeValue is also an enchantment: it can be rolled on gear of that
+    // rarity or a stronger one, worth its value for the item's biome (in biome order; a single value for every biome).
     internal sealed class EffectDef
     {
-        internal string Id, NameKey, DescriptionKey;
+        internal string Id, NameKey, DescriptionKey, EnchantRarityMin;
+        internal float[] EnchantValues = new float[0];
+        internal bool Enchantment => !string.IsNullOrEmpty(EnchantRarityMin) && EnchantValues.Length > 0;
+        internal float EnchantValue(int biome) => EnchantValues.Length == 0 ? 0 : EnchantValues[UnityEngine.Mathf.Clamp(biome, 0, EnchantValues.Length - 1)];
         internal float Min = float.MinValue, Max = float.MaxValue;
         internal bool IsPercent;
         internal string Name => RarityConfig.Localize(NameKey);
@@ -52,7 +57,9 @@ namespace Overhaul.Effects
                 var effect = new EffectDef
                 {
                     Id = id, NameKey = RarityConfig.Get(v, "Name", id), DescriptionKey = RarityConfig.Get(v, "Description", ""),
-                    IsPercent = RarityConfig.Get(v, "IsPercent", "false").Equals("true", StringComparison.OrdinalIgnoreCase)
+                    IsPercent = RarityConfig.Get(v, "IsPercent", "false").Equals("true", StringComparison.OrdinalIgnoreCase),
+                    EnchantRarityMin = RarityConfig.Get(v, "EnchantRarityMin", null),
+                    EnchantValues = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(RarityConfig.List(RarityConfig.Get(v, "EnchantBiomeValue", "")), w => RarityConfig.ParseFloat(w)))
                 };
                 // Value = [min/max]
                 string[] range = RarityConfig.Get(v, "Value", "").Trim('[', ']').Split('/');

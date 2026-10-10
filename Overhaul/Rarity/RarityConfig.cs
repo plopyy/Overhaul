@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // RaritySystem.cfg drives the whole system: rarities (in file order, weakest first), enchantments, biomes,
+    // RaritySystem.cfg drives the whole system: rarities (in file order, weakest first), biomes,
     // catalysts, loot lists and the creatures using them. Any section added to the file is taken into account.
     // The server's file is the reference: it is sent to every client when its character spawns.
     internal sealed class RarityDef
@@ -38,15 +38,6 @@ namespace Overhaul.Rarity
         internal string Name => RarityConfig.Localize(NameKey);
     }
 
-    // An enchantment gives its effect (an Effects.cfg id, which also gives its name) with one value per biome of the item, in biome order;
-    // a single value applies to every biome. It can be rolled on items of RarityMin or any stronger rarity.
-    internal sealed class EnchantDef
-    {
-        internal string Id, RarityMin, Effect;
-        internal float[] Values = new float[0];
-        internal float Value(int biome) => Values.Length == 0 ? 0 : Values[Mathf.Clamp(biome, 0, Values.Length - 1)];
-    }
-
     // A biome, in progression order, with the gear items belonging to it (the only ones in the rarity system).
     internal sealed class BiomeDef
     {
@@ -67,7 +58,6 @@ namespace Overhaul.Rarity
     internal sealed class RarityData
     {
         internal readonly List<RarityDef> Rarities = new List<RarityDef>();
-        internal readonly Dictionary<string, EnchantDef> Enchants = new Dictionary<string, EnchantDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly List<BiomeDef> Biomes = new List<BiomeDef>();
         internal readonly Dictionary<string, string> Catalysts = new Dictionary<string, string>(StringComparer.Ordinal);
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
@@ -146,14 +136,6 @@ namespace Overhaul.Rarity
                             Colors = Get(v, "UIColor", "#ffffff").Split(',').Select(c => ColorUtility.TryParseHtmlString(c.Trim(), out Color color) ? color : Color.white).ToArray()
                         });
                         break;
-                    case "enchant":
-                        data.Enchants[id] = new EnchantDef
-                        {
-                            Id = id, RarityMin = Get(v, "RarityMin", null),
-                            Effect = Get(v, "Effect", Get(v, "Effet", "")),
-                            Values = List(Get(v, "Value", "")).Select(w => ParseFloat(w)).ToArray()
-                        };
-                        break;
                     case "biome":
                         data.Biomes.Add(new BiomeDef
                         {
@@ -207,12 +189,9 @@ namespace Overhaul.Rarity
             }
             foreach (var rarity in data.Rarities)
                 if (!string.IsNullOrEmpty(rarity.Aura) && !LootAura.Has(rarity.Aura)) Utility.Log.LogWarning("RaritySystem.cfg: unknown aura " + rarity.Aura + " for " + rarity.Id);
-            foreach (var enchant in data.Enchants.Values)
-            {
-                if (enchant.Id == ItemRarity.EmptyEnchant) continue;
-                if (data.Rarity(enchant.RarityMin) == null) Utility.Log.LogWarning("RaritySystem.cfg: unknown rarity " + enchant.RarityMin + " for enchantment " + enchant.Id);
-                if (!Effects.EffectConfig.Current.Effects.ContainsKey(enchant.Effect ?? "")) Utility.Log.LogWarning("RaritySystem.cfg: enchantment " + enchant.Id + " has no known effect (" + enchant.Effect + "), it is never rolled");
-            }
+            foreach (var effect in Effects.EffectConfig.Current.Effects.Values)
+                if (!string.IsNullOrEmpty(effect.EnchantRarityMin) && data.Rarity(effect.EnchantRarityMin) == null)
+                    Utility.Log.LogWarning("Effects.cfg: unknown rarity " + effect.EnchantRarityMin + " in EnchantRarityMin of " + effect.Id + ", it is never rolled");
             foreach (var biome in data.Biomes)
                 foreach (string item in biome.Items) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
             BiomeReport.Write();
