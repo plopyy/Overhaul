@@ -98,18 +98,20 @@ namespace Overhaul.Effects
             {
                 private static readonly System.Reflection.MethodInfo Target = AccessTools.Method(typeof(Character), "RPC_Damage");
                 private static readonly System.Reflection.MethodInfo Staggering = AccessTools.Method(typeof(Character), nameof(Character.IsStaggering));
-                private static readonly System.Reflection.MethodInfo Modifier = AccessTools.Method(typeof(HitData), nameof(HitData.ApplyModifier));
+                private static readonly System.Reflection.MethodInfo Modifier = AccessTools.Method(typeof(HitData), nameof(HitData.ApplyModifier), new[] { typeof(float) });
                 private static readonly System.Reflection.FieldInfo CritEffects = AccessTools.Field(typeof(Character), nameof(Character.m_critHitEffects));
 
-                // Checked before patching: when the game no longer has the native critical hit, the patch is skipped
-                // with a clear warning and CritChance does nothing.
+                // When the game no longer has the native critical hit, the patch is skipped (missing members) or leaves
+                // RPC_Damage untouched (missing test), with a clear warning: CritChance then does nothing.
                 private static bool Prepare()
                 {
                     string missing = Target == null ? "Character.RPC_Damage" : Staggering == null ? "Character.IsStaggering" : Modifier == null ? "HitData.ApplyModifier"
-                        : CritEffects == null ? "Character.m_critHitEffects" : Find(PatchProcessor.GetOriginalInstructions(Target)) < 0 ? "the critical hit test in Character.RPC_Damage" : null;
-                    if (missing != null) Utility.Log.LogWarning("Native critical hit not found (" + missing + "): the CritChance effect is disabled");
+                        : CritEffects == null ? "Character.m_critHitEffects" : null;
+                    if (missing != null) Disabled(missing);
                     return missing == null;
                 }
+
+                private static void Disabled(string missing) => Utility.Log.LogWarning("Native critical hit not found (" + missing + "): the CritChance effect is disabled");
 
                 // The staggering test that leads to the doubled damage and the critical effects.
                 private static int Find(List<CodeInstruction> codes)
@@ -127,7 +129,7 @@ namespace Overhaul.Effects
                 {
                     var codes = new List<CodeInstruction>(instructions);
                     int i = Find(codes);
-                    if (i < 0) return codes;
+                    if (i < 0) { Disabled("the critical hit test in Character.RPC_Damage"); return codes; }
                     codes.Insert(i, new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_2));
                     codes[i + 1] = new CodeInstruction(System.Reflection.Emit.OpCodes.Call, AccessTools.Method(typeof(Critical), nameof(StaggeringOrCritical))).MoveLabelsFrom(codes[i + 1]);
                     return codes;

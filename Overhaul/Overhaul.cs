@@ -134,7 +134,7 @@ namespace Overhaul
                 {
                     // A patch that no longer fits the game (after a Valheim update) is reported and skipped; the others still apply.
                     try { _harmony.CreateClassProcessor(type).Patch(); }
-                    catch (System.Exception e) { Log.LogError("Patch " + type.FullName + " not applied: " + (e.InnerException ?? e).Message); }
+                    catch (System.Exception e) { while (e.InnerException != null) e = e.InnerException; Log.LogError("Patch " + type.FullName + " not applied: " + e.GetType().Name + ": " + e.Message); }
                 }
             //new Harmony(ConfigFile).PatchAll();
             Log.LogInfo(ConfigFile + " Patching complete");

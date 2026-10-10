@@ -19,9 +19,10 @@ namespace Overhaul.Rarity
         private static readonly Dictionary<string, int> Biomes = new Dictionary<string, int>(StringComparer.Ordinal);
 
         // The biome listing the item, else the strongest biome among its recipe materials, else the first one.
-        internal static int Biome(ItemDrop.ItemData item)
+        // prefab: for an ItemDrop prefab's own item data, which has no drop prefab.
+        internal static int Biome(ItemDrop.ItemData item, string prefab = null)
         {
-            string prefab = item?.m_dropPrefab ? item.m_dropPrefab.name : null;
+            prefab = prefab ?? (item?.m_dropPrefab ? item.m_dropPrefab.name : null);
             if (prefab == null) return 0;
             if (Biomes.TryGetValue(prefab, out int order)) return order;
             var biomes = RarityConfig.Current.Biomes;
