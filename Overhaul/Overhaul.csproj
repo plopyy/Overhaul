@@ -172,12 +172,6 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\trough-layout.tsv"><LogicalName>Overhaul.Assets.trough-layout.tsv</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_bg.png</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_HUD_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_HUD_bg.png</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_item_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_item_bg.png</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_item_border.png"><LogicalName>Overhaul.Assets.Slots.slot_item_border.png</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_quality_bg.png"><LogicalName>Overhaul.Assets.Slots.slot_quality_bg.png</LogicalName></EmbeddedResource>
-    <EmbeddedResource Include="Assets\Slots\slot_quality_border.png"><LogicalName>Overhaul.Assets.Slots.slot_quality_border.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\LootAura\overhaul_lootaura"><LogicalName>Overhaul.Assets.LootAura.overhaul_lootaura</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>

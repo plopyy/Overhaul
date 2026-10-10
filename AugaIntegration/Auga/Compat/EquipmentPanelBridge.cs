@@ -110,11 +110,8 @@ namespace Auga
             var slots = ((Array)slotsField.GetValue(null)).Cast<object>().ToArray();
             var enabled = slots.Where(s => Flag(active, s)).ToArray();
             panel.gameObject.SetActive(enabled.Length > 0);
-            int quickCount = enabled.Count(s => Flag(quick, s));
-            int customCount = enabled.Count(s => Flag(custom, s));
-            panel.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Mathf.Max(255, quickCount * 70 + 40) + Mathf.Ceil(customCount / 4f) * 70);
             var drag = Drag.GetValue(gui) as ItemDrop.ItemData;
-            int customIndex = 0, quickIndex = 0;
+            int quickIndex = 0;
             foreach (var slot in slots)
             {
                 var pos = (Vector2i)position.GetValue(slot, null);
@@ -126,15 +123,14 @@ namespace Auga
                 if (!Flag(active, slot) || isCosmetic != cosmeticTab) { element.transform.SetParent(hidden, false); element.gameObject.SetActive(false); continue; }
                 element.gameObject.SetActive(true);
                 var r = (RectTransform)element.transform;
-                Transform anchor = panel;
-                Vector2 offset = Vector2.zero;
+                // Every slot has its own place in the prefab (quick slots and ammo slots included).
+                Transform anchor = null;
                 if (isCosmetic) anchor = panel.Find("CosmeticPage/Slot" + ((int)index.GetValue(slot, null) - EquipmentAndQuickSlots.Slots.CosmeticSlotStartIndex));
                 else if (Flag(equipment, slot)) anchor = panel.Find("Equipment" + ((int)index.GetValue(slot, null) - 8));
-                else if (Flag(quick, slot)) { anchor = panel.Find("QuickSlots"); offset.x = (quickIndex++ - (quickCount - 1) * .5f) * 70; }
-                else if (isAmmo) { anchor = panel.Find("AmmoSlots"); offset.x = (slotIndex - EquipmentAndQuickSlots.Slots.AmmoSlotStartIndex - 1) * 70; }
-                else { offset = new Vector2(290 + customIndex / 4 * 70, -55 - customIndex % 4 * 70); customIndex++; }
-                if (!anchor) anchor = panel;
-                r.SetParent(anchor, false); r.anchorMin = r.anchorMax = anchor == panel ? new Vector2(0, 1) : new Vector2(.5f, .5f); r.pivot = new Vector2(.5f,.5f); r.anchoredPosition = offset;
+                else if (Flag(quick, slot)) anchor = panel.Find("QuickSlots/QuickSlot" + quickIndex++);
+                else if (isAmmo) anchor = panel.Find("AmmoSlots/Ammo" + (slotIndex - EquipmentAndQuickSlots.Slots.AmmoSlotStartIndex));
+                if (!anchor) { element.transform.SetParent(hidden, false); element.gameObject.SetActive(false); continue; }
+                r.SetParent(anchor, false); r.anchorMin = r.anchorMax = r.pivot = new Vector2(.5f, .5f); r.anchoredPosition = Vector2.zero;
                 var label = element.transform.Find("binding").GetComponent<TMP_Text>();
                 label.text = Flag(quick, slot) ? (string)quickText.Invoke(null, new object[] { (int)index.GetValue(slot,null) }) : "";
                 // Native inventory refresh hides bindings outside the first inventory row.
@@ -160,46 +156,22 @@ namespace Auga
 
         internal static void UpdateAmmoSelection(InventoryElement element, bool selected)
         {
-            var child = element.transform.Find("AmmoActive");
-            if (!child && selected)
-            {
-                // The selected ammo slot is framed with the slot border design, in a golden tint.
-                var frame = new GameObject("AmmoActive", typeof(RectTransform), typeof(Image));
-                child = frame.transform;
-                child.SetParent(element.transform, false);
-                var rect = (RectTransform)child; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
-                var image = frame.GetComponent<Image>();
-                image.sprite = Overhaul.ItemSlotStyle.BorderSprite; image.color = new Color(1f, .78f, .3f, 1f); image.raycastTarget = false;
-            }
-            if (child) child.gameObject.SetActive(selected);
+            var frame = element.transform.Find("AmmoActive");
+            if (frame) frame.gameObject.SetActive(selected);
         }
 
         // Neutral outline glyphs identify empty cells without resembling real items.
         internal static void UpdateSlotHint(InventoryElement element, int slot, bool occupied)
         {
             var child = element.transform.Find("EquipmentHint");
-            if (slot < 0 || occupied)
+            if (!child) return;
+            bool shown = slot >= 0 && !occupied;
+            if (shown)
             {
-                if (child) child.gameObject.SetActive(false);
-                return;
+                var image = child.GetComponent<AugaUnity.EquipmentSlotHint>();
+                if (image.Slot != slot) { image.Slot = slot; image.SetVerticesDirty(); }
             }
-            if (!child)
-            {
-                var original = element.transform.Find("icon").GetComponent<Image>();
-                var hint = new GameObject("EquipmentHint", typeof(RectTransform), typeof(CanvasRenderer), typeof(AugaUnity.EquipmentSlotHint));
-                child = hint.transform;
-                child.SetParent(element.transform, false);
-                var rect = (RectTransform)child;
-                var source = original.rectTransform;
-                rect.anchorMin = source.anchorMin; rect.anchorMax = source.anchorMax;
-                rect.pivot = source.pivot; rect.sizeDelta = source.sizeDelta;
-                rect.anchoredPosition = source.anchoredPosition; rect.localScale = source.localScale * .82f;
-                child.SetSiblingIndex(original.transform.GetSiblingIndex());
-            }
-            var image = child.GetComponent<AugaUnity.EquipmentSlotHint>();
-            image.Slot = slot; image.color = new Color(.82f, .77f, .67f, .28f);
-            image.raycastTarget = false; image.SetVerticesDirty();
-            child.gameObject.SetActive(true);
+            child.gameObject.SetActive(shown);
         }
     }
 }
