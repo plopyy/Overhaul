@@ -61,8 +61,6 @@ namespace Overhaul.Effects
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
         private static class Dealt
         {
-            private const float CriticalMultiplier = 1.5f;
-
             private static void Prefix(Character __instance, HitData hit)
             {
                 if (hit == null || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player) return;
@@ -75,9 +73,72 @@ namespace Overhaul.Effects
                 hit.m_damage.m_poison += poison; hit.m_damage.m_spirit += spirit;
                 hit.m_backstabBonus *= 1 + Pct(player, "BackstabBonus");
                 hit.m_pushForce *= Mathf.Max(0, 1 + Pct(player, "Knockback"));
-                if (Random.value < Pct(player, "CritChance")) hit.m_damage.Modify(CriticalMultiplier);
+                if (Random.value < Pct(player, "CritChance")) Critical.Mark(hit);
                 float steal = Pct(player, "LifeSteal");
                 if (steal > 0) player.Heal(hit.GetTotalDamage() * steal, true);
+            }
+        }
+
+        // CritChance triggers Valheim's own critical hit: on the target's machine, RPC_Damage doubles the damage and
+        // plays the target's critical effects when the creature is staggering; a critical hit takes that path too
+        // (players never take critical hits, like in vanilla). The attacker's roll travels in an unused bit of the
+        // HitData flags (the leveling crits use another one).
+        internal static class Critical
+        {
+            private const uint Flag = 0x40000000u;
+            private sealed class Marked { }
+            private static readonly ConditionalWeakTable<HitData, Marked> Hits = new ConditionalWeakTable<HitData, Marked>();
+            internal static void Mark(HitData hit) { if (hit != null) Hits.GetValue(hit, _ => new Marked()); }
+            private static bool Is(HitData hit) => hit != null && Hits.TryGetValue(hit, out _);
+
+            private static bool StaggeringOrCritical(Character target, HitData hit) => target.IsStaggering() || Is(hit);
+
+            [HarmonyPatch(typeof(Character), "RPC_Damage")]
+            private static class Native
+            {
+                private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+                {
+                    var codes = new List<CodeInstruction>(instructions);
+                    var staggering = AccessTools.Method(typeof(Character), nameof(Character.IsStaggering));
+                    var modifier = AccessTools.Method(typeof(HitData), nameof(HitData.ApplyModifier));
+                    var effects = AccessTools.Field(typeof(Character), nameof(Character.m_critHitEffects));
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (!codes[i].Calls(staggering)) continue;
+                        // The staggering test that leads to the doubled damage and the critical effects.
+                        int end = Mathf.Min(codes.Count, i + 12);
+                        bool critical = false;
+                        for (int j = i + 1; j < end; j++) if (codes[j].Calls(modifier) || codes[j].LoadsField(effects)) { critical = true; break; }
+                        if (!critical) continue;
+                        codes.Insert(i, new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_2));
+                        codes[i + 1] = new CodeInstruction(System.Reflection.Emit.OpCodes.Call, AccessTools.Method(typeof(Critical), nameof(StaggeringOrCritical))).MoveLabelsFrom(codes[i + 1]);
+                        return codes;
+                    }
+                    throw new System.InvalidOperationException("Native critical hit test not found in Character.RPC_Damage");
+                }
+            }
+
+            [HarmonyPatch(typeof(HitData), nameof(HitData.Serialize))]
+            private static class Send
+            {
+                private static void Prefix(ZPackage pkg, out int __state) => __state = pkg.GetPos();
+                private static void Postfix(HitData __instance, ZPackage pkg, int __state)
+                {
+                    if (!Is(__instance)) return;
+                    int end = pkg.GetPos(); pkg.SetPos(__state); uint flags = pkg.ReadUInt();
+                    pkg.SetPos(__state); pkg.Write(flags | Flag); pkg.SetPos(end);
+                }
+            }
+
+            [HarmonyPatch(typeof(HitData), nameof(HitData.Deserialize))]
+            private static class Receive
+            {
+                private static void Prefix(HitData __instance, ZPackage pkg)
+                {
+                    int start = pkg.GetPos(); uint flags = pkg.ReadUInt(); pkg.SetPos(start);
+                    Hits.Remove(__instance);
+                    if ((flags & Flag) != 0) Mark(__instance);
+                }
             }
         }
 
