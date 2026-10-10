@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using EquipmentAndQuickSlots.src.MultiUtility;
 using UnityEngine;
 
@@ -5,14 +6,17 @@ namespace Overhaul.Storage
 {
     // Spirit circlet: thins only the Mistlands mist (ParticleMist) around its wearer. Mist particles are at 10 %
     // of their opacity up to twice the radius of a wisp's clearing, then fade back to full opacity at three times
-    // that radius. Distance fog, smoke and every other effect stay untouched.
+    // that radius. Distance fog, smoke and every other effect stay untouched. Each particle keeps the colour the game
+    // gave it when emitted (remembered by its random seed): only its opacity is scaled, so particles never jump between
+    // the game's colour and another one.
     internal sealed class CircletMist : MonoBehaviour
     {
         private const float Thinned = .1f, InnerRadius = 2f, OuterRadius = 3f, DefaultWispRadius = 6f;
         private static float wispRadius;
         private ParticleSystem system;
         private ParticleSystem.Particle[] particles;
-        private Color baseColor;
+        private readonly Dictionary<uint, Color32> originals = new Dictionary<uint, Color32>();
+        private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
 
         internal static void Tick()
@@ -21,12 +25,7 @@ namespace Overhaul.Storage
             if (mist && !mist.GetComponent<CircletMist>()) mist.gameObject.AddComponent<CircletMist>();
         }
 
-        private void Awake()
-        {
-            system = GetComponent<ParticleSystem>();
-            var start = system.main.startColor;
-            baseColor = start.mode == ParticleSystemGradientMode.Color ? start.color : start.Evaluate(.5f);
-        }
+        private void Awake() => system = GetComponent<ParticleSystem>();
 
         // Worn as helmet, utility or extra utility slot.
         private static bool SpiritWorn(Player player)
@@ -54,22 +53,28 @@ namespace Overhaul.Storage
             // Particles keep the colour they were given: restore the base once when the circlet comes off.
             if (!wearing && !thinned) return;
             int count = system.particleCount;
-            if (count == 0) { thinned = wearing; return; }
+            if (count == 0) { thinned = wearing; originals.Clear(); return; }
             if (particles == null || particles.Length < system.main.maxParticles) particles = new ParticleSystem.Particle[system.main.maxParticles];
             count = system.GetParticles(particles);
             Vector3 center = wearing ? player.transform.position : Vector3.zero;
             float inner = WispRadius() * InnerRadius, outer = WispRadius() * OuterRadius;
+            alive.Clear();
             for (int i = 0; i < count; i++)
             {
-                Color color = baseColor;
+                uint seed = particles[i].randomSeed;
+                alive.Add(seed);
+                if (!originals.TryGetValue(seed, out Color32 color)) originals[seed] = color = particles[i].startColor;
                 if (wearing)
                 {
                     float distance = Vector3.Distance(particles[i].position, center);
-                    color.a *= Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance));
+                    color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance)));
                 }
                 particles[i].startColor = color;
             }
             system.SetParticles(particles, count);
+            // Forget the particles that died, and everything once the circlet is off (colours restored above).
+            if (!wearing) originals.Clear();
+            else if (originals.Count > count * 2) foreach (uint seed in new List<uint>(originals.Keys)) if (!alive.Contains(seed)) originals.Remove(seed);
             thinned = wearing;
         }
     }
