@@ -2388,6 +2388,8 @@
   "overhaul_hoe_drain_tar": "Drain tar",
   "overhaul_hoe_drain_tar_description": "Removes liquid tar within a 2 m radius for 5 stone. Requires a level 3 hoe or higher. Leaves terrain and items unchanged.",
   "overhaul_hoe_tar_quality": "Requires a level 3 hoe or higher.",
+  "overhaul_rarity_catalysts": "Catalyst slots",
+  "overhaul_rarity_empty_catalyst": "Empty catalyst slot",
   "overhaul_spirit_circlet": "Spirit circlet",
   "overhaul_spirit_circlet_description": "A circlet imbued with a spirit's light. Illuminates your surroundings and thins the Mistlands mist around you.",
   "overhaul_hoe_no_tar": "No liquid tar in the targeted area.",

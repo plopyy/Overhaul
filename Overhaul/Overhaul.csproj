@@ -125,7 +125,7 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DynamicCombat.cs" /><Compile Include="Leveling\*.cs" /><Compile Include="Storage\*.cs" />
+    <Compile Include="DynamicCombat.cs" /><Compile Include="Leveling\*.cs" /><Compile Include="Storage\*.cs" /><Compile Include="Rarity\*.cs" />
     <Compile Include="Dungeons\DungeonPolicy.cs" />
     <Compile Include="Dungeons\DungeonRuntime.cs" />
     <Compile Include="Dungeons\DungeonResetSafety.cs" />

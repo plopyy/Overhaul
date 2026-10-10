@@ -232,7 +232,7 @@ namespace Overhaul
                     // The equipment window shows what is worn: no "equipped" marker in the grids.
                     if (element.m_equiped) element.m_equiped.enabled = false;
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
-                    Apply(element.gameObject, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform));
+                    Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform));
                 }
             }
         }
@@ -248,7 +248,7 @@ namespace Overhaul
                     ItemDrop.ItemData item = __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i);
                     var element = __instance.m_elements[i];
                     if (element.m_equiped) element.m_equiped.SetActive(false);
-                    Apply(element.m_go, element.m_icon, item != null, EpicLootVisuals.RarityOf(item), true, equipped: item != null && item.m_equipped);
+                    Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, equipped: item != null && item.m_equipped);
                 }
             }
         }

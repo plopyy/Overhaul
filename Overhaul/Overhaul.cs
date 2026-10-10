@@ -60,6 +60,8 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
+            Rarity.RarityConfig.Initialize();
+            Rarity.ItemRarity.Initialize();
             Storage.FeedingTrough.Initialize();
             Storage.CharcoalKilnWoods.Initialize();
             Patches.WoodenArrowRecipe.Initialize();

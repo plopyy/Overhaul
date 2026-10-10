@@ -2,17 +2,16 @@ using UnityEngine;
 
 namespace Overhaul
 {
-    // Ground auras of Overhaul rarities (7 levels, the 7th an iridescent crystal version of the 6th, from the "Unique Loot Drops Vol. 1" pack, Vertical02 style).
-    // The bundle is embedded in Overhaul.dll and loaded on first use.
+    // Ground auras of the rarities (from the "Unique Loot Drops Vol. 1" pack, Vertical02 style; the 7th an iridescent
+    // crystal version of the 6th). Each rarity names its aura (AuraAssetName). The bundle is embedded in Overhaul.dll.
     public static class LootAura
     {
-        public const int Levels = 7;
         // The pack is made for large scenes: shrunk to item size and lifted so the ground ring is not buried.
         private const float Scale = .35f;
         // The pack places its ground ring 0.701 below the prefab origin: lift it back to the ground, plus 3 cm.
         private const float Lift = .701f * Scale + .03f;
         private static AssetBundle bundle;
-        private static readonly GameObject[] prefabs = new GameObject[Levels];
+        private static readonly System.Collections.Generic.Dictionary<string, GameObject> prefabs = new System.Collections.Generic.Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
 
         private static bool Ready()
         {
@@ -21,15 +20,17 @@ namespace Overhaul
             try { bundle = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.LootAura.overhaul_lootaura"); }
             catch (System.Exception e) { Utility.Log.LogWarning("Loot auras unavailable: " + e.Message); return false; }
             if (!bundle) return false;
-            for (int i = 0; i < Levels; i++) prefabs[i] = bundle.LoadAsset<GameObject>("OverhaulLootAura" + (i + 1));
+            foreach (GameObject prefab in bundle.LoadAllAssets<GameObject>()) prefabs[prefab.name] = prefab;
             return true;
         }
 
-        // level: 1 to 6. The aura follows its parent's position but always stays upright.
-        public static GameObject Spawn(int level, Vector3 position, Transform follow = null)
+        internal static bool Has(string name) => Ready() && prefabs.ContainsKey(name);
+
+        // The aura follows its parent's position but always stays upright.
+        public static GameObject Spawn(string name, Vector3 position, Transform follow = null)
         {
-            if (level < 1 || level > Levels || !Ready() || !prefabs[level - 1]) return null;
-            GameObject aura = Object.Instantiate(prefabs[level - 1], (follow ? Ground(position) : position) + Vector3.up * Lift, Quaternion.identity);
+            if (string.IsNullOrEmpty(name) || !Ready() || !prefabs.TryGetValue(name, out GameObject prefab)) return null;
+            GameObject aura = Object.Instantiate(prefab, (follow ? Ground(position) : position) + Vector3.up * Lift, Quaternion.identity);
             aura.transform.localScale = Vector3.one * Scale;
             foreach (var system in aura.GetComponentsInChildren<ParticleSystem>(true))
             {
@@ -101,30 +102,6 @@ namespace Overhaul
             {
                 if (!Target) { Destroy(gameObject); return; }
                 transform.SetPositionAndRotation(Ground(Target.position) + Vector3.up * Lift, Quaternion.identity);
-            }
-        }
-
-        // Items that will carry an aura: equipment, weapons, shields and tools; resources, food, trophies and the like keep the vanilla look.
-        internal static bool IsEquipment(ItemDrop.ItemData item)
-        {
-            switch (item?.m_shared?.m_itemType)
-            {
-                case ItemDrop.ItemData.ItemType.OneHandedWeapon:
-                case ItemDrop.ItemData.ItemType.TwoHandedWeapon:
-                case ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft:
-                case ItemDrop.ItemData.ItemType.Bow:
-                case ItemDrop.ItemData.ItemType.Shield:
-                case ItemDrop.ItemData.ItemType.Helmet:
-                case ItemDrop.ItemData.ItemType.Chest:
-                case ItemDrop.ItemData.ItemType.Legs:
-                case ItemDrop.ItemData.ItemType.Shoulder:
-                case ItemDrop.ItemData.ItemType.Utility:
-                case ItemDrop.ItemData.ItemType.Trinket:
-                case ItemDrop.ItemData.ItemType.Tool:
-                case ItemDrop.ItemData.ItemType.Torch:
-                    return true;
-                default:
-                    return false;
             }
         }
     }

@@ -91,6 +91,19 @@ namespace Overhaul.Commands
                     server.m_rpc.Invoke(ResetLevelRequest,target);
                     args.Context.AddString("Overhaul : demande de remise a zero envoyee au serveur.");
                 }));
+            new Terminal.ConsoleCommand(Prefix + "rarity",
+                "Test : fait apparaitre un objet d'une rarete donnee devant le joueur : o_rarity <objet> [rarete] (rarete au hasard sinon) (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    if (args.Length < 2 || !Player.m_localPlayer) { args.Context.AddString("Usage : o_rarity <objet> [rarete]"); return; }
+                    var rarities = Rarity.RarityConfig.Current.Rarities;
+                    var rarity = args.Length > 2 ? Rarity.RarityConfig.Current.Rarity(args[2]) : rarities.Count > 0 ? rarities[UnityEngine.Random.Range(0, rarities.Count)] : null;
+                    if (rarity == null) { args.Context.AddString("Overhaul : rarete inconnue. Raretes : " + string.Join(", ", rarities.Select(r => r.Id))); return; }
+                    var player = Player.m_localPlayer.transform;
+                    var drop = Rarity.ItemRarity.Drop(args[1], rarity, player.position + player.forward * 2f + UnityEngine.Vector3.up);
+                    args.Context.AddString(drop ? "Overhaul : " + args[1] + " (" + rarity.Id + ") apparu." : "Overhaul : objet inconnu " + args[1] + ".");
+                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
