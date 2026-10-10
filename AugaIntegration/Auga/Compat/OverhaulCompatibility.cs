@@ -24,7 +24,8 @@ namespace Auga.Compat
                 foreach(string name in new[]{"Minus","Plus"})
                 {
                     var emptyTooltip=card.Find(name).GetComponent<UITooltip>();
-                    if(emptyTooltip)UnityEngine.Object.DestroyImmediate(emptyTooltip);
+                    // Awake can run during a UI callback where an immediate destroy is refused: disable now, destroy at frame end.
+                    if(emptyTooltip){emptyTooltip.enabled=false;UnityEngine.Object.Destroy(emptyTooltip);}
                 }
             __instance.TabContents.Insert(1,page.gameObject);__instance.TabButtons.Insert(1,button);__instance.TabTitles.Insert(1,title);
             button.gameObject.SetActive(true);
