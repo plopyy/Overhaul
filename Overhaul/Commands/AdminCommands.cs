@@ -104,6 +104,19 @@ namespace Overhaul.Commands
                     var drop = Rarity.ItemRarity.Drop(args[1], rarity, player.position + player.forward * 2f + UnityEngine.Vector3.up);
                     args.Context.AddString(drop ? "Overhaul : " + args[1] + " (" + rarity.Id + ") apparu." : "Overhaul : objet inconnu " + args[1] + ".");
                 }));
+            new Terminal.ConsoleCommand(Prefix + "reroll",
+                "Test : tire de nouveaux enchantements sur un objet equipe d'au moins la rarete Uncommon : o_reroll [type] (arme en main sinon ; Helmet, Chest, Legs, Cape, Trinket, Shield, Melee, Bow, Staff, Tool) (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    var player = Player.m_localPlayer;
+                    if (!player) { args.Context.AddString("Usage : o_reroll [type]"); return; }
+                    var item = args.Length > 1
+                        ? player.GetInventory().GetEquippedItems().FirstOrDefault(i => Rarity.Enchantments.Categories(i).Contains(args[1], System.StringComparer.OrdinalIgnoreCase))
+                        : player.GetCurrentWeapon() is ItemDrop.ItemData weapon && weapon != player.m_unarmedWeapon?.m_itemData ? weapon : player.GetLeftItem();
+                    if (item == null) { args.Context.AddString("Overhaul : aucun objet equipe" + (args.Length > 1 ? " de type " + args[1] : " en main") + "."); return; }
+                    args.Context.AddString("Overhaul : " + Rarity.ItemRarity.Reroll(item));
+                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>

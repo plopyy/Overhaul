@@ -71,6 +71,20 @@ namespace Overhaul.Rarity
             else item.m_customData.Remove(EnchantKey);
         }
 
+        // Test command: new enchantments for an item of a rarity with enchantment lines (Uncommon and above).
+        internal static string Reroll(ItemDrop.ItemData item)
+        {
+            var rarity = Of(item);
+            string name = Localization.instance.Localize(item.m_shared.m_name);
+            if (rarity == null || IsCatalyst(item, out _)) return name + " n'a pas de rarete.";
+            if (rarity.EnchantCount <= 0) return name + " est " + rarity.Id + " : pas de ligne d'enchantement (Uncommon minimum).";
+            string[] lines = Enchantments.Roll(item, rarity);
+            item.m_customData[RarityKey] = rarity.Id;
+            item.m_customData[EnchantKey] = string.Join(",", lines);
+            Effects.Effects.Invalidate();
+            return name + " (" + rarity.Id + ") : " + string.Join(", ", lines);
+        }
+
         // Weighted pick among the rarities, in file order.
         internal static RarityDef Roll(float[] weights)
         {
