@@ -99,9 +99,10 @@ namespace Overhaul.Rarity
             return shared.m_name == "$item_scythe" ? "Tool" : "Melee";
         }
 
-        // Distinct enchantments (effects of Effects.cfg with EnchantRarityMin at most as strong as the rarity and
-        // allowed on the item's category); lines left without a candidate stay empty.
-        internal static string[] Roll(ItemDrop.ItemData item, RarityDef rarity)
+        // Enchantment lines for the rarity: distinct effects of Effects.cfg with EnchantRarityMin at most as strong as the
+        // rarity and allowed on the item's category. keep: current lines to keep where they still hold a valid enchantment
+        // (only the empty or invalid ones are drawn). Lines left without a candidate stay empty.
+        internal static string[] Roll(ItemDrop.ItemData item, RarityDef rarity, string[] keep = null)
         {
             var data = RarityConfig.Current;
             string[] categories = Categories(item);
@@ -111,12 +112,51 @@ namespace Overhaul.Rarity
             var lines = new string[rarity.EnchantCount];
             for (int i = 0; i < lines.Length; i++)
             {
+                string kept = keep != null && i < keep.Length ? keep[i] : null;
+                var valid = kept == null ? null : pool.FirstOrDefault(e => string.Equals(e.Id, kept, StringComparison.OrdinalIgnoreCase));
+                if (valid != null) { lines[i] = valid.Id; pool.Remove(valid); }
+            }
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i] != null) continue;
                 if (pool.Count == 0) { lines[i] = ItemRarity.EmptyEnchant; continue; }
                 int pick = UnityEngine.Random.Range(0, pool.Count);
                 lines[i] = pool[pick].Id;
                 pool.RemoveAt(pick);
             }
             return lines;
+        }
+
+        // Gear whose enchantment lines are empty (made before the enchantments existed, or whose enchantment left
+        // Effects.cfg) or do not match its rarity's line count gets the missing lines drawn. Returns whether it changed.
+        internal static bool Fill(ItemDrop.ItemData item)
+        {
+            var rarity = ItemRarity.Of(item);
+            if (rarity == null || ItemRarity.IsCatalyst(item, out _) || item.m_customData == null) return false;
+            string[] current = ItemRarity.Enchants(item);
+            string[] lines = Roll(item, rarity, current);
+            if (lines.SequenceEqual(current)) return false;
+            if (lines.Length > 0) item.m_customData[ItemRarity.EnchantKey] = string.Join(",", lines);
+            else item.m_customData.Remove(ItemRarity.EnchantKey);
+            return true;
+        }
+
+        // The local player's gear is completed when the character loads and whenever an item is equipped.
+        [HarmonyLib.HarmonyPatch(typeof(Player), nameof(Player.OnSpawned))]
+        private static class FillOnSpawn
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer) return;
+                int count = __instance.GetInventory().GetAllItems().Count(Fill);
+                if (count > 0) { Effects.Effects.Invalidate(); Utility.Log.LogInfo("Enchantments completed on " + count + " items"); }
+            }
+        }
+
+        [HarmonyLib.HarmonyPatch(typeof(Humanoid), nameof(Humanoid.EquipItem))]
+        private static class FillOnEquip
+        {
+            private static void Prefix(Humanoid __instance, ItemDrop.ItemData item) { if (__instance == Player.m_localPlayer && item != null && Fill(item)) Effects.Effects.Invalidate(); }
         }
 
         // The item's enchantments with their effect and value, empty lines left out.
