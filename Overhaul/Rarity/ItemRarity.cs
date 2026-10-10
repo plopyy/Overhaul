@@ -211,7 +211,9 @@ namespace Overhaul.Rarity
             if (dividers == null)
             {
                 topic = tooltip.Topic.color;
-                dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true)).ToArray();
+                // Only the light strokes are tinted: dark parts (the fill that hides the line behind the diamond) keep their colour.
+                dividers = new[] { tooltip.NormalDivider, tooltip.BottomDivider }.Where(d => d).SelectMany(d => d.GetComponentsInChildren<Image>(true))
+                    .Where(i => i.color.maxColorComponent > .5f).ToArray();
                 originals = dividers.Select(d => d.color).ToArray();
             }
             Color[] colors = rarity == null ? null : rarity.Gradient;
