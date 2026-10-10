@@ -96,25 +96,41 @@ namespace Overhaul.Effects
             [HarmonyPatch(typeof(Character), "RPC_Damage")]
             private static class Native
             {
+                private static readonly System.Reflection.MethodInfo Target = AccessTools.Method(typeof(Character), "RPC_Damage");
+                private static readonly System.Reflection.MethodInfo Staggering = AccessTools.Method(typeof(Character), nameof(Character.IsStaggering));
+                private static readonly System.Reflection.MethodInfo Modifier = AccessTools.Method(typeof(HitData), nameof(HitData.ApplyModifier));
+                private static readonly System.Reflection.FieldInfo CritEffects = AccessTools.Field(typeof(Character), nameof(Character.m_critHitEffects));
+
+                // Checked before patching: when the game no longer has the native critical hit, the patch is skipped
+                // with a clear warning and CritChance does nothing.
+                private static bool Prepare()
+                {
+                    string missing = Target == null ? "Character.RPC_Damage" : Staggering == null ? "Character.IsStaggering" : Modifier == null ? "HitData.ApplyModifier"
+                        : CritEffects == null ? "Character.m_critHitEffects" : Find(PatchProcessor.GetOriginalInstructions(Target)) < 0 ? "the critical hit test in Character.RPC_Damage" : null;
+                    if (missing != null) Utility.Log.LogWarning("Native critical hit not found (" + missing + "): the CritChance effect is disabled");
+                    return missing == null;
+                }
+
+                // The staggering test that leads to the doubled damage and the critical effects.
+                private static int Find(List<CodeInstruction> codes)
+                {
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (!codes[i].Calls(Staggering)) continue;
+                        int end = Mathf.Min(codes.Count, i + 12);
+                        for (int j = i + 1; j < end; j++) if (codes[j].Calls(Modifier) || codes[j].LoadsField(CritEffects)) return i;
+                    }
+                    return -1;
+                }
+
                 private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
                 {
                     var codes = new List<CodeInstruction>(instructions);
-                    var staggering = AccessTools.Method(typeof(Character), nameof(Character.IsStaggering));
-                    var modifier = AccessTools.Method(typeof(HitData), nameof(HitData.ApplyModifier));
-                    var effects = AccessTools.Field(typeof(Character), nameof(Character.m_critHitEffects));
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (!codes[i].Calls(staggering)) continue;
-                        // The staggering test that leads to the doubled damage and the critical effects.
-                        int end = Mathf.Min(codes.Count, i + 12);
-                        bool critical = false;
-                        for (int j = i + 1; j < end; j++) if (codes[j].Calls(modifier) || codes[j].LoadsField(effects)) { critical = true; break; }
-                        if (!critical) continue;
-                        codes.Insert(i, new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_2));
-                        codes[i + 1] = new CodeInstruction(System.Reflection.Emit.OpCodes.Call, AccessTools.Method(typeof(Critical), nameof(StaggeringOrCritical))).MoveLabelsFrom(codes[i + 1]);
-                        return codes;
-                    }
-                    throw new System.InvalidOperationException("Native critical hit test not found in Character.RPC_Damage");
+                    int i = Find(codes);
+                    if (i < 0) return codes;
+                    codes.Insert(i, new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_2));
+                    codes[i + 1] = new CodeInstruction(System.Reflection.Emit.OpCodes.Call, AccessTools.Method(typeof(Critical), nameof(StaggeringOrCritical))).MoveLabelsFrom(codes[i + 1]);
+                    return codes;
                 }
             }
 
