@@ -60,6 +60,7 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
+            Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
             Rarity.ItemRarity.Initialize();
             Storage.FeedingTrough.Initialize();
@@ -101,7 +102,7 @@ namespace Overhaul
             XPortal.XPortal.Stop();
             Advize_PlantEasily.PlantEasily.Stop();
             Leveling.ClassWindow.Clear();
-            Storage.VehicleMarkers.Clear();
+            Storage.VehicleMarkers.Clear();
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.Stop();
             IntegratedUi.Stop();
             Commands.AdminCommands.Clear();

@@ -8,8 +8,8 @@ using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // RaritySystem.cfg drives the whole system: rarities (in file order, weakest first), enchantments, catalysts,
-    // loot lists and the creatures using them. Any section added to the file is taken into account.
+    // RaritySystem.cfg drives the whole system: rarities (in file order, weakest first), enchantments, biomes,
+    // catalysts, loot lists and the creatures using them. Any section added to the file is taken into account.
     // The server's file is the reference: it is sent to every client when its character spawns.
     internal sealed class RarityDef
     {
@@ -35,10 +35,27 @@ namespace Overhaul.Rarity
         // tooltip's TextGradient replaces with the 45° gradient.
         internal const string GradientMark = "#010203";
         internal string Paint(string text) => "<color=" + (Colors.Length > 1 ? GradientMark : "#" + ColorUtility.ToHtmlStringRGB(Color)) + ">" + text + "</color>";
-        internal string Name => Localization.instance != null ? Localization.instance.Localize("$" + NameKey.TrimStart('$')) : NameKey;
+        internal string Name => RarityConfig.Localize(NameKey);
     }
 
-    internal sealed class EnchantDef { internal string Id, RarityMin, Effect; }
+    // An enchantment gives its effect (an Effects.cfg id) with one value per biome of the item, in biome order;
+    // a single value applies to every biome. It can be rolled on items of RarityMin or any stronger rarity.
+    internal sealed class EnchantDef
+    {
+        internal string Id, RarityMin, NameKey, Effect;
+        internal float[] Values = new float[0];
+        internal float Value(int biome) => Values.Length == 0 ? 0 : Values[Mathf.Clamp(biome, 0, Values.Length - 1)];
+        internal string Name => RarityConfig.Localize(NameKey);
+    }
+
+    // A biome, in progression order: an item belongs to the strongest biome among its recipe materials,
+    // unless the biome lists it by name.
+    internal sealed class BiomeDef
+    {
+        internal string Id;
+        internal int Order;
+        internal HashSet<string> Materials = new HashSet<string>(StringComparer.OrdinalIgnoreCase), Items = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    }
 
     internal sealed class LootListDef
     {
@@ -53,6 +70,7 @@ namespace Overhaul.Rarity
     {
         internal readonly List<RarityDef> Rarities = new List<RarityDef>();
         internal readonly Dictionary<string, EnchantDef> Enchants = new Dictionary<string, EnchantDef>(StringComparer.OrdinalIgnoreCase);
+        internal readonly List<BiomeDef> Biomes = new List<BiomeDef>();
         internal readonly Dictionary<string, string> Catalysts = new Dictionary<string, string>(StringComparer.Ordinal);
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, List<string>> MobLoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -66,6 +84,7 @@ namespace Overhaul.Rarity
         internal const string FileName = "RaritySystem.cfg";
         private const string RequestRpc = "Overhaul_RarityRequest", ConfigRpc = "Overhaul_RarityConfig";
         internal static RarityData Local, Current = new RarityData();
+        internal static event Action Changed;
 
         internal static void Initialize()
         {
@@ -75,9 +94,15 @@ namespace Overhaul.Rarity
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
 
-        internal static RarityData Parse(string text)
+        private static void Use(RarityData data) { Current = data; Changed?.Invoke(); }
+
+        // Name keys are translation keys, written with or without the leading $.
+        internal static string Localize(string key) =>
+            string.IsNullOrEmpty(key) ? "" : Localization.instance != null ? Localization.instance.Localize("$" + key.TrimStart('$')) : key;
+
+        // [Section] blocks of key = value lines, in file order.
+        internal static List<KeyValuePair<string, Dictionary<string, string>>> Sections(string text)
         {
-            var data = new RarityData { Text = text };
             var sections = new List<KeyValuePair<string, Dictionary<string, string>>>();
             Dictionary<string, string> current = null;
             foreach (string raw in text.Split('\n'))
@@ -94,7 +119,13 @@ namespace Overhaul.Rarity
                 int equal = line.IndexOf('=');
                 if (current != null && equal > 0) current[line.Substring(0, equal).Trim()] = line.Substring(equal + 1).Trim();
             }
-            foreach (var section in sections)
+            return sections;
+        }
+
+        internal static RarityData Parse(string text)
+        {
+            var data = new RarityData { Text = text };
+            foreach (var section in Sections(text))
             {
                 int underscore = section.Key.IndexOf('_');
                 string type = underscore > 0 ? section.Key.Substring(0, underscore) : section.Key;
@@ -115,7 +146,20 @@ namespace Overhaul.Rarity
                         });
                         break;
                     case "enchant":
-                        data.Enchants[id] = new EnchantDef { Id = id, RarityMin = Get(v, "RarityMin", null), Effect = Get(v, "Effet", Get(v, "Effect", "")) };
+                        data.Enchants[id] = new EnchantDef
+                        {
+                            Id = id, RarityMin = Get(v, "RarityMin", null), NameKey = Get(v, "Name", id),
+                            Effect = Get(v, "Effect", Get(v, "Effet", "")),
+                            Values = List(Get(v, "Value", "")).Select(w => ParseFloat(w)).ToArray()
+                        };
+                        break;
+                    case "biome":
+                        data.Biomes.Add(new BiomeDef
+                        {
+                            Id = id, Order = data.Biomes.Count,
+                            Materials = new HashSet<string>(List(Get(v, "Materials", "")), StringComparer.OrdinalIgnoreCase),
+                            Items = new HashSet<string>(List(Get(v, "Items", "")), StringComparer.OrdinalIgnoreCase)
+                        });
                         break;
                     case "catalyst":
                         data.Catalysts[id] = Get(v, "Rarity", null);
@@ -124,15 +168,15 @@ namespace Overhaul.Rarity
                         data.LootLists[id] = new LootListDef
                         {
                             Id = id,
-                            Weights = Get(v, "Rarity", "").Trim('[', ']').Split(',').Where(w => w.Trim().Length > 0).Select(w => ParseFloat(w)).ToArray(),
+                            Weights = List(Get(v, "Rarity", "")).Select(w => ParseFloat(w)).ToArray(),
                             Quantity = Int(v, "Quantity", 1),
                             Chance = Float(v, "LootChance", Float(v, "LootChange", 100)),
-                            Items = Get(v, "ItemList", "").Split(',').Select(i => i.Trim()).Where(i => i.Length > 0).ToArray()
+                            Items = List(Get(v, "ItemList", ""))
                         };
                         break;
                     case "mobloot":
                         if (!data.MobLoots.TryGetValue(id, out var lists)) data.MobLoots[id] = lists = new List<string>();
-                        lists.AddRange(Get(v, "LootList", "").Split(',').Select(l => l.Trim()).Where(l => l.Length > 0));
+                        lists.AddRange(List(Get(v, "LootList", "")));
                         break;
                     default:
                         Utility.Log.LogWarning("RaritySystem.cfg: unknown section [" + section.Key + "]");
@@ -163,12 +207,22 @@ namespace Overhaul.Rarity
             }
             foreach (var rarity in data.Rarities)
                 if (!string.IsNullOrEmpty(rarity.Aura) && !LootAura.Has(rarity.Aura)) Utility.Log.LogWarning("RaritySystem.cfg: unknown aura " + rarity.Aura + " for " + rarity.Id);
+            foreach (var enchant in data.Enchants.Values)
+            {
+                if (enchant.Id == ItemRarity.EmptyEnchant) continue;
+                if (data.Rarity(enchant.RarityMin) == null) Utility.Log.LogWarning("RaritySystem.cfg: unknown rarity " + enchant.RarityMin + " for enchantment " + enchant.Id);
+                if (!Effects.EffectConfig.Current.Effects.ContainsKey(enchant.Effect ?? "")) Utility.Log.LogWarning("RaritySystem.cfg: enchantment " + enchant.Id + " has no known effect (" + enchant.Effect + "), it is never rolled");
+            }
+            foreach (var biome in data.Biomes)
+                foreach (string item in biome.Materials.Concat(biome.Items)) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
         }
 
-        private static string Get(Dictionary<string, string> v, string key, string fallback) => v.TryGetValue(key, out string value) && value.Length > 0 ? value : fallback;
-        private static int Int(Dictionary<string, string> v, string key, int fallback = 0) => int.TryParse(Get(v, key, ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : fallback;
-        private static float Float(Dictionary<string, string> v, string key, float fallback = 0) => v.TryGetValue(key, out string value) && value.Length > 0 ? ParseFloat(value, fallback) : fallback;
-        private static float ParseFloat(string value, float fallback = 0) => float.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float result) ? result : fallback;
+        // "[a, b]" or "a, b" lists.
+        internal static string[] List(string value) => (value ?? "").Trim('[', ']').Split(',').Select(i => i.Trim()).Where(i => i.Length > 0).ToArray();
+        internal static string Get(Dictionary<string, string> v, string key, string fallback) => v.TryGetValue(key, out string value) && value.Length > 0 ? value : fallback;
+        internal static int Int(Dictionary<string, string> v, string key, int fallback = 0) => int.TryParse(Get(v, key, ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : fallback;
+        internal static float Float(Dictionary<string, string> v, string key, float fallback = 0) => v.TryGetValue(key, out string value) && value.Length > 0 ? ParseFloat(value, fallback) : fallback;
+        internal static float ParseFloat(string value, float fallback = 0) => float.TryParse(value.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float result) ? result : fallback;
 
         // Network: the client asks once its character is in the world, the server answers with its file.
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]
@@ -179,7 +233,7 @@ namespace Overhaul.Rarity
                 if (__instance.IsServer()) peer.m_rpc.Register(RequestRpc, rpc => rpc.Invoke(ConfigRpc, Current.Text));
                 else peer.m_rpc.Register<string>(ConfigRpc, (rpc, text) =>
                 {
-                    try { Current = Parse(text); Validate(Current); Utility.Log.LogInfo("Rarity system received from the server: " + Current.Rarities.Count + " rarities"); }
+                    try { Use(Parse(text)); Validate(Current); Utility.Log.LogInfo("Rarity system received from the server: " + Current.Rarities.Count + " rarities"); }
                     catch (Exception e) { Utility.Log.LogWarning("Rarity system from the server rejected: " + e.Message); }
                 });
             }
@@ -191,12 +245,12 @@ namespace Overhaul.Rarity
             private static void Postfix(Player __instance)
             {
                 if (__instance != Player.m_localPlayer || !ZNet.instance) return;
-                if (ZNet.instance.IsServer()) { Current = Local ?? Current; Validate(Current); return; }
+                if (ZNet.instance.IsServer()) { Use(Local ?? Current); Validate(Current); return; }
                 ZNet.instance.GetServerRPC()?.Invoke(RequestRpc);
             }
         }
 
         [HarmonyPatch(typeof(ZNet), nameof(ZNet.Awake))]
-        private static class LocalRules { private static void Prefix() { if (Local != null) Current = Local; } }
+        private static class LocalRules { private static void Prefix() { if (Local != null) Use(Local); } }
     }
 }

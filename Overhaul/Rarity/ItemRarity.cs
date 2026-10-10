@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
 {
     // An item's rarity, stored in its custom data (saved with the item and synchronised in multiplayer),
     // or given by the catalyst list for catalyst items. Rarity raises the item's base stats (damage, armour,
-    // block, upgrades included) by its BaseStatBonus %, and gives it empty enchantment lines to fill later.
+    // block, upgrades included) by its BaseStatBonus %, and rolls its enchantment lines (see Enchantments).
     internal static class ItemRarity
     {
         internal const string RarityKey = "overhaul_rarity", EnchantKey = "overhaul_enchants";
@@ -66,7 +66,7 @@ namespace Overhaul.Rarity
         {
             if (item == null || rarity == null) return;
             item.m_customData[RarityKey] = rarity.Id;
-            if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enumerable.Repeat(EmptyEnchant, rarity.EnchantCount));
+            if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enchantments.Roll(rarity));
             else item.m_customData.Remove(EnchantKey);
         }
 
@@ -204,7 +204,11 @@ namespace Overhaul.Rarity
         }
 
         // Tooltip: the rarity name in its colour above the item type, and the catalyst slots.
-        internal static void Initialize() => ComplexTooltip.OnComplexTooltipGeneratedForItem += Tooltip;
+        internal static void Initialize()
+        {
+            ComplexTooltip.OnComplexTooltipGeneratedForItem += Tooltip;
+            Enchantments.Initialize();
+        }
 
         private static void Tooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)
         {
@@ -218,10 +222,18 @@ namespace Overhaul.Rarity
             tooltip.SetSubtitle(rarity.Paint(rarity.Name) + "\n" + (catalyst ? Localization.instance.Localize("$overhaul_rarity_catalyst") : tooltip.GenerateItemSubtext(item)));
             var rows = new List<TooltipRow>();
             if (catalyst) { tint.Texts(tooltip, rarity); return; }
-            // Enchantment lines in the rarity colour; an empty one shows as "Empty bonus +0" until the enchantment list exists.
-            foreach (string enchant in Enchants(item))
-                rows.Add(new TooltipRow(rarity.Paint(enchant == EmptyEnchant ? Localization.instance.Localize("$overhaul_rarity_empty_enchant") : enchant),
-                    enchant == EmptyEnchant ? rarity.Paint("+0") : null));
+            // Enchantment lines in the rarity colour, with their value for the item's biome; an empty line
+            // (or one whose enchantment or effect left the files) shows as "Empty bonus +0".
+            int biome = Enchantments.Biome(item);
+            foreach (string id in Enchants(item))
+            {
+                EnchantDef enchant = null; Effects.EffectDef effect = null;
+                bool filled = id != EmptyEnchant && RarityConfig.Current.Enchants.TryGetValue(id, out enchant)
+                    && Effects.EffectConfig.Current.Effects.TryGetValue(enchant.Effect ?? "", out effect);
+                rows.Add(filled
+                    ? new TooltipRow(rarity.Paint(enchant.Name), rarity.Paint(effect.Format(enchant.Value(biome))))
+                    : new TooltipRow(rarity.Paint(Localization.instance.Localize("$overhaul_rarity_empty_enchant")), rarity.Paint("+0")));
+            }
             if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
