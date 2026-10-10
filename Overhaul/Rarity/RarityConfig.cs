@@ -14,7 +14,7 @@ namespace Overhaul.Rarity
     internal sealed class RarityDef
     {
         internal string Id, NameKey, Aura;
-        internal int Order, EnchantCount, CatalystSlots;
+        internal int Order, EnchantCount, CatalystSlots, MythicCount;
         internal float BaseStatBonus;
         internal bool CanBeSet;
         internal Color[] Colors = { Color.white };
@@ -38,6 +38,19 @@ namespace Overhaul.Rarity
         internal string Name => RarityConfig.Localize(NameKey);
     }
 
+    // A mythic enchantment: a special power with its own code (Rarity.MythicEffects), rolled on gear of a rarity with
+    // MythicEnchantCount, among the ones allowed on its category. Value: one per biome (a single value for every biome),
+    // written in the description where it has {0}.
+    internal sealed class MythicDef
+    {
+        internal string Id, NameKey, DescriptionKey;
+        internal HashSet<string> ItemTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        internal float[] Values = new float[0];
+        internal float Value(int biome) => Values.Length == 0 ? 0 : Values[Mathf.Clamp(biome, 0, Values.Length - 1)];
+        internal string Name => RarityConfig.Localize(NameKey);
+        internal string Description(float value) => RarityConfig.Localize(DescriptionKey).Replace("{0}", value.ToString("0.#"));
+    }
+
     // A biome, in progression order, with the gear items belonging to it (the only ones in the rarity system).
     internal sealed class BiomeDef
     {
@@ -59,6 +72,7 @@ namespace Overhaul.Rarity
     {
         internal readonly List<RarityDef> Rarities = new List<RarityDef>();
         internal readonly List<BiomeDef> Biomes = new List<BiomeDef>();
+        internal readonly Dictionary<string, MythicDef> Mythics = new Dictionary<string, MythicDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, string> Catalysts = new Dictionary<string, string>(StringComparer.Ordinal);
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, List<string>> MobLoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -130,11 +144,19 @@ namespace Overhaul.Rarity
                             Id = id, Order = data.Rarities.Count,
                             NameKey = Get(v, "Name", id),
                             Aura = Get(v, "AuraAssetName", null),
-                            EnchantCount = Int(v, "EnchantBonusCount"), CatalystSlots = Int(v, "CatalystSlot"),
+                            EnchantCount = Int(v, "EnchantBonusCount"), CatalystSlots = Int(v, "CatalystSlot"), MythicCount = Int(v, "MythicEnchantCount"),
                             BaseStatBonus = Float(v, "BaseStatBonus"),
                             CanBeSet = Get(v, "CanBeSet", "false").Equals("true", StringComparison.OrdinalIgnoreCase),
                             Colors = Get(v, "UIColor", "#ffffff").Split(',').Select(c => ColorUtility.TryParseHtmlString(c.Trim(), out Color color) ? color : Color.white).ToArray()
                         });
+                        break;
+                    case "mythicenchant":
+                        data.Mythics[id] = new MythicDef
+                        {
+                            Id = id, NameKey = Get(v, "Name", id), DescriptionKey = Get(v, "Description", ""),
+                            ItemTypes = Enchantments.Categories(List(Get(v, "ItemTypes", ""))),
+                            Values = List(Get(v, "Value", "")).Select(w => ParseFloat(w)).ToArray()
+                        };
                         break;
                     case "biome":
                         data.Biomes.Add(new BiomeDef
@@ -192,6 +214,8 @@ namespace Overhaul.Rarity
             foreach (var effect in Effects.EffectConfig.Current.Effects.Values)
                 if (!string.IsNullOrEmpty(effect.EnchantRarityMin) && data.Rarity(effect.EnchantRarityMin) == null)
                     Utility.Log.LogWarning("Effects.cfg: unknown rarity " + effect.EnchantRarityMin + " in EnchantRarityMin of " + effect.Id + ", it is never rolled");
+            foreach (var mythic in data.Mythics.Values)
+                if (!MythicEffects.Known(mythic.Id)) Utility.Log.LogWarning("RaritySystem.cfg: mythic enchantment " + mythic.Id + " has no code yet, it is never rolled");
             foreach (var biome in data.Biomes)
                 foreach (string item in biome.Items) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
             BiomeReport.Write();

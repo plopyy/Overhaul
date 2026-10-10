@@ -131,17 +131,56 @@ namespace Overhaul.Rarity
             return lines;
         }
 
+        // Mythic enchantments for the rarity's MythicCount: distinct ones with code, allowed on the item's category.
+        // keep: current ones kept while still valid.
+        internal static string[] RollMythic(ItemDrop.ItemData item, RarityDef rarity, string[] keep = null)
+        {
+            if (rarity.MythicCount <= 0) return new string[0];
+            string[] categories = Categories(item);
+            var pool = RarityConfig.Current.Mythics.Values.Where(m => MythicEffects.Known(m.Id)
+                && (m.ItemTypes.Count == 0 || categories.Any(m.ItemTypes.Contains))).ToList();
+            var lines = new List<string>();
+            foreach (string id in keep ?? new string[0])
+            {
+                var valid = pool.FirstOrDefault(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase));
+                if (valid != null && lines.Count < rarity.MythicCount) { lines.Add(valid.Id); pool.Remove(valid); }
+            }
+            while (lines.Count < rarity.MythicCount && pool.Count > 0)
+            {
+                int pick = UnityEngine.Random.Range(0, pool.Count);
+                lines.Add(pool[pick].Id); pool.RemoveAt(pick);
+            }
+            return lines.ToArray();
+        }
+
+        internal static IEnumerable<(MythicDef Mythic, float Value)> MythicOf(ItemDrop.ItemData item)
+        {
+            int biome = -1;
+            foreach (string id in ItemRarity.Mythics(item))
+            {
+                if (!RarityConfig.Current.Mythics.TryGetValue(id, out var mythic) || !MythicEffects.Known(mythic.Id)) continue;
+                if (biome < 0) biome = Biome(item);
+                yield return (mythic, mythic.Value(biome));
+            }
+        }
+
+        // Value of one mythic enchantment on the item, 0 without it.
+        internal static float MythicValue(ItemDrop.ItemData item, string id) =>
+            item == null ? 0 : MythicOf(item).Where(m => string.Equals(m.Mythic.Id, id, StringComparison.OrdinalIgnoreCase)).Sum(m => m.Value);
+
         // Gear whose enchantment lines are empty (made before the enchantments existed, or whose enchantment left
         // Effects.cfg) or do not match its rarity's line count gets the missing lines drawn. Returns whether it changed.
         internal static bool Fill(ItemDrop.ItemData item)
         {
             var rarity = ItemRarity.Of(item);
             if (rarity == null || ItemRarity.IsCatalyst(item, out _) || item.m_customData == null) return false;
-            string[] current = ItemRarity.Enchants(item);
-            string[] lines = Roll(item, rarity, current);
-            if (lines.SequenceEqual(current)) return false;
+            string[] current = ItemRarity.Enchants(item), currentMythics = ItemRarity.Mythics(item);
+            string[] lines = Roll(item, rarity, current), mythics = RollMythic(item, rarity, currentMythics);
+            if (lines.SequenceEqual(current) && mythics.SequenceEqual(currentMythics)) return false;
             if (lines.Length > 0) item.m_customData[ItemRarity.EnchantKey] = string.Join(",", lines);
             else item.m_customData.Remove(ItemRarity.EnchantKey);
+            if (mythics.Length > 0) item.m_customData[ItemRarity.MythicKey] = string.Join(",", mythics);
+            else item.m_customData.Remove(ItemRarity.MythicKey);
             return true;
         }
 

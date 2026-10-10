@@ -12,7 +12,7 @@ namespace Overhaul.Rarity
     // block, upgrades included) by its BaseStatBonus %, and rolls its enchantment lines (see Enchantments).
     internal static class ItemRarity
     {
-        internal const string RarityKey = "overhaul_rarity", EnchantKey = "overhaul_enchants";
+        internal const string RarityKey = "overhaul_rarity", EnchantKey = "overhaul_enchants", MythicKey = "overhaul_mythic";
         internal const string EmptyEnchant = "None";
 
         internal static RarityDef Of(ItemDrop.ItemData item)
@@ -69,7 +69,13 @@ namespace Overhaul.Rarity
             item.m_customData[RarityKey] = rarity.Id;
             if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enchantments.Roll(item, rarity));
             else item.m_customData.Remove(EnchantKey);
+            string[] mythics = Enchantments.RollMythic(item, rarity);
+            if (mythics.Length > 0) item.m_customData[MythicKey] = string.Join(",", mythics);
+            else item.m_customData.Remove(MythicKey);
         }
+
+        internal static string[] Mythics(ItemDrop.ItemData item) =>
+            item?.m_customData != null && item.m_customData.TryGetValue(MythicKey, out string value) && value.Length > 0 ? value.Split(',') : new string[0];
 
         // Test command: new enchantments for an item of a rarity with enchantment lines (Uncommon and above).
         internal static string Reroll(ItemDrop.ItemData item)
@@ -81,8 +87,10 @@ namespace Overhaul.Rarity
             string[] lines = Enchantments.Roll(item, rarity);
             item.m_customData[RarityKey] = rarity.Id;
             item.m_customData[EnchantKey] = string.Join(",", lines);
+            string[] mythics = Enchantments.RollMythic(item, rarity);
+            if (mythics.Length > 0) item.m_customData[MythicKey] = string.Join(",", mythics);
             Effects.Effects.Invalidate();
-            return name + " (" + rarity.Id + ") : " + string.Join(", ", lines);
+            return name + " (" + rarity.Id + ") : " + string.Join(", ", lines) + (mythics.Length > 0 ? " | mythique : " + string.Join(", ", mythics) : "");
         }
 
         // Weighted pick among the rarities, in file order.
@@ -271,6 +279,11 @@ namespace Overhaul.Rarity
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
             if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);
+            // Mythic enchantments in their own box under the catalysts: a star, the name in bold and the description,
+            // all in the rarity colours.
+            var mythicRows = Enchantments.MythicOf(item)
+                .Select(m => new TooltipRow(rarity.Paint("★ <b>" + m.Mythic.Name + "</b> : " + m.Mythic.Description(m.Value)))).ToList();
+            if (mythicRows.Count > 0) TooltipRowAligner.Add(tooltip, mythicRows);
             tint.Texts(tooltip, rarity);
         }
     }

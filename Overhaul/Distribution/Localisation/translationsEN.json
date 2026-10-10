@@ -2614,5 +2614,7 @@
   "overhaul_effect_miningdmg": "Mining damage",
   "overhaul_effect_miningdmg_desc": "Bonus to the pickaxe damage on rocks and ore",
   "overhaul_effect_choppingdmg": "Chopping damage",
-  "overhaul_effect_choppingdmg_desc": "Bonus to the axe damage on trees"
+  "overhaul_effect_choppingdmg_desc": "Bonus to the axe damage on trees",
+  "overhaul_mythic_fanvolley": "Fan Volley",
+  "overhaul_mythic_fanvolley_desc": "fires {0} extra projectiles in a narrow fan, all with perfect accuracy (extra projectiles from other bonuses join the fan)"
 }
