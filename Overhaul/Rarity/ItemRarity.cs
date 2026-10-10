@@ -143,11 +143,14 @@ namespace Overhaul.Rarity
             var rarity = Of(item);
             if (rarity == null) return;
             tooltip.SetSubtitle("<color=#" + ColorUtility.ToHtmlStringRGB(rarity.Color) + ">" + rarity.Name + "</color>\n" + tooltip.GenerateItemSubtext(item));
-            if (rarity.CatalystSlots <= 0) return;
-            var rows = new List<TooltipRow> { new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")") };
+            var rows = new List<TooltipRow>();
+            // Enchantment lines; an empty one shows as "Empty bonus +0" until the enchantment list exists.
+            foreach (string enchant in Enchants(item))
+                rows.Add(enchant == EmptyEnchant ? new TooltipRow(Localization.instance.Localize("$overhaul_rarity_empty_enchant"), "+0") : new TooltipRow(enchant));
+            if (rarity.CatalystSlots > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (0/" + rarity.CatalystSlots + ")"));
             for (int i = 0; i < rarity.CatalystSlots; i++)
                 rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>"));
-            TooltipRowAligner.Add(tooltip, rows);
+            if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);
         }
     }
 }
