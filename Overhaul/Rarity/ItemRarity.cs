@@ -19,16 +19,17 @@ namespace Overhaul.Rarity
         {
             if (item == null) return null;
             var data = RarityConfig.Current;
-            if (item.m_customData != null && item.m_customData.TryGetValue(RarityKey, out string id)) return data.Rarity(id);
             if (IsCatalyst(item, out string catalyst)) return data.Rarity(catalyst);
-            // Weapons, armour, shields, accessories and trinkets are at least of the first (weakest) rarity.
-            return Gear(item) ? data.Rarities.FirstOrDefault() : null;
+            // Only the gear listed in a biome of RaritySystem.cfg has a rarity, at least the first (weakest) one.
+            if (Enchantments.Biome(item) < 0) return null;
+            if (item.m_customData != null && item.m_customData.TryGetValue(RarityKey, out string id)) return data.Rarity(id);
+            return data.Rarities.FirstOrDefault();
         }
 
         internal static bool IsCatalyst(ItemDrop.ItemData item, out string rarity)
         {
             rarity = null;
-            string prefab = item?.m_dropPrefab ? item.m_dropPrefab.name : null;
+            string prefab = Enchantments.Prefab(item);
             return prefab != null && RarityConfig.Current.Catalysts.TryGetValue(prefab, out rarity);
         }
 

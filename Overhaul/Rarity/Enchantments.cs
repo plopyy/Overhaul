@@ -12,36 +12,39 @@ namespace Overhaul.Rarity
         internal static void Initialize()
         {
             Effects.Effects.Register(Equipment);
-            RarityConfig.Changed += () => { Biomes.Clear(); Effects.Effects.Invalidate(); };
+            RarityConfig.Changed += () => { Biomes.Clear(); Prefabs.Clear(); Effects.Effects.Invalidate(); };
         }
 
-        // Item prefab name -> biome order, rebuilt when the rarity file changes.
+        // Item prefab name -> biome order, and item name token -> prefab name, rebuilt when the rarity file changes.
         private static readonly Dictionary<string, int> Biomes = new Dictionary<string, int>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, string> Prefabs = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        // The biome listing the item, else the strongest biome among its recipe materials, else the first one.
+        // The biome listing the item, or -1: an item listed in no biome is left out of the rarity system.
         // prefab: for an ItemDrop prefab's own item data, which has no drop prefab.
         internal static int Biome(ItemDrop.ItemData item, string prefab = null)
         {
-            prefab = prefab ?? (item?.m_dropPrefab ? item.m_dropPrefab.name : null);
-            if (prefab == null) return 0;
-            if (Biomes.TryGetValue(prefab, out int order)) return order;
-            var biomes = RarityConfig.Current.Biomes;
-            var forced = biomes.FirstOrDefault(b => b.Items.Contains(prefab));
-            if (forced != null) order = forced.Order;
-            else
-            {
-                order = 0;
-                Recipe recipe = ObjectDB.instance ? ObjectDB.instance.GetRecipe(item) : null;
-                if (recipe != null && recipe.m_resources != null)
-                    foreach (var requirement in recipe.m_resources)
-                    {
-                        if (!requirement.m_resItem) continue;
-                        string material = requirement.m_resItem.gameObject.name;
-                        foreach (var biome in biomes) if (biome.Order > order && biome.Materials.Contains(material)) order = biome.Order;
-                    }
-            }
-            if (ObjectDB.instance) Biomes[prefab] = order;
-            return order;
+            prefab = prefab ?? Prefab(item);
+            if (prefab == null) return -1;
+            if (Biomes.Count == 0)
+                foreach (var biome in RarityConfig.Current.Biomes)
+                    foreach (string name in biome.Items)
+                        if (!Biomes.ContainsKey(name)) Biomes[name] = biome.Order;
+                        else Utility.Log.LogWarning("RaritySystem.cfg: " + name + " is listed in several biomes, the first one is used");
+            return Biomes.TryGetValue(prefab, out int order) ? order : -1;
+        }
+
+        // Prefab name of an item: its drop prefab, else (item data of a prefab, crafting preview) the item prefab with the same name.
+        internal static string Prefab(ItemDrop.ItemData item)
+        {
+            if (item == null) return null;
+            if (item.m_dropPrefab) return item.m_dropPrefab.name;
+            if (Prefabs.Count == 0 && ObjectDB.instance)
+                foreach (var prefab in ObjectDB.instance.m_items)
+                {
+                    var drop = prefab ? prefab.GetComponent<ItemDrop>() : null;
+                    if (drop && !Prefabs.ContainsKey(drop.m_itemData.m_shared.m_name)) Prefabs[drop.m_itemData.m_shared.m_name] = prefab.name;
+                }
+            return item.m_shared != null && Prefabs.TryGetValue(item.m_shared.m_name, out string name) ? name : null;
         }
 
         // Distinct enchantments allowed for the rarity (RarityMin at most as strong) and with a known effect;

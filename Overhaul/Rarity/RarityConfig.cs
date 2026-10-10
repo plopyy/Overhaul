@@ -47,13 +47,12 @@ namespace Overhaul.Rarity
         internal float Value(int biome) => Values.Length == 0 ? 0 : Values[Mathf.Clamp(biome, 0, Values.Length - 1)];
     }
 
-    // A biome, in progression order: an item belongs to the strongest biome among its recipe materials,
-    // unless the biome lists it by name.
+    // A biome, in progression order, with the gear items belonging to it (the only ones in the rarity system).
     internal sealed class BiomeDef
     {
         internal string Id;
         internal int Order;
-        internal HashSet<string> Materials = new HashSet<string>(StringComparer.OrdinalIgnoreCase), Items = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        internal HashSet<string> Items = new HashSet<string>(StringComparer.Ordinal);
     }
 
     internal sealed class LootListDef
@@ -156,8 +155,7 @@ namespace Overhaul.Rarity
                         data.Biomes.Add(new BiomeDef
                         {
                             Id = id, Order = data.Biomes.Count,
-                            Materials = new HashSet<string>(List(Get(v, "Materials", "")), StringComparer.OrdinalIgnoreCase),
-                            Items = new HashSet<string>(List(Get(v, "Items", "")), StringComparer.OrdinalIgnoreCase)
+                            Items = new HashSet<string>(List(Get(v, "Items", "")), StringComparer.Ordinal)
                         });
                         break;
                     case "catalyst":
@@ -213,7 +211,7 @@ namespace Overhaul.Rarity
                 if (!Effects.EffectConfig.Current.Effects.ContainsKey(enchant.Effect ?? "")) Utility.Log.LogWarning("RaritySystem.cfg: enchantment " + enchant.Id + " has no known effect (" + enchant.Effect + "), it is never rolled");
             }
             foreach (var biome in data.Biomes)
-                foreach (string item in biome.Materials.Concat(biome.Items)) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
+                foreach (string item in biome.Items) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
             BiomeReport.Write();
         }
 
