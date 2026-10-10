@@ -207,6 +207,9 @@ namespace Auga
                 Place("root/Player", null, 350);
                 Place("root/Container", -660, null);
                 Place("root/RightPanel", 660, null);
+                // The animator captured the windows' default pose (in place) when it initialised, before this patch:
+                // rebind it so the pose it falls back to is the off-screen one.
+                if (__instance.m_animator) __instance.m_animator.Rebind();
             }
         }
 
