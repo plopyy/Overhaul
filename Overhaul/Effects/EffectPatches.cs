@@ -271,16 +271,81 @@ namespace Overhaul.Effects
             private static void Finalizer(Attack __instance, int __state) => __instance.m_projectiles -= __state;
         }
 
-        // Projectiles without an area of effect explode on impact (the game's own area damage, around the hit point).
-        [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
-        private static class Explosive
+        // Explosive projectiles: on impact, the Staff of Embers' fireball explosion at half its size (its hit effects at
+        // scale 0.5) and area damage (the projectile's damage) around the hit point, over half the fireball's radius.
+        // The weapon carrying ExplosiveProjectile (or a player-wide source) makes its projectiles explode.
+        internal static class Explosive
         {
-            private const float Radius = 3f;
-            // The weapon carrying ExplosiveProjectile (or a player-wide source) makes its projectiles explode.
-            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
+            private const float Scale = .5f;
+            private sealed class Marked { }
+            private static readonly ConditionalWeakTable<Projectile, Marked> Projectiles = new ConditionalWeakTable<Projectile, Marked>();
+            private static Projectile fireball;
+
+            private static Projectile Fireball()
             {
-                if (Local(owner) && __instance.m_aoe <= 0 && (Rarity.Enchantments.ItemValue(item, "ExplosiveProjectile") >= 1 || Effects.Get(owner, "ExplosiveProjectile") >= 1))
-                    __instance.m_aoe = Radius;
+                if (fireball || !ObjectDB.instance) return fireball;
+                var staff = ObjectDB.instance.GetItemPrefab("StaffFireball")?.GetComponent<ItemDrop>();
+                var prefab = staff ? staff.m_itemData.m_shared.m_attack.m_attackProjectile : null;
+                return fireball = prefab ? prefab.GetComponent<Projectile>() : null;
+            }
+
+            // Startup check: what the reused fireball impact contains.
+            [HarmonyPatch(typeof(Game), "Start")]
+            private static class Report
+            {
+                private static void Postfix()
+                {
+                    var model = Fireball();
+                    if (!model) { Utility.Log.LogWarning("Explosive projectiles: Staff of Embers projectile not found, no explosion"); return; }
+                    var names = new List<string>();
+                    if (model.m_hitEffects?.m_effectPrefabs != null) foreach (var e in model.m_hitEffects.m_effectPrefabs) if (e?.m_prefab) names.Add(e.m_prefab.name);
+                    Utility.Log.LogInfo("Explosive projectiles reuse the fireball impact: " + string.Join(", ", names) + " (radius " + model.m_aoe + ", spawn on hit: " + (model.m_spawnOnHit ? model.m_spawnOnHit.name : "none") + ")");
+                }
+            }
+
+            [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
+            private static class Mark
+            {
+                private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
+                {
+                    if (Local(owner) && (Rarity.Enchantments.ItemValue(item, "ExplosiveProjectile") >= 1 || Effects.Get(owner, "ExplosiveProjectile") >= 1))
+                        Projectiles.GetValue(__instance, _ => new Marked());
+                }
+            }
+
+            [HarmonyPatch(typeof(Projectile), "OnHit")]
+            private static class Explode
+            {
+                private static void Prefix(Projectile __instance, Vector3 hitPoint, bool water)
+                {
+                    if (water || !Projectiles.TryGetValue(__instance, out _)) return;
+                    Projectiles.Remove(__instance);
+                    var model = Fireball();
+                    if (!model) return;
+                    // Halved by hand: the effect list only scales entries marked for it.
+                    foreach (var effect in model.m_hitEffects.Create(hitPoint, Quaternion.identity, null, 1f))
+                    {
+                        if (!effect) continue;
+                        effect.transform.localScale = Vector3.one * Scale;
+                        // Particles follow the scale only in hierarchy mode.
+                        foreach (var particles in effect.GetComponentsInChildren<ParticleSystem>(true)) { var main = particles.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+                    }
+                    float radius = Mathf.Max(1f, model.m_aoe * Scale);
+                    var targets = new List<Character>();
+                    Character.GetCharactersInRange(hitPoint, radius, targets);
+                    foreach (var target in targets)
+                    {
+                        if (!target || target == __instance.m_owner || target.IsDead() || (__instance.m_owner && !BaseAI.IsEnemy(__instance.m_owner, target))) continue;
+                        var hit = new HitData
+                        {
+                            m_damage = __instance.m_damage.Clone(), m_point = target.GetCenterPoint(),
+                            m_dir = (target.transform.position - hitPoint).normalized, m_skill = __instance.m_skill,
+                            m_pushForce = __instance.m_attackForce * Scale
+                        };
+                        hit.SetAttacker(__instance.m_owner);
+                        target.Damage(hit);
+                    }
+                }
             }
         }
 
