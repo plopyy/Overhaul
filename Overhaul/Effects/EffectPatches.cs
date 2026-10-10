@@ -284,6 +284,29 @@ namespace Overhaul.Effects
             }
         }
 
+        // UnlimitedAmmo: a bow or crossbow carrying it still needs an arrow or bolt (it picks what is fired), but never
+        // uses it up. The arrow removal of Attack.UseAmmo goes through Spend.
+        [HarmonyPatch(typeof(Attack), "UseAmmo")]
+        private static class UnlimitedAmmo
+        {
+            private static bool Spend(Inventory inventory, ItemDrop.ItemData ammo, int amount, Attack attack) =>
+                Rarity.Enchantments.ItemValue(attack.m_weapon, "UnlimitedAmmo") >= 1 || inventory.RemoveItem(ammo, amount);
+
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                var remove = AccessTools.Method(typeof(Inventory), nameof(Inventory.RemoveItem), new[] { typeof(ItemDrop.ItemData), typeof(int) });
+                int count = 0;
+                foreach (var code in instructions)
+                {
+                    if (!code.Calls(remove)) { yield return code; continue; }
+                    count++;
+                    yield return new CodeInstruction(System.Reflection.Emit.OpCodes.Ldarg_0).MoveLabelsFrom(code).MoveBlocksFrom(code);
+                    yield return new CodeInstruction(System.Reflection.Emit.OpCodes.Call, AccessTools.Method(typeof(UnlimitedAmmo), nameof(Spend)));
+                }
+                if (count == 0) Utility.Log.LogWarning("Ammo removal not found in Attack.UseAmmo: the UnlimitedAmmo effect is disabled");
+            }
+        }
+
         // --- Loot and harvest: rolled by the owner of the creature or object, with the player's published totals ---
 
         // Each stackable drop of a creature gets one more item with a LootBonus % chance.

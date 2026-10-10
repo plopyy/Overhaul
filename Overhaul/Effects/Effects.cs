@@ -27,7 +27,7 @@ namespace Overhaul.Effects
             "ResistFire", "ResistFrost", "ResistLightning", "ResistPoison", "ResistSpirit", "ResistBlunt", "ResistSlash", "ResistPierce",
             "ParryBonus", "BackstabBonus", "Knockback", "LifeSteal", "DamageReflect", "HarvestBonus", "CarryWeight",
             "CritChance", "LootBonus", "Indestructible", "ExplosiveProjectile", "CastSpeed",
-            "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg",
+            "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg", "UnlimitedAmmo",
         };
         internal static bool Known(string id) => Implemented.Contains(id);
 
@@ -36,7 +36,7 @@ namespace Overhaul.Effects
         internal static readonly HashSet<string> ItemEffects = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "FireDmg", "FrostDmg", "LightningDmg", "PoisonDmg", "SpiritDmg", "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg",
-            "Indestructible", "ExplosiveProjectile",
+            "Indestructible", "ExplosiveProjectile", "UnlimitedAmmo",
         };
 
         private const string ZdoPrefix = "overhaul_fx_";

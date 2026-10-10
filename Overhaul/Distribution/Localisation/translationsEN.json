@@ -2616,5 +2616,7 @@
   "overhaul_effect_choppingdmg": "Chopping damage",
   "overhaul_effect_choppingdmg_desc": "Bonus to the axe damage on trees",
   "overhaul_mythic_fanvolley": "Fan Volley",
-  "overhaul_mythic_fanvolley_desc": "fires {0} extra projectiles in a narrow fan, all with perfect accuracy (extra projectiles from other bonuses join the fan)"
+  "overhaul_mythic_fanvolley_desc": "fires {0} extra projectiles in a narrow fan, all with perfect accuracy (extra projectiles from other bonuses join the fan)",
+  "overhaul_effect_unlimitedammo": "Unlimited ammo",
+  "overhaul_effect_unlimitedammo_desc": "Shots no longer use up arrows or bolts (one is still needed to choose what is fired)"
 }

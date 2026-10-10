@@ -2719,5 +2719,7 @@
   "overhaul_effect_choppingdmg": "Dégâts de coupe",
   "overhaul_effect_choppingdmg_desc": "Bonus aux dégâts de la hache sur les arbres",
   "overhaul_mythic_fanvolley": "Salve en éventail",
-  "overhaul_mythic_fanvolley_desc": "tire {0} projectiles supplémentaires en éventail étroit, tous d'une précision parfaite (les projectiles supplémentaires des autres bonus rejoignent l'éventail)"
+  "overhaul_mythic_fanvolley_desc": "tire {0} projectiles supplémentaires en éventail étroit, tous d'une précision parfaite (les projectiles supplémentaires des autres bonus rejoignent l'éventail)",
+  "overhaul_effect_unlimitedammo": "Munitions illimitées",
+  "overhaul_effect_unlimitedammo_desc": "Les tirs ne consomment plus de flèches ni de carreaux (il en faut toujours un pour choisir ce qui est tiré)"
 }
