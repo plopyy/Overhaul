@@ -194,6 +194,9 @@ namespace Auga
         {
             public static void Postfix(InventoryGui __instance)
             {
+                // The first opening would otherwise render one frame in the animator's default pose (windows in place,
+                // still empty) before the slide-in starts: evaluate the animator now.
+                if (__instance.m_animator && __instance.m_animator.isActiveAndEnabled) __instance.m_animator.Update(0f);
                 var player = Player.m_localPlayer;
                 if (player != null)
                 {
