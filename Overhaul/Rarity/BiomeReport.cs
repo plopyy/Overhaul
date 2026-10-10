@@ -14,10 +14,9 @@ namespace Overhaul.Rarity
         internal static void Write()
         {
             if (!ObjectDB.instance) return;
-            var creatures = CreatureItems();
             var looted = LootedItems();
             var sold = SoldItems();
-            var items = ObjectDB.instance.m_items.Where(p => p && !creatures.Contains(p.name)).Select(p => p.GetComponent<ItemDrop>()).Where(d => d && Gear(d.m_itemData))
+            var items = ObjectDB.instance.m_items.Where(p => p).Select(p => p.GetComponent<ItemDrop>()).Where(d => d && Gear(d.m_itemData))
                 .Select(d =>
                 {
                     Recipe recipe = ObjectDB.instance.GetRecipe(d.m_itemData);
@@ -83,23 +82,6 @@ namespace Overhaul.Rarity
         // A dedicated server has no local player to trigger the validation: it writes the report once the world loads.
         [HarmonyLib.HarmonyPatch(typeof(Game), "Start")]
         private static class DedicatedServer { private static void Postfix() { if (ZNet.instance && ZNet.instance.IsDedicated()) Write(); } }
-
-        // Attacks and gear of creatures (their default and random items), which players never get.
-        private static System.Collections.Generic.HashSet<string> CreatureItems()
-        {
-            var names = new System.Collections.Generic.HashSet<string>();
-            if (!ZNetScene.instance) return names;
-            void Add(UnityEngine.GameObject[] list) { if (list != null) foreach (var item in list) if (item) names.Add(item.name); }
-            foreach (var prefab in ZNetScene.instance.m_prefabs)
-            {
-                var humanoid = prefab ? prefab.GetComponent<Humanoid>() : null;
-                if (!humanoid || humanoid is Player) continue;
-                Add(humanoid.m_defaultItems); Add(humanoid.m_randomWeapon); Add(humanoid.m_randomArmor); Add(humanoid.m_randomShield);
-                if (humanoid.m_randomSets != null) foreach (var set in humanoid.m_randomSets) Add(set.m_items);
-                if (humanoid.m_randomItems != null) foreach (var random in humanoid.m_randomItems) if (random.m_prefab) names.Add(random.m_prefab.name);
-            }
-            return names;
-        }
 
         private static bool Gear(ItemDrop.ItemData item) => ItemRarity.Gear(item) || item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Tool;
 
