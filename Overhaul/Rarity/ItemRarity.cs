@@ -103,22 +103,52 @@ namespace Overhaul.Rarity
 
         // Creature loot from the MobLoot sections: each loot list rolls its chance, then drops its quantity
         // of items picked in its list, each with a rarity rolled from the list's weights.
+        internal static void CreatureLoot(string creature, Vector3 center)
+        {
+            var data = RarityConfig.Current;
+            if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) return;
+            foreach (string name in lists)
+            {
+                if (!data.LootLists.TryGetValue(name, out var list) || list.Items.Length == 0) continue;
+                if (Random.Range(0f, 100f) >= list.Chance) continue;
+                for (int i = 0; i < list.Quantity; i++)
+                    Drop(list.Items[Random.Range(0, list.Items.Length)], Roll(list.Weights), center);
+            }
+        }
+
+        private const string RagdollCreature = "overhaul_rarity_creature";
+
+        // Creatures without a corpse drop their loot at death.
         [HarmonyPatch(typeof(CharacterDrop), "OnDeath")]
-        private static class CreatureLoot
+        private static class DeathLoot
         {
             private static void Postfix(CharacterDrop __instance)
             {
-                if (!__instance.m_dropsEnabled || !__instance.m_character) return;
-                var data = RarityConfig.Current;
-                if (!data.MobLoots.TryGetValue(Utils.GetPrefabName(__instance.gameObject), out var lists)) return;
-                Vector3 center = __instance.m_character.GetCenterPoint();
-                foreach (string name in lists)
-                {
-                    if (!data.LootLists.TryGetValue(name, out var list) || list.Items.Length == 0) continue;
-                    if (Random.Range(0f, 100f) >= list.Chance) continue;
-                    for (int i = 0; i < list.Quantity; i++)
-                        Drop(list.Items[Random.Range(0, list.Items.Length)], Roll(list.Weights), center);
-                }
+                if (__instance.m_dropsEnabled && __instance.m_character)
+                    CreatureLoot(Utils.GetPrefabName(__instance.gameObject), __instance.m_character.GetCenterPoint());
+            }
+        }
+
+        // Creatures with a corpse (trolls, bears...) drop their loot when the corpse vanishes, like the vanilla loot:
+        // the corpse remembers which creature it was.
+        [HarmonyPatch(typeof(Ragdoll), nameof(Ragdoll.Setup))]
+        private static class CorpseRemember
+        {
+            private static void Postfix(Ragdoll __instance, CharacterDrop characterDrop)
+            {
+                if (characterDrop && __instance.m_dropItems && __instance.m_nview && __instance.m_nview.IsValid())
+                    __instance.m_nview.GetZDO().Set(RagdollCreature, Utils.GetPrefabName(characterDrop.gameObject));
+            }
+        }
+
+        [HarmonyPatch(typeof(Ragdoll), "SpawnLoot")]
+        private static class CorpseLoot
+        {
+            private static void Postfix(Ragdoll __instance, Vector3 center)
+            {
+                if (!__instance.m_nview || !__instance.m_nview.IsValid()) return;
+                string creature = __instance.m_nview.GetZDO().GetString(RagdollCreature, "");
+                if (creature.Length > 0) CreatureLoot(creature, center + Vector3.up * .75f);
             }
         }
 
