@@ -214,6 +214,7 @@ namespace Overhaul.Rarity
             }
             foreach (var biome in data.Biomes)
                 foreach (string item in biome.Materials.Concat(biome.Items)) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in biome " + biome.Id);
+            BiomeReport.Write();
         }
 
         // "[a, b]" or "a, b" lists.

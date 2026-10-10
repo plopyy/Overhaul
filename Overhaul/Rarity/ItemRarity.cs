@@ -32,7 +32,7 @@ namespace Overhaul.Rarity
             return prefab != null && RarityConfig.Current.Catalysts.TryGetValue(prefab, out rarity);
         }
 
-        private static bool Gear(ItemDrop.ItemData item)
+        internal static bool Gear(ItemDrop.ItemData item)
         {
             switch (item.m_shared?.m_itemType)
             {
