@@ -189,30 +189,6 @@ namespace Auga
             }
         }
 
-        // The windows' resting positions are where Auga's opening animation (inventory_show) starts, off screen:
-        // the first opening can render one frame before the animation applies, and showed the empty windows in place.
-        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
-        [HarmonyPriority(Priority.Last)]
-        public static class InventoryGui_StartOffScreen
-        {
-            public static void Postfix(InventoryGui __instance)
-            {
-                void Place(string path, float? x, float? y)
-                {
-                    var rect = __instance.transform.Find(path) as RectTransform;
-                    if (!rect) return;
-                    var position = rect.anchoredPosition;
-                    rect.anchoredPosition = new Vector2(x ?? position.x, y ?? position.y);
-                }
-                Place("root/Player", null, 350);
-                Place("root/Container", -660, null);
-                Place("root/RightPanel", 660, null);
-                // The animator captured the windows' default pose (in place) when it initialised, before this patch:
-                // rebind it so the pose it falls back to is the off-screen one.
-                if (__instance.m_animator) __instance.m_animator.Rebind();
-            }
-        }
-
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
         public static class InventoryGui_Show_Patch
         {
