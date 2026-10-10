@@ -2389,6 +2389,7 @@
   "overhaul_hoe_drain_tar_description": "Removes liquid tar within a 2 m radius for 5 stone. Requires a level 3 hoe or higher. Leaves terrain and items unchanged.",
   "overhaul_hoe_tar_quality": "Requires a level 3 hoe or higher.",
   "overhaul_rarity_empty_enchant": "Empty bonus",
+  "overhaul_rarity_catalyst": "Catalyst",
   "overhaul_rarity_catalysts": "Catalyst slots",
   "overhaul_rarity_empty_catalyst": "Empty catalyst slot",
   "overhaul_spirit_circlet": "Spirit circlet",

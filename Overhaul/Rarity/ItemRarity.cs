@@ -20,8 +20,37 @@ namespace Overhaul.Rarity
             if (item == null) return null;
             var data = RarityConfig.Current;
             if (item.m_customData != null && item.m_customData.TryGetValue(RarityKey, out string id)) return data.Rarity(id);
-            string prefab = item.m_dropPrefab ? item.m_dropPrefab.name : null;
-            return prefab != null && data.Catalysts.TryGetValue(prefab, out string catalyst) ? data.Rarity(catalyst) : null;
+            if (IsCatalyst(item, out string catalyst)) return data.Rarity(catalyst);
+            // Weapons, armour, shields, accessories and trinkets are at least of the first (weakest) rarity.
+            return Gear(item) ? data.Rarities.FirstOrDefault() : null;
+        }
+
+        internal static bool IsCatalyst(ItemDrop.ItemData item, out string rarity)
+        {
+            rarity = null;
+            string prefab = item?.m_dropPrefab ? item.m_dropPrefab.name : null;
+            return prefab != null && RarityConfig.Current.Catalysts.TryGetValue(prefab, out rarity);
+        }
+
+        private static bool Gear(ItemDrop.ItemData item)
+        {
+            switch (item.m_shared?.m_itemType)
+            {
+                case ItemDrop.ItemData.ItemType.OneHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft:
+                case ItemDrop.ItemData.ItemType.Bow:
+                case ItemDrop.ItemData.ItemType.Shield:
+                case ItemDrop.ItemData.ItemType.Helmet:
+                case ItemDrop.ItemData.ItemType.Chest:
+                case ItemDrop.ItemData.ItemType.Legs:
+                case ItemDrop.ItemData.ItemType.Shoulder:
+                case ItemDrop.ItemData.ItemType.Utility:
+                case ItemDrop.ItemData.ItemType.Trinket:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         // Slot colour: the Overhaul rarity, else Epic Loot's when it is installed.
@@ -184,8 +213,11 @@ namespace Overhaul.Rarity
             var tint = tooltip.GetComponent<TooltipRarityTint>() ?? tooltip.gameObject.AddComponent<TooltipRarityTint>();
             tint.Apply(tooltip, rarity);
             if (rarity == null) return;
-            tooltip.SetSubtitle(rarity.Paint(rarity.Name) + "\n" + tooltip.GenerateItemSubtext(item));
+            // A catalyst is shown as such instead of a material, without enchantment lines or catalyst slots.
+            bool catalyst = IsCatalyst(item, out _);
+            tooltip.SetSubtitle(rarity.Paint(rarity.Name) + "\n" + (catalyst ? Localization.instance.Localize("$overhaul_rarity_catalyst") : tooltip.GenerateItemSubtext(item)));
             var rows = new List<TooltipRow>();
+            if (catalyst) { tint.Texts(tooltip, rarity); return; }
             // Enchantment lines in the rarity colour; an empty one shows as "Empty bonus +0" until the enchantment list exists.
             foreach (string enchant in Enchants(item))
                 rows.Add(new TooltipRow(rarity.Paint(enchant == EmptyEnchant ? Localization.instance.Localize("$overhaul_rarity_empty_enchant") : enchant),
