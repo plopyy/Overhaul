@@ -1,3 +1,4 @@
+using EquipmentAndQuickSlots.src.MultiUtility;
 using UnityEngine;
 
 namespace Overhaul.Storage
@@ -27,6 +28,15 @@ namespace Overhaul.Storage
             baseColor = start.mode == ParticleSystemGradientMode.Color ? start.color : start.Evaluate(.5f);
         }
 
+        // Worn as helmet, utility or extra utility slot.
+        private static bool SpiritWorn(Player player)
+        {
+            if (DvergerCirclet.IsSpirit(player.m_helmetItem) || DvergerCirclet.IsSpirit(player.m_utilityItem)) return true;
+            for (int i = 0; i < MultiUtility.GetExtraCount(player); i++)
+                if (DvergerCirclet.IsSpirit(MultiUtility.GetExtra(player, i))) return true;
+            return false;
+        }
+
         // The clearing radius of the wisp (demister_ball), read once from its force field.
         private static float WispRadius()
         {
@@ -40,7 +50,7 @@ namespace Overhaul.Storage
         private void LateUpdate()
         {
             Player player = Player.m_localPlayer;
-            bool wearing = player && !player.IsDead() && CircletFog.SpiritWorn(player);
+            bool wearing = player && !player.IsDead() && SpiritWorn(player);
             // Particles keep the colour they were given: restore the base once when the circlet comes off.
             if (!wearing && !thinned) return;
             int count = system.particleCount;

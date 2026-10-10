@@ -3,7 +3,7 @@
 ## 2.2.2 (in progress)
 
 ### Changed
-- Spirit circlet: it no longer clears every fog, smoke and dust. It now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times), the rest of the world keeps its fog and smoke. (2.2.2.1)
+- Dvergr circlets: they no longer thin fog, smoke and dust (the Dvergr circlet is back to its light only). The spirit circlet now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times); the rest of the world keeps its fog and smoke. (2.2.2.2)
 
 ## 2.2.1 (released)
 

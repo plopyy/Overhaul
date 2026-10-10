@@ -83,7 +83,6 @@ namespace Overhaul
             Storage.ProductionClock.Tick();
             Persistence.GamePersistence.Tick();
             Storage.VehicleMarkers.Tick();
-            Storage.CircletFog.Tick();
             Storage.CircletMist.Tick();
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.LateUpdate();
             Commands.AdminCommands.Tick();
@@ -100,8 +99,7 @@ namespace Overhaul
             XPortal.XPortal.Stop();
             Advize_PlantEasily.PlantEasily.Stop();
             Leveling.ClassWindow.Clear();
-            Storage.VehicleMarkers.Clear();
-            Storage.CircletFog.Clear();
+            Storage.VehicleMarkers.Clear();
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.Stop();
             IntegratedUi.Stop();
             Commands.AdminCommands.Clear();

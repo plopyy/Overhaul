@@ -357,7 +357,6 @@ public static class OverhaulStorageChecks
             BurningFoodChecks(plugin,player);
             QuickFillChecks(plugin,player,harmony,ha,patchMethod,prefix);
             NutritionChecks(plugin,player);
-            CircletFogChecks(plugin,player);
             ArmorStandHammerChecks(plugin);
             TrainingDummyChecks(plugin,harmony,ha,patchMethod);
             UnityEngine.Object.DestroyImmediate(recipe);
@@ -373,62 +372,6 @@ public static class OverhaulStorageChecks
             Game.isModded=oldModded;Achievements.m_cheatCheckFrame=-1;logEvent.RemoveEventHandler(log,sink);
             foreach(var go in roots)if(go)UnityEngine.Object.DestroyImmediate(go);roots.Clear();
         }
-    }
-    static void CircletFogChecks(Assembly plugin,Player player)
-    {
-        var fog=plugin.GetType("Overhaul.Storage.CircletFog");var oldHelmet=player.m_helmetItem;var oldUtility=player.m_utilityItem;float oldDensity=RenderSettings.fogDensity;
-        var fogObject=new GameObject("storage-test-circlet-fog");fogObject.SetActive(false);roots.Add(fogObject);
-        var ps=fogObject.AddComponent<ParticleSystem>();var renderer=ps.GetComponent<ParticleSystemRenderer>();var material=new Material(Shader.Find("UI/Default")){name="heavymist_mistlands"};renderer.sharedMaterial=material;
-        var block=new MaterialPropertyBlock();int color=Shader.PropertyToID("_Color");var original=new Color(.6f,.7f,.8f,.8f);block.SetColor(color,original);block.SetFloat("test_preserved",7);renderer.SetPropertyBlock(block);
-        try {
-            player.m_helmetItem=null;player.m_utilityItem=null;Check(!(bool)Call(fog,"Equipped"),"circlet bonus requires actual equipped item, not carried or cosmetic item");
-            player.m_utilityItem=new ItemDrop.ItemData{m_shared=new ItemDrop.ItemData.SharedData{m_name="$item_helmet_dverger",m_itemType=ItemDrop.ItemData.ItemType.Utility}};
-            Check((bool)Call(fog,"Equipped"),"circlet equipped as utility enables clarity with helmet slot empty");
-            var multi=plugin.GetType("EquipmentAndQuickSlots.src.MultiUtility.MultiUtility");
-            var ownerField=multi.GetField("owner",All);var oldOwner=ownerField.GetValue(null);
-            var extras=(ItemDrop.ItemData[])multi.GetField("extras",All).GetValue(null);var oldExtras=extras.ToArray();
-            var countField=plugin.GetType("EquipmentAndQuickSlots.ValConfig").GetField("UtilitySlotCount",All);var oldCount=countField.GetValue(null);
-            var bep=AppDomain.CurrentDomain.GetAssemblies().First(a=>a.GetName().Name=="BepInEx");var cfType=bep.GetType("BepInEx.Configuration.ConfigFile");
-            var cf=Activator.CreateInstance(cfType,new object[]{System.IO.Path.GetFullPath("../../../Tools/AugaWork/circlet-slot-test.cfg"),false,null});
-            cfType.GetProperty("SaveOnConfigSet").SetValue(cf,false);
-            var bind=cfType.GetMethods().First(m=>m.Name=="Bind"&&m.IsGenericMethodDefinition&&m.GetParameters().Length==4&&m.GetParameters()[0].ParameterType==typeof(string)&&m.GetParameters()[3].ParameterType==typeof(string));
-            countField.SetValue(null,bind.MakeGenericMethod(typeof(int)).Invoke(cf,new object[]{"Test","Slots",3,""}));
-            var circlet=player.m_utilityItem;
-            try {
-                player.m_utilityItem=null;ownerField.SetValue(null,player);
-                for(int slot=0;slot<2;slot++) {Array.Clear(extras,0,extras.Length);extras[slot]=circlet;Check((bool)Call(fog,"Equipped"),"circlet activates from extra accessory slot "+slot);}
-                Array.Clear(extras,0,extras.Length);Check(!(bool)Call(fog,"Equipped"),"removing extra accessory disables clarity");
-            } finally {ownerField.SetValue(null,oldOwner);Array.Copy(oldExtras,extras,extras.Length);countField.SetValue(null,oldCount);player.m_utilityItem=circlet;}
-            RenderSettings.fogDensity=.02f;Call(fog,"ApplyFog",true);Check(Mathf.Approximately(RenderSettings.fogDensity,.01f),"circlet reduces atmospheric fog density by 50 percent");
-            for(int i=0;i<10;i++)Call(fog,"ApplyFog",false);
-            Check(Mathf.Approximately(RenderSettings.fogDensity,.01f),"fog reduction never compounds over frames");
-            RenderSettings.fogDensity=.04f;Call(fog,"ApplyFog",true);Check(Mathf.Approximately(RenderSettings.fogDensity,.02f),"changing weather uses new native fog baseline");
-            Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);
-            Check(Mathf.Approximately(block.GetColor(color).a,.4f)&&block.GetColor(color).r==original.r&&block.GetFloat("test_preserved")==7,"mist opacity reduced by 50 percent while preserving tint and other renderer properties");
-            Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);Check(Mathf.Approximately(block.GetColor(color).a,.4f),"mist reduction never compounds on rescans");
-            Check(material.GetColor(color).a==1,"shared native material remains unchanged");
-            var spirit=new ItemDrop.ItemData{m_shared=new ItemDrop.ItemData.SharedData{m_name="$overhaul_spirit_circlet",m_itemType=ItemDrop.ItemData.ItemType.Utility}};
-            player.m_utilityItem=spirit;Call(fog,"ApplyFog",false);Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);
-            Check(RenderSettings.fogDensity==0&&block.GetColor(color).a==0,"spirit circlet removes all targeted fog and particle opacity");
-            player.m_helmetItem=circlet;Check((float)Call(fog,"GetOpacity")==0,"spirit takes priority when both circlets are equipped");player.m_helmetItem=null;
-            player.m_utilityItem=circlet;Call(fog,"ApplyFog",false);Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);
-            Check(Mathf.Approximately(RenderSettings.fogDensity,.02f)&&Mathf.Approximately(block.GetColor(color).a,.4f),"switching spirit to dverger restores 50 percent without accumulating reductions");
-            player.m_helmetItem=null;player.m_utilityItem=null;Call(fog,"Tick");renderer.GetPropertyBlock(block);
-            Check(block.GetColor(color)==original&&Mathf.Approximately(RenderSettings.fogDensity,.04f),"unequipping restores particles and current weather immediately");
-            player.m_utilityItem=circlet;renderer.SetPropertyBlock(null);Call(fog,"ApplyRenderer",renderer);Call(fog,"Clear");renderer.GetPropertyBlock(block);Check(block.isEmpty,"renderer without original overrides returns to empty property block");
-            foreach(var name in new[]{"fog","distant_fog","forest_groundmist","swamp_mist","rain_fogclouds","heavymist_mistlands_small_lux"}) {
-                material.name=name;Check((bool)Call(fog,"IsFog",material),"native atmospheric material covered: "+name);
-            }
-            material.name="demister";Check(!(bool)Call(fog,"IsFog",material),"wisplight effect is not modified");
-            material.name="build_fog_lowres";Check((bool)Call(fog,"IsFog",material),"construction dust is reduced");
-            foreach(var name in new[]{"smoke","slowwispysmoke","dust_footstep","dust_particle","winddust"}) {
-                material.name=name;Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);
-                Check(Mathf.Approximately(block.GetColor(color).a,.5f),"smoke/dust opacity reduced by 50 percent: "+name);Call(fog,"Clear");
-            }
-            material.name="heavymist_mistlands";Call(fog,"ApplyRenderer",renderer);material.name="sparks";var smoke=new Material(material){name="sparks"};renderer.sharedMaterial=smoke;Call(fog,"ApplyRenderer",renderer);renderer.GetPropertyBlock(block);
-            Check(block.isEmpty,"renderer changing away from fog loses obsolete alpha override");UnityEngine.Object.DestroyImmediate(smoke);
-            player.m_utilityItem=null;player.m_helmetItem=new ItemDrop.ItemData{m_shared=new ItemDrop.ItemData.SharedData{m_name="$item_helmet_iron"}};Check(!(bool)Call(fog,"Equipped"),"other helmets grant no clarity");
-        } finally {Call(fog,"Clear");player.m_helmetItem=oldHelmet;player.m_utilityItem=oldUtility;RenderSettings.fogDensity=oldDensity;UnityEngine.Object.DestroyImmediate(material);}
     }
     static void NutritionChecks(Assembly plugin,Player player)
     {
