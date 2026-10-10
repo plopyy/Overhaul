@@ -67,9 +67,16 @@ namespace Overhaul.Rarity
             return set;
         }
 
-        // The gear category of an item: tools (pickaxes, fishing rod, hammer...), staffs (magic skills), bows and
-        // crossbows, melee weapons, shields, the armour slots and trinkets.
-        internal static string Category(ItemDrop.ItemData item)
+        // The gear categories of an item: tools (pickaxes, fishing rod, hammer...), staffs (magic skills), bows and
+        // crossbows, melee weapons, shields, the armour slots and trinkets. One-handed axes are both melee weapons and tools.
+        internal static string[] Categories(ItemDrop.ItemData item)
+        {
+            var shared = item.m_shared;
+            if (shared.m_skillType == Skills.SkillType.Axes && shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon) return new[] { "Melee", "Tool" };
+            return new[] { Category(item) };
+        }
+
+        private static string Category(ItemDrop.ItemData item)
         {
             var shared = item.m_shared;
             switch (shared.m_itemType)
@@ -97,10 +104,10 @@ namespace Overhaul.Rarity
         internal static string[] Roll(ItemDrop.ItemData item, RarityDef rarity)
         {
             var data = RarityConfig.Current;
-            string category = Category(item);
+            string[] categories = Categories(item);
             var pool = Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
                 && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order
-                && (e.EnchantItemTypes.Count == 0 || e.EnchantItemTypes.Contains(category))).ToList();
+                && (e.EnchantItemTypes.Count == 0 || categories.Any(e.EnchantItemTypes.Contains))).ToList();
             var lines = new string[rarity.EnchantCount];
             for (int i = 0; i < lines.Length; i++)
             {
