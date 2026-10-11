@@ -121,12 +121,12 @@ namespace Overhaul.Rarity
             }
         }
 
-        // --- ZeusWrath: each projectile of the weapon has a Value % chance, on impact, to call a rain of lightning: 8 bolts
-        // at random moments over 4 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
+        // --- ZeusWrath: each projectile of the weapon has a Value % chance, on impact, to call a rain of lightning: 16 bolts
+        // at random moments over 6 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
         // (its projectile hitting at once), dealing the triggering projectile's damage as lightning ---
 
-        private const int RainBolts = 8;
-        private const float RainSeconds = 4f, RainRadius = 10f;
+        private const int RainBolts = 16;
+        private const float RainSeconds = 6f, RainRadius = 10f;
         private sealed class Wrath { }
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath> Wrathful = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath>();
 

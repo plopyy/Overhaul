@@ -2620,5 +2620,5 @@
   "overhaul_effect_unlimitedammo": "Unlimited ammo",
   "overhaul_effect_unlimitedammo_desc": "Shots no longer use up arrows or bolts (one is still needed to choose what is fired)",
   "overhaul_mythic_zeuswrath": "Zeus's Wrath",
-  "overhaul_mythic_zeuswrath_desc": "each attack or projectile has a {0} % chance to call a rain of 8 lightning bolts within 10 m over 4 seconds"
+  "overhaul_mythic_zeuswrath_desc": "each attack or projectile has a {0} % chance to call a rain of 16 lightning bolts within 10 m over 6 seconds"
 }

@@ -2723,5 +2723,5 @@
   "overhaul_effect_unlimitedammo": "Munitions illimitées",
   "overhaul_effect_unlimitedammo_desc": "Les tirs ne consomment plus de flèches ni de carreaux (il en faut toujours un pour choisir ce qui est tiré)",
   "overhaul_mythic_zeuswrath": "Colère de Zeus",
-  "overhaul_mythic_zeuswrath_desc": "chaque attaque ou projectile a {0} % de chances de déclencher une pluie de 8 éclairs dans un rayon de 10 m pendant 4 secondes"
+  "overhaul_mythic_zeuswrath_desc": "chaque attaque ou projectile a {0} % de chances de déclencher une pluie de 16 éclairs dans un rayon de 10 m pendant 6 secondes"
 }
