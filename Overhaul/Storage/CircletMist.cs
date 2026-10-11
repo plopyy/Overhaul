@@ -19,10 +19,26 @@ namespace Overhaul.Storage
         private readonly Dictionary<uint, Color32> originals = new Dictionary<uint, Color32>();
         private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
-        private float[] near;
-        private float smooth, low, nextReport;
-        // Seconds of the density smoothing and of the low point's fall and rise; Curve: power of the shown density.
-        private const float DensitySmoothing = .75f, LowFall = 2f, LowRise = 20f, Curve = .05f;
+
+        // Diagnostic of the mist breathing, once a second while the circlet is worn: average start opacity and life
+        // curve of the nearby particles, and the colours of the mist material (to tell which one changes over time).
+        private int nearCount;
+        private float startSum, lifeSum, nextReport;
+
+        private void Report()
+        {
+            nextReport = Time.time + 1f;
+            var material = GetComponent<ParticleSystemRenderer>() ? GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
+            string colours = "";
+            if (material)
+                foreach (string property in new[] { "_Color", "_TintColor", "_BaseColor", "_EmissionColor" })
+                    if (material.HasProperty(property)) colours += " " + property + "=" + material.GetColor(property).a.ToString("0.000");
+            Utility.Log.LogInfo("[CircletMist] near " + nearCount + ", start alpha " + (nearCount > 0 ? startSum / nearCount : 0).ToString("0.000")
+                + ", life alpha " + (nearCount > 0 && system.colorOverLifetime.enabled ? (lifeSum / nearCount).ToString("0.000") : "off")
+                + ", material " + (material ? material.name + "/" + material.shader.name : "none") + colours
+                + ", main alpha " + system.main.startColor.color.a.ToString("0.000"));
+            nearCount = 0; startSum = lifeSum = 0;
+        }
 
         internal static void Tick()
         {
@@ -64,40 +80,27 @@ namespace Overhaul.Storage
             Vector3 center = wearing ? player.transform.position : Vector3.zero;
             float inner = WispRadius() * InnerRadius, outer = WispRadius() * OuterRadius;
             alive.Clear();
-            // Nearness of each particle (1 within the thinned area, 0 beyond the fade) and the mist density around the
-            // wearer: the game emits the nearby particles in waves, so their number swells and falls back every few
-            // seconds. Those swells are softened by lowering the nearby particles' opacity.
-            if (near == null || near.Length < count) near = new float[particles.Length];
-            float density = 0;
-            for (int i = 0; i < count; i++)
-            {
-                near[i] = 0;
-                if (!wearing) continue;
-                float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
-                near[i] = 1f - Mathf.InverseLerp(inner, outer, distance);
-                density += near[i];
-            }
-            // Smoothed density, and its recent low point (falls within a couple of seconds, rises back slowly).
-            float dt = Time.deltaTime;
-            smooth = smooth <= 0 ? density : smooth + (density - smooth) * Mathf.Min(1f, dt / DensitySmoothing);
-            low = low <= 0 ? smooth : low + (smooth - low) * Mathf.Min(1f, dt / (smooth < low ? LowFall : LowRise));
-            // The shown density follows a smooth power curve of the real one around the low point (no knee): the mist
-            // still breathes, its peaks much lower (3 times the low point shows as about 1.06).
-            float even = smooth > 0 && low > 0 ? Mathf.Min(1f, low * Mathf.Pow(smooth / low, Curve) / smooth) : 1f;
             for (int i = 0; i < count; i++)
             {
                 uint seed = particles[i].randomSeed;
                 alive.Add(seed);
                 if (!originals.TryGetValue(seed, out Color32 color)) originals[seed] = color = particles[i].startColor;
-                if (wearing) color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(1f, Thinned * even, near[i]));
+                if (wearing)
+                {
+                    float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
+                    // Diagnostic: what the nearby particles show (start opacity and life curve).
+                    if (distance < inner)
+                    {
+                        nearCount++; startSum += color.a / 255f;
+                        if (system.colorOverLifetime.enabled)
+                            lifeSum += system.colorOverLifetime.color.Evaluate(1f - particles[i].remainingLifetime / Mathf.Max(.01f, particles[i].startLifetime)).a;
+                    }
+                    color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance)));
+                }
                 particles[i].startColor = color;
             }
-            if (wearing && Time.time >= nextReport)
-            {
-                nextReport = Time.time + 5f;
-                Utility.Log.LogInfo("[CircletMist] nearby density " + density.ToString("0.0") + ", smoothed " + smooth.ToString("0.0") + ", low " + low.ToString("0.0") + ", opacity factor " + even.ToString("0.00") + " (" + count + " particles)");
-            }
             system.SetParticles(particles, count);
+            if (wearing && Time.time >= nextReport) Report();
             // Forget the particles that died, and everything once the circlet is off (colours restored above).
             if (!wearing) originals.Clear();
             else if (originals.Count > count * 2) foreach (uint seed in new List<uint>(originals.Keys)) if (!alive.Contains(seed)) originals.Remove(seed);
