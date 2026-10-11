@@ -20,9 +20,9 @@ namespace Overhaul.Storage
         private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
         private float[] near;
-        private float low, nextReport;
-        // Seconds for the remembered low density to rise back to the current one.
-        private const float LowRecovery = 20f, MinEven = .4f, Swell = .3f;
+        private float smooth, low, nextReport;
+        // Seconds of the density smoothing and of the low point's fall and rise; Curve: power of the shown density.
+        private const float DensitySmoothing = .75f, LowFall = 2f, LowRise = 20f, Curve = .45f;
 
         internal static void Tick()
         {
@@ -66,7 +66,7 @@ namespace Overhaul.Storage
             alive.Clear();
             // Nearness of each particle (1 within the thinned area, 0 beyond the fade) and the mist density around the
             // wearer: the game emits the nearby particles in waves, so their number swells and falls back every few
-            // seconds. Those swells are scaled down towards the recent low point by lowering the nearby particles' opacity.
+            // seconds. Those swells are softened by lowering the nearby particles' opacity.
             if (near == null || near.Length < count) near = new float[particles.Length];
             float density = 0;
             for (int i = 0; i < count; i++)
@@ -77,11 +77,13 @@ namespace Overhaul.Storage
                 near[i] = 1f - Mathf.InverseLerp(inner, outer, distance);
                 density += near[i];
             }
-            // Recent low point: follows any drop at once, rises back slowly.
-            low = low <= 0 || density < low ? density : low + (density - low) * Mathf.Min(1f, Time.deltaTime / LowRecovery);
-            // Never below MinEven, so a sudden empty moment (arrival, teleport) cannot erase the mist for a while.
-            // Only Swell of each rise above it is kept: the mist still breathes, with a much lower peak.
-            float even = density > 0 && low > 0 ? Mathf.Clamp((low + (density - low) * Swell) / density, MinEven, 1f) : 1f;
+            // Smoothed density, and its recent low point (falls within a couple of seconds, rises back slowly).
+            float dt = Time.deltaTime;
+            smooth = smooth <= 0 ? density : smooth + (density - smooth) * Mathf.Min(1f, dt / DensitySmoothing);
+            low = low <= 0 ? smooth : low + (smooth - low) * Mathf.Min(1f, dt / (smooth < low ? LowFall : LowRise));
+            // The shown density follows a smooth power curve of the real one around the low point (no knee): the mist
+            // still breathes, its peaks much lower (3 times the low point shows as about 1.6).
+            float even = smooth > 0 && low > 0 ? Mathf.Min(1f, low * Mathf.Pow(smooth / low, Curve) / smooth) : 1f;
             for (int i = 0; i < count; i++)
             {
                 uint seed = particles[i].randomSeed;
@@ -93,7 +95,7 @@ namespace Overhaul.Storage
             if (wearing && Time.time >= nextReport)
             {
                 nextReport = Time.time + 5f;
-                Utility.Log.LogInfo("[CircletMist] nearby density " + density.ToString("0.0") + ", low " + low.ToString("0.0") + ", opacity factor " + even.ToString("0.00") + " (" + count + " particles)");
+                Utility.Log.LogInfo("[CircletMist] nearby density " + density.ToString("0.0") + ", smoothed " + smooth.ToString("0.0") + ", low " + low.ToString("0.0") + ", opacity factor " + even.ToString("0.00") + " (" + count + " particles)");
             }
             system.SetParticles(particles, count);
             // Forget the particles that died, and everything once the circlet is off (colours restored above).
