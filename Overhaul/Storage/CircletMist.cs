@@ -19,6 +19,10 @@ namespace Overhaul.Storage
         private readonly Dictionary<uint, Color32> originals = new Dictionary<uint, Color32>();
         private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
+        private float[] near;
+        private float low, nextReport;
+        // Seconds for the remembered low density to rise back to the current one.
+        private const float LowRecovery = 20f, MinEven = .4f;
 
         internal static void Tick()
         {
@@ -60,17 +64,35 @@ namespace Overhaul.Storage
             Vector3 center = wearing ? player.transform.position : Vector3.zero;
             float inner = WispRadius() * InnerRadius, outer = WispRadius() * OuterRadius;
             alive.Clear();
+            // Nearness of each particle (1 within the thinned area, 0 beyond the fade) and the mist density around the
+            // wearer: the game emits the nearby particles in waves, so their number swells and falls back every few
+            // seconds. The density is kept near its recent low point by lowering the opacity of the nearby particles.
+            if (near == null || near.Length < count) near = new float[particles.Length];
+            float density = 0;
+            for (int i = 0; i < count; i++)
+            {
+                near[i] = 0;
+                if (!wearing) continue;
+                float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
+                near[i] = 1f - Mathf.InverseLerp(inner, outer, distance);
+                density += near[i];
+            }
+            // Recent low point: follows any drop at once, rises back slowly.
+            low = low <= 0 || density < low ? density : low + (density - low) * Mathf.Min(1f, Time.deltaTime / LowRecovery);
+            // Never below MinEven, so a sudden empty moment (arrival, teleport) cannot erase the mist for a while.
+            float even = density > 0 && low > 0 ? Mathf.Clamp(low / density, MinEven, 1f) : 1f;
             for (int i = 0; i < count; i++)
             {
                 uint seed = particles[i].randomSeed;
                 alive.Add(seed);
                 if (!originals.TryGetValue(seed, out Color32 color)) originals[seed] = color = particles[i].startColor;
-                if (wearing)
-                {
-                    float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
-                    color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance)));
-                }
+                if (wearing) color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(1f, Thinned * even, near[i]));
                 particles[i].startColor = color;
+            }
+            if (wearing && Time.time >= nextReport)
+            {
+                nextReport = Time.time + 5f;
+                Utility.Log.LogInfo("[CircletMist] nearby density " + density.ToString("0.0") + ", low " + low.ToString("0.0") + ", opacity factor " + even.ToString("0.00") + " (" + count + " particles)");
             }
             system.SetParticles(particles, count);
             // Forget the particles that died, and everything once the circlet is off (colours restored above).
