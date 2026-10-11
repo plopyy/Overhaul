@@ -16,7 +16,8 @@ namespace Overhaul.Commands
         private static float nextAudit;
         internal static bool Enabled(ZRpc rpc)=>rpc!=null&&enabled.Contains(rpc);
         internal static bool LocalEnabled=>ZNet.instance&&Terminal.m_cheat&&(ZNet.instance.IsServer()||grantedServer!=null&&ZNet.instance.GetServerPeer()?.m_rpc==grantedServer);
-        internal static bool Protected(string command)=>command!=null&&(command.StartsWith("o_",StringComparison.OrdinalIgnoreCase)||command.Equals("spawn",StringComparison.OrdinalIgnoreCase));
+        // Cheats validated by the Overhaul admin grant (devcommands goes through the server): vanilla only allows them on the hosting machine.
+        internal static bool Protected(string command)=>command!=null&&(command.StartsWith("o_",StringComparison.OrdinalIgnoreCase)||command.Equals("spawn",StringComparison.OrdinalIgnoreCase)||command.Equals("god",StringComparison.OrdinalIgnoreCase));
         internal static void Clear(){enabled.Clear();pending.Clear();grantedServer=null;spawning=false;Terminal.m_cheat=false;nextAudit=0;}
         internal static bool SetEnabled(ZRpc rpc,bool value)
         {
