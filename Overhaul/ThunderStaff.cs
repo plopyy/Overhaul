@@ -4,28 +4,48 @@ using UnityEngine;
 namespace Overhaul
 {
     // Lightning Strike staff (StaffThunderBlood): its lightning falls at once where the player aims instead of after a
-    // flying projectile. The game still fires its projectiles (count, spread, Fan Volley, damage untouched); each one is
-    // traced straight along its direction, moved to the first surface it meets and hits there at once, so the game
-    // spawns its own lightning (staff_thunderblood_aoe). The lightning's red parts are recoloured blue-white.
+    // flying projectile. The game still fires its projectiles (count and damage untouched); each one is traced from the
+    // camera through the crosshair - the first exactly on it, the others spread around it (in a fan with Fan Volley,
+    // else at random within the weapon's accuracy) - moved to the first surface met and hits there at once, so the
+    // game spawns its own lightning (staff_thunderblood_aoe). Every red colour of the lightning is turned blue-white.
     internal static class ThunderStaff
     {
         private const string ProjectileName = "staff_thunderblood_projectile", LightningName = "staff_thunderblood_aoe";
         private const float MaxDistance = 100f;
+
+        // The burst being fired: its attack (for the final projectile count) and the index of the next projectile.
+        private static Attack burst;
+        private static int index;
+
+        [HarmonyPatch(typeof(Attack), "FireProjectileBurst")]
+        private static class Burst
+        {
+            private static void Prefix(Attack __instance) { burst = __instance; index = 0; }
+            private static void Finalizer() => burst = null;
+        }
 
         [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
         private static class Instant
         {
             // After the other Setup patches (explosive projectiles mark it there).
             [HarmonyPriority(Priority.Last)]
-            private static void Postfix(Projectile __instance, Character owner, Vector3 velocity)
+            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
                 if (!owner || owner != Player.m_localPlayer || !__instance.name.StartsWith(ProjectileName, System.StringComparison.Ordinal)) return;
-                if (velocity.sqrMagnitude < 1e-6f) return;
-                Vector3 start = __instance.transform.position, direction = velocity.normalized;
-                if (!Trace(start, direction, owner, out RaycastHit hit))
+                var camera = Utils.GetMainCamera();
+                if (!camera) return;
+                int count = burst != null ? Mathf.Max(1, burst.m_projectiles) : 1, i = index++;
+                Vector3 origin = camera.transform.position, direction = camera.transform.forward;
+                if (Rarity.MythicEffects.Extra(item) > 0) direction = Rarity.MythicEffects.Turn(direction, Rarity.MythicEffects.Angle(i % count, count));
+                else if (i > 0 && burst != null)
+                {
+                    float spread = burst.m_projectileAccuracy;
+                    direction = Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0) * direction;
+                }
+                if (!Trace(origin, direction, owner, out RaycastHit hit))
                 {
                     // Nothing within reach: the lightning falls on the ground under the far end of the line.
-                    if (!Physics.Raycast(start + direction * MaxDistance + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
+                    if (!Physics.Raycast(origin + direction * MaxDistance + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
                 }
                 __instance.transform.position = hit.point;
                 __instance.OnHit(hit.collider, hit.point, false, hit.normal);
@@ -47,39 +67,78 @@ namespace Overhaul
             }
         }
 
-        // Blue-white lightning: the lights, the bolt and rod particles and the sparks of the lightning prefab.
+        // Blue-white lightning: every red, orange or pink colour of the lightning prefab (lights, particle start colours,
+        // colour over life and speed, trails, line renderers, materials) is turned blue with a softened saturation,
+        // keeping its brightness and transparency. Materials are copied, as they may be shared with other effects.
         [HarmonyPatch(typeof(ZNetScene), "Awake")]
         private static class Colours
         {
-            private static readonly Color Light = new Color(.6f, .85f, 1f), Pale = new Color(.85f, .95f, 1f), Blue = new Color(.35f, .7f, 1f);
+            private const float Hue = .58f, Saturation = .55f;
+
+            private static Color Blue(Color c)
+            {
+                Color.RGBToHSV(c, out float h, out float s, out float v);
+                if (s < .15f || (h > .12f && h < .8f)) return c;
+                // HDR colours (above 1) keep their intensity.
+                Color result = Color.HSVToRGB(Hue, s * Saturation, Mathf.Min(1f, v), true) * Mathf.Max(1f, v);
+                result.a = c.a;
+                return result;
+            }
+
+            private static Gradient Blue(Gradient gradient)
+            {
+                if (gradient == null) return null;
+                var copy = new Gradient { mode = gradient.mode };
+                var keys = gradient.colorKeys;
+                for (int i = 0; i < keys.Length; i++) keys[i].color = Blue(keys[i].color);
+                copy.SetKeys(keys, gradient.alphaKeys);
+                return copy;
+            }
+
+            private static ParticleSystem.MinMaxGradient Blue(ParticleSystem.MinMaxGradient g)
+            {
+                switch (g.mode)
+                {
+                    case ParticleSystemGradientMode.Color: return new ParticleSystem.MinMaxGradient(Blue(g.color));
+                    case ParticleSystemGradientMode.TwoColors: return new ParticleSystem.MinMaxGradient(Blue(g.colorMin), Blue(g.colorMax));
+                    case ParticleSystemGradientMode.Gradient: return new ParticleSystem.MinMaxGradient(Blue(g.gradient));
+                    case ParticleSystemGradientMode.TwoGradients: return new ParticleSystem.MinMaxGradient(Blue(g.gradientMin), Blue(g.gradientMax));
+                    case ParticleSystemGradientMode.RandomColor: return new ParticleSystem.MinMaxGradient(Blue(g.gradient)) { mode = ParticleSystemGradientMode.RandomColor };
+                    default: return g;
+                }
+            }
+
+            private static Material Blue(Material material)
+            {
+                if (!material) return material;
+                var copy = new Material(material) { name = material.name + "_blue" };
+                foreach (string property in new[] { "_Color", "_TintColor", "_EmissionColor", "_BaseColor" })
+                    if (copy.HasProperty(property)) copy.SetColor(property, Blue(copy.GetColor(property)));
+                return copy;
+            }
 
             private static void Postfix(ZNetScene __instance)
             {
                 GameObject lightning = __instance.GetPrefab(LightningName);
                 if (!lightning) { Utility.Log.LogWarning("Lightning Strike staff: " + LightningName + " not found, colours unchanged"); return; }
-                foreach (var light in lightning.GetComponentsInChildren<Light>(true)) light.color = Light;
+                foreach (var light in lightning.GetComponentsInChildren<Light>(true)) light.color = Blue(light.color);
+                foreach (var line in lightning.GetComponentsInChildren<LineRenderer>(true))
+                {
+                    line.startColor = Blue(line.startColor); line.endColor = Blue(line.endColor);
+                    line.sharedMaterial = Blue(line.sharedMaterial);
+                }
                 foreach (var system in lightning.GetComponentsInChildren<ParticleSystem>(true))
                 {
-                    var main = system.main;
-                    switch (system.name)
+                    var main = system.main; main.startColor = Blue(main.startColor);
+                    var life = system.colorOverLifetime; if (life.enabled) life.color = Blue(life.color);
+                    var speed = system.colorBySpeed; if (speed.enabled) speed.color = Blue(speed.color);
+                    var trails = system.trails;
+                    if (trails.enabled) { trails.colorOverLifetime = Blue(trails.colorOverLifetime); trails.colorOverTrail = Blue(trails.colorOverTrail); }
+                    var renderer = system.GetComponent<ParticleSystemRenderer>();
+                    if (renderer)
                     {
-                        case "Lighting":
-                            main.startColor = Pale;
-                            break;
-                        case "Lighting_rod":
-                            main.startColor = new ParticleSystem.MinMaxGradient(Pale, Blue);
-                            break;
-                        case "Sparcs":
-                            main.startColor = Pale;
-                            // The red sparks material is shared with other effects: this prefab gets its own blue copy.
-                            var renderer = system.GetComponent<ParticleSystemRenderer>();
-                            if (renderer && renderer.sharedMaterial && renderer.sharedMaterial.HasProperty("_EmissionColor"))
-                            {
-                                var material = new Material(renderer.sharedMaterial) { name = "lightning_sparcs_blue" };
-                                material.SetColor("_EmissionColor", new Color(.4f, 1.2f, 2.5f));
-                                renderer.sharedMaterial = material;
-                            }
-                            break;
+                        renderer.sharedMaterial = Blue(renderer.sharedMaterial);
+                        if (renderer.trailMaterial) renderer.trailMaterial = Blue(renderer.trailMaterial);
                     }
                 }
             }

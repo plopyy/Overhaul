@@ -18,17 +18,17 @@ namespace Overhaul.Rarity
         private const float FanAngle = 10f;
 
         // Angle of projectile index among count, evenly spread over the fan (0 for a single projectile).
-        private static float Angle(int index, int count) => count < 2 ? 0 : -FanAngle / 2 + index * FanAngle / (count - 1);
+        internal static float Angle(int index, int count) => count < 2 ? 0 : -FanAngle / 2 + index * FanAngle / (count - 1);
 
         // Rotation of a direction by a fan angle, around the aim's own up axis (so the fan stays flat on screen).
-        private static Vector3 Turn(Vector3 direction, float angle)
+        internal static Vector3 Turn(Vector3 direction, float angle)
         {
             Vector3 right = Vector3.Cross(Vector3.up, direction);
             if (right.sqrMagnitude < 1e-4f) right = Vector3.right;
             return Quaternion.AngleAxis(angle, Vector3.Cross(direction, right.normalized)) * direction;
         }
 
-        private static int Extra(ItemDrop.ItemData weapon) => Mathf.RoundToInt(Enchantments.MythicValue(weapon, "FanVolley"));
+        internal static int Extra(ItemDrop.ItemData weapon) => Mathf.RoundToInt(Enchantments.MythicValue(weapon, "FanVolley"));
 
         private sealed class Volley { internal Character Owner; internal int Count, Index, Extra; internal float Accuracy, AccuracyMin; }
         private static Volley current;
