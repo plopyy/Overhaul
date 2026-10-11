@@ -19,26 +19,9 @@ namespace Overhaul.Storage
         private readonly Dictionary<uint, Color32> originals = new Dictionary<uint, Color32>();
         private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
-
-        // Diagnostic of the mist breathing, once a second while the circlet is worn: average start opacity and life
-        // curve of the nearby particles, and the colours of the mist material (to tell which one changes over time).
-        private int nearCount;
-        private float startSum, lifeSum, nextReport;
-
-        private void Report()
-        {
-            nextReport = Time.time + 1f;
-            var material = GetComponent<ParticleSystemRenderer>() ? GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
-            string colours = "";
-            if (material)
-                foreach (string property in new[] { "_Color", "_TintColor", "_BaseColor", "_EmissionColor" })
-                    if (material.HasProperty(property)) colours += " " + property + "=" + material.GetColor(property).a.ToString("0.000");
-            Utility.Log.LogInfo("[CircletMist] near " + nearCount + ", start alpha " + (nearCount > 0 ? startSum / nearCount : 0).ToString("0.000")
-                + ", life alpha " + (nearCount > 0 && system.colorOverLifetime.enabled ? (lifeSum / nearCount).ToString("0.000") : "off")
-                + ", material " + (material ? material.name + "/" + material.shader.name : "none") + colours
-                + ", main alpha " + system.main.startColor.color.a.ToString("0.000"));
-            nearCount = 0; startSum = lifeSum = 0;
-        }
+        private ParticleSystem.ColorOverLifetimeModule lifeCurve;
+        // Share of the breathing peak removed (0 = the game's breathing; 0.5 at most, so the curve keeps rising).
+        private const float Breathing = .5f;
 
         internal static void Tick()
         {
@@ -46,7 +29,7 @@ namespace Overhaul.Storage
             if (mist && !mist.GetComponent<CircletMist>()) mist.gameObject.AddComponent<CircletMist>();
         }
 
-        private void Awake() => system = GetComponent<ParticleSystem>();
+        private void Awake() { system = GetComponent<ParticleSystem>(); lifeCurve = system.colorOverLifetime; }
 
         // Worn as helmet, utility or extra utility slot.
         private static bool SpiritWorn(Player player)
@@ -88,19 +71,20 @@ namespace Overhaul.Storage
                 if (wearing)
                 {
                     float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
-                    // Diagnostic: what the nearby particles show (start opacity and life curve).
-                    if (distance < inner)
+                    float scale = Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance));
+                    // The game fades the particles in and out over their life, and the nearby ones are emitted in waves, so
+                    // the whole mist breathes. Shown life opacity L becomes L * (1 - Breathing * L): the low points barely
+                    // change, the peaks are halved, with no knee.
+                    if (lifeCurve.enabled)
                     {
-                        nearCount++; startSum += color.a / 255f;
-                        if (system.colorOverLifetime.enabled)
-                            lifeSum += system.colorOverLifetime.color.Evaluate(1f - particles[i].remainingLifetime / Mathf.Max(.01f, particles[i].startLifetime)).a;
+                        float life = lifeCurve.color.Evaluate(1f - particles[i].remainingLifetime / Mathf.Max(.01f, particles[i].startLifetime)).a;
+                        scale *= 1f - Breathing * life;
                     }
-                    color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance)));
+                    color.a = (byte)Mathf.RoundToInt(color.a * scale);
                 }
                 particles[i].startColor = color;
             }
             system.SetParticles(particles, count);
-            if (wearing && Time.time >= nextReport) Report();
             // Forget the particles that died, and everything once the circlet is off (colours restored above).
             if (!wearing) originals.Clear();
             else if (originals.Count > count * 2) foreach (uint seed in new List<uint>(originals.Keys)) if (!alive.Contains(seed)) originals.Remove(seed);
