@@ -14,7 +14,7 @@
 - No more burst of 32 "Destroying components immediately" errors in the log when the inventory is first opened (the leveling stat cards removed the tooltips of their - and + buttons at the wrong moment). (2.2.2.16)
 
 ### Changed
-- Lightning Strike staff: the lightning now falls at once exactly where the crosshair points (one for each projectile the staff would fire: extra ones spread around the crosshair, in a fan with Fan Volley), instead of after a slow projectile, and the whole lightning is white with a cyan glow instead of red. (2.2.2.101)
+- Lightning Strike staff: the lightning now falls at once exactly where the crosshair points (one for each projectile the staff would fire: extra ones spread around the crosshair, in a fan with Fan Volley), instead of after a slow projectile, and the whole lightning is white with a cyan glow instead of red. (2.2.2.102)
 - Battleaxes chop trees better: 15 more chopping damage than the one-handed axe of their tier, +3 per upgrade level like it (black metal battleaxe: 75 to 84). The crystal battleaxe sits between iron and black metal (70 to 79). (2.2.2.61)
 - The equipped weapon or tool is also marked by a pure white slot border in the inventory, like in the hotbar. (2.2.2.26)
 - Dvergr circlets: they no longer thin fog, smoke and dust (the Dvergr circlet is back to its light only). The spirit circlet now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times); the rest of the world keeps its fog and smoke; the mist particles keep their own opacity, the huge mist particles that wrap the wearer are thinned too, and the mist's slow breathing now only varies between 20 and 30 % of its opacity. (2.2.2.98)

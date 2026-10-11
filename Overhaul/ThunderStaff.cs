@@ -74,7 +74,7 @@ namespace Overhaul
         private static class Colours
         {
             // Cyan glow around white cores (cores are already near-white and stay so).
-            private const float Hue = .53f, Saturation = .9f;
+            private const float Hue = .56f, Saturation = .9f;
 
             private static Color Blue(Color c)
             {
