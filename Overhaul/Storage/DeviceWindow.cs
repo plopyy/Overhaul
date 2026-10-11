@@ -153,6 +153,7 @@ namespace Overhaul.Storage
             grid.m_gridRoot.anchorMin = grid.m_gridRoot.anchorMax = grid.m_gridRoot.pivot = new Vector2(0, 1);
             grid.m_gridRoot.anchoredPosition = Vector2.zero;
         }
+        private readonly GameObject[] hints = new GameObject[7];
         private void Refresh()
         {
             if (!panel || !store || !store.Owner) return;
@@ -166,13 +167,15 @@ namespace Overhaul.Storage
                     var old = anchor.Find("Slot");
                     if (old)
                     {
-                        var hint = old.Find("EquipmentHint"); if (hint) hint.SetParent(element.transform, false);
+                        // The slot's own hint (helmet, cape...) moves into the cell; any hint the copied cell already had is removed.
+                        foreach (Transform extra in element.transform) if (extra.name == "EquipmentHint") Destroy(extra.gameObject);
+                        var hint = old.Find("EquipmentHint"); if (hint) { hint.SetParent(element.transform, false); hints[i] = hint.gameObject; }
                         old.gameObject.SetActive(false); Destroy(old.gameObject);
                     }
                     var rect = (RectTransform)element.transform; rect.SetParent(anchor, false);
                     rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, .5f); rect.anchoredPosition = Vector2.zero;
                 }
-                var graphic = element.transform.Find("EquipmentHint"); if (graphic) graphic.gameObject.SetActive(store.Items.GetItemAt(i, 0) == null);
+                if (hints[i]) hints[i].SetActive(store.Items.GetItemAt(i, 0) == null);
             }
         }
         private void Restore()
