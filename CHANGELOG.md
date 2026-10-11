@@ -16,7 +16,7 @@
 ### Changed
 - Battleaxes chop trees better: 15 more chopping damage than the one-handed axe of their tier, +3 per upgrade level like it (black metal battleaxe: 75 to 84). The crystal battleaxe sits between iron and black metal (70 to 79). (2.2.2.61)
 - The equipped weapon or tool is also marked by a pure white slot border in the inventory, like in the hotbar. (2.2.2.26)
-- Dvergr circlets: they no longer thin fog, smoke and dust (the Dvergr circlet is back to its light only). The spirit circlet now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times); the rest of the world keeps its fog and smoke; the mist particles keep their own opacity, so the mist no longer flickers. (2.2.2.77)
+- Dvergr circlets: they no longer thin fog, smoke and dust (the Dvergr circlet is back to its light only). The spirit circlet now only thins the Mistlands mist around you (10 % opacity up to twice a wisp’s clearing radius, back to full at three times); the rest of the world keeps its fog and smoke; the mist particles keep their own opacity, and the mist's slow breathing no longer thickens it much more than its thinnest moments. (2.2.2.83)
 
 ## 2.2.1 (released)
 
