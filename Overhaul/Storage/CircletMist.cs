@@ -20,8 +20,8 @@ namespace Overhaul.Storage
         private readonly HashSet<uint> alive = new HashSet<uint>();
         private bool thinned;
         private ParticleSystem.ColorOverLifetimeModule lifeCurve;
-        // Share of the breathing peak removed (0 = the game's breathing; 0.5 at most, so the curve keeps rising).
-        private const float Breathing = .5f;
+        // The game's breathing range of the life opacity (measured in the Mistlands) and the range shown instead.
+        private const float LifeLow = .29f, LifeHigh = .97f, ShownLow = .2f, ShownHigh = .3f;
 
         internal static void Tick()
         {
@@ -73,12 +73,13 @@ namespace Overhaul.Storage
                     float distance = Mathf.Max(0f, Vector3.Distance(particles[i].position, center) - particles[i].GetCurrentSize(system) * .5f);
                     float scale = Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance));
                     // The game fades the particles in and out over their life, and the nearby ones are emitted in waves, so
-                    // the whole mist breathes. Shown life opacity L becomes L * (1 - Breathing * L): the low points barely
-                    // change, the peaks are halved, with no knee.
+                    // the whole mist breathes between about LifeLow and LifeHigh. Their life opacity is mapped linearly onto
+                    // ShownLow..ShownHigh, never above the game's own value, so a newborn or dying particle still fades.
                     if (lifeCurve.enabled)
                     {
                         float life = lifeCurve.color.Evaluate(1f - particles[i].remainingLifetime / Mathf.Max(.01f, particles[i].startLifetime)).a;
-                        scale *= 1f - Breathing * life;
+                        float shown = Mathf.Min(life, ShownLow + (life - LifeLow) * (ShownHigh - ShownLow) / (LifeHigh - LifeLow));
+                        if (life > 0) scale *= shown / life;
                     }
                     color.a = (byte)Mathf.RoundToInt(color.a * scale);
                 }
