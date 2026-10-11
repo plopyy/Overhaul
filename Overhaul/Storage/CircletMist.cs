@@ -6,15 +6,12 @@ namespace Overhaul.Storage
 {
     // Spirit circlet: thins only the Mistlands mist (ParticleMist) around its wearer. Mist particles are at 10 %
     // of their opacity up to twice the radius of a wisp's clearing, then fade back to full opacity at three times
-    // that radius. Distance fog, smoke and every other effect stay untouched. Each particle keeps the colour the game
-    // gave it when emitted (remembered by its random seed): only its opacity is scaled, so particles never jump between
-    // the game's colour and another one.
+    // that radius. Smoke and every other effect stay untouched; the weather fog is only kept at its lightest Mistlands
+    // level (WeatherFog). Each particle keeps the colour the game gave it when emitted (remembered by its random seed):
+    // only its opacity is scaled, so particles never jump between the game's colour and another one.
     internal sealed class CircletMist : MonoBehaviour
     {
         private const float Thinned = .1f, InnerRadius = 2f, OuterRadius = 3f, DefaultWispRadius = 6f;
-        // Peak of a particle's opacity over its life, as a share of the curve's highest point: the mist keeps its slow
-        // breathing and its fade in and out, but its thickest moments stay close to its thinnest ones.
-        private const float Peak = .45f;
         private static float wispRadius;
         private ParticleSystem system;
         private ParticleSystem.Particle[] particles;
@@ -28,19 +25,7 @@ namespace Overhaul.Storage
             if (mist && !mist.GetComponent<CircletMist>()) mist.gameObject.AddComponent<CircletMist>();
         }
 
-        private ParticleSystem.ColorOverLifetimeModule lifeCurve;
-        private float curveMax;
-
-        private void Awake()
-        {
-            system = GetComponent<ParticleSystem>();
-            lifeCurve = system.colorOverLifetime;
-            // Highest opacity of the life curve, sampled once.
-            for (int i = 0; i <= 50; i++) curveMax = Mathf.Max(curveMax, lifeCurve.color.Evaluate(i / 50f).a);
-            var samples = new System.Text.StringBuilder();
-            for (int i = 0; i <= 10; i++) samples.Append(lifeCurve.color.Evaluate(i / 10f).a.ToString("0.00")).Append(' ');
-            Utility.Log.LogInfo("Mistlands mist: life opacity curve " + (lifeCurve.enabled ? "on: " + samples : "off") + ", lifetime " + system.main.startLifetime.constantMax + " s");
-        }
+        private void Awake() => system = GetComponent<ParticleSystem>();
 
         // Worn as helmet, utility or extra utility slot.
         private static bool SpiritWorn(Player player)
@@ -82,16 +67,7 @@ namespace Overhaul.Storage
                 if (wearing)
                 {
                     float distance = Vector3.Distance(particles[i].position, center);
-                    float scale = Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance));
-                    // The game fades each particle in and out over its life (colour over lifetime): above the peak, the
-                    // start opacity is lowered so the shown opacity stays at the peak.
-                    if (lifeCurve.enabled && curveMax > 0)
-                    {
-                        float age = 1f - particles[i].remainingLifetime / Mathf.Max(.01f, particles[i].startLifetime);
-                        float life = lifeCurve.color.Evaluate(age).a / curveMax;
-                        if (life > Peak) scale *= Peak / life;
-                    }
-                    color.a = (byte)Mathf.RoundToInt(color.a * scale);
+                    color.a = (byte)Mathf.RoundToInt(color.a * Mathf.Lerp(Thinned, 1f, Mathf.InverseLerp(inner, outer, distance)));
                 }
                 particles[i].startColor = color;
             }
@@ -100,6 +76,34 @@ namespace Overhaul.Storage
             if (!wearing) originals.Clear();
             else if (originals.Count > count * 2) foreach (uint seed in new List<uint>(originals.Keys)) if (!alive.Contains(seed)) originals.Remove(seed);
             thinned = wearing;
+        }
+
+        // The weather's own fog (RenderSettings.fogDensity) also thickens and thins as the Mistlands weathers alternate.
+        // With the spirit circlet in the Mistlands, it is capped at the fog of the clearest Mistlands weather for the
+        // time of day (same day, night, morning and evening weighting as the game), so it stays at its lightest.
+        [HarmonyLib.HarmonyPatch(typeof(EnvMan), "SetEnv")]
+        private static class WeatherFog
+        {
+            private static void Postfix(EnvMan __instance, float dayInt, float nightInt, float morningInt, float eveningInt)
+            {
+                Player player = Player.m_localPlayer;
+                if (!player || player.IsDead() || player.GetCurrentBiome() != Heightmap.Biome.Mistlands || !SpiritWorn(player)) return;
+                float day = float.MaxValue, night = float.MaxValue, morning = float.MaxValue, evening = float.MaxValue;
+                foreach (var biome in __instance.m_biomes)
+                {
+                    if (biome == null || (biome.m_biome & Heightmap.Biome.Mistlands) == 0 || biome.m_environments == null) continue;
+                    foreach (var entry in biome.m_environments)
+                    {
+                        var env = entry?.m_env ?? __instance.GetEnv(entry?.m_environment);
+                        if (env == null) continue;
+                        day = Mathf.Min(day, env.m_fogDensityDay); night = Mathf.Min(night, env.m_fogDensityNight);
+                        morning = Mathf.Min(morning, env.m_fogDensityMorning); evening = Mathf.Min(evening, env.m_fogDensityEvening);
+                    }
+                }
+                if (day == float.MaxValue) return;
+                float cap = day * dayInt + night * nightInt + morning * morningInt + evening * eveningInt;
+                if (RenderSettings.fogDensity > cap) RenderSettings.fogDensity = cap;
+            }
         }
     }
 }
