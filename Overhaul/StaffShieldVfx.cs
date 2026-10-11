@@ -31,7 +31,7 @@ namespace Overhaul
                 { "StaffIceShards", new ShieldDefinition("vfx_Shield_Ice_01") },
                 { "StaffFrostOrbs", new ShieldDefinition("vfx_Shield_Ice_01") },
                 { "StaffLightning", new ShieldDefinition("vfx_Shield_Lightning_01") },
-                { "StaffThunderBlood", new ShieldDefinition("vfx_Shield_Blood_01") },
+                { "StaffThunderBlood", new ShieldDefinition("vfx_Shield_Lightning_01") },
                 { "StaffGreenRoots", new ShieldDefinition("vfx_Shield_WindGreen_01") },
                 { "StaffShield", new ShieldDefinition("vfx_Shield_Light_01") },
                 { "StaffSkeleton", new ShieldDefinition("vfx_Shield_Void_01") },
