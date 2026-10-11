@@ -36,6 +36,7 @@
     <Compile Include="..\PlantEasilyIntegration\**\*.cs" />
     <Compile Include="..\XPortalIntegration\**\*.cs" />
     <Compile Include="TreeFallDirection.cs" />
+    <Compile Include="ThunderStaff.cs" />
     <Compile Include="ItemBalance.cs" />
     <Compile Include="AttackDurability.cs" />
     <Compile Include="HarvestDamage.cs" />
