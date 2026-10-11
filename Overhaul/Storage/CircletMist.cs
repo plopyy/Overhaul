@@ -22,7 +22,7 @@ namespace Overhaul.Storage
         private float[] near;
         private float smooth, low, nextReport;
         // Seconds of the density smoothing and of the low point's fall and rise; Curve: power of the shown density.
-        private const float DensitySmoothing = .75f, LowFall = 2f, LowRise = 20f, Curve = .45f;
+        private const float DensitySmoothing = .75f, LowFall = 2f, LowRise = 20f, Curve = .25f;
 
         internal static void Tick()
         {
@@ -82,7 +82,7 @@ namespace Overhaul.Storage
             smooth = smooth <= 0 ? density : smooth + (density - smooth) * Mathf.Min(1f, dt / DensitySmoothing);
             low = low <= 0 ? smooth : low + (smooth - low) * Mathf.Min(1f, dt / (smooth < low ? LowFall : LowRise));
             // The shown density follows a smooth power curve of the real one around the low point (no knee): the mist
-            // still breathes, its peaks much lower (3 times the low point shows as about 1.6).
+            // still breathes, its peaks much lower (3 times the low point shows as about 1.3).
             float even = smooth > 0 && low > 0 ? Mathf.Min(1f, low * Mathf.Pow(smooth / low, Curve) / smooth) : 1f;
             for (int i = 0; i < count; i++)
             {
