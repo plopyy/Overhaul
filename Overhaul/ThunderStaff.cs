@@ -68,12 +68,13 @@ namespace Overhaul
         }
 
         // Blue-white lightning: every red, orange or pink colour of the lightning prefab (lights, particle start colours,
-        // colour over life and speed, trails, line renderers, materials) is turned blue with a softened saturation,
+        // colour over life and speed, trails, line renderers, materials) is turned cyan,
         // keeping its brightness and transparency. Materials are copied, as they may be shared with other effects.
         [HarmonyPatch(typeof(ZNetScene), "Awake")]
         private static class Colours
         {
-            private const float Hue = .58f, Saturation = .55f;
+            // Cyan glow around white cores (cores are already near-white and stay so).
+            private const float Hue = .53f, Saturation = .9f;
 
             private static Color Blue(Color c)
             {
