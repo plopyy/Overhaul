@@ -22,7 +22,7 @@ namespace Overhaul.Storage
         private float[] near;
         private float low, nextReport;
         // Seconds for the remembered low density to rise back to the current one.
-        private const float LowRecovery = 20f, MinEven = .4f;
+        private const float LowRecovery = 20f, MinEven = .4f, Swell = .3f;
 
         internal static void Tick()
         {
@@ -66,7 +66,7 @@ namespace Overhaul.Storage
             alive.Clear();
             // Nearness of each particle (1 within the thinned area, 0 beyond the fade) and the mist density around the
             // wearer: the game emits the nearby particles in waves, so their number swells and falls back every few
-            // seconds. The density is kept near its recent low point by lowering the opacity of the nearby particles.
+            // seconds. Those swells are scaled down towards the recent low point by lowering the nearby particles' opacity.
             if (near == null || near.Length < count) near = new float[particles.Length];
             float density = 0;
             for (int i = 0; i < count; i++)
@@ -80,7 +80,8 @@ namespace Overhaul.Storage
             // Recent low point: follows any drop at once, rises back slowly.
             low = low <= 0 || density < low ? density : low + (density - low) * Mathf.Min(1f, Time.deltaTime / LowRecovery);
             // Never below MinEven, so a sudden empty moment (arrival, teleport) cannot erase the mist for a while.
-            float even = density > 0 && low > 0 ? Mathf.Clamp(low / density, MinEven, 1f) : 1f;
+            // Only Swell of each rise above it is kept: the mist still breathes, with a much lower peak.
+            float even = density > 0 && low > 0 ? Mathf.Clamp((low + (density - low) * Swell) / density, MinEven, 1f) : 1f;
             for (int i = 0; i < count; i++)
             {
                 uint seed = particles[i].randomSeed;
