@@ -2721,5 +2721,7 @@
   "overhaul_mythic_fanvolley": "Salve en éventail",
   "overhaul_mythic_fanvolley_desc": "tire {0} projectiles supplémentaires en éventail étroit, tous d'une précision parfaite (les projectiles supplémentaires des autres bonus rejoignent l'éventail)",
   "overhaul_effect_unlimitedammo": "Munitions illimitées",
-  "overhaul_effect_unlimitedammo_desc": "Les tirs ne consomment plus de flèches ni de carreaux (il en faut toujours un pour choisir ce qui est tiré)"
+  "overhaul_effect_unlimitedammo_desc": "Les tirs ne consomment plus de flèches ni de carreaux (il en faut toujours un pour choisir ce qui est tiré)",
+  "overhaul_mythic_zeuswrath": "Colère de Zeus",
+  "overhaul_mythic_zeuswrath_desc": "chaque attaque ou projectile a {0} % de chances de déclencher une pluie de 8 éclairs dans un rayon de 10 m pendant 4 secondes"
 }

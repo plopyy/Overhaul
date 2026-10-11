@@ -13,6 +13,9 @@ namespace Overhaul
         private const string ProjectileName = "staff_thunderblood_projectile", LightningName = "staff_thunderblood_aoe";
         private const float MaxDistance = 100f;
 
+        // Set while Zeus's Wrath drops its own bolts, which must hit where they are placed.
+        internal static bool Raining;
+
         // The burst being fired: its attack (for the final projectile count) and the index of the next projectile.
         private static Attack burst;
         private static int index;
@@ -31,7 +34,7 @@ namespace Overhaul
             [HarmonyPriority(Priority.Last)]
             private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
-                if (!owner || owner != Player.m_localPlayer || !__instance.name.StartsWith(ProjectileName, System.StringComparison.Ordinal)) return;
+                if (Raining || !owner || owner != Player.m_localPlayer || !__instance.name.StartsWith(ProjectileName, System.StringComparison.Ordinal)) return;
                 var camera = Utils.GetMainCamera();
                 if (!camera) return;
                 int count = burst != null ? Mathf.Max(1, burst.m_projectiles) : 1, i = index++;

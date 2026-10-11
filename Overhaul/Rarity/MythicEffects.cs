@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -118,6 +118,66 @@ namespace Overhaul.Rarity
                     if (Marks.Count <= index) Marks.Add(copy); else Marks[index] = copy;
                 }
                 return Marks[index];
+            }
+        }
+
+        // --- ZeusWrath: each projectile of the weapon has a Value % chance, on impact, to call a rain of lightning: 8 bolts
+        // at random moments over 4 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
+        // (its projectile hitting at once), dealing the triggering projectile's damage as lightning ---
+
+        private const int RainBolts = 8;
+        private const float RainSeconds = 4f, RainRadius = 10f;
+        private sealed class Wrath { }
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath> Wrathful = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath>();
+
+        [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
+        private static class WrathRoll
+        {
+            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
+            {
+                if (!owner || owner != Player.m_localPlayer || item == null) return;
+                float chance = Enchantments.MythicValue(item, "ZeusWrath");
+                if (chance > 0 && UnityEngine.Random.value * 100f < chance) Wrathful.GetValue(__instance, _ => new Wrath());
+            }
+        }
+
+        [HarmonyPatch(typeof(Projectile), "OnHit")]
+        private static class WrathStrike
+        {
+            private static void Prefix(Projectile __instance, Vector3 hitPoint)
+            {
+                if (!Wrathful.TryGetValue(__instance, out _)) return;
+                Wrathful.Remove(__instance);
+                var player = Player.m_localPlayer;
+                if (!player || __instance.m_owner != player) return;
+                var hit = __instance.m_originalHitData?.Clone() ?? new HitData();
+                float damage = __instance.m_damage.GetTotalDamage();
+                hit.m_damage = new HitData.DamageTypes { m_lightning = damage > 0 ? damage : hit.m_damage.GetTotalDamage() };
+                player.StartCoroutine(Rain(player, hitPoint, hit));
+            }
+        }
+
+        private static System.Collections.IEnumerator Rain(Player owner, Vector3 center, HitData hit)
+        {
+            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_projectile") : null;
+            if (!prefab) { Utility.Log.LogWarning("Zeus's Wrath: staff_thunderblood_projectile not found"); yield break; }
+            var moments = new List<float>();
+            for (int i = 0; i < RainBolts; i++) moments.Add(UnityEngine.Random.Range(0f, RainSeconds));
+            moments.Sort();
+            float elapsed = 0;
+            foreach (float moment in moments)
+            {
+                if (moment > elapsed) { yield return new WaitForSeconds(moment - elapsed); elapsed = moment; }
+                if (!owner || owner.IsDead()) yield break;
+                Vector2 offset = UnityEngine.Random.insideUnitCircle * RainRadius;
+                Vector3 above = center + new Vector3(offset.x, 40f, offset.y);
+                if (!Physics.Raycast(above, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) continue;
+                var bolt = UnityEngine.Object.Instantiate(prefab, ground.point, Quaternion.identity).GetComponent<Projectile>();
+                if (!bolt) continue;
+                ThunderStaff.Raining = true;
+                try { bolt.Setup(owner, Vector3.down, 0f, hit.Clone(), null, null); }
+                finally { ThunderStaff.Raining = false; }
+                bolt.OnHit(ground.collider, ground.point, false, ground.normal);
             }
         }
     }
