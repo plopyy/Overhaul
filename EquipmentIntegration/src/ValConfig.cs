@@ -24,6 +24,7 @@ namespace EquipmentAndQuickSlots {
         public static readonly ConfigEntry<string>[] QuickSlotLabels = new ConfigEntry<string>[MaxQuickSlots];
         public static ConfigEntry<KeyboardShortcut> AmmoCycleKey;
         public static ConfigEntry<KeyboardShortcut> ClassWindowKey;
+        public static ConfigEntry<KeyboardShortcut> GrimoireWindowKey;
         public static ConfigEntry<KeyboardShortcut> MoveObjectKey;
         public static KeyboardShortcut EffectiveMoveObjectKey=>Effective(MoveObjectKey,"H",KeyCode.F6);
         public static ConfigEntry<KeyboardShortcut> TakeAllKey;
@@ -148,6 +149,7 @@ namespace EquipmentAndQuickSlots {
             AmmoCycleKey.SettingChanged+=(_,_)=>PreventSimilarHotkeys.FillSimilarHotkey();
             ClassWindowKey=Config.Bind("Hotkeys","Class window",new KeyboardShortcut(KeyCode.P),"Open the class window.");
             ClassWindowKey.SettingChanged+=(_,_)=>PreventSimilarHotkeys.FillSimilarHotkey();
+            GrimoireWindowKey=Config.Bind("Hotkeys","Grimoire window",new KeyboardShortcut(KeyCode.F1),"Open the spell book (grimoire). Temporary key while the magic system is built.");
             MoveObjectKey=Config.Bind("Hotkeys","Move object",new KeyboardShortcut(KeyCode.None),"Relocate a useful building piece. None automatically selects the printed H key for the current keyboard layout (F6 if unavailable). Rebind in Mods / Overhaul.");
             TakeAllKey=Config.Bind("Hotkeys","Take all",new KeyboardShortcut(KeyCode.None),"Take everything from the aimed or open chest or machine. Shift + this key renames a chest or swaps gear with an armor stand. None automatically selects the printed R key for the current keyboard layout. Rebind in Mods / Overhaul.");
             QuickSlotsEnabled = BindServerConfig("Toggles", "Enable Quick Slots", true, "Enable the quick slots. Disabling this while items are in the slots will attempt to move them to your inventory.");
