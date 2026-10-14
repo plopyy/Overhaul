@@ -25,7 +25,24 @@ namespace AugaUnity {
   public Toggle TrashToggle;
   Button backButton, applyButton;
   bool Available=>ReadShortcut!=null && WriteShortcut!=null && IsEqsActive!=null && IsEqsActive();
+  // Optional sub-tabs of the page (left column): SubTabs[i] shows SubPages[i]; the shortcut rows are on SubPages[0].
+  public Button[] SubTabs;
+  public GameObject[] SubPages;
+  int subTab;
+  bool HasSubTabs=>SubTabs!=null && SubPages!=null && SubTabs.Length>0 && SubTabs.Length==SubPages.Length;
+  public void SelectSubTab(int index){if(!HasSubTabs || index<0 || index>=SubTabs.Length)return;EndCapture();subTab=index;RefreshVisibility();UpdateNavigation();}
   void RefreshVisibility(){
+   if(HasSubTabs){
+    for(int i=0;i<SubTabs.Length;i++){
+     SubTabs[i].gameObject.SetActive(true);
+     var mark=SubTabs[i].transform.Find("Selected");if(mark)mark.gameObject.SetActive(i==subTab);
+     SubPages[i].SetActive(i==subTab);
+    }
+    if(AugaPage)AugaPage.SetActive(false);
+    if(AugaTab)AugaTab.gameObject.SetActive(false);
+    var line=transform.Find("VerticalDivider");if(line)line.gameObject.SetActive(true);
+    return;
+   }
    EqsTab.gameObject.SetActive(true);
    Notice.transform.parent.gameObject.SetActive(true);
    if(AugaPage)AugaPage.SetActive(false);
@@ -57,7 +74,7 @@ namespace AugaUnity {
    for(int i=0;i<BindButtons.Length;i++){pending[i]=available?ReadShortcut(i):"";dirty[i]=false;BindButtons[i].interactable=available;Displays[i].SetText(DisplayShortcut!=null?DisplayShortcut(pending[i]):pending[i]);}
    Notice.text=Localization.instance.Localize(available?"$auga_mods_eqs_help":"$auga_mods_eqs_missing");
   }
-  public void SelectEqs(){EndCapture();RefreshVisibility();UpdateNavigation();}
+  public void SelectEqs(){if(HasSubTabs){SelectSubTab(0);return;}EndCapture();RefreshVisibility();UpdateNavigation();}
   public void SelectAuga(){SelectEqs();}
   public void BeginBinding(int index){
    if(!Available || index<0 || index>=BindButtons.Length)return;
@@ -110,16 +127,31 @@ namespace AugaUnity {
    callback?.Invoke();
   }
   public void OnTabOpen(Button back,Button apply){
-   backButton=back;applyButton=apply;RefreshVisibility();UpdateNavigation();
+   backButton=back;applyButton=apply;subTab=0;RefreshVisibility();UpdateNavigation();
+  }
+  // Sub-tabs one above the other; right goes into the open sub-page.
+  void TabNavigation(Selectable content,Selectable apply){
+   for(int i=0;i<SubTabs.Length;i++)SubTabs[i].navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnUp=i>0?SubTabs[i-1]:null,selectOnDown=i<SubTabs.Length-1?(Selectable)SubTabs[i+1]:apply,selectOnRight=i==subTab?content:null};
   }
   void UpdateNavigation(){
    var back=backButton;var apply=applyButton;if(!back||!apply)return;
    RefreshVisibility();
+   if(HasSubTabs && subTab>0){
+    // Other sub-pages: their controls from top to bottom, between the sub-tab and the Back/Apply buttons.
+    var tab=SubTabs[subTab];
+    var controls=SubPages[subTab].GetComponentsInChildren<Selectable>().Where(c=>c.interactable).OrderByDescending(c=>c.transform.position.y).ToArray();
+    for(int i=0;i<controls.Length;i++)controls[i].navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnUp=i==0?(Selectable)tab:controls[i-1],selectOnDown=i==controls.Length-1?apply:controls[i+1],selectOnLeft=tab};
+    TabNavigation(controls.Length>0?controls[0]:apply,apply);
+    var end=controls.Length>0?controls[controls.Length-1]:(Selectable)tab;
+    GuiUtils.SetNavigationUp(back,end);GuiUtils.SetNavigationUp(apply,end);
+    return;
+   }
    Selectable first=Available ? BindButtons[0] : apply;
    Selectable last=Available ? BindButtons[BindButtons.Length-1] : first;
-   EqsTab.navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnRight=first,selectOnDown=apply};
+   var firstTab=HasSubTabs?SubTabs[0]:EqsTab;
+   if(HasSubTabs)TabNavigation(first,apply);else EqsTab.navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnRight=first,selectOnDown=apply};
    for(int i=0;i<BindButtons.Length;i++){
-    BindButtons[i].navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnUp=i==0?EqsTab:BindButtons[i-1],selectOnDown=i==BindButtons.Length-1?apply:BindButtons[i+1],selectOnLeft=EqsTab};
+    BindButtons[i].navigation=new Navigation{mode=Navigation.Mode.Explicit,selectOnUp=i==0?firstTab:BindButtons[i-1],selectOnDown=i==BindButtons.Length-1?apply:BindButtons[i+1],selectOnLeft=firstTab};
    }
    GuiUtils.SetNavigationUp(back,last);GuiUtils.SetNavigationUp(apply,last);
   }

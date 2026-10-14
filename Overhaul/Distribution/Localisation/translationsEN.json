@@ -2717,5 +2717,10 @@
   "overhaul_grimoire_spell_thunderaegis_desc": "A shield that releases a thunderclap when it breaks.",
   "overhaul_grimoire_spell_stormmantle": "Storm Mantle",
   "overhaul_grimoire_spell_stormmantle_desc": "An aura of lightning that absorbs blows and strikes attackers.",
-  "overhaul_grimoire_decimal": "."
+  "overhaul_grimoire_decimal": ".",
+  "overhaul_settings_tab": "Overhaul",
+  "overhaul_settings_shortcuts": "Shortcuts",
+  "overhaul_settings_gameplay": "Gameplay",
+  "overhaul_grimoire_binding": "Grimoire",
+  "overhaul_grimoire_binding_tip": "Opens the grimoire (spell book). Default: F1."
 }
