@@ -611,7 +611,7 @@ namespace Overhaul
 		private const float StaffShieldBaseAbsorb = 200f;
 		private const string StaffShieldStatusEffectName = "Staff_shield";
 		private const string StaffShieldAnimationTrigger = "staff_shield";
-		private const string FireStaffPrefab = "StaffFireball";
+		private const string FireballProjectile = "staff_fireball_projectile";
 		private const float StraightLaunchAngle = 0f;
 		private const float StraightProjectileGravity = 0f;
 		private static readonly AssetID JotunDashEffectAssetId = new AssetID(
@@ -1551,7 +1551,7 @@ namespace Overhaul
 			[HarmonyPrefix]
 			private static void Prefix(Attack __instance, ItemDrop.ItemData weapon)
 			{
-				if (OverhaulConfig.FireStaffStraightProjectiles.Value && IsFireStaff(weapon) && !AlterItemStat.Has(weapon, "m_launchAngle"))
+				if (OverhaulConfig.FireStaffStraightProjectiles.Value && IsFireball(__instance.m_attackProjectile) && !AlterItemStat.Has(weapon, "m_launchAngle"))
 				{
 					__instance.m_launchAngle = StraightLaunchAngle;
 				}
@@ -1564,7 +1564,7 @@ namespace Overhaul
 			[HarmonyPrefix]
 			private static void Prefix(Projectile __instance, ref Vector3 velocity, ItemDrop.ItemData item)
 			{
-				if (!IsFireStaff(item))
+				if (!IsFireball(__instance.gameObject))
 				{
 					return;
 				}
@@ -1577,9 +1577,10 @@ namespace Overhaul
 			}
 		}
 
-		private static bool IsFireStaff(ItemDrop.ItemData item)
+		// The staff of embers' fireball, from that staff or cast as a grimoire spell (SpellSystem).
+		private static bool IsFireball(GameObject projectile)
 		{
-			return item != null && item.m_dropPrefab != null && item.m_dropPrefab.name == FireStaffPrefab;
+			return projectile != null && projectile.name.StartsWith(FireballProjectile, StringComparison.Ordinal);
 		}
 
 		[HarmonyPatch(typeof(SE_Shield), nameof(SE_Shield.IsDone))]

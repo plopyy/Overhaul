@@ -9,10 +9,9 @@ namespace Overhaul.Magic
     // of its blunt, fire... damage, held in the item's generic damage (m_damage) so it goes through the usual damage
     // computation: upgrade levels (m_damagesPerLevel), rarity bonus and the MagicPower effect (Effects.cfg, flat: gear
     // enchantments, class skills, buffs...) added with the other damage effects (ItemRarity). Magic power has no element
-    // of its own: when a spell hits, its percent of it becomes its element's damage (fireball 120 % with 100 power = 120
-    // fire damage). Until the grimoire spells are cast, the spell is the base staff's at 100 % (staff of embers: fire,
-    // frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in the item's own
-    // data, so each staff keeps its spells.
+    // of its own: when a spell (SpellSystem) hits, its percent of it becomes its element's damage (fireball 120 % with 100
+    // power = 120 fire damage). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in the
+    // item's own data, so each staff keeps its spells.
     internal static class StaffMagic
     {
         internal enum Slot { NormalSpell1, NormalSpell2, SpecialSpell, ShieldSpell }
@@ -23,8 +22,6 @@ namespace Overhaul.Magic
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
 
-        // Element of the spell the staff casts for now: its base staff's.
-        static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
         // Turns the magic power of a hit into the spell's element (grimoire elements: fire, ice, lightning), worth percent of it.
         internal static void Convert(ref HitData.DamageTypes damage, string element, float percent)
         {
@@ -46,8 +43,9 @@ namespace Overhaul.Magic
             else item.m_customData[Key(slot)] = id;
         }
 
-        // The staff's projectile (and its area) carries the hit's damage, skill factor included: its magic power
-        // becomes the spell's element there (a second Setup from the same hit finds no magic power left).
+        // The staff's projectile (and its area) carries the hit's damage, skill factor included: the spell being cast
+        // (SpellSystem) turns its magic power into the spell's element there (a second Setup from the same hit finds no
+        // magic power left).
         [HarmonyPatch]
         static class SpellHit
         {
@@ -56,10 +54,9 @@ namespace Overhaul.Magic
                 yield return AccessTools.Method(typeof(Projectile), nameof(Projectile.Setup));
                 yield return AccessTools.Method(typeof(Aoe), nameof(Aoe.Setup));
             }
-            static void Prefix(HitData hitData, ItemDrop.ItemData item)
+            static void Prefix(Character owner, HitData hitData, ItemDrop.ItemData item)
             {
-                var staff = Of(item);
-                if (staff != null && hitData != null) Convert(ref hitData.m_damage, CastElement(staff), 100f);
+                if (IsStaff(item)) SpellSystem.OnHitSetup(owner, hitData);
             }
         }
 

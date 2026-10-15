@@ -61,6 +61,7 @@ namespace Overhaul
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
             Magic.StaffModels.Initialize();
+            Magic.SpellSystem.Initialize();
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
@@ -111,6 +112,7 @@ namespace Overhaul
             TarDrain.Shutdown();
             DvergerCirclet.Shutdown();
             Magic.StaffModels.Shutdown();
+            Magic.SpellSystem.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();

@@ -10,14 +10,16 @@ namespace Overhaul.Dungeons
         internal static readonly int AttackSpeedKey = "overhaul_guardian_attack_speed_v1".GetStableHashCode();
         internal static float AttackSpeed(Character character)
         {
-            var data=Data(character);if(data==null || character.IsPlayer())return 1;
+            // Spell slows (SpellSystem) act on every creature, bosses included.
+            float slow=Magic.SpellSystem.AttackSpeed(character);
+            var data=Data(character);if(data==null || character.IsPlayer())return slow;
             float speed=data.GetFloat(AttackSpeedKey,0);
             if(speed==0 && character.m_nview.IsOwner())
             {
                 speed=BossData.AttackSpeedFor(character.gameObject.name);
                 data.Set(AttackSpeedKey,speed);
             }
-            return speed>=.1f && speed<=10f ? speed : 1;
+            return (speed>=.1f && speed<=10f ? speed : 1)*slow;
         }
         internal static ZDO Data(Character character)
         {

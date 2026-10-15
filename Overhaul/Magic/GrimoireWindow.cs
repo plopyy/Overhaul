@@ -12,32 +12,23 @@ using Object = UnityEngine.Object;
 
 namespace Overhaul.Magic
 {
-    // Spell book (grimoire), first version: the OverhaulGrimoire prefab (mock-up E1) opened with its own key. The
-    // spells are a demo table until the magic system exists: rank I of each spell is known, ranks II and III show the
-    // class level that will unlock them. Known spells are dragged onto the 4 installed slots (2 normal spells, 1
-    // special, 1 shield); the left page shows the spell last clicked.
+    // Spell book (grimoire): the OverhaulGrimoire prefab (mock-up E1) opened with its own key. The right page shows the
+    // spells of Spells.cfg (SpellSystem) for the open element, by type (rows: 2 normal, 1 special, 1 shield) and rank
+    // (columns); known spells are dragged onto the 4 slots of the equipped staff (2 normal spells, 1 special, 1 shield),
+    // locked ones show the class level that unlocks them. The left page shows the spell last clicked.
     internal static class GrimoireWindow
     {
-        internal enum Kind { Normal, Special, Shield }
-        internal sealed class Spell
-        {
-            public string Id, Element, Icon, LockedIcon; public Kind Kind; public int Rank, Level; public float Eitr, Power, Cast, Area; public bool PerSecond;
-            public bool Known => Rank == 1;
-        }
-
         static readonly string[] Elements = { "fire", "ice", "lightning" };
-        static readonly Kind[] RowKinds = { Kind.Normal, Kind.Normal, Kind.Special, Kind.Shield };
-        static readonly Dictionary<string, Spell[,]> Book = new Dictionary<string, Spell[,]>();
-        static readonly Dictionary<string, Spell> ById = new Dictionary<string, Spell>();
+        static readonly SpellSystem.Kind[] RowKinds = { SpellSystem.Kind.Normal, SpellSystem.Kind.Normal, SpellSystem.Kind.Special, SpellSystem.Kind.Shield };
         // Installed spells are those of the equipped Overhaul staff (StaffMagic slots): light attack, heavy attack (both
         // normal spells), special attack, block (shield). Without one, the slots are empty and nothing can be installed.
         static ItemDrop.ItemData Staff { get { var w = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentWeapon() : null; return StaffMagic.IsStaff(w) ? w : null; } }
         static string[] Installed()
         {
             var staff = Staff;
-            return Enumerable.Range(0, StaffMagic.SlotCount).Select(i => StaffMagic.Spell(staff, (StaffMagic.Slot)i)).Select(id => id != null && ById.ContainsKey(id) ? id : null).ToArray();
+            return Enumerable.Range(0, StaffMagic.SlotCount).Select(i => StaffMagic.Spell(staff, (StaffMagic.Slot)i)).Select(id => SpellSystem.Get(id)?.Id).ToArray();
         }
-        static string element = "fire", selected = "fireball";
+        static string element = "fire", selected;
 
         static GameObject root, panel;
         static Player owner;
@@ -46,31 +37,18 @@ namespace Overhaul.Magic
         internal static bool Visible => root && root.activeInHierarchy;
         internal static bool BlocksInput => Visible || closedFrame == Time.frameCount;
 
-        static GrimoireWindow()
+        static GrimoireWindow() => SpellSystem.Changed += () => { if (Visible) Populate(panel); };
+
+        // The element's page: each spell in its type's first free row at its rank's column (spells beyond the page are left out).
+        static SpellSystem.Spell[,] Page(string el)
         {
-            // id, icon, locked icon, eitr, damage (% of the staff's magic power, in the spell's element), cast time, area for ranks I, II, III of each row.
-            Row("fire", 0, "Burning", "Burning_Locked", ("firebolt", 8, 25, .3f, 0), ("searingbolt", 10, 35, .3f, 0), ("emberburst", 14, 50, .4f, 2));
-            Row("fire", 1, "StaffFireball", "StaffFireball_Locked", ("fireball", 35, 120, 1.4f, 4), ("meteor", 45, 185, 1.8f, 5), ("comet", 60, 265, 2.2f, 6));
-            Row("fire", 2, "Burning_Nova", "Burning_Locked", ("flamenova", 50, 100, .8f, 6), ("flamering", 60, 140, .9f, 7), ("blaze", 75, 200, 1f, 9));
-            Row("fire", 3, "shield_banded2", "shield_banded2_Locked", ("emberaegis", 2, 0, 0, 0), ("blazingaegis", 3, 0, 0, 0), ("ashmantle", 4, 0, 0, 0));
-            Row("ice", 0, "Frost", "Frost_Locked", ("iceshard", 8, 20, .3f, 0), ("frostblade", 10, 30, .3f, 0), ("shardstorm", 14, 45, .4f, 2));
-            Row("ice", 1, "Cold", "Cold_Locked", ("icejavelin", 32, 105, 1.3f, 0), ("glacialspear", 42, 160, 1.6f, 0), ("avalanche", 58, 235, 2f, 5));
-            Row("ice", 2, "Frost", "Frost_Locked", ("hail", 45, 85, 1f, 6), ("blizzard", 58, 125, 1.2f, 8), ("eternalwinter", 72, 175, 1.4f, 10));
-            Row("ice", 3, "Shield_Frost", "shield_banded2_Locked", ("frostaegis", 2, 0, 0, 0), ("rimeaegis", 3, 0, 0, 0), ("glacialmantle", 4, 0, 0, 0));
-            Row("lightning", 0, "Lightning", "Lightning_Locked", ("spark", 7, 20, .2f, 0), ("arc", 9, 30, .2f, 0), ("stormbolt", 13, 45, .3f, 0));
-            Row("lightning", 1, "StaffLightning", "StaffLightning_Locked", ("lightningstrike", 30, 100, 1.2f, 2), ("thunderbolt", 40, 155, 1.5f, 3), ("skywrath", 55, 225, 1.9f, 4));
-            Row("lightning", 2, "Lightning_Bright", "Lightning_Locked", ("chainlightning", 48, 90, .9f, 8), ("storm", 60, 135, 1.1f, 10), ("tempest", 75, 190, 1.3f, 12));
-            Row("lightning", 3, "Shield_Storm", "shield_banded2_Locked", ("stormaegis", 2, 0, 0, 0), ("thunderaegis", 3, 0, 0, 0), ("stormmantle", 4, 0, 0, 0));
-        }
-        static void Row(string el, int row, string icon, string locked, params (string id, float eitr, float power, float cast, float area)[] ranks)
-        {
-            if (!Book.TryGetValue(el, out var grid)) Book[el] = grid = new Spell[4, 3];
-            for (int r = 0; r < 3; r++)
+            var grid = new SpellSystem.Spell[4, 3];
+            foreach (var s in SpellSystem.All.Where(s => s.Element == el))
             {
-                var (id, eitr, power, cast, area) = ranks[r];
-                var spell = new Spell { Id = id, Element = el, Icon = icon, LockedIcon = locked, Kind = RowKinds[row], Rank = r + 1, Level = r == 0 ? 0 : r == 1 ? 20 : 35, Eitr = eitr, Power = power, Cast = cast, Area = area, PerSecond = RowKinds[row] == Kind.Shield };
-                grid[row, r] = spell; ById[id] = spell;
+                for (int row = 0; row < 4; row++)
+                    if (RowKinds[row] == s.Kind && grid[row, s.Rank - 1] == null) { grid[row, s.Rank - 1] = s; break; }
             }
+            return grid;
         }
 
         // ---------------------------------------------------------------- opening
@@ -126,9 +104,9 @@ namespace Overhaul.Magic
             ghost.transform.SetParent(root.transform, false); ghost.raycastTarget = false; ghost.rectTransform.sizeDelta = new Vector2(38, 38) * 1.32f;
             ghost.gameObject.SetActive(false);
         }
-        internal static Spell At(int row, int col) => Book[element][row, col];
-        internal static void Select(Spell s) { selected = s.Id; Populate(panel); }
-        internal static void BeginDrag(Spell s)
+        internal static SpellSystem.Spell At(int row, int col) => Page(element)[row, col];
+        internal static void Select(SpellSystem.Spell s) { if (s == null) return; selected = s.Id; Populate(panel); }
+        internal static void BeginDrag(SpellSystem.Spell s)
         {
             if (!ghost) return;
             ghost.sprite = Sprite(panel.transform, "Icon_" + s.Icon); ghost.gameObject.SetActive(true); ghost.transform.SetAsLastSibling();
@@ -136,10 +114,10 @@ namespace Overhaul.Magic
         }
         internal static void EndDrag() { if (ghost) ghost.gameObject.SetActive(false); }
         // Normal spells go on either normal slot (moving between them swaps), the special spell and the shield on their own.
-        internal static void Drop(Spell s, int slot)
+        internal static void Drop(SpellSystem.Spell s, int slot)
         {
             if (s == null || !s.Known) return;
-            if ((s.Kind == Kind.Normal) != (slot < 2) || (s.Kind == Kind.Special && slot != 2) || (s.Kind == Kind.Shield && slot != 3)) return;
+            if ((s.Kind == SpellSystem.Kind.Normal) != (slot < 2) || (s.Kind == SpellSystem.Kind.Special && slot != 2) || (s.Kind == SpellSystem.Kind.Shield && slot != 3)) return;
             var staff = Staff;
             if (staff == null) { Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "$overhaul_grimoire_no_staff"); return; }
             var installed = Installed();
@@ -152,6 +130,7 @@ namespace Overhaul.Magic
         // ---------------------------------------------------------------- display
         static string Loc(string key) => Localization.instance.Localize("$overhaul_grimoire_" + key);
         static string Number(float v) => v.ToString("0.#", CultureInfo.InvariantCulture).Replace(".", Loc("decimal"));
+        static string Text(string key) => Localization.instance.Localize(key.StartsWith("$") ? key : "$" + key);
         static Sprite Sprite(Transform p, string name) { var lib = p.Find("Library/" + name); return lib ? lib.GetComponent<Image>().sprite : null; }
         static readonly string[] KindKeys = { "type_normal", "type_special", "type_shield" };
 
@@ -169,6 +148,7 @@ namespace Overhaul.Magic
             }
 
             var installed = Installed();
+            var grid = Page(element);
 
             // Right page: the element's spells.
             var page = t.Find("RightPage");
@@ -176,28 +156,44 @@ namespace Overhaul.Magic
             page.Find("Header/ElementTitle").GetComponent<TMP_Text>().text = Loc("element_" + element);
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)page.Find("Header"));
             for (int row = 0; row < 4; row++)
-                for (int col = 0; col < 3; col++) Card(t, page.Find("Card" + row + "_" + col), Book[element][row, col], installed);
+                for (int col = 0; col < 3; col++) Card(t, page.Find("Card" + row + "_" + col), grid[row, col], installed);
 
-            // Left page: selected spell.
-            var s = ById[selected];
+            // Left page: selected spell (the first one of the book until one is clicked).
+            var s = SpellSystem.Get(selected) ?? SpellSystem.All.FirstOrDefault();
             var left = t.Find("LeftPage");
-            left.Find("DetailIcon").GetComponent<Image>().sprite = Sprite(t, "Icon_" + s.Icon);
-            left.Find("DetailTitle").GetComponent<TMP_Text>().text = Loc("spell_" + s.Id);
-            left.Find("DetailSubtitle").GetComponent<TMP_Text>().text = Loc("element_" + s.Element) + " · " + Loc(KindKeys[(int)s.Kind]) + " · " + Loc("rank" + s.Rank);
-            left.Find("DetailDescription").GetComponent<TMP_Text>().text = Loc("spell_" + s.Id + "_desc");
-            var values = new[] { Number(s.Eitr) + (s.PerSecond ? "/s" : ""), s.Power > 0 ? Number(s.Power) + " %" : "—", s.Cast > 0 ? Number(s.Cast) + " s" : "—", s.Area > 0 ? Number(s.Area) + " m" : "—" };
+            var detail = left.Find("DetailIcon").GetComponent<Image>(); detail.enabled = s != null;
+            if (s != null) detail.sprite = Sprite(t, "Icon_" + s.Icon);
+            left.Find("DetailTitle").GetComponent<TMP_Text>().text = s != null ? Text(s.NameKey) : "";
+            left.Find("DetailSubtitle").GetComponent<TMP_Text>().text = s != null ? Loc("element_" + s.Element) + " · " + Loc(KindKeys[(int)s.Kind]) + " · " + Loc("rank" + s.Rank) : "";
+            left.Find("DetailDescription").GetComponent<TMP_Text>().text = s != null ? Text(s.DescriptionKey) : "";
+            float area = s != null ? Area(s) : 0;
+            var values = s == null ? new[] { "—", "—", "—", "—" } : new[] { Number(s.Eitr), s.Power > 0 ? Number(s.Power) + " %" : "—", "—", area > 0 ? Number(area) + " m" : "—" };
             for (int i = 0; i < 4; i++) left.Find("Stat" + i + "/Value").GetComponent<TMP_Text>().text = values[i];
             for (int i = 0; i < 4; i++)
             {
-                var slot = left.Find("Slot" + i); var spell = installed[i] == null ? null : ById[installed[i]];
+                var slot = left.Find("Slot" + i); var spell = SpellSystem.Get(installed[i]);
                 var icon = slot.Find("Icon").GetComponent<Image>(); icon.enabled = spell != null;
                 if (spell != null) icon.sprite = Sprite(t, "Icon_" + spell.Icon);
-                slot.Find("Name").GetComponent<TMP_Text>().text = spell != null ? Loc("spell_" + spell.Id) : Loc("slot_empty");
+                slot.Find("Name").GetComponent<TMP_Text>().text = spell != null ? Text(spell.NameKey) : Loc("slot_empty");
             }
         }
 
-        static void Card(Transform p, Transform card, Spell s, string[] installedIds)
+        // Radius of the spell's explosion or area: its projectile's, else the area it leaves on impact.
+        static float Area(SpellSystem.Spell s)
         {
+            Projectile projectile;
+            try { projectile = SpellSystem.AttackFor(s)?.m_attackProjectile?.GetComponent<Projectile>(); }
+            catch (Exception) { return 0; }   // no game prefabs (Unity preview)
+            if (!projectile) return 0;
+            if (projectile.m_aoe > 0) return projectile.m_aoe;
+            var aoe = projectile.m_spawnOnHit ? projectile.m_spawnOnHit.GetComponent<Aoe>() : null;
+            return aoe ? aoe.m_radius : 0;
+        }
+
+        static void Card(Transform p, Transform card, SpellSystem.Spell s, string[] installedIds)
+        {
+            card.gameObject.SetActive(s != null);
+            if (s == null) return;
             bool known = s.Known, sel = s.Id == selected, installed = installedIds.Contains(s.Id);
             card.GetComponent<CanvasGroup>().alpha = known ? 1 : .55f;
             card.Find("SelectedGlow").gameObject.SetActive(sel);
@@ -206,9 +202,9 @@ namespace Overhaul.Magic
             card.Find("Equipped").gameObject.SetActive(installed);
             card.Find("Diamond").GetComponent<Image>().sprite = Sprite(p, sel || installed ? "DiamondCardGold" : "DiamondCardDim");
             var icon = card.Find("Icon").GetComponent<Image>();
-            icon.sprite = Sprite(p, "Icon_" + (known ? s.Icon : s.LockedIcon)); icon.color = new Color(1, 1, 1, known ? 1 : .6f);
+            icon.sprite = Sprite(p, "Icon_" + s.Icon + (known ? "" : "_Locked")); icon.color = new Color(1, 1, 1, known ? 1 : .6f);
             card.Find("Lock").gameObject.SetActive(!known);
-            var name = card.Find("Name").GetComponent<TMP_Text>(); name.text = Loc("spell_" + s.Id);
+            var name = card.Find("Name").GetComponent<TMP_Text>(); name.text = Text(s.NameKey);
             // The rank pips or the level line follow the name, one line lower for a two-line name (flex column of the mock-up).
             float width = ((RectTransform)name.transform).rect.width, one = name.GetPreferredValues("A", width, 0).y;
             float below = name.GetPreferredValues(name.text, width, 0).y > one * 1.5f ? 14.3f : 0;
@@ -233,9 +229,9 @@ namespace Overhaul.Magic
     internal sealed class GrimoireCard : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         public int Row, Col;
-        internal static GrimoireWindow.Spell Dragged;
+        internal static SpellSystem.Spell Dragged;
         public void OnPointerClick(PointerEventData e) { if (!e.dragging) GrimoireWindow.Select(GrimoireWindow.At(Row, Col)); }
-        public void OnBeginDrag(PointerEventData e) { var s = GrimoireWindow.At(Row, Col); if (!s.Known) return; Dragged = s; GrimoireWindow.BeginDrag(s); }
+        public void OnBeginDrag(PointerEventData e) { var s = GrimoireWindow.At(Row, Col); if (s == null || !s.Known) return; Dragged = s; GrimoireWindow.BeginDrag(s); }
         public void OnDrag(PointerEventData e) { }
         public void OnEndDrag(PointerEventData e) { Dragged = null; GrimoireWindow.EndDrag(); }
     }
