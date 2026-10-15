@@ -17,11 +17,14 @@ namespace Overhaul.Magic
             public string Prefab, Base, Model, Name;
             // Model piece name -> (game prefab holding the material, its material name).
             public Dictionary<string, (string prefab, string material)> Materials;
+            // Effects: the base staff's are removed and those around a game model are copied around one of ours (piece, game prefab).
+            public (string piece, string prefab) Effects;
         }
         internal static readonly Staff[] Staffs =
         {
             new Staff { Prefab = "Overhaul_MistlandStaff", Base = "StaffFireball", Model = "MistlandStaff_Model", Name = "$overhaul_staff_mistland",
-                Materials = new Dictionary<string, (string, string)> { { "Staff", ("StaffFireball", "staffs_mat") }, { "Totem_de_fuling", ("GoblinTotem", "Idol_mat") } } },
+                Materials = new Dictionary<string, (string, string)> { { "Staff", ("StaffFireball", "staffs_mat") }, { "Totem_de_fuling", ("GoblinTotem", "Idol_mat") } },
+                Effects = ("Totem_de_fuling", "GoblinTotem") },
         };
 
         static AssetBundle bundle;
@@ -41,6 +44,7 @@ namespace Overhaul.Magic
                 var shared = item.ItemDrop.m_itemData.m_shared;
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
                 Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => FindMaterial(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material)));
+                if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
             }
         }
@@ -74,6 +78,31 @@ namespace Overhaul.Magic
                 var lods = lod.GetLODs();
                 for (int i = 0; i < lods.Length; i++) if (lods[i].renderers.Contains(oldRenderer)) lods[i].renderers = lods[i].renderers.Where(x => x != oldRenderer).Concat(added).ToArray();
                 lod.SetLODs(lods);
+            }
+        }
+
+        // Removes the base staff's effects (the flames, embers, glow and light of its head and of its equipped state)
+        // and copies the effects that sit around the game model's mesh (its siblings: particles, lights) around our
+        // piece, moved and scaled from the game mesh's bounds to ours. Public for the Unity preview.
+        public static void SwapEffects(GameObject staff, string piece, GameObject source)
+        {
+            foreach (var t in staff.GetComponentsInChildren<Transform>(true).Where(t => t.name == "effects" || t.parent && t.parent.name == "equiped").ToArray()) Object.DestroyImmediate(t.gameObject);
+            var ours = staff.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name == piece);
+            var theirs = source ? source.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.GetComponent<MeshRenderer>()) : null;
+            if (!ours || !theirs) return;
+            // Game model bounds in its parent's space, ours in the staff host's space.
+            var tb = theirs.sharedMesh.bounds; var tm = Matrix4x4.TRS(theirs.transform.localPosition, theirs.transform.localRotation, theirs.transform.localScale);
+            Vector3 tc = tm.MultiplyPoint3x4(tb.center); float ts = tb.size.y * theirs.transform.localScale.y;
+            var ob = ours.sharedMesh.bounds; var host = ours.transform.parent;
+            Vector3 oc = ours.transform.localPosition + ours.transform.localRotation * Vector3.Scale(ours.transform.localScale, ob.center);
+            float scale = ob.size.y * ours.transform.localScale.y / ts;
+            foreach (Transform fx in theirs.transform.parent)
+            {
+                if (fx == theirs.transform || !(fx.GetComponentInChildren<ParticleSystem>(true) || fx.GetComponentInChildren<Light>(true))) continue;
+                var copy = Object.Instantiate(fx.gameObject, host, false); copy.name = fx.name;
+                copy.transform.localPosition = oc + (fx.localPosition - tc) * scale; copy.transform.localRotation = fx.localRotation; copy.transform.localScale = fx.localScale * scale;
+                foreach (var ps in copy.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+                foreach (var l in copy.GetComponentsInChildren<Light>(true)) l.range *= scale;
             }
         }
     }
