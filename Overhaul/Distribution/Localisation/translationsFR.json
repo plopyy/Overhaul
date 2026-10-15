@@ -2783,5 +2783,13 @@
   "overhaul_spell_lightning_desc": "Fait tomber la foudre là où vous visez, avec 35 % de chances d’étourdir 2 secondes chaque ennemi touché.",
   "overhaul_grimoire_tier1": "Tier I",
   "overhaul_grimoire_tier2": "Tier II",
-  "overhaul_grimoire_tier3": "Tier III"
+  "overhaul_grimoire_tier3": "Tier III",
+  "overhaul_food_yellowmushroomstew": "Ragoût de champignons jaunes",
+  "overhaul_food_yellowmushroomstew_desc": "Un ragoût épais aux champignons jaunes et au chardon, qui nourrit l’eitr.",
+  "overhaul_food_turnipmushroomsoup": "Soupe de navets aux champignons",
+  "overhaul_food_turnipmushroomsoup_desc": "Une soupe de navets aux champignons jaunes, relevée de sang, riche en eitr.",
+  "overhaul_food_onioninfusion": "Infusion d’oignon",
+  "overhaul_food_onioninfusion_desc": "Une infusion d’oignon et de champignons adoucie au miel, qui ravive l’eitr.",
+  "overhaul_food_cloudflatbread": "Galette de nuage",
+  "overhaul_food_cloudflatbread_desc": "Une galette d’orge aux baies de nuage et aux champignons jaunes, gorgée d’eitr."
 }

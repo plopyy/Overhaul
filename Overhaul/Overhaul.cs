@@ -62,6 +62,7 @@ namespace Overhaul
             DvergerCirclet.Initialize();
             Magic.StaffModels.Initialize();
             Magic.SpellSystem.Initialize();
+            Magic.EitrFoods.Initialize();
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
@@ -113,6 +114,7 @@ namespace Overhaul
             DvergerCirclet.Shutdown();
             Magic.StaffModels.Shutdown();
             Magic.SpellSystem.Shutdown();
+            Magic.EitrFoods.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();

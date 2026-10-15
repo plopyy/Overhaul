@@ -2680,5 +2680,13 @@
   "overhaul_spell_lightning_desc": "Strikes lightning where you aim, with a 35% chance to stun each enemy hit for 2 seconds.",
   "overhaul_grimoire_tier1": "Tier I",
   "overhaul_grimoire_tier2": "Tier II",
-  "overhaul_grimoire_tier3": "Tier III"
+  "overhaul_grimoire_tier3": "Tier III",
+  "overhaul_food_yellowmushroomstew": "Yellow mushroom stew",
+  "overhaul_food_yellowmushroomstew_desc": "A thick stew of yellow mushrooms and thistle that feeds your eitr.",
+  "overhaul_food_turnipmushroomsoup": "Turnip and mushroom soup",
+  "overhaul_food_turnipmushroomsoup_desc": "A turnip soup with yellow mushrooms and a dash of blood, rich in eitr.",
+  "overhaul_food_onioninfusion": "Onion infusion",
+  "overhaul_food_onioninfusion_desc": "An onion and mushroom infusion sweetened with honey that revives your eitr.",
+  "overhaul_food_cloudflatbread": "Cloud flatbread",
+  "overhaul_food_cloudflatbread_desc": "A barley flatbread with cloudberries and yellow mushrooms, full of eitr."
 }
