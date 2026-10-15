@@ -152,7 +152,7 @@ namespace Overhaul.Magic
 
             // Right page: the element's spells.
             var page = t.Find("RightPage");
-            page.Find("Header/ElementIcon").GetComponent<Image>().sprite = Sprite(t, "Icon_" + (element == "fire" ? "Burning" : element == "ice" ? "Frost" : "Lightning"));
+            page.Find("Header/ElementIcon").GetComponent<Image>().sprite = Sprite(t, "Icon_Element_" + (element == "fire" ? "Fire" : element == "ice" ? "Ice" : "Lightning"));
             page.Find("Header/ElementTitle").GetComponent<TMP_Text>().text = Loc("element_" + element);
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)page.Find("Header"));
             for (int row = 0; row < 4; row++)
