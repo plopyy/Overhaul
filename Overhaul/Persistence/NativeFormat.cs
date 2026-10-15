@@ -8,7 +8,11 @@ namespace Overhaul.Persistence
 {
     internal static class NativeFormat
     {
-        internal const int WorldVersion = 41;
+        // World format of the running game (41 up to 1.0.16, 42 since 1.0.20, whose chunk data is unchanged): written
+        // in new saves; any version from 41 up to it is read.
+        internal static readonly int WorldVersion = System.Linq.Enumerable.Max(System.Linq.Enumerable.Cast<int>(System.Enum.GetValues(typeof(global::Version.World))));
+        internal const int OldestWorldVersion = 41, CheckedWorldVersion = 42;
+        internal static bool Readable(int version) => version >= OldestWorldVersion && version <= WorldVersion;
         internal static readonly string[] Types = { "float", "vector3", "quaternion", "int", "long", "string", "bytes" };
         internal static BinaryReader Reader(byte[] data) => new BinaryReader(new MemoryStream(data, false), Encoding.UTF8);
         internal static float[] Vector(BinaryReader r, int count = 3)

@@ -43,11 +43,11 @@ namespace Overhaul.Persistence
                 using(var digest=SHA256.Create())hashes[name]=digest.ComputeHash(data);return data;
             }
             progress(0,"Reading complete native save " + generation);
-            using(var ok=NativeFormat.Reader(Read(prefix+".ok"))){if(ok.ReadInt32()!=NativeFormat.WorldVersion)throw new InvalidDataException("Invalid native completion marker");NativeFormat.End(ok);}
+            using(var ok=NativeFormat.Reader(Read(prefix+".ok"))){if(!NativeFormat.Readable(ok.ReadInt32()))throw new InvalidDataException("Invalid native completion marker");NativeFormat.End(ok);}
             var chunks=new List<Chunk>();int total;
             using(var map=NativeFormat.Reader(Read(prefix+".chunks")))
             {
-                if(map.ReadUInt16()!=NativeFormat.WorldVersion)throw new InvalidDataException("Unsupported chunk mapping version");
+                if(!NativeFormat.Readable(map.ReadUInt16()))throw new InvalidDataException("Unsupported chunk mapping version");
                 total=map.ReadInt32();int count=map.ReadInt32();if(total<0||count<0||count>65536)throw new InvalidDataException("Invalid native mapping count");
                 for(int i=0;i<count;i++)
                 {
@@ -72,7 +72,7 @@ namespace Overhaul.Persistence
                         new DatabaseRow("chunks","id,native_index,size_level,native_version,source_file,object_count",1,chunk.Id,chunk.Index,chunk.Size,chunk.Version,chunk.File,chunk.Count).Write(db);
                         using(var input=NativeFormat.Reader(Read(chunk.File)))
                         {
-                            if(input.ReadUInt16()!=NativeFormat.WorldVersion||input.ReadInt32()!=chunk.Count)throw new InvalidDataException("Chunk header does not match mapping: "+chunk.File);
+                            if(!NativeFormat.Readable(input.ReadUInt16())||input.ReadInt32()!=chunk.Count)throw new InvalidDataException("Chunk header does not match mapping: "+chunk.File);
                             for(int i=0;i<chunk.Count;i++)
                             {
                                 var record=NativeFormat.ReadObject(input,++id,chunk.Id,i,NameCatalog.Prefab,NameCatalog.Key);

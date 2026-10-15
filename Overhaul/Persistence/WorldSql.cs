@@ -36,14 +36,14 @@ namespace Overhaul.Persistence
             using(var outer=NativeFormat.Reader(fwl))
             using(var r=NativeFormat.Reader(NativeFormat.Bytes(outer)))
             {
-                NativeFormat.End(outer);if(r.ReadInt32()!=NativeFormat.WorldVersion)throw new InvalidDataException("Unsupported world metadata version");
+                NativeFormat.End(outer);if(!NativeFormat.Readable(r.ReadInt32()))throw new InvalidDataException("Unsupported world metadata version");
                 result.Name=r.ReadString();result.SeedName=r.ReadString();result.Seed=r.ReadInt32();result.Uid=r.ReadInt64();result.Generation=r.ReadInt32();result.NeedsData=r.ReadBoolean();
                 int count=r.ReadInt32();for(int i=0;i<count;i++)result.InitialKeys.Add(r.ReadString());
                 count=r.ReadInt32();for(int i=0;i<count;i++)result.Players.Add(new[]{r.ReadString(),r.ReadString(),r.ReadString(),r.ReadString()});NativeFormat.End(r);
             }
             using(var r=NativeFormat.Reader(db2))
             {
-                if(r.ReadInt32()!=NativeFormat.WorldVersion)throw new InvalidDataException("Unsupported world data version");result.Time=r.ReadDouble();
+                if(!NativeFormat.Readable(r.ReadInt32()))throw new InvalidDataException("Unsupported world data version");result.Time=r.ReadDouble();
                 using(var zones=NativeFormat.Reader(NativeFormat.Inflate(NativeFormat.Bytes(r))))
                 {
                     int count=zones.ReadInt32();for(int i=0;i<count;i++)result.Zones.Add(new int[]{zones.ReadInt16(),zones.ReadInt16()});
