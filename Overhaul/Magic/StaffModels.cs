@@ -71,8 +71,7 @@ namespace Overhaul.Magic
                 var item = new CustomItem(s.Prefab, s.Base, config);
                 var shared = item.ItemDrop.m_itemData.m_shared;
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
-                // Magic power replaces the damage: the base staff's damage only gives each damage type's share of it.
-                StaffMagic.Shares[s.Prefab] = shared.m_damages;
+                // Magic power replaces the damage (StaffMagic): the spell gives it its element.
                 shared.m_damages = new HitData.DamageTypes(); shared.m_damagesPerLevel = new HitData.DamageTypes();
                 if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse))));
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));

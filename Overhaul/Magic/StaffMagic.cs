@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HarmonyLib;
 using Overhaul.Rarity;
 using UnityEngine;
@@ -7,8 +6,9 @@ namespace Overhaul.Magic
 {
     // Magic power and spell slots of the Overhaul staffs (StaffModels). Magic power is the staff's base stat in place of
     // its blunt, fire... damage: it rises with the staff's tier and upgrade level, and the rarity bonus raises it like
-    // the other gear's damage. Until the grimoire spells are cast, the base staff's attack deals the magic power split
-    // like the base staff's damage. The 4 spell slots hold the ids of the grimoire spells installed in the staff, in
+    // the other gear's damage. Magic power has no element of its own: the spell cast turns all of it into its
+    // element's damage (100 power with a fire spell = 100 fire damage, with an ice spell = 100 frost damage). Until the
+    // grimoire spells are cast, the spell is the base staff's (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in
     // the item's own data, so each staff keeps its spells.
     internal static class StaffMagic
     {
@@ -16,8 +16,20 @@ namespace Overhaul.Magic
         internal const int SlotCount = 4;
         static string Key(Slot slot) => "overhaul_" + slot;
 
-        // Base staff's damage at quality 1, by Overhaul staff prefab: the share of each damage type.
-        internal static readonly Dictionary<string, HitData.DamageTypes> Shares = new Dictionary<string, HitData.DamageTypes>();
+        // Element of the spell the staff casts for now: its base staff's.
+        static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
+        // Damage dealt by a spell of the element (grimoire elements: fire, ice, lightning): the whole power in that type.
+        internal static HitData.DamageTypes SpellDamage(string element, float power)
+        {
+            var damage = new HitData.DamageTypes();
+            switch (element)
+            {
+                case "ice": damage.m_frost = power; break;
+                case "lightning": damage.m_lightning = power; break;
+                default: damage.m_fire = power; break;
+            }
+            return damage;
+        }
 
         internal static StaffModels.Staff Of(ItemDrop.ItemData item) =>
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
@@ -42,8 +54,8 @@ namespace Overhaul.Magic
             else item.m_customData[Key(slot)] = id;
         }
 
-        // The staff's damage is its magic power (before the rarity bonus, which ItemRarity applies after), split like the
-        // base staff's damage; enchantments still add to it after.
+        // The staff's damage is its magic power (before the rarity bonus, which ItemRarity applies after) in the element of
+        // the spell cast; enchantments still add to it after.
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetDamage), typeof(int), typeof(float))]
         static class Damage
         {
@@ -51,11 +63,8 @@ namespace Overhaul.Magic
             static void Postfix(ItemDrop.ItemData __instance, int quality, ref HitData.DamageTypes __result)
             {
                 var staff = Of(__instance);
-                if (staff == null || !Shares.TryGetValue(staff.Prefab, out var share)) return;
-                float total = share.GetTotalDamage();
-                if (total <= 0) return;
-                var damage = share; damage.Modify(BasePower(staff, quality) / total);
-                __result.Add(damage);
+                if (staff == null) return;
+                __result.Add(SpellDamage(CastElement(staff), BasePower(staff, quality)));
             }
         }
     }
