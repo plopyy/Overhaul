@@ -60,6 +60,7 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
+            Magic.StaffModels.Initialize();
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
@@ -109,6 +110,7 @@ namespace Overhaul
             Commands.AdminCommands.Clear();
             TarDrain.Shutdown();
             DvergerCirclet.Shutdown();
+            Magic.StaffModels.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();

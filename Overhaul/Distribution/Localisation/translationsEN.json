@@ -2722,5 +2722,7 @@
   "overhaul_settings_shortcuts": "Shortcuts",
   "overhaul_settings_gameplay": "Gameplay",
   "overhaul_grimoire_binding": "Grimoire",
-  "overhaul_grimoire_binding_tip": "Opens the grimoire (spell book). Default: F1."
+  "overhaul_grimoire_binding_tip": "Opens the grimoire (spell book). Default: F1.",
+  "overhaul_staff_mistland": "Mistlands staff",
+  "overhaul_staff_mistland_description": "Demo staff made from the staff of embers and a fuling totem. Keeps the staff of embers’ spells and effects for now."
 }

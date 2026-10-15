@@ -185,6 +185,7 @@
     <EmbeddedResource Include="Distribution\*.cfg"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Distribution\Localisation\*.json"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_dash">
       <LogicalName>Overhaul.Assets.overhaul_dash</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_staffs"><LogicalName>Overhaul.Assets.overhaul_staffs</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_shields">
       <LogicalName>Overhaul.Assets.overhaul_shields</LogicalName>
     </EmbeddedResource>
