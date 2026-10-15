@@ -2826,6 +2826,6 @@
   "overhaul_settings_gameplay": "Jeu",
   "overhaul_grimoire_binding": "Grimoire",
   "overhaul_grimoire_binding_tip": "Ouvre le grimoire (livre de sorts). Par défaut : F1.",
-  "overhaul_staff_mistland": "Bâton des brumes",
-  "overhaul_staff_mistland_description": "Bâton de démonstration fait du bâton de braises et d’un totem de fuling. Garde pour l’instant les sorts et les effets du bâton de braises."
+  "overhaul_staff_plains": "Bâton totémique",
+  "overhaul_staff_plains_description": "Bâton des Plaines, en bois fin cerclé de métal noir, portant un totem de fuling. Garde pour l’instant les sorts du bâton de braises."
 }

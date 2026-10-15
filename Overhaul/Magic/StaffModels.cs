@@ -8,23 +8,26 @@ using UnityEngine;
 namespace Overhaul.Magic
 {
     // Overhaul staffs made from a game staff with a new model (overhaul_staffs bundle, <Model>_Model prefabs). The
-    // model's pieces take the game's own materials, named after the piece; the effects, attack and stats of the base
-    // staff stay until the magic system gives each staff its own. No recipe yet: spawn with the console.
+    // model's pieces take the game's own materials (a copy with a new diffuse when the model brings one); the base
+    // staff's effects are swapped for a game object's; attack and stats stay the base staff's until the magic system
+    // gives each staff its own. No recipe yet: spawn with the console.
     internal static class StaffModels
     {
         internal sealed class Staff
         {
             public string Prefab, Base, Model, Name;
-            // Model piece name -> (game prefab holding the material, its material name).
-            public Dictionary<string, (string prefab, string material)> Materials;
+            // Model piece name -> (game prefab holding the material, its material name, diffuse texture of the bundle or null).
+            public Dictionary<string, (string prefab, string material, string diffuse)> Materials;
             // Effects: the base staff's are removed and those around a game model are copied around one of ours (piece, game prefab).
             public (string piece, string prefab) Effects;
         }
         internal static readonly Staff[] Staffs =
         {
-            new Staff { Prefab = "Overhaul_MistlandStaff", Base = "StaffFireball", Model = "MistlandStaff_Model", Name = "$overhaul_staff_mistland",
-                Materials = new Dictionary<string, (string, string)> { { "Staff", ("StaffFireball", "staffs_mat") }, { "Totem_de_fuling", ("GoblinTotem", "Idol_mat") } },
-                Effects = ("Totem_de_fuling", "GoblinTotem") },
+            // Plains: the staff of embers' wood with its own diffuse, black metal rings, a fuling totem.
+            new Staff { Prefab = "Overhaul_PlainsStaff", Base = "StaffFireball", Model = "PlainsStaff_Model", Name = "$overhaul_staff_plains",
+                Materials = new Dictionary<string, (string, string, string)> {
+                    { "Wood", ("StaffFireball", "staffs_mat", "PlainsStaff_d") }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "Totem", ("GoblinTotem", "Idol_mat", null) } },
+                Effects = ("Totem", "GoblinTotem") },
         };
 
         static AssetBundle bundle;
@@ -43,13 +46,24 @@ namespace Overhaul.Magic
                 var item = new CustomItem(s.Prefab, s.Base);
                 var shared = item.ItemDrop.m_itemData.m_shared;
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
-                Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => FindMaterial(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material)));
+                Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse))));
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
             }
         }
         static Material FindMaterial(GameObject prefab, string name) =>
             prefab ? prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name) : null;
+        // The game material, or a copy of it with another diffuse (normal, emission, metal and gloss kept); the new
+        // texture samples like the one it replaces. Public for the Unity preview.
+        public static Material Material(GameObject prefab, string name, Texture2D diffuse)
+        {
+            var game = FindMaterial(prefab, name);
+            if (!game || !diffuse) return game;
+            var copy = new Material(game) { name = name + "_" + diffuse.name };
+            if (game.mainTexture) { diffuse.filterMode = game.mainTexture.filterMode; diffuse.wrapMode = game.mainTexture.wrapMode; }
+            copy.mainTexture = diffuse;
+            return copy;
+        }
 
         // Puts the model in place of the base staff's mesh: same parent and local transform (the model is authored in
         // the base mesh's space), each piece with its game material; the LOD keeps the new renderers. Public for the
