@@ -5,10 +5,11 @@ using UnityEngine;
 namespace Overhaul.Magic
 {
     // Magic power and spell slots of the Overhaul staffs (StaffModels). Magic power is the staff's base stat in place of
-    // its blunt, fire... damage: it rises with the staff's tier and upgrade level, and the rarity bonus raises it like
-    // the other gear's damage. Magic power has no element of its own: the spell cast turns all of it into its
-    // element's damage (100 power with a fire spell = 100 fire damage, with an ice spell = 100 frost damage). Until the
-    // grimoire spells are cast, the spell is the base staff's (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in
+    // its blunt, fire... damage: it rises with the staff's tier and upgrade level, the rarity bonus raises it like the
+    // other gear's damage, then the effects of Effects.cfg add to it: MagicPower (flat, enchantment of the staff) and
+    // MagicPowerBonus (percent, the player's spells, buffs, class skills...). Magic power has no element of its own:
+    // a spell deals its percent of it as its element's damage (fireball 120 % with 100 power = 120 fire damage). Until
+    // the grimoire spells are cast, the spell is the base staff's at 100 % (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in
     // the item's own data, so each staff keeps its spells.
     internal static class StaffMagic
     {
@@ -18,15 +19,15 @@ namespace Overhaul.Magic
 
         // Element of the spell the staff casts for now: its base staff's.
         static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
-        // Damage dealt by a spell of the element (grimoire elements: fire, ice, lightning): the whole power in that type.
-        internal static HitData.DamageTypes SpellDamage(string element, float power)
+        // Damage dealt by a spell of the element (grimoire elements: fire, ice, lightning) worth percent of the power.
+        internal static HitData.DamageTypes SpellDamage(string element, float percent, float power)
         {
-            var damage = new HitData.DamageTypes();
+            var damage = new HitData.DamageTypes(); float value = power * percent / 100f;
             switch (element)
             {
-                case "ice": damage.m_frost = power; break;
-                case "lightning": damage.m_lightning = power; break;
-                default: damage.m_fire = power; break;
+                case "ice": damage.m_frost = value; break;
+                case "lightning": damage.m_lightning = value; break;
+                default: damage.m_fire = value; break;
             }
             return damage;
         }
@@ -35,14 +36,16 @@ namespace Overhaul.Magic
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
 
-        static float BasePower(StaffModels.Staff staff, int quality) => staff.Power + Mathf.Max(0, quality - 1) * staff.PowerPerLevel;
-        // Magic power shown and used, rarity bonus included; null for any other item (tooltip hook).
+        // Magic power of the staff for the local player (its wielder): base by tier and upgrade level, rarity bonus, the
+        // staff's MagicPower and the player's MagicPowerBonus; null for any other item (tooltip hook).
         internal static float? Power(ItemDrop.ItemData item, int quality)
         {
             var staff = Of(item);
             if (staff == null) return null;
             if (quality < 0) quality = item.m_quality;
-            return Mathf.Round(BasePower(staff, quality) * ItemRarity.Multiplier(item) * 10f) / 10f;
+            float power = (staff.Power + Mathf.Max(0, quality - 1) * staff.PowerPerLevel) * ItemRarity.Multiplier(item) + Enchantments.ItemValue(item, "MagicPower");
+            power *= 1f + Effects.Effects.Get(Player.m_localPlayer, "MagicPowerBonus") / 100f;
+            return Mathf.Round(Mathf.Max(0, power) * 10f) / 10f;
         }
 
         internal static string Spell(ItemDrop.ItemData item, Slot slot) =>
@@ -54,8 +57,9 @@ namespace Overhaul.Magic
             else item.m_customData[Key(slot)] = id;
         }
 
-        // The staff's damage is its magic power (before the rarity bonus, which ItemRarity applies after) in the element of
-        // the spell cast; enchantments still add to it after.
+        // The staff's damage is the spell's share of its magic power, in the spell's element. The rarity bonus is already
+        // in the power, so ItemRarity's multiplier (run after) is taken back out; the staff's other enchantments
+        // (FireDmg...) still add to it after.
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetDamage), typeof(int), typeof(float))]
         static class Damage
         {
@@ -64,7 +68,7 @@ namespace Overhaul.Magic
             {
                 var staff = Of(__instance);
                 if (staff == null) return;
-                __result.Add(SpellDamage(CastElement(staff), BasePower(staff, quality)));
+                __result.Add(SpellDamage(CastElement(staff), 100f, Power(__instance, quality).Value / ItemRarity.Multiplier(__instance)));
             }
         }
     }

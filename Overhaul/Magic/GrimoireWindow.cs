@@ -21,7 +21,7 @@ namespace Overhaul.Magic
         internal enum Kind { Normal, Special, Shield }
         internal sealed class Spell
         {
-            public string Id, Element, Icon, LockedIcon; public Kind Kind; public int Rank, Level; public float Eitr, Damage, Cast, Area; public bool PerSecond;
+            public string Id, Element, Icon, LockedIcon; public Kind Kind; public int Rank, Level; public float Eitr, Power, Cast, Area; public bool PerSecond;
             public bool Known => Rank == 1;
         }
 
@@ -48,27 +48,27 @@ namespace Overhaul.Magic
 
         static GrimoireWindow()
         {
-            // id, icon, locked icon, eitr, damage, cast time, area for ranks I, II, III of each row.
-            Row("fire", 0, "Burning", "Burning_Locked", ("firebolt", 8, 14, .3f, 0), ("searingbolt", 10, 20, .3f, 0), ("emberburst", 14, 30, .4f, 2));
-            Row("fire", 1, "StaffFireball", "StaffFireball_Locked", ("fireball", 35, 72, 1.4f, 4), ("meteor", 45, 110, 1.8f, 5), ("comet", 60, 160, 2.2f, 6));
-            Row("fire", 2, "Burning_Nova", "Burning_Locked", ("flamenova", 50, 60, .8f, 6), ("flamering", 60, 85, .9f, 7), ("blaze", 75, 120, 1f, 9));
+            // id, icon, locked icon, eitr, damage (% of the staff's magic power, in the spell's element), cast time, area for ranks I, II, III of each row.
+            Row("fire", 0, "Burning", "Burning_Locked", ("firebolt", 8, 25, .3f, 0), ("searingbolt", 10, 35, .3f, 0), ("emberburst", 14, 50, .4f, 2));
+            Row("fire", 1, "StaffFireball", "StaffFireball_Locked", ("fireball", 35, 120, 1.4f, 4), ("meteor", 45, 185, 1.8f, 5), ("comet", 60, 265, 2.2f, 6));
+            Row("fire", 2, "Burning_Nova", "Burning_Locked", ("flamenova", 50, 100, .8f, 6), ("flamering", 60, 140, .9f, 7), ("blaze", 75, 200, 1f, 9));
             Row("fire", 3, "shield_banded2", "shield_banded2_Locked", ("emberaegis", 2, 0, 0, 0), ("blazingaegis", 3, 0, 0, 0), ("ashmantle", 4, 0, 0, 0));
-            Row("ice", 0, "Frost", "Frost_Locked", ("iceshard", 8, 12, .3f, 0), ("frostblade", 10, 18, .3f, 0), ("shardstorm", 14, 26, .4f, 2));
-            Row("ice", 1, "Cold", "Cold_Locked", ("icejavelin", 32, 64, 1.3f, 0), ("glacialspear", 42, 96, 1.6f, 0), ("avalanche", 58, 140, 2f, 5));
-            Row("ice", 2, "Frost", "Frost_Locked", ("hail", 45, 50, 1f, 6), ("blizzard", 58, 75, 1.2f, 8), ("eternalwinter", 72, 105, 1.4f, 10));
+            Row("ice", 0, "Frost", "Frost_Locked", ("iceshard", 8, 20, .3f, 0), ("frostblade", 10, 30, .3f, 0), ("shardstorm", 14, 45, .4f, 2));
+            Row("ice", 1, "Cold", "Cold_Locked", ("icejavelin", 32, 105, 1.3f, 0), ("glacialspear", 42, 160, 1.6f, 0), ("avalanche", 58, 235, 2f, 5));
+            Row("ice", 2, "Frost", "Frost_Locked", ("hail", 45, 85, 1f, 6), ("blizzard", 58, 125, 1.2f, 8), ("eternalwinter", 72, 175, 1.4f, 10));
             Row("ice", 3, "Shield_Frost", "shield_banded2_Locked", ("frostaegis", 2, 0, 0, 0), ("rimeaegis", 3, 0, 0, 0), ("glacialmantle", 4, 0, 0, 0));
-            Row("lightning", 0, "Lightning", "Lightning_Locked", ("spark", 7, 13, .2f, 0), ("arc", 9, 19, .2f, 0), ("stormbolt", 13, 28, .3f, 0));
-            Row("lightning", 1, "StaffLightning", "StaffLightning_Locked", ("lightningstrike", 30, 60, 1.2f, 2), ("thunderbolt", 40, 92, 1.5f, 3), ("skywrath", 55, 135, 1.9f, 4));
-            Row("lightning", 2, "Lightning_Bright", "Lightning_Locked", ("chainlightning", 48, 55, .9f, 8), ("storm", 60, 80, 1.1f, 10), ("tempest", 75, 115, 1.3f, 12));
+            Row("lightning", 0, "Lightning", "Lightning_Locked", ("spark", 7, 20, .2f, 0), ("arc", 9, 30, .2f, 0), ("stormbolt", 13, 45, .3f, 0));
+            Row("lightning", 1, "StaffLightning", "StaffLightning_Locked", ("lightningstrike", 30, 100, 1.2f, 2), ("thunderbolt", 40, 155, 1.5f, 3), ("skywrath", 55, 225, 1.9f, 4));
+            Row("lightning", 2, "Lightning_Bright", "Lightning_Locked", ("chainlightning", 48, 90, .9f, 8), ("storm", 60, 135, 1.1f, 10), ("tempest", 75, 190, 1.3f, 12));
             Row("lightning", 3, "Shield_Storm", "shield_banded2_Locked", ("stormaegis", 2, 0, 0, 0), ("thunderaegis", 3, 0, 0, 0), ("stormmantle", 4, 0, 0, 0));
         }
-        static void Row(string el, int row, string icon, string locked, params (string id, float eitr, float damage, float cast, float area)[] ranks)
+        static void Row(string el, int row, string icon, string locked, params (string id, float eitr, float power, float cast, float area)[] ranks)
         {
             if (!Book.TryGetValue(el, out var grid)) Book[el] = grid = new Spell[4, 3];
             for (int r = 0; r < 3; r++)
             {
-                var (id, eitr, damage, cast, area) = ranks[r];
-                var spell = new Spell { Id = id, Element = el, Icon = icon, LockedIcon = locked, Kind = RowKinds[row], Rank = r + 1, Level = r == 0 ? 0 : r == 1 ? 20 : 35, Eitr = eitr, Damage = damage, Cast = cast, Area = area, PerSecond = RowKinds[row] == Kind.Shield };
+                var (id, eitr, power, cast, area) = ranks[r];
+                var spell = new Spell { Id = id, Element = el, Icon = icon, LockedIcon = locked, Kind = RowKinds[row], Rank = r + 1, Level = r == 0 ? 0 : r == 1 ? 20 : 35, Eitr = eitr, Power = power, Cast = cast, Area = area, PerSecond = RowKinds[row] == Kind.Shield };
                 grid[row, r] = spell; ById[id] = spell;
             }
         }
@@ -185,7 +185,7 @@ namespace Overhaul.Magic
             left.Find("DetailTitle").GetComponent<TMP_Text>().text = Loc("spell_" + s.Id);
             left.Find("DetailSubtitle").GetComponent<TMP_Text>().text = Loc("element_" + s.Element) + " · " + Loc(KindKeys[(int)s.Kind]) + " · " + Loc("rank" + s.Rank);
             left.Find("DetailDescription").GetComponent<TMP_Text>().text = Loc("spell_" + s.Id + "_desc");
-            var values = new[] { Number(s.Eitr) + (s.PerSecond ? "/s" : ""), s.Damage > 0 ? Number(s.Damage) : "—", s.Cast > 0 ? Number(s.Cast) + " s" : "—", s.Area > 0 ? Number(s.Area) + " m" : "—" };
+            var values = new[] { Number(s.Eitr) + (s.PerSecond ? "/s" : ""), s.Power > 0 ? Number(s.Power) + " %" : "—", s.Cast > 0 ? Number(s.Cast) + " s" : "—", s.Area > 0 ? Number(s.Area) + " m" : "—" };
             for (int i = 0; i < 4; i++) left.Find("Stat" + i + "/Value").GetComponent<TMP_Text>().text = values[i];
             for (int i = 0; i < 4; i++)
             {

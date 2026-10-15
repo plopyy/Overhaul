@@ -2840,5 +2840,9 @@
   "overhaul_staff_mistlands": "Bâton des brumes",
   "overhaul_staff_mistlands_description": "Bâton des Brumes, en bois d’Yggdrasil cerclé de métal noir, autour d’un noyau noir. Ses sorts se choisissent dans le grimoire.",
   "overhaul_staff_ashlands": "Bâton de cendre",
-  "overhaul_staff_ashlands_description": "Bâton des Terres cendrées, en bois noir cerclé de flamétal, autour d’un noyau en fusion. Ses sorts se choisissent dans le grimoire."
+  "overhaul_staff_ashlands_description": "Bâton des Terres cendrées, en bois noir cerclé de flamétal, autour d’un noyau en fusion. Ses sorts se choisissent dans le grimoire.",
+  "overhaul_effect_magicpower": "Puissance magique",
+  "overhaul_effect_magicpower_desc": "Puissance magique du bâton, convertie en dégâts par ses sorts",
+  "overhaul_effect_magicpowerbonus": "Puissance magique",
+  "overhaul_effect_magicpowerbonus_desc": "Bonus de puissance magique de tous les bâtons"
 }
