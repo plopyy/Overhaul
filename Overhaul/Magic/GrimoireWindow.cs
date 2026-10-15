@@ -174,7 +174,7 @@ namespace Overhaul.Magic
                 var slot = left.Find("Slot" + i); var spell = SpellSystem.Get(installed[i]);
                 var icon = slot.Find("Icon").GetComponent<Image>(); icon.enabled = spell != null;
                 if (spell != null) icon.sprite = Sprite(t, "Icon_" + spell.Icon);
-                slot.Find("Name").GetComponent<TMP_Text>().text = spell != null ? Text(spell.NameKey) : Loc("slot_empty");
+                slot.Find("Name").GetComponent<TMP_Text>().text = spell != null ? Text(spell.NameKey) : "";
             }
         }
 
