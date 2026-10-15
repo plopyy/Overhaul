@@ -99,8 +99,6 @@ namespace AugaUnity
         public static Func<Player, bool> HasProjectileStat;
         // Overhaul staff shield absorb for an item and quality (null when the item is not a staff).
         public static Func<ItemDrop.ItemData, int, float?> StaffShield;
-        // Items whose generic damage is magic power (Overhaul staffs): that line is named magic power.
-        public static Func<ItemDrop.ItemData, bool> MagicPower;
         private const string StatLabelColor = "#FFF0AD";
         public static bool UsesProjectiles(ItemDrop.ItemData item)
         {
@@ -668,8 +666,9 @@ namespace AugaUnity
 
             Player.m_localPlayer.GetSkills().GetRandomSkillRange(out var min, out var max, skillType);
 
+            // Overhaul keeps the generic damage for magic: it is the weapon's magic power, turned into the element of its spells.
             if (damage.m_damage != 0.0f)
-                AddDamageLine(textBox, item, MagicPower != null && MagicPower(item) ? "$overhaul_magic_power" : "$inventory_damage", damage.m_damage, previousDamage.m_damage, min, max, upgrade);
+                AddDamageLine(textBox, item, "$overhaul_magic_power", damage.m_damage, previousDamage.m_damage, min, max, upgrade);
             if (damage.m_blunt != 0.0f)
                 AddDamageLine(textBox, item, "$inventory_blunt", damage.m_blunt, previousDamage.m_blunt, min, max, upgrade);
             if (damage.m_slash != 0.0f)

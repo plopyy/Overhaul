@@ -160,6 +160,7 @@ namespace Overhaul.Rarity
                         case "PoisonDmg": __result.m_poison += v; break;
                         case "SpiritDmg": __result.m_spirit += v; break;
                         case "PhysicDmg": __result.m_blunt *= pct; __result.m_slash *= pct; __result.m_pierce *= pct; break;
+                        case "MagicDmg": __result.m_damage *= pct; __result.m_fire *= pct; __result.m_frost *= pct; __result.m_lightning *= pct; break;
                         case "MiningDmg": __result.m_pickaxe *= pct; break;
                         case "ChoppingDmg": __result.m_chop *= pct; break;
                     }

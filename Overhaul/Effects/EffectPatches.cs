@@ -180,6 +180,8 @@ namespace Overhaul.Effects
                 hit.m_damage.m_blunt *= Kept(__instance, "ResistBlunt");
                 hit.m_damage.m_slash *= Kept(__instance, "ResistSlash");
                 hit.m_damage.m_pierce *= Kept(__instance, "ResistPierce");
+                float magic = Kept(__instance, "ResistMagic");
+                hit.m_damage.m_fire *= magic; hit.m_damage.m_frost *= magic; hit.m_damage.m_lightning *= magic;
             }
 
             private static float Kept(Character character, string id) => 1 - Mathf.Clamp01(Pct(character, id));

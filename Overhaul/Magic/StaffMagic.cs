@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
@@ -21,7 +22,6 @@ namespace Overhaul.Magic
         internal static StaffModels.Staff Of(ItemDrop.ItemData item) =>
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
-
 
         // Element of the spell the staff casts for now: its base staff's.
         static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
@@ -60,6 +60,22 @@ namespace Overhaul.Magic
             {
                 var staff = Of(item);
                 if (staff != null && hitData != null) Convert(ref hitData.m_damage, CastElement(staff), 100f);
+            }
+        }
+
+        // Magic power only serves spells: what is left of it in a player's hit (a weapon struck or shot without a
+        // spell) is dropped, never dealt as raw damage. Every damageable object (creatures, buildings, trees, rocks...).
+        [HarmonyPatch]
+        static class NoSpellHit
+        {
+            static IEnumerable<MethodBase> TargetMethods() =>
+                typeof(IDestructible).Assembly.GetTypes()
+                    .Where(t => typeof(IDestructible).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
+                    .Select(t => AccessTools.Method(t, "Damage", new[] { typeof(HitData) }))
+                    .Where(m => m != null && m.DeclaringType != null && !m.IsAbstract).Distinct();
+            static void Prefix(HitData hit)
+            {
+                if (hit != null && hit.m_damage.m_damage != 0 && hit.GetAttacker() is Player) hit.m_damage.m_damage = 0;
             }
         }
     }

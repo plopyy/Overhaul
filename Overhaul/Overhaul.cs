@@ -51,7 +51,6 @@ namespace Overhaul
             AugaUnity.ComplexTooltip.FoodDuration = Leveling.NutritionDuration.Preview;
             AugaUnity.ComplexTooltip.ElementStatBonus = (player, stat) => Leveling.LevelingEffects.Bonus(player, stat);
             AugaUnity.ComplexTooltip.StaffShield = DynamicCombat.StaffShieldAbsorb;
-            AugaUnity.ComplexTooltip.MagicPower = Magic.StaffMagic.IsStaff;
             AugaUnity.ComplexTooltip.HasProjectileStat = player =>
             {
                 var state=Leveling.LevelingEffects.State(player);

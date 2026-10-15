@@ -27,7 +27,7 @@ namespace Overhaul.Effects
             "ResistFire", "ResistFrost", "ResistLightning", "ResistPoison", "ResistSpirit", "ResistBlunt", "ResistSlash", "ResistPierce",
             "ParryBonus", "BackstabBonus", "Knockback", "LifeSteal", "DamageReflect", "HarvestBonus", "CarryWeight",
             "CritChance", "LootBonus", "Indestructible", "ExplosiveProjectile", "CastSpeed",
-            "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg", "UnlimitedAmmo", "MagicPower",
+            "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg", "UnlimitedAmmo", "MagicPower", "MagicDmg", "ResistMagic",
         };
         internal static bool Known(string id) => Implemented.Contains(id);
 
@@ -35,7 +35,7 @@ namespace Overhaul.Effects
         // Indestructible and ExplosiveProjectile act on that item only. Equipment does not add them to the player's totals.
         internal static readonly HashSet<string> ItemEffects = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "FireDmg", "FrostDmg", "LightningDmg", "PoisonDmg", "SpiritDmg", "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg",
+            "FireDmg", "FrostDmg", "LightningDmg", "PoisonDmg", "SpiritDmg", "PhysicDmg", "MagicDmg", "Armor", "MiningDmg", "ChoppingDmg",
             "Indestructible", "ExplosiveProjectile", "UnlimitedAmmo",
         };
 
