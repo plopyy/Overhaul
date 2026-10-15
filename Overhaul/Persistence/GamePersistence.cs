@@ -55,7 +55,6 @@ namespace Overhaul.Persistence
         {
             var world=ZNet.m_world;
             if(!net.IsServer()||world==null||world.m_menu||world.m_fileSource!=FileHelpers.FileSource.Local)return false;
-            if(NativeFormat.WorldVersion>NativeFormat.CheckedWorldVersion)Utility.Log.LogWarning("World format "+NativeFormat.WorldVersion+" of this Valheim version was not checked against the SQLite world storage (checked up to "+NativeFormat.CheckedWorldVersion+")");
             Close();loading=true;session=net;sessionUid=world.m_uid;nextId=0;FileStream startupOwnership=null;
             try
             {
