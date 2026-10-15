@@ -2739,7 +2739,5 @@
   "overhaul_staff_ashlands": "Ash staff",
   "overhaul_staff_ashlands_description": "Ashlands staff of blackwood ringed with flametal, around a molten core. Its spells are chosen in the grimoire.",
   "overhaul_effect_magicpower": "Magic power",
-  "overhaul_effect_magicpower_desc": "Magic power of the staff, turned into damage by its spells",
-  "overhaul_effect_magicpowerbonus": "Magic power",
-  "overhaul_effect_magicpowerbonus_desc": "Magic power bonus of every staff"
+  "overhaul_effect_magicpower_desc": "Magic power bonus, added to the equipped staff's"
 }

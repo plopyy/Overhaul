@@ -6,11 +6,11 @@ namespace Overhaul.Magic
 {
     // Magic power and spell slots of the Overhaul staffs (StaffModels). Magic power is the staff's base stat in place of
     // its blunt, fire... damage: it rises with the staff's tier and upgrade level, the rarity bonus raises it like the
-    // other gear's damage, then the effects of Effects.cfg add to it: MagicPower (flat, enchantment of the staff) and
-    // MagicPowerBonus (percent, the player's spells, buffs, class skills...). Magic power has no element of its own:
-    // a spell deals its percent of it as its element's damage (fireball 120 % with 100 power = 120 fire damage). Until
-    // the grimoire spells are cast, the spell is the base staff's at 100 % (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in
-    // the item's own data, so each staff keeps its spells.
+    // other gear's damage, then the player's MagicPower effect (Effects.cfg, flat: gear enchantments, class skills,
+    // buffs...) adds to it. Magic power has no element of its own: a spell deals its percent of it as its element's
+    // damage (fireball 120 % with 100 power = 120 fire damage). Until the grimoire spells are cast, the spell is the
+    // base staff's at 100 % (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire
+    // spells installed in the staff, in the item's own data, so each staff keeps its spells.
     internal static class StaffMagic
     {
         internal enum Slot { NormalSpell1, NormalSpell2, SpecialSpell, ShieldSpell }
@@ -36,15 +36,14 @@ namespace Overhaul.Magic
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
 
-        // Magic power of the staff for the local player (its wielder): base by tier and upgrade level, rarity bonus, the
-        // staff's MagicPower and the player's MagicPowerBonus; null for any other item (tooltip hook).
+        // Magic power of the staff for the local player (its wielder): base by tier and upgrade level with the rarity bonus,
+        // plus the player's MagicPower effect; null for any other item (tooltip hook).
         internal static float? Power(ItemDrop.ItemData item, int quality)
         {
             var staff = Of(item);
             if (staff == null) return null;
             if (quality < 0) quality = item.m_quality;
-            float power = (staff.Power + Mathf.Max(0, quality - 1) * staff.PowerPerLevel) * ItemRarity.Multiplier(item) + Enchantments.ItemValue(item, "MagicPower");
-            power *= 1f + Effects.Effects.Get(Player.m_localPlayer, "MagicPowerBonus") / 100f;
+            float power = (staff.Power + Mathf.Max(0, quality - 1) * staff.PowerPerLevel) * ItemRarity.Multiplier(item) + Effects.Effects.Get(Player.m_localPlayer, "MagicPower");
             return Mathf.Round(Mathf.Max(0, power) * 10f) / 10f;
         }
 
@@ -57,9 +56,8 @@ namespace Overhaul.Magic
             else item.m_customData[Key(slot)] = id;
         }
 
-        // The staff's damage is the spell's share of its magic power, in the spell's element. The rarity bonus is already
-        // in the power, so ItemRarity's multiplier (run after) is taken back out; the staff's other enchantments
-        // (FireDmg...) still add to it after.
+        // The staff's damage is the spell's share of its magic power, in the spell's element. The rarity bonus is in the
+        // power (ItemRarity leaves staffs out of its multiplier); the staff's other enchantments (FireDmg...) still add after.
         [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetDamage), typeof(int), typeof(float))]
         static class Damage
         {
@@ -68,7 +66,7 @@ namespace Overhaul.Magic
             {
                 var staff = Of(__instance);
                 if (staff == null) return;
-                __result.Add(SpellDamage(CastElement(staff), 100f, Power(__instance, quality).Value / ItemRarity.Multiplier(__instance)));
+                __result.Add(SpellDamage(CastElement(staff), 100f, Power(__instance, quality).Value));
             }
         }
     }
