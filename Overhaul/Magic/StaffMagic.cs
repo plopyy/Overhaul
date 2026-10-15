@@ -22,9 +22,6 @@ namespace Overhaul.Magic
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
 
-        // Magic power of the staff, from its usual damage; null for any other item (tooltip hook).
-        internal static float? Power(ItemDrop.ItemData item, int quality) =>
-            IsStaff(item) ? item.GetDamage(quality < 0 ? item.m_quality : quality, Game.m_worldLevel).m_damage : (float?)null;
 
         // Element of the spell the staff casts for now: its base staff's.
         static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
