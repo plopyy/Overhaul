@@ -144,9 +144,10 @@ namespace Overhaul.Rarity
         {
             private static void Postfix(ItemDrop.ItemData __instance, ref HitData.DamageTypes __result)
             {
-                // Overhaul staffs carry the rarity bonus in their magic power (StaffMagic).
-                float multiplier = Magic.StaffMagic.IsStaff(__instance) ? 1f : Multiplier(__instance);
+                float multiplier = Multiplier(__instance);
                 if (multiplier != 1f) __result.Modify(multiplier);
+                // Magic power effect (gear, class skills, buffs) of the wielder, added to an Overhaul staff's magic power.
+                if (Magic.StaffMagic.IsStaff(__instance)) __result.m_damage += Effects.Effects.Get(Player.m_localPlayer, "MagicPower");
                 // The item's damage enchantments, after the rarity bonus: elements are flat, the others percents.
                 foreach (var line in Enchantments.Of(__instance))
                 {

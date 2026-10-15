@@ -1,50 +1,43 @@
+using System.Collections.Generic;
+using System.Reflection;
 using HarmonyLib;
-using Overhaul.Rarity;
-using UnityEngine;
 
 namespace Overhaul.Magic
 {
-    // Magic power and spell slots of the Overhaul staffs (StaffModels). Magic power is the staff's base stat in place of
-    // its blunt, fire... damage: it rises with the staff's tier and upgrade level, the rarity bonus raises it like the
-    // other gear's damage, then the player's MagicPower effect (Effects.cfg, flat: gear enchantments, class skills,
-    // buffs...) adds to it. Magic power has no element of its own: a spell deals its percent of it as its element's
-    // damage (fireball 120 % with 100 power = 120 fire damage). Until the grimoire spells are cast, the spell is the
-    // base staff's at 100 % (staff of embers: fire, frost staff: ice). The 4 spell slots hold the ids of the grimoire
-    // spells installed in the staff, in the item's own data, so each staff keeps its spells.
+    // Magic power and spell slots of the Overhaul staffs (StaffModels). Magic power is the staff's damage stat in place
+    // of its blunt, fire... damage, held in the item's generic damage (m_damage) so it goes through the usual damage
+    // computation: upgrade levels (m_damagesPerLevel), rarity bonus and the MagicPower effect (Effects.cfg, flat: gear
+    // enchantments, class skills, buffs...) added with the other damage effects (ItemRarity). Magic power has no element
+    // of its own: when a spell hits, its percent of it becomes its element's damage (fireball 120 % with 100 power = 120
+    // fire damage). Until the grimoire spells are cast, the spell is the base staff's at 100 % (staff of embers: fire,
+    // frost staff: ice). The 4 spell slots hold the ids of the grimoire spells installed in the staff, in the item's own
+    // data, so each staff keeps its spells.
     internal static class StaffMagic
     {
         internal enum Slot { NormalSpell1, NormalSpell2, SpecialSpell, ShieldSpell }
         internal const int SlotCount = 4;
         static string Key(Slot slot) => "overhaul_" + slot;
 
-        // Element of the spell the staff casts for now: its base staff's.
-        static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
-        // Damage dealt by a spell of the element (grimoire elements: fire, ice, lightning) worth percent of the power.
-        internal static HitData.DamageTypes SpellDamage(string element, float percent, float power)
-        {
-            var damage = new HitData.DamageTypes(); float value = power * percent / 100f;
-            switch (element)
-            {
-                case "ice": damage.m_frost = value; break;
-                case "lightning": damage.m_lightning = value; break;
-                default: damage.m_fire = value; break;
-            }
-            return damage;
-        }
-
         internal static StaffModels.Staff Of(ItemDrop.ItemData item) =>
             item?.m_dropPrefab != null && StaffModels.ByPrefab.TryGetValue(item.m_dropPrefab.name, out var staff) ? staff : null;
         internal static bool IsStaff(ItemDrop.ItemData item) => Of(item) != null;
 
-        // Magic power of the staff for the local player (its wielder): base by tier and upgrade level with the rarity bonus,
-        // plus the player's MagicPower effect; null for any other item (tooltip hook).
-        internal static float? Power(ItemDrop.ItemData item, int quality)
+        // Magic power of the staff, from its usual damage; null for any other item (tooltip hook).
+        internal static float? Power(ItemDrop.ItemData item, int quality) =>
+            IsStaff(item) ? item.GetDamage(quality < 0 ? item.m_quality : quality, Game.m_worldLevel).m_damage : (float?)null;
+
+        // Element of the spell the staff casts for now: its base staff's.
+        static string CastElement(StaffModels.Staff staff) => staff.Base == "StaffIceShards" ? "ice" : "fire";
+        // Turns the magic power of a hit into the spell's element (grimoire elements: fire, ice, lightning), worth percent of it.
+        internal static void Convert(ref HitData.DamageTypes damage, string element, float percent)
         {
-            var staff = Of(item);
-            if (staff == null) return null;
-            if (quality < 0) quality = item.m_quality;
-            float power = (staff.Power + Mathf.Max(0, quality - 1) * staff.PowerPerLevel) * ItemRarity.Multiplier(item) + Effects.Effects.Get(Player.m_localPlayer, "MagicPower");
-            return Mathf.Round(Mathf.Max(0, power) * 10f) / 10f;
+            float value = damage.m_damage * percent / 100f; damage.m_damage = 0;
+            switch (element)
+            {
+                case "ice": damage.m_frost += value; break;
+                case "lightning": damage.m_lightning += value; break;
+                default: damage.m_fire += value; break;
+            }
         }
 
         internal static string Spell(ItemDrop.ItemData item, Slot slot) =>
@@ -56,17 +49,20 @@ namespace Overhaul.Magic
             else item.m_customData[Key(slot)] = id;
         }
 
-        // The staff's damage is the spell's share of its magic power, in the spell's element. The rarity bonus is in the
-        // power (ItemRarity leaves staffs out of its multiplier); the staff's other enchantments (FireDmg...) still add after.
-        [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetDamage), typeof(int), typeof(float))]
-        static class Damage
+        // The staff's projectile (and its area) carries the hit's damage, skill factor included: its magic power
+        // becomes the spell's element there (a second Setup from the same hit finds no magic power left).
+        [HarmonyPatch]
+        static class SpellHit
         {
-            [HarmonyPriority(Priority.First)]
-            static void Postfix(ItemDrop.ItemData __instance, int quality, ref HitData.DamageTypes __result)
+            static IEnumerable<MethodBase> TargetMethods()
             {
-                var staff = Of(__instance);
-                if (staff == null) return;
-                __result.Add(SpellDamage(CastElement(staff), 100f, Power(__instance, quality).Value));
+                yield return AccessTools.Method(typeof(Projectile), nameof(Projectile.Setup));
+                yield return AccessTools.Method(typeof(Aoe), nameof(Aoe.Setup));
+            }
+            static void Prefix(HitData hitData, ItemDrop.ItemData item)
+            {
+                var staff = Of(item);
+                if (staff != null && hitData != null) Convert(ref hitData.m_damage, CastElement(staff), 100f);
             }
         }
     }
