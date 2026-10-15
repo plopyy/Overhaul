@@ -23,7 +23,9 @@ namespace Overhaul.Magic
         {
             public string Id, NameKey, DescriptionKey, Element, Icon, Attack, Projectile;
             public Kind Kind;
-            public int Rank, Level;
+            public int Tier, Level;
+            // Rank of the spell itself (the grimoire's pips): 1 until spells rank up with the class level.
+            public int Rank = 1;
             public float Power, Eitr, ProjectileScale, SlowPercent, SlowDuration, StunChance, StunDuration;
             public bool Known => Level <= 0;
             public bool HasEffect => SlowPercent > 0 && SlowDuration > 0 || StunChance > 0 && StunDuration > 0;
@@ -71,7 +73,7 @@ namespace Overhaul.Magic
                     DescriptionKey = RarityConfig.Get(v, "Description", "overhaul_spell_" + id + "_desc"),
                     Element = RarityConfig.Get(v, "Element", "Fire").ToLowerInvariant(),
                     Kind = Enum.TryParse(RarityConfig.Get(v, "Type", "Normal"), true, out Kind kind) ? kind : Kind.Normal,
-                    Rank = Mathf.Clamp((int)RarityConfig.Float(v, "Rank", 1), 1, 3),
+                    Tier = Mathf.Clamp((int)RarityConfig.Float(v, "Tier", 1), 1, 3),
                     Level = (int)RarityConfig.Float(v, "Level", 0),
                     Power = RarityConfig.Float(v, "Power", 100),
                     Eitr = RarityConfig.Float(v, "Eitr", 0),

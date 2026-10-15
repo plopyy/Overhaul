@@ -13,8 +13,8 @@ using Object = UnityEngine.Object;
 namespace Overhaul.Magic
 {
     // Spell book (grimoire): the OverhaulGrimoire prefab (mock-up E1) opened with its own key. The right page shows the
-    // spells of Spells.cfg (SpellSystem) for the open element, by type (rows: 2 normal, 1 special, 1 shield) and rank
-    // (columns); known spells are dragged onto the 4 slots of the equipped staff (2 normal spells, 1 special, 1 shield),
+    // spells of Spells.cfg (SpellSystem) for the open element, by type (rows: 2 normal, 1 special, 1 shield) and tier
+    // (columns; the pips are the spell's own rank); known spells are dragged onto the 4 slots of the equipped staff (2 normal spells, 1 special, 1 shield),
     // locked ones show the class level that unlocks them. The left page shows the spell last clicked.
     internal static class GrimoireWindow
     {
@@ -39,14 +39,14 @@ namespace Overhaul.Magic
 
         static GrimoireWindow() => SpellSystem.Changed += () => { if (Visible) Populate(panel); };
 
-        // The element's page: each spell in its type's first free row at its rank's column (spells beyond the page are left out).
+        // The element's page: each spell in its type's first free row at its tier's column (spells beyond the page are left out).
         static SpellSystem.Spell[,] Page(string el)
         {
             var grid = new SpellSystem.Spell[4, 3];
             foreach (var s in SpellSystem.All.Where(s => s.Element == el))
             {
                 for (int row = 0; row < 4; row++)
-                    if (RowKinds[row] == s.Kind && grid[row, s.Rank - 1] == null) { grid[row, s.Rank - 1] = s; break; }
+                    if (RowKinds[row] == s.Kind && grid[row, s.Tier - 1] == null) { grid[row, s.Tier - 1] = s; break; }
             }
             return grid;
         }

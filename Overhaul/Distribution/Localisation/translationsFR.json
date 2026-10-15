@@ -2780,5 +2780,8 @@
   "overhaul_spell_iceshard": "Éclat de glace",
   "overhaul_spell_iceshard_desc": "Lance un gros éclat de glace qui ralentit de 50 % le déplacement et les attaques des ennemis touchés.",
   "overhaul_spell_lightning": "Éclair",
-  "overhaul_spell_lightning_desc": "Fait tomber la foudre là où vous visez, avec 35 % de chances d’étourdir 2 secondes chaque ennemi touché."
+  "overhaul_spell_lightning_desc": "Fait tomber la foudre là où vous visez, avec 35 % de chances d’étourdir 2 secondes chaque ennemi touché.",
+  "overhaul_grimoire_tier1": "Tier I",
+  "overhaul_grimoire_tier2": "Tier II",
+  "overhaul_grimoire_tier3": "Tier III"
 }

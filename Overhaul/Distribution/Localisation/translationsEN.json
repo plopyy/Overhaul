@@ -2677,5 +2677,8 @@
   "overhaul_spell_iceshard": "Ice shard",
   "overhaul_spell_iceshard_desc": "Hurls a large ice shard that slows the movement and attacks of the enemies hit by 50%.",
   "overhaul_spell_lightning": "Lightning",
-  "overhaul_spell_lightning_desc": "Strikes lightning where you aim, with a 35% chance to stun each enemy hit for 2 seconds."
+  "overhaul_spell_lightning_desc": "Strikes lightning where you aim, with a 35% chance to stun each enemy hit for 2 seconds.",
+  "overhaul_grimoire_tier1": "Tier I",
+  "overhaul_grimoire_tier2": "Tier II",
+  "overhaul_grimoire_tier3": "Tier III"
 }
