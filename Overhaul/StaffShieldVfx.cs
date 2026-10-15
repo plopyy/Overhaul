@@ -27,7 +27,12 @@ namespace Overhaul
             new Dictionary<string, ShieldDefinition>(StringComparer.OrdinalIgnoreCase)
             {
                 { "StaffFireball", new ShieldDefinition("vfx_Shield_Fire_01") },
+                { "Overhaul_BlackForestStaff", new ShieldDefinition("vfx_Shield_WindGreen_01") },
+                { "Overhaul_SwampStaff", new ShieldDefinition("vfx_Shield_Holy_01") },
+                { "Overhaul_MountainStaff", new ShieldDefinition("vfx_Shield_Ice_01") },
                 { "Overhaul_PlainsStaff", new ShieldDefinition("vfx_Shield_Void_01") },
+                { "Overhaul_MistlandsStaff", new ShieldDefinition("vfx_Shield_Cosmic_01") },
+                { "Overhaul_AshlandsStaff", new ShieldDefinition("vfx_Shield_Fire_01") },
                 { "StaffClusterbomb", new ShieldDefinition("vfx_Shield_Fire_01") },
                 { "StaffIceShards", new ShieldDefinition("vfx_Shield_Ice_01") },
                 { "StaffFrostOrbs", new ShieldDefinition("vfx_Shield_Ice_01") },

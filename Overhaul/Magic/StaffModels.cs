@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using Overhaul.Utility;
@@ -7,28 +8,50 @@ using UnityEngine;
 
 namespace Overhaul.Magic
 {
-    // Overhaul staffs made from a game staff with a new model (overhaul_staffs bundle, <Model>_Model prefabs). The
-    // model's pieces take the game's own materials (a copy with a new diffuse when the model brings one); the base
-    // staff's effects are swapped for a game object's; attack and stats stay the base staff's until the magic system
-    // gives each staff its own. No recipe yet: spawn with the console.
+    // Overhaul staffs (Design/SystemeMagie.md): one per biome from the Black Forest on, each a new item cloned from a
+    // game staff (the game staffs are left as they are), crafted from a wood, the biome metal and a biome ingredient.
+    // A staff with a Model gets it from the overhaul_staffs bundle (<Model>_Model prefabs), its pieces on the game's
+    // own materials (a copy with a new diffuse when the model brings one), and the base staff's effects swapped for a
+    // game object's; the others keep the base staff's model until theirs is made. Damage is replaced by the staff's
+    // magic power (StaffMagic); attacks stay the base staff's until the grimoire spells are cast.
     internal static class StaffModels
     {
         internal sealed class Staff
         {
-            public string Prefab, Base, Model, Name;
+            public string Prefab, Base, Model, Name, Station;
+            // Magic power at quality 1 and per upgrade level.
+            public float Power, PowerPerLevel;
             // Model piece name -> (game prefab holding the material, its material name, diffuse texture of the bundle or null).
             public Dictionary<string, (string prefab, string material, string diffuse)> Materials;
             // Effects: the base staff's are removed and those around a game model are copied around one of ours (piece, game prefab).
             public (string piece, string prefab) Effects;
+            // Wood, biome metal, biome ingredient: (prefab, amount, amount per upgrade level).
+            public (string item, int amount, int perLevel)[] Recipe;
         }
         internal static readonly Staff[] Staffs =
         {
+            // Black Forest: the staff of embers' model.
+            new Staff { Prefab = "Overhaul_BlackForestStaff", Base = "StaffFireball", Name = "$overhaul_staff_blackforest", Station = "forge", Power = 20, PowerPerLevel = 5,
+                Recipe = new[] { ("Wood", 10, 5), ("Bronze", 5, 3), ("SurtlingCore", 3, 1) } },
+            // Swamp: staff of embers' model until its own is made.
+            new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffFireball", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
+                Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
+            // Mountains: the frost staff's model.
+            new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
+                Recipe = new[] { ("RoundLog", 10, 5), ("Silver", 5, 3), ("FreezeGland", 5, 2) } },
             // Plains: the staff of embers' wood with its own diffuse, black metal rings, a fuling totem.
-            new Staff { Prefab = "Overhaul_PlainsStaff", Base = "StaffFireball", Model = "PlainsStaff_Model", Name = "$overhaul_staff_plains",
+            new Staff { Prefab = "Overhaul_PlainsStaff", Base = "StaffFireball", Model = "PlainsStaff_Model", Name = "$overhaul_staff_plains", Station = "forge", Power = 65, PowerPerLevel = 8,
                 Materials = new Dictionary<string, (string, string, string)> {
                     { "Wood", ("StaffFireball", "staffs_mat", "PlainsStaff_d") }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "Totem", ("GoblinTotem", "Idol_mat", null) } },
-                Effects = ("Totem", "GoblinTotem") },
+                Effects = ("Totem", "GoblinTotem"),
+                Recipe = new[] { ("FineWood", 10, 5), ("BlackMetal", 5, 3), ("GoblinTotem", 2, 1) } },
+            // Mistlands and Ashlands: frost staff's and staff of embers' models until theirs are made.
+            new Staff { Prefab = "Overhaul_MistlandsStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mistlands", Station = "piece_magetable", Power = 80, PowerPerLevel = 9,
+                Recipe = new[] { ("YggdrasilWood", 10, 5), ("BlackMetal", 8, 4), ("BlackCore", 2, 1) } },
+            new Staff { Prefab = "Overhaul_AshlandsStaff", Base = "StaffFireball", Name = "$overhaul_staff_ashlands", Station = "piece_magetable", Power = 100, PowerPerLevel = 10,
+                Recipe = new[] { ("Blackwood", 10, 5), ("FlametalNew", 5, 3), ("MoltenCore", 2, 1) } },
         };
+        internal static readonly Dictionary<string, Staff> ByPrefab = Staffs.ToDictionary(s => s.Prefab);
 
         static AssetBundle bundle;
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
@@ -41,12 +64,17 @@ namespace Overhaul.Magic
             foreach (var s in Staffs)
             {
                 if (PrefabManager.Instance.GetPrefab(s.Prefab)) continue;
-                var model = bundle.LoadAsset<GameObject>(s.Model);
-                if (!model) { Log.LogError("Staff model " + s.Model + " missing from overhaul_staffs"); continue; }
-                var item = new CustomItem(s.Prefab, s.Base);
+                GameObject model = null;
+                if (s.Model != null && !(model = bundle.LoadAsset<GameObject>(s.Model))) { Log.LogError("Staff model " + s.Model + " missing from overhaul_staffs"); continue; }
+                var config = new ItemConfig { CraftingStation = s.Station, MinStationLevel = 1,
+                    Requirements = s.Recipe.Select(r => new RequirementConfig(r.item, r.amount, r.perLevel, true)).ToArray() };
+                var item = new CustomItem(s.Prefab, s.Base, config);
                 var shared = item.ItemDrop.m_itemData.m_shared;
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
-                Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse))));
+                // Magic power replaces the damage: the base staff's damage only gives each damage type's share of it.
+                StaffMagic.Shares[s.Prefab] = shared.m_damages;
+                shared.m_damages = new HitData.DamageTypes(); shared.m_damagesPerLevel = new HitData.DamageTypes();
+                if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse))));
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
             }

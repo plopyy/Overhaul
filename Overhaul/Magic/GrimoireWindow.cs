@@ -29,8 +29,14 @@ namespace Overhaul.Magic
         static readonly Kind[] RowKinds = { Kind.Normal, Kind.Normal, Kind.Special, Kind.Shield };
         static readonly Dictionary<string, Spell[,]> Book = new Dictionary<string, Spell[,]>();
         static readonly Dictionary<string, Spell> ById = new Dictionary<string, Spell>();
-        // Installed spells: light attack, heavy attack (both normal spells), special attack, block (shield).
-        static readonly string[] Installed = { "firebolt", "lightningstrike", "hail", "frostaegis" };
+        // Installed spells are those of the equipped Overhaul staff (StaffMagic slots): light attack, heavy attack (both
+        // normal spells), special attack, block (shield). Without one, the slots are empty and nothing can be installed.
+        static ItemDrop.ItemData Staff { get { var w = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentWeapon() : null; return StaffMagic.IsStaff(w) ? w : null; } }
+        static string[] Installed()
+        {
+            var staff = Staff;
+            return Enumerable.Range(0, StaffMagic.SlotCount).Select(i => StaffMagic.Spell(staff, (StaffMagic.Slot)i)).Select(id => id != null && ById.ContainsKey(id) ? id : null).ToArray();
+        }
         static string element = "fire", selected = "fireball";
 
         static GameObject root, panel;
@@ -134,9 +140,12 @@ namespace Overhaul.Magic
         {
             if (s == null || !s.Known) return;
             if ((s.Kind == Kind.Normal) != (slot < 2) || (s.Kind == Kind.Special && slot != 2) || (s.Kind == Kind.Shield && slot != 3)) return;
-            int from = Array.IndexOf(Installed, s.Id);
-            if (from >= 0 && from != slot) Installed[from] = Installed[slot];
-            Installed[slot] = s.Id;
+            var staff = Staff;
+            if (staff == null) { Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "$overhaul_grimoire_no_staff"); return; }
+            var installed = Installed();
+            int from = Array.IndexOf(installed, s.Id);
+            if (from >= 0 && from != slot) StaffMagic.SetSpell(staff, (StaffMagic.Slot)from, installed[slot]);
+            StaffMagic.SetSpell(staff, (StaffMagic.Slot)slot, s.Id);
             Populate(panel);
         }
 
@@ -159,13 +168,15 @@ namespace Overhaul.Magic
                 foreach (var n in new[] { "Inactive", "IconInactive" }) tab.Find(n).gameObject.SetActive(!on);
             }
 
+            var installed = Installed();
+
             // Right page: the element's spells.
             var page = t.Find("RightPage");
             page.Find("Header/ElementIcon").GetComponent<Image>().sprite = Sprite(t, "Icon_" + (element == "fire" ? "Burning" : element == "ice" ? "Frost" : "Lightning"));
             page.Find("Header/ElementTitle").GetComponent<TMP_Text>().text = Loc("element_" + element);
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)page.Find("Header"));
             for (int row = 0; row < 4; row++)
-                for (int col = 0; col < 3; col++) Card(t, page.Find("Card" + row + "_" + col), Book[element][row, col]);
+                for (int col = 0; col < 3; col++) Card(t, page.Find("Card" + row + "_" + col), Book[element][row, col], installed);
 
             // Left page: selected spell.
             var s = ById[selected];
@@ -178,15 +189,16 @@ namespace Overhaul.Magic
             for (int i = 0; i < 4; i++) left.Find("Stat" + i + "/Value").GetComponent<TMP_Text>().text = values[i];
             for (int i = 0; i < 4; i++)
             {
-                var slot = left.Find("Slot" + i); var spell = ById[Installed[i]];
-                slot.Find("Icon").GetComponent<Image>().sprite = Sprite(t, "Icon_" + spell.Icon);
-                slot.Find("Name").GetComponent<TMP_Text>().text = Loc("spell_" + spell.Id);
+                var slot = left.Find("Slot" + i); var spell = installed[i] == null ? null : ById[installed[i]];
+                var icon = slot.Find("Icon").GetComponent<Image>(); icon.enabled = spell != null;
+                if (spell != null) icon.sprite = Sprite(t, "Icon_" + spell.Icon);
+                slot.Find("Name").GetComponent<TMP_Text>().text = spell != null ? Loc("spell_" + spell.Id) : Loc("slot_empty");
             }
         }
 
-        static void Card(Transform p, Transform card, Spell s)
+        static void Card(Transform p, Transform card, Spell s, string[] installedIds)
         {
-            bool known = s.Known, sel = s.Id == selected, installed = Installed.Contains(s.Id);
+            bool known = s.Known, sel = s.Id == selected, installed = installedIds.Contains(s.Id);
             card.GetComponent<CanvasGroup>().alpha = known ? 1 : .55f;
             card.Find("SelectedGlow").gameObject.SetActive(sel);
             card.Find("Background").GetComponent<Image>().sprite = Sprite(p, known ? "CardGlow" : "CardPlain");

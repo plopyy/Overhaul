@@ -2724,5 +2724,18 @@
   "overhaul_grimoire_binding": "Grimoire",
   "overhaul_grimoire_binding_tip": "Opens the grimoire (spell book). Default: F1.",
   "overhaul_staff_plains": "Totemic staff",
-  "overhaul_staff_plains_description": "Plains staff of fine wood ringed with black metal, carrying a fuling totem. Keeps the staff of embers’ spells for now."
+  "overhaul_staff_plains_description": "Plains staff of fine wood ringed with black metal, carrying a fuling totem. Its spells are chosen in the grimoire.",
+  "overhaul_magic_power": "Magic power",
+  "overhaul_grimoire_slot_empty": "Empty slot",
+  "overhaul_grimoire_no_staff": "Equip a staff to install spells in it",
+  "overhaul_staff_blackforest": "Sylvan staff",
+  "overhaul_staff_blackforest_description": "Black Forest staff of wood ringed with bronze, with a surtling core heart. Its spells are chosen in the grimoire.",
+  "overhaul_staff_swamp": "Spectral staff",
+  "overhaul_staff_swamp_description": "Swamp staff of ancient bark ringed with iron, haunted by ectoplasm. Its spells are chosen in the grimoire.",
+  "overhaul_staff_mountain": "Runic staff",
+  "overhaul_staff_mountain_description": "Mountain staff of core wood ringed with silver, sealed with freeze glands. Its spells are chosen in the grimoire.",
+  "overhaul_staff_mistlands": "Mist staff",
+  "overhaul_staff_mistlands_description": "Mistlands staff of Yggdrasil wood ringed with black metal, around a black core. Its spells are chosen in the grimoire.",
+  "overhaul_staff_ashlands": "Ash staff",
+  "overhaul_staff_ashlands_description": "Ashlands staff of blackwood ringed with flametal, around a molten core. Its spells are chosen in the grimoire."
 }

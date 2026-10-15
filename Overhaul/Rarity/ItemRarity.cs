@@ -133,7 +133,7 @@ namespace Overhaul.Rarity
             return drop;
         }
 
-        private static float Multiplier(ItemDrop.ItemData item)
+        internal static float Multiplier(ItemDrop.ItemData item)
         {
             var rarity = Of(item);
             return rarity == null || rarity.BaseStatBonus == 0 ? 1f : 1f + rarity.BaseStatBonus / 100f;

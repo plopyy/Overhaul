@@ -779,7 +779,7 @@ namespace Overhaul
 		private static bool IsStaff(ItemDrop.ItemData item)
 		{
 			return item != null && item.IsWeapon() && item.m_dropPrefab != null
-				&& item.m_dropPrefab.name.StartsWith("Staff", StringComparison.OrdinalIgnoreCase);
+				&& (item.m_dropPrefab.name.StartsWith("Staff", StringComparison.OrdinalIgnoreCase) || Magic.StaffMagic.IsStaff(item));
 		}
 
 		private static void ApplyStaffShield(Player player, ItemDrop.ItemData staff)
