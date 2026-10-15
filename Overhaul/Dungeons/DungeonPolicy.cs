@@ -6,7 +6,7 @@ namespace Overhaul.Dungeons
     // Explicit lists: a new game location must never become destructively eligible by accident.
     internal static class DungeonPolicy
     {
-        internal const string DefaultResetLocations = "Crypt2,Crypt3,Crypt4,SunkenCrypt4,MountainCave02,Mistlands_DvergrTownEntrance1,Mistlands_DvergrTownEntrance2,Hildir_crypt,Hildir_cave,Hildir_plainsfortress,MorkBorg,TheHole01,HalfBurried_ForestCrypt,GoblinCamp2,GoblinCamp2_1,FortressRuins,AshlandRuins,NorthVillage,TrollCave02,BearCave,MorgenHole1,MorgenHole2,MorgenHole3,TheDarkestHole,DN_Bossroom,CharredFortress";
+        internal const string DefaultResetLocations = "Crypt2,Crypt3,Crypt4,SunkenCrypt4,MountainCave02,Mistlands_DvergrTownEntrance1,Mistlands_DvergrTownEntrance2,Hildir_crypt,Hildir_cave,Hildir_plainsfortress,MorkBorg,TheHole01,HalfBurried_ForestCrypt,GoblinCamp2,GoblinCamp2_1,FortressRuins,NorthVillage,TrollCave02,BearCave,MorgenHole1,MorgenHole2,MorgenHole3,TheDarkestHole,DN_Bossroom,CharredFortress";
         internal static readonly HashSet<string> Supported = new HashSet<string>(DefaultResetLocations.Split(','), StringComparer.Ordinal);
         internal static readonly HashSet<string> ScaledGenerators = new HashSet<string>(StringComparer.Ordinal)
         {

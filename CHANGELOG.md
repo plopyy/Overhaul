@@ -21,6 +21,7 @@
 - No more burst of 32 "Destroying components immediately" errors in the log when the inventory is first opened (the leveling stat cards removed the tooltips of their - and + buttons at the wrong moment). (2.2.2.16)
 
 ### Changed
+- The small Ashlands ruins (AshlandRuins) are no longer reset like dungeons: a base built in them keeps its ruin as it was. The guarded Ashlands fortresses (with ballistas) and the goblin villages are still reset. (2.2.2.143)
 - Settings: the "Mods" tab is now called **Overhaul** and has sub-tabs like the Controls tab: **Shortcuts** (every Overhaul shortcut, the grimoire key included) and **Gameplay** (the Dash option). (2.2.2.116)
 - Lightning Strike staff: the lightning now falls at once exactly where the crosshair points (one for each projectile the staff would fire: extra ones spread around the crosshair, in a fan with Fan Volley), instead of after a slow projectile, and the whole lightning is white with a cyan glow instead of red; its blocking shield is the lightning one instead of the blood one. (2.2.2.105)
 - Battleaxes chop trees better: 15 more chopping damage than the one-handed axe of their tier, +3 per upgrade level like it (black metal battleaxe: 75 to 84). The crystal battleaxe sits between iron and black metal (70 to 79). (2.2.2.61)
