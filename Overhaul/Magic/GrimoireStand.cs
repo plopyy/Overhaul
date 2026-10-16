@@ -26,12 +26,11 @@ namespace Overhaul.Magic
             if (PrefabManager.Instance.GetPrefab(Name)) return;
             if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_grimoirestand");
             var model = bundle.LoadAsset<GameObject>("GrimoireStand_Piece");
-            var clip = bundle.LoadAsset<AnimationClip>("GrimoireBook_Open");
             // The icon's sprite, else one made from its texture (an icon imported as several sprites is named _0).
             var icon = bundle.LoadAssetWithSubAssets<Sprite>("GrimoireStand_Icon").FirstOrDefault();
             if (!icon) { var texture = bundle.LoadAsset<Texture2D>("GrimoireStand_Icon"); if (texture) icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f)); }
             if (!icon) Log.LogWarning("Grimoire stand: icon missing from overhaul_grimoirestand");
-            if (!model || !clip) { Log.LogError("Grimoire stand: model or animation missing from overhaul_grimoirestand"); return; }
+            if (!model) { Log.LogError("Grimoire stand: model missing from overhaul_grimoirestand"); return; }
 
             var custom = new CustomPiece(Name, "piece_table", "_HammerPieceTable");
             var prefab = custom.PiecePrefab;
@@ -51,7 +50,7 @@ namespace Overhaul.Magic
             piece.m_craftingStation = PrefabManager.Instance.GetPrefab("piece_workbench")?.GetComponent<CraftingStation>();
             piece.m_resources = new[] { ("FineWood", 8), ("Bronze", 4), ("SurtlingCore", 1) }
                 .Select(r => new Piece.Requirement { m_resItem = PrefabManager.Instance.GetPrefab(r.Item1).GetComponent<ItemDrop>(), m_amount = r.Item2, m_recover = true }).ToArray();
-            prefab.AddComponent<GrimoireStandPiece>().Open = clip;
+            prefab.AddComponent<GrimoireStandPiece>();
             PieceManager.Instance.AddPiece(custom);
         }
     }
@@ -60,17 +59,16 @@ namespace Overhaul.Magic
     {
         // A player within this distance opens the book; the window closes past WindowRange.
         internal const float Range = 4f, WindowRange = 6f;
-        public AnimationClip Open;
         ZNetView nview;
         Piece piece;
-        GameObject book;
+        Transform spine, cover;
         float opened = -1;
         readonly List<(Light light, float intensity, float seed)> lights = new List<(Light, float, float)>();
 
         void Awake()
         {
             nview = GetComponent<ZNetView>(); piece = GetComponent<Piece>();
-            book = transform.Find("Model/Book")?.gameObject;
+            spine = transform.Find("Model/Book/Spine"); cover = transform.Find("Model/Book/Cover");
             foreach (var l in GetComponentsInChildren<Light>(true)) lights.Add((l, l.intensity, Random.value * 100));
             Pose(0);
         }
@@ -81,13 +79,23 @@ namespace Overhaul.Magic
                 if (light) light.intensity = intensity * (.85f + .3f * Mathf.PerlinNoise(seed, Time.time * 5));
             // Building ghosts and unloaded stands keep the book closed.
             float target = nview && nview.IsValid() && Player.IsPlayerInRange(transform.position, Range) ? 1 : 0;
-            if (opened != target) Pose(Mathf.MoveTowards(opened, target, Time.deltaTime / Open.length));
+            if (opened != target) Pose(Mathf.MoveTowards(opened, target, Time.deltaTime / Duration));
         }
 
+        // The book's hinge, as rigged in OverhaulLab (GrimoireBookRig): spine strip edges (static -Z, folding +Z), page
+        // surface height and covers' outer face. Closed, the spine stands up on the static cover's edge, stretched to the
+        // book's thickness, and the cover lies 180 degrees over on the spine's far end.
+        const float Duration = .9f, StaticEdge = -.0715f, FoldEdge = .0485f, PageTop = .109f, CoverFace = .030f;
         void Pose(float t)
         {
             opened = Mathf.Clamp01(t);
-            if (book && Open) Open.SampleAnimation(book, opened * Open.length);
+            if (!spine || !cover) return;
+            float eased = opened * opened * (3 - 2 * opened), closed = 1 - eased;
+            float width = FoldEdge - StaticEdge, stretch = Mathf.Lerp(1, 2 * (PageTop - CoverFace) / width, closed);
+            var turn = Quaternion.Euler(-90 * closed, 0, 0);
+            spine.localPosition = new Vector3(0, CoverFace, StaticEdge); spine.localRotation = turn; spine.localScale = new Vector3(1, 1, stretch);
+            cover.localPosition = spine.localPosition + turn * new Vector3(0, 0, width * stretch);
+            cover.localRotation = Quaternion.Euler(-180 * closed, 0, 0); cover.localScale = Vector3.one;
         }
 
         public string GetHoverName() => piece ? piece.m_name : "";
