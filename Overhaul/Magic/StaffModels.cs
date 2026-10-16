@@ -27,6 +27,8 @@ namespace Overhaul.Magic
             public (string piece, string prefab) Effects;
             // Material values changed on a piece's material (a copy): piece -> (property, value).
             public Dictionary<string, (string property, float value)[]> Tweaks;
+            // Colours changed on a piece's material (a copy): piece -> (property, colour), e.g. _Color tints the diffuse.
+            public Dictionary<string, (string property, Color color)[]> Tints;
             // A game object's effects (particles, lights) copied around a point of the model, at a size and in a colour:
             // source prefab, centre and height in the model's space, tint.
             public (string source, Vector3 center, float height, Color tint) Aura;
@@ -63,6 +65,8 @@ namespace Overhaul.Magic
                 Materials = new Dictionary<string, (string, string, string)> {
                     { "Wood", ("StaffFireball", "staffs_mat", null) }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "BlackCore", ("BlackCore", "BlackCore_mat", null) } },
                 Effects = ("BlackCore", "GoblinTotem"),
+                // The staff of embers' wood darkened to a deeper, warmer brown.
+                Tints = new Dictionary<string, (string, Color)[]> { { "Wood", new[] { ("_Color", new Color(.62f, .42f, .28f)) } } },
                 Recipe = new[] { ("YggdrasilWood", 10, 5), ("BlackMetal", 8, 4), ("BlackCore", 2, 1) } },
             // Ashlands: staff of embers' model until its own is made.
             new Staff { Prefab = "Overhaul_AshlandsStaff", Base = "StaffFireball", Name = "$overhaul_staff_ashlands", Station = "piece_magetable", Power = 100, PowerPerLevel = 10,
@@ -90,7 +94,7 @@ namespace Overhaul.Magic
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
                 // Magic power replaces the damage, in the generic damage (StaffMagic): the spell gives it its element.
                 shared.m_damages = new HitData.DamageTypes { m_damage = s.Power }; shared.m_damagesPerLevel = new HitData.DamageTypes { m_damage = s.PowerPerLevel };
-                if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Tweak(Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse)), s.Tweaks, m.Key)));
+                if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Tweak(Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse)), s.Tweaks, s.Tints, m.Key)));
                 if (model && s.Aura.source != null) AddAura(item.ItemPrefab, PrefabManager.Instance.GetPrefab(s.Aura.source), s.Aura.center, s.Aura.height, s.Aura.tint);
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
@@ -176,11 +180,14 @@ namespace Overhaul.Magic
         }
 
         // A copy of the material with the staff's tweaks for that piece, or the material itself.
-        static Material Tweak(Material material, Dictionary<string, (string property, float value)[]> tweaks, string piece)
+        // Public for the Unity preview.
+        public static Material Tweak(Material material, Dictionary<string, (string property, float value)[]> tweaks, Dictionary<string, (string property, Color color)[]> tints, string piece)
         {
-            if (!material || tweaks == null || !tweaks.TryGetValue(piece, out var values)) return material;
+            (string property, float value)[] values = null; (string property, Color color)[] colors = null;
+            if (!material || (tweaks == null || !tweaks.TryGetValue(piece, out values)) & (tints == null || !tints.TryGetValue(piece, out colors))) return material;
             var copy = new Material(material) { name = material.name + "_overhaul" };
-            foreach (var (property, value) in values) copy.SetFloat(property, value);
+            if (values != null) foreach (var (property, value) in values) copy.SetFloat(property, value);
+            if (colors != null) foreach (var (property, color) in colors) copy.SetColor(property, color);
             return copy;
         }
         // Copies the effects around the source's model (its mesh's siblings with particles or lights) to a point of the
