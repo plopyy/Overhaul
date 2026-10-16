@@ -57,7 +57,16 @@ namespace Overhaul.Magic
             }
             static void Prefix(object __instance, Character owner, ref Vector3 velocity, HitData hitData, ItemDrop.ItemData item)
             {
-                if (!IsStaff(item)) return;
+                bool spell = IsStaff(item);
+                // The Lightning Strike impact (staff_thunderblood_aoe) deals fixed damage of its own (a 0.5 m rod of 400,
+                // an area of 80) whatever the weapon: for a spell or a Zeus's Wrath bolt, the area deals the hit's damage
+                // and status effect instead, and the rod none.
+                if (__instance is Aoe aoe && hitData != null && (spell || Rarity.MythicEffects.RainStrike))
+                {
+                    if (aoe.m_radius < 1f) aoe.m_damage = new HitData.DamageTypes();
+                    else aoe.m_useAttackSettings = true;
+                }
+                if (!spell) return;
                 SpellSystem.OnHitSetup(owner, hitData);
                 if (__instance is Projectile projectile) SpellSystem.OnProjectileSetup(owner, projectile, ref velocity);
             }

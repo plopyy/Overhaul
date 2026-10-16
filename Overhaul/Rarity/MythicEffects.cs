@@ -130,6 +130,8 @@ namespace Overhaul.Rarity
         private const float RainSeconds = 6f, RainRadius = 10f;
         // Chance of the weapon that fired the projectile, rolled when it hits.
         private sealed class Wrath { internal float Chance; }
+        // Set while a rain bolt strikes, so its lightning area deals the bolt's damage (StaffMagic).
+        internal static bool RainStrike;
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath> Wrathful = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath>();
 
         [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
@@ -187,7 +189,9 @@ namespace Overhaul.Rarity
                 ThunderStaff.Raining = true;
                 try { bolt.Setup(owner, Vector3.down, 0f, hit.Clone(), null, null); }
                 finally { ThunderStaff.Raining = false; }
-                bolt.OnHit(ground.collider, ground.point, false, ground.normal);
+                RainStrike = true;
+                try { bolt.OnHit(ground.collider, ground.point, false, ground.normal); }
+                finally { RainStrike = false; }
             }
         }
     }
