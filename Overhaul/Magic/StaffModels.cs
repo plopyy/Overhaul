@@ -54,8 +54,8 @@ namespace Overhaul.Magic
         internal static readonly Dictionary<string, Staff> ByPrefab = Staffs.ToDictionary(s => s.Prefab);
 
         static AssetBundle bundle;
-        internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
-        internal static void Shutdown() => PrefabManager.OnVanillaPrefabsAvailable -= Register;
+        internal static void Initialize() { PrefabManager.OnVanillaPrefabsAvailable += Register; ItemManager.OnItemsRegistered += Icons; }
+        internal static void Shutdown() { PrefabManager.OnVanillaPrefabsAvailable -= Register; ItemManager.OnItemsRegistered -= Icons; }
 
         static void Register()
         {
@@ -78,6 +78,82 @@ namespace Overhaul.Magic
                 ItemManager.Instance.AddItem(item);
             }
         }
+        // ---------------------------------------------------------------- icons
+        // A staff with its own model gets its own icon, rendered by the game itself (the editor does not light the game's
+        // shaders like the game): the item held upright on a layer of its own, far from the world, photographed with its
+        // own camera and light like the game's staff icons (head in close-up, staff on a diagonal, head up right, foot cut
+        // off), on a transparent background. Once per session, on machines that draw (not a dedicated server).
+        const int IconLayer = 31, IconSize = 128;
+        static readonly Dictionary<string, Sprite> IconCache = new Dictionary<string, Sprite>();
+        static void Icons()
+        {
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
+            foreach (var s in Staffs.Where(s => s.Model != null))
+            {
+                var prefab = PrefabManager.Instance.GetPrefab(s.Prefab)?.GetComponent<ItemDrop>();
+                if (!prefab) continue;
+                try
+                {
+                    if (!IconCache.TryGetValue(s.Prefab, out var icon) || !icon) IconCache[s.Prefab] = icon = RenderIcon(prefab.gameObject);
+                    if (icon) prefab.m_itemData.m_shared.m_icons = new[] { icon };
+                }
+                catch (System.Exception e) { Log.LogWarning("Staff icon " + s.Prefab + ": " + e.Message); }
+            }
+        }
+
+        static Sprite RenderIcon(GameObject prefab)
+        {
+            bool init = ZNetView.m_forceDisableInit; ZNetView.m_forceDisableInit = true;
+            GameObject staff;
+            try { staff = Object.Instantiate(prefab, new Vector3(0, 5000, 0), Quaternion.identity); }
+            finally { ZNetView.m_forceDisableInit = init; }
+            var cam = new GameObject("Overhaul staff icon camera").AddComponent<Camera>();
+            var light = new GameObject("Overhaul staff icon light").AddComponent<Light>();
+            var rt = RenderTexture.GetTemporary(IconSize * 2, IconSize * 2, 24, RenderTextureFormat.ARGB32);
+            try
+            {
+                foreach (var body in staff.GetComponentsInChildren<Rigidbody>(true)) body.isKinematic = true;
+                foreach (var ps in staff.GetComponentsInChildren<ParticleSystem>(true)) ps.gameObject.SetActive(false);
+                foreach (var l in staff.GetComponentsInChildren<Light>(true)) l.enabled = false;
+                var lod = staff.GetComponent<LODGroup>(); if (lod) lod.ForceLOD(0);
+                // Upright: the staff mesh's own axes made the world's (the item prefab lies it down on the ground).
+                var mesh = staff.GetComponentsInChildren<MeshFilter>(true).First(m => m.name.StartsWith("default"));
+                staff.transform.rotation = Quaternion.Inverse(Quaternion.Inverse(staff.transform.rotation) * mesh.transform.rotation);
+                foreach (var t in staff.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = IconLayer;
+                var renderers = staff.GetComponentsInChildren<Renderer>(true).Where(x => x.enabled && x.gameObject.activeInHierarchy).ToArray();
+                var bounds = renderers[0].bounds; foreach (var x in renderers) bounds.Encapsulate(x.bounds);
+                float height = bounds.size.y;
+                var center = new Vector3(bounds.center.x, bounds.max.y - height * .2f, bounds.center.z);
+
+                cam.enabled = false; cam.cullingMask = 1 << IconLayer; cam.clearFlags = CameraClearFlags.SolidColor; cam.backgroundColor = new Color(0, 0, 0, 0);
+                cam.orthographic = true; cam.orthographicSize = height * .23f; cam.nearClipPlane = .01f; cam.farClipPlane = 20;
+                cam.transform.position = center + new Vector3(0, 0, 3); cam.transform.LookAt(center); cam.transform.Rotate(0, 0, 38, Space.Self);
+                light.type = LightType.Directional; light.cullingMask = 1 << IconLayer; light.intensity = 1.3f; light.color = new Color(1, .96f, .9f);
+                light.transform.rotation = Quaternion.LookRotation(new Vector3(-.4f, -.5f, -1f));
+                cam.targetTexture = rt; cam.Render();
+                var previous = RenderTexture.active; RenderTexture.active = rt;
+                var big = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false); big.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); big.Apply();
+                RenderTexture.active = previous;
+                // Halved with alpha-weighted averaging (smooth edges on the transparent background).
+                var icon = new Texture2D(IconSize, IconSize, TextureFormat.RGBA32, false);
+                var src = big.GetPixels(); var dst = new Color[IconSize * IconSize];
+                for (int y = 0; y < IconSize; y++)
+                    for (int x = 0; x < IconSize; x++)
+                    {
+                        Color sum = Color.clear;
+                        for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) { var c = src[(y * 2 + j) * rt.width + x * 2 + i]; float a = Mathf.Clamp01(c.a); sum += new Color(c.r * a, c.g * a, c.b * a, a); }
+                        sum /= 4; dst[y * IconSize + x] = sum.a > 0 ? new Color(sum.r / sum.a, sum.g / sum.a, sum.b / sum.a, sum.a) : Color.clear;
+                    }
+                icon.SetPixels(dst); icon.Apply(); Object.Destroy(big);
+                return Sprite.Create(icon, new Rect(0, 0, IconSize, IconSize), new Vector2(.5f, .5f));
+            }
+            finally
+            {
+                cam.targetTexture = null; RenderTexture.ReleaseTemporary(rt);
+                Object.Destroy(cam.gameObject); Object.Destroy(light.gameObject); Object.DestroyImmediate(staff);
+            }
+        }
+
         static Material FindMaterial(GameObject prefab, string name) =>
             prefab ? prefab.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name) : null;
         // The game material, or a copy of it with another diffuse (normal, emission, metal and gloss kept); the new
