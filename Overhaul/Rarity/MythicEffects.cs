@@ -145,8 +145,9 @@ namespace Overhaul.Rarity
         [HarmonyPatch(typeof(Projectile), "OnHit")]
         private static class WrathStrike
         {
-            private static void Prefix(Projectile __instance, Collider collider, Vector3 hitPoint)
+            private static void Prefix(Projectile __instance, Collider collider, Vector3 hitPoint, bool __runOriginal)
             {
+                if (!__runOriginal) return;   // a contact ignored (the caster: SpellSystem)
                 if (!Wrathful.TryGetValue(__instance, out _)) return;
                 var player = Player.m_localPlayer;
                 // Touching the caster is not the impact: the roll waits for the real one.

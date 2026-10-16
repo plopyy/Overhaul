@@ -217,6 +217,19 @@ namespace Overhaul.Magic
             }
         }
 
+        // A player's projectile goes through the player who fired it: the contact is ignored and it flies on (its sphere
+        // cast can start inside the caster, notably for a bigger projectile such as the ice shard).
+        [HarmonyPatch(typeof(Projectile), "OnHit")]
+        static class PassThroughCaster
+        {
+            [HarmonyPriority(Priority.First)]
+            static bool Prefix(Projectile __instance, Collider collider)
+            {
+                var owner = __instance.m_owner as Player;
+                return !owner || !collider || collider.GetComponentInParent<Player>() != owner;
+            }
+        }
+
         // ---------------------------------------------------------------- server rules
         [HarmonyPatch(typeof(ZNet), "OnNewConnection")]
         static class Connection

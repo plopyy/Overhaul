@@ -325,8 +325,9 @@ namespace Overhaul.Effects
             [HarmonyPatch(typeof(Projectile), "OnHit")]
             private static class Explode
             {
-                private static void Prefix(Projectile __instance, Vector3 hitPoint, bool water)
+                private static void Prefix(Projectile __instance, Vector3 hitPoint, bool water, bool __runOriginal)
                 {
+                    if (!__runOriginal) return;   // a contact ignored (the caster: SpellSystem)
                     if (water || !Projectiles.TryGetValue(__instance, out _)) return;
                     Projectiles.Remove(__instance);
                     var model = Fireball();
