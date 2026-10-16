@@ -27,7 +27,10 @@ namespace Overhaul.Magic
             if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_grimoirestand");
             var model = bundle.LoadAsset<GameObject>("GrimoireStand_Piece");
             var clip = bundle.LoadAsset<AnimationClip>("GrimoireBook_Open");
-            var icon = bundle.LoadAsset<Sprite>("GrimoireStand_Icon");
+            // The icon's sprite, else one made from its texture (an icon imported as several sprites is named _0).
+            var icon = bundle.LoadAssetWithSubAssets<Sprite>("GrimoireStand_Icon").FirstOrDefault();
+            if (!icon) { var texture = bundle.LoadAsset<Texture2D>("GrimoireStand_Icon"); if (texture) icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f)); }
+            if (!icon) Log.LogWarning("Grimoire stand: icon missing from overhaul_grimoirestand");
             if (!model || !clip) { Log.LogError("Grimoire stand: model or animation missing from overhaul_grimoirestand"); return; }
 
             var custom = new CustomPiece(Name, "piece_table", "_HammerPieceTable");
