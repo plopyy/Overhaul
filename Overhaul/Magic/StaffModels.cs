@@ -25,6 +25,10 @@ namespace Overhaul.Magic
             public Dictionary<string, (string prefab, string material, string diffuse)> Materials;
             // Effects: the base staff's are removed and those around a game model are copied around one of ours (piece, game prefab).
             public (string piece, string prefab) Effects;
+            // Material values changed on a piece's material (a copy): piece -> (property, value).
+            public Dictionary<string, (string property, float value)[]> Tweaks;
+            // A light on a piece (its mesh centre): piece, colour, range, intensity.
+            public (string piece, Color color, float range, float intensity) Glow;
             // Wood, biome metal, biome ingredient: (prefab, amount, amount per upgrade level).
             public (string item, int amount, int perLevel)[] Recipe;
         }
@@ -39,6 +43,9 @@ namespace Overhaul.Magic
                 Materials = new Dictionary<string, (string, string, string)> {
                     { "Wood", ("StaffClusterbomb", "FragStaff_mat", null) }, { "Ecto", ("Ectoplasm", "ectoplasm_mat", null) } },
                 Effects = ("Ecto", "Ectoplasm"),
+                // The ectoplasm's jelly ripple moves the crystals off the wood: still here; a soft ectoplasm glow instead.
+                Tweaks = new Dictionary<string, (string, float)[]> { { "Ecto", new[] { ("_RippleDistance", 0f) } } },
+                Glow = ("Ecto", new Color(.45f, 1f, .55f), 1.6f, 1.1f),
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
             new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
@@ -77,7 +84,8 @@ namespace Overhaul.Magic
                 shared.m_name = s.Name; shared.m_description = s.Name + "_description";
                 // Magic power replaces the damage, in the generic damage (StaffMagic): the spell gives it its element.
                 shared.m_damages = new HitData.DamageTypes { m_damage = s.Power }; shared.m_damagesPerLevel = new HitData.DamageTypes { m_damage = s.PowerPerLevel };
-                if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse))));
+                if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Tweak(Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse)), s.Tweaks, m.Key)));
+                if (model && s.Glow.piece != null) AddGlow(item.ItemPrefab, s.Glow);
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
             }
@@ -156,6 +164,29 @@ namespace Overhaul.Magic
                 cam.targetTexture = null; RenderTexture.ReleaseTemporary(rt);
                 Object.Destroy(cam.gameObject); Object.Destroy(light.gameObject); Object.DestroyImmediate(staff);
             }
+        }
+
+        // A copy of the material with the staff's tweaks for that piece, or the material itself.
+        static Material Tweak(Material material, Dictionary<string, (string property, float value)[]> tweaks, string piece)
+        {
+            if (!material || tweaks == null || !tweaks.TryGetValue(piece, out var values)) return material;
+            var copy = new Material(material) { name = material.name + "_overhaul" };
+            foreach (var (property, value) in values) copy.SetFloat(property, value);
+            return copy;
+        }
+        static void AddGlow(GameObject staff, (string piece, Color color, float range, float intensity) glow)
+        {
+            var piece = staff.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name == glow.piece);
+            if (!piece) return;
+            // Near the head: along the staff's length (the piece's longest axis), toward the end where the piece sits
+            // compared with the rest of the model (its crystals crowd the head; a few gems run down the shaft).
+            var b = piece.sharedMesh.bounds; int axis = b.size.x >= b.size.y && b.size.x >= b.size.z ? 0 : b.size.y >= b.size.z ? 1 : 2;
+            var others = piece.transform.parent.GetComponentsInChildren<MeshFilter>(true).Where(m => m != piece && m.transform.parent == piece.transform.parent && m.GetComponent<MeshRenderer>().enabled).ToArray();
+            float rest = others.Length > 0 ? others.Average(m => m.transform.localPosition[axis] + m.sharedMesh.bounds.center[axis]) : b.center[axis] - 1;
+            var at = b.center; at[axis] = b.center[axis] + Mathf.Sign(b.center[axis] + piece.transform.localPosition[axis] - rest) * b.extents[axis] * .6f;
+            var light = new GameObject("Overhaul glow").AddComponent<Light>();
+            light.transform.SetParent(piece.transform, false); light.transform.localPosition = at;
+            light.type = LightType.Point; light.color = glow.color; light.range = glow.range; light.intensity = glow.intensity; light.shadows = LightShadows.None;
         }
 
         static Material FindMaterial(GameObject prefab, string name) =>
