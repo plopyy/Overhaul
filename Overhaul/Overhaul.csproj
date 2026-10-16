@@ -231,6 +231,7 @@
 <Reference Include="gui_framework"><HintPath>..\..\..\Libs\gui_framework.dll</HintPath><Private>False</Private></Reference>
 <ProjectReference Include="..\AugaIntegration\AugaUnityLib\AugaUnityLib.csproj"><Name>AugaUnityLib</Name><Private>False</Private></ProjectReference>
 <Compile Include="..\AugaIntegration\Auga\API.cs" />
+<Compile Include="..\AugaIntegration\Auga\UITooltip_Hover.cs" />
 <Compile Include="..\AugaIntegration\Auga\API.Common.cs" />
 <Compile Include="..\AugaIntegration\Auga\Auga.cs" />
 <Compile Include="..\AugaIntegration\Auga\MovableHudElement.cs" />
