@@ -38,15 +38,14 @@ namespace Overhaul.Magic
             // Black Forest: the staff of embers' model.
             new Staff { Prefab = "Overhaul_BlackForestStaff", Base = "StaffFireball", Name = "$overhaul_staff_blackforest", Station = "forge", Power = 20, PowerPerLevel = 5,
                 Recipe = new[] { ("Wood", 10, 5), ("Bronze", 5, 3), ("SurtlingCore", 3, 1) } },
-            // Swamp: the staff of fracturing's model, its red crystals and gems turned to ectoplasm (SwampStaff_Model:
-            // Wood keeps the staff's material, Ecto takes the ectoplasm's); its flames give way to the ectoplasm's sparkle.
+            // Swamp: the staff of fracturing's model and material, its red crystals and gems in ectoplasm green (SwampStaff_d:
+            // the staff's texture recoloured; SwampStaff_Model splits Ecto, the crystals, from Wood); its flames give way.
             new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffClusterbomb", Model = "SwampStaff_Model", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
                 Materials = new Dictionary<string, (string, string, string)> {
-                    { "Wood", ("StaffClusterbomb", "FragStaff_mat", null) }, { "Ecto", ("Ectoplasm", "ectoplasm_mat", null) } },
+                    { "Wood", ("StaffClusterbomb", "FragStaff_mat", "SwampStaff_d") }, { "Ecto", ("StaffClusterbomb", "FragStaff_mat", "SwampStaff_d") } },
                 Effects = ("Ecto", "Ectoplasm"),
-                // The ectoplasm's jelly ripple moves the crystals off the wood: still here. Around the head crystals, the fuling
-                // totem's glow and sparks as on the Totemic staff (same size), in ectoplasm green.
-                Tweaks = new Dictionary<string, (string, float)[]> { { "Ecto", new[] { ("_RippleDistance", 0f) } } },
+                // Around the head crystals, the fuling totem's glow and sparks as on the Totemic staff (same size), in
+                // ectoplasm green.
                 Aura = ("GoblinTotem", new Vector3(.07f, 1.78f, 0), .378f, new Color(.35f, 1f, .45f)),
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
