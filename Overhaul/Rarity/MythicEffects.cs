@@ -121,14 +121,15 @@ namespace Overhaul.Rarity
             }
         }
 
-        // --- ZeusWrath: each projectile of the weapon rolls its own Value % chance; on impact it calls a rain of lightning
+        // --- ZeusWrath: each projectile of the weapon rolls its own Value % chance when it hits; if it wins, a rain of lightning falls
         // around its impact point, whatever it hit (a spell striking where it aims hits there): 16 bolts
         // at random moments over 6 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
         // (its projectile hitting at once), dealing the triggering projectile's damage as lightning ---
 
         private const int RainBolts = 16;
         private const float RainSeconds = 6f, RainRadius = 10f;
-        private sealed class Wrath { }
+        // Chance of the weapon that fired the projectile, rolled when it hits.
+        private sealed class Wrath { internal float Chance; }
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath> Wrathful = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Wrath>();
 
         [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
@@ -138,7 +139,7 @@ namespace Overhaul.Rarity
             {
                 if (!owner || owner != Player.m_localPlayer || item == null) return;
                 float chance = Enchantments.MythicValue(item, "ZeusWrath");
-                if (chance > 0 && UnityEngine.Random.value * 100f < chance) Wrathful.GetValue(__instance, _ => new Wrath());
+                if (chance > 0) Wrathful.GetValue(__instance, _ => new Wrath()).Chance = chance;
             }
         }
 
@@ -148,13 +149,14 @@ namespace Overhaul.Rarity
             private static void Prefix(Projectile __instance, Collider collider, Vector3 hitPoint, bool __runOriginal)
             {
                 if (!__runOriginal) return;   // a contact ignored (the caster: SpellSystem)
-                if (!Wrathful.TryGetValue(__instance, out _)) return;
+                if (!Wrathful.TryGetValue(__instance, out var wrath)) return;
                 var player = Player.m_localPlayer;
                 // Touching the caster is not the impact: the roll waits for the real one.
                 var struck = collider ? collider.GetComponentInParent<Character>() : null;
                 if (struck && struck == __instance.m_owner) return;
                 Wrathful.Remove(__instance);
-                if (!player || __instance.m_owner != player) return;
+                // The roll happens on impact: a projectile that vanishes without hitting anything never rolls.
+                if (!player || __instance.m_owner != player || UnityEngine.Random.value * 100f >= wrath.Chance) return;
                 // Rain centre: the impact point, whatever was hit; a sphere cast that starts inside a collider reports no
                 // point (zero), so the projectile's own position stands in when the point is off.
                 Vector3 center = hitPoint == Vector3.zero || Vector3.Distance(hitPoint, __instance.transform.position) > 3f ? __instance.transform.position : hitPoint;
