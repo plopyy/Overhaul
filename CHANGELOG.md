@@ -2,6 +2,9 @@
 
 ## 2.5.0 (in progress)
 
+### Fixed
+- Tooltips (inventory items, skills, leveling stats and every other element with a tooltip) often did not show: one closed as soon as the pointer moved over another part of the element (its icon, its text…) and stayed closed until the pointer left the element and came back. A tooltip now covers its whole element, and reopens after the usual short delay while the pointer rests on it. (2.5.0.2)
+
 ## 2.2.2 (not released)
 
 ### Added
