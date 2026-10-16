@@ -27,8 +27,9 @@ namespace Overhaul.Magic
             public (string piece, string prefab) Effects;
             // Material values changed on a piece's material (a copy): piece -> (property, value).
             public Dictionary<string, (string property, float value)[]> Tweaks;
-            // A light on a piece (its mesh centre): piece, colour, range, intensity.
-            public (string piece, Color color, float range, float intensity) Glow;
+            // A game object's effects (particles, lights) copied around a point of the model, at a size and in a colour:
+            // source prefab, centre and height in the model's space, tint.
+            public (string source, Vector3 center, float height, Color tint) Aura;
             // Wood, biome metal, biome ingredient: (prefab, amount, amount per upgrade level).
             public (string item, int amount, int perLevel)[] Recipe;
         }
@@ -43,9 +44,10 @@ namespace Overhaul.Magic
                 Materials = new Dictionary<string, (string, string, string)> {
                     { "Wood", ("StaffClusterbomb", "FragStaff_mat", null) }, { "Ecto", ("Ectoplasm", "ectoplasm_mat", null) } },
                 Effects = ("Ecto", "Ectoplasm"),
-                // The ectoplasm's jelly ripple moves the crystals off the wood: still here; a soft ectoplasm glow instead.
+                // The ectoplasm's jelly ripple moves the crystals off the wood: still here. Around the head crystals, the fuling
+                // totem's glow and sparks as on the Totemic staff (same size), in ectoplasm green.
                 Tweaks = new Dictionary<string, (string, float)[]> { { "Ecto", new[] { ("_RippleDistance", 0f) } } },
-                Glow = ("Ecto", new Color(.45f, 1f, .55f), 1.6f, 1.1f),
+                Aura = ("GoblinTotem", new Vector3(.07f, 1.78f, 0), .378f, new Color(.35f, 1f, .45f)),
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
             new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
@@ -85,7 +87,7 @@ namespace Overhaul.Magic
                 // Magic power replaces the damage, in the generic damage (StaffMagic): the spell gives it its element.
                 shared.m_damages = new HitData.DamageTypes { m_damage = s.Power }; shared.m_damagesPerLevel = new HitData.DamageTypes { m_damage = s.PowerPerLevel };
                 if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Tweak(Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse)), s.Tweaks, m.Key)));
-                if (model && s.Glow.piece != null) AddGlow(item.ItemPrefab, s.Glow);
+                if (model && s.Aura.source != null) AddAura(item.ItemPrefab, PrefabManager.Instance.GetPrefab(s.Aura.source), s.Aura.center, s.Aura.height, s.Aura.tint);
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 ItemManager.Instance.AddItem(item);
             }
@@ -174,19 +176,43 @@ namespace Overhaul.Magic
             foreach (var (property, value) in values) copy.SetFloat(property, value);
             return copy;
         }
-        static void AddGlow(GameObject staff, (string piece, Color color, float range, float intensity) glow)
+        // Copies the effects around the source's model (its mesh's siblings with particles or lights) to a point of the
+        // staff model, scaled from the source mesh's height to the given one, their particles and lights tinted. Public
+        // for the Unity preview.
+        public static void AddAura(GameObject staff, GameObject source, Vector3 center, float height, Color tint)
         {
-            var piece = staff.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name == glow.piece);
-            if (!piece) return;
-            // Near the head: along the staff's length (the piece's longest axis), toward the end where the piece sits
-            // compared with the rest of the model (its crystals crowd the head; a few gems run down the shaft).
-            var b = piece.sharedMesh.bounds; int axis = b.size.x >= b.size.y && b.size.x >= b.size.z ? 0 : b.size.y >= b.size.z ? 1 : 2;
-            var others = piece.transform.parent.GetComponentsInChildren<MeshFilter>(true).Where(m => m != piece && m.transform.parent == piece.transform.parent && m.GetComponent<MeshRenderer>().enabled).ToArray();
-            float rest = others.Length > 0 ? others.Average(m => m.transform.localPosition[axis] + m.sharedMesh.bounds.center[axis]) : b.center[axis] - 1;
-            var at = b.center; at[axis] = b.center[axis] + Mathf.Sign(b.center[axis] + piece.transform.localPosition[axis] - rest) * b.extents[axis] * .6f;
-            var light = new GameObject("Overhaul glow").AddComponent<Light>();
-            light.transform.SetParent(piece.transform, false); light.transform.localPosition = at;
-            light.type = LightType.Point; light.color = glow.color; light.range = glow.range; light.intensity = glow.intensity; light.shadows = LightShadows.None;
+            var host = staff.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.name.StartsWith("default"))?.transform;
+            var theirs = source ? source.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(m => m.GetComponent<MeshRenderer>()) : null;
+            if (!host || !theirs) return;
+            var tb = theirs.sharedMesh.bounds; var tm = Matrix4x4.TRS(theirs.transform.localPosition, theirs.transform.localRotation, theirs.transform.localScale);
+            Vector3 tc = tm.MultiplyPoint3x4(tb.center); float scale = height / (tb.size.y * theirs.transform.localScale.y);
+            foreach (Transform fx in theirs.transform.parent)
+            {
+                if (fx == theirs.transform || !(fx.GetComponentInChildren<ParticleSystem>(true) || fx.GetComponentInChildren<Light>(true))) continue;
+                var copy = Object.Instantiate(fx.gameObject, host, false); copy.name = fx.name;
+                copy.transform.localPosition = center + (fx.localPosition - tc) * scale; copy.transform.localRotation = fx.localRotation; copy.transform.localScale = fx.localScale * scale;
+                foreach (var ps in copy.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+                    main.startColor = Tinted(main.startColor, tint);
+                    var life = ps.colorOverLifetime; if (life.enabled) life.color = Tinted(life.color, Color.white);
+                }
+                foreach (var l in copy.GetComponentsInChildren<Light>(true)) { l.range *= scale; l.color = tint; }
+            }
+        }
+        // The tint in place of the colours, each keeping its own alpha (fades stay as they were).
+        static ParticleSystem.MinMaxGradient Tinted(ParticleSystem.MinMaxGradient g, Color tint)
+        {
+            Color C(Color c) => new Color(tint.r, tint.g, tint.b, c.a);
+            Gradient G(Gradient x) { if (x == null) return null; var n = new Gradient(); n.SetKeys(x.colorKeys.Select(k => new GradientColorKey(new Color(tint.r, tint.g, tint.b), k.time)).ToArray(), x.alphaKeys); n.mode = x.mode; return n; }
+            switch (g.mode)
+            {
+                case ParticleSystemGradientMode.Color: return new ParticleSystem.MinMaxGradient(C(g.color));
+                case ParticleSystemGradientMode.TwoColors: return new ParticleSystem.MinMaxGradient(C(g.colorMin), C(g.colorMax));
+                case ParticleSystemGradientMode.Gradient: return new ParticleSystem.MinMaxGradient(G(g.gradient));
+                case ParticleSystemGradientMode.TwoGradients: return new ParticleSystem.MinMaxGradient(G(g.gradientMin), G(g.gradientMax));
+                default: return g;
+            }
         }
 
         static Material FindMaterial(GameObject prefab, string name) =>
