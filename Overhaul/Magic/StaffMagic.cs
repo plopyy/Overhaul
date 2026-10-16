@@ -57,18 +57,36 @@ namespace Overhaul.Magic
             }
             static void Prefix(object __instance, Character owner, ref Vector3 velocity, HitData hitData, ItemDrop.ItemData item)
             {
-                bool spell = IsStaff(item);
-                // The Lightning Strike impact (staff_thunderblood_aoe) deals fixed damage of its own (a 0.5 m rod of 400,
-                // an area of 80) whatever the weapon: for a spell or a Zeus's Wrath bolt, the area deals the hit's damage
-                // and status effect instead, and the rod none.
-                if (__instance is Aoe aoe && hitData != null && (spell || Rarity.MythicEffects.RainStrike))
-                {
-                    if (aoe.m_radius < 1f) aoe.m_damage = new HitData.DamageTypes();
-                    else aoe.m_useAttackSettings = true;
-                }
-                if (!spell) return;
+                if (!IsStaff(item)) return;
                 SpellSystem.OnHitSetup(owner, hitData);
                 if (__instance is Projectile projectile) SpellSystem.OnProjectileSetup(owner, projectile, ref velocity);
+            }
+        }
+
+        // A projectile's impact objects (spawn on hit, e.g. the Lightning Strike's staff_thunderblood_aoe) are set up by the
+        // game without the hit's damage or weapon, and that impact deals fixed damage of its own (a 0.5 m rod of 400, an
+        // area of 80). For a spell's projectile or a Zeus's Wrath bolt, each area of the impact takes the projectile's own
+        // damage (the spell's share of the magic power, in its element), the spell's status effect and its caster, and
+        // spares the caster's allies; the rod deals none.
+        static Projectile spawning;
+        [HarmonyPatch(typeof(Projectile), "SpawnOnHit")]
+        static class ImpactSpawn
+        {
+            static void Prefix(Projectile __instance) => spawning = __instance;
+            static void Finalizer() => spawning = null;
+        }
+        [HarmonyPatch(typeof(Aoe), "Awake")]
+        static class ImpactArea
+        {
+            static void Postfix(Aoe __instance)
+            {
+                var source = spawning;
+                if (!source || !(IsStaff(source.m_weapon) || Rarity.MythicEffects.RainStrike)) return;
+                __instance.m_useAttackSettings = false;
+                __instance.m_damage = __instance.m_radius < 1f ? new HitData.DamageTypes() : source.m_damage;
+                __instance.m_owner = source.m_owner; __instance.m_hitFriendly = false;
+                var spell = IsStaff(source.m_weapon) ? SpellSystem.CastBy(source.m_owner) : null;
+                __instance.m_statusEffectHash = spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0;
             }
         }
 
