@@ -1,12 +1,8 @@
 namespace Overhaul
 {
-    // Systems still being built, switched per branch: main ships with both off,
-    // v2.4 turns the magic system on, v2.5 the class system too.
+    // System still being built: off on main and v2.4, on in v2.5 (where this file goes away).
     internal static class Features
     {
-        // Overhaul staffs and their recipes, spells, magic power, eitr from food and eitr dishes,
-        // the grimoire stand and the grimoire window with its key.
-        internal const bool Magic = false;
         // The class window and its key.
         internal const bool Classes = false;
     }

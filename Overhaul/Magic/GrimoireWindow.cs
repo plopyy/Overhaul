@@ -54,7 +54,7 @@ namespace Overhaul.Magic
         }
 
         // ---------------------------------------------------------------- opening
-        internal static bool Shortcut() => Features.Magic && ValConfig.GrimoireWindowKey != null && PreventSimilarHotkeys.IsShortcutDown(ValConfig.GrimoireWindowKey.Value);
+        internal static bool Shortcut() => ValConfig.GrimoireWindowKey != null && PreventSimilarHotkeys.IsShortcutDown(ValConfig.GrimoireWindowKey.Value);
         internal static void Tick()
         {
             var player = Player.m_localPlayer;

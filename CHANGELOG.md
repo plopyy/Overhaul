@@ -1,9 +1,9 @@
 ﻿# Changelog
 
-## 2.3.0 (in progress)
+## 2.4.0 (in progress)
 
 ### Changed
-- The new magic system (Overhaul staffs and their recipes, spells, magic power, eitr from food and the eitr dishes, the grimoire stand, the grimoire window and its key) and the unfinished class window (and its key) are switched off in this version; they come back in later versions. Staffs and weapons work as in 2.2.1, and the Shortcuts settings no longer list the class and grimoire keys. (2.3.0.89)
+- The unfinished class window (and its key) is switched off in this version; it comes back in a later version, and the Shortcuts settings no longer list its key. (2.4.0.90)
 
 ## 2.2.2 (not released)
 
