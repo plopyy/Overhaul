@@ -1,9 +1,6 @@
 ﻿# Changelog
 
-## 2.4.0 (in progress)
-
-### Changed
-- The unfinished class window (and its key) is switched off in this version; it comes back in a later version, and the Shortcuts settings no longer list its key. (2.4.0.90)
+## 2.5.0 (in progress)
 
 ## 2.2.2 (not released)
 

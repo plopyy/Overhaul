@@ -149,7 +149,6 @@
     <Compile Include="DashAnimationPose.cs" />
     <Compile Include="DashAnimationPlayback.cs" />
     <Compile Include="Overhaul.cs" />
-    <Compile Include="Features.cs" />
 	<Compile Include="StaffShieldVfx.cs" />
     <Compile Include="Patches\AttackPatches.cs" />
     <Compile Include="Patches\EitrRefineryPatches.cs" />

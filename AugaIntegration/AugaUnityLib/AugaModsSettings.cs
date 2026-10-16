@@ -17,17 +17,6 @@ namespace AugaUnity {
   InputAction bindingAction;
   InputActionRebindingExtensions.RebindingOperation rebind;
   public static Action<int,string> WriteShortcut;
-  // Shortcut rows of systems switched off in this build; the rows below move up to fill the gap.
-  public static Func<int,bool> ShortcutHidden;
-  float[] rowY;
-  bool Shown(int i)=>ShortcutHidden==null||!ShortcutHidden(i);
-  void LayoutRows(){
-   if(rowY==null){rowY=new float[Displays.Length];for(int i=0;i<Displays.Length;i++)rowY[i]=((RectTransform)Displays[i].transform).anchoredPosition.y;}
-   for(int i=0,row=0;i<Displays.Length;i++){
-    bool shown=Shown(i);Displays[i].gameObject.SetActive(shown);BindButtons[i].gameObject.SetActive(shown);if(!shown)continue;
-    var r=(RectTransform)Displays[i].transform;r.anchoredPosition=new Vector2(r.anchoredPosition.x,rowY[row++]);
-   }
-  }
   public static Func<bool> IsEqsActive;
   public static Func<bool> ReadTrash;
   public static Action<bool> WriteTrash;
@@ -80,7 +69,7 @@ namespace AugaUnity {
   public event Action<string,int> SharedSettingChanged {add{} remove{}}
   public void Initialize(){owner=GetComponentInParent<Settings>();Reload();}
   void Reload(){
-   bool available=Available;RefreshVisibility();LayoutRows();
+   bool available=Available;RefreshVisibility();
    if(pending.Length!=BindButtons.Length){pending=new string[BindButtons.Length];dirty=new bool[BindButtons.Length];}
    for(int i=0;i<BindButtons.Length;i++){pending[i]=available?ReadShortcut(i):"";dirty[i]=false;BindButtons[i].interactable=available;Displays[i].SetText(DisplayShortcut!=null?DisplayShortcut(pending[i]):pending[i]);}
    Notice.text=Localization.instance.Localize(available?"$auga_mods_eqs_help":"$auga_mods_eqs_missing");
@@ -157,7 +146,7 @@ namespace AugaUnity {
     GuiUtils.SetNavigationUp(back,end);GuiUtils.SetNavigationUp(apply,end);
     return;
    }
-   var buttons=BindButtons.Where((b,i)=>Shown(i)).ToArray();
+   var buttons=BindButtons;
    Selectable first=Available ? buttons[0] : apply;
    Selectable last=Available ? buttons[buttons.Length-1] : first;
    var firstTab=HasSubTabs?SubTabs[0]:EqsTab;

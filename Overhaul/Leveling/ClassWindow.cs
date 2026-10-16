@@ -13,7 +13,7 @@ namespace Overhaul.Leveling
         static int closedFrame=-1;
         internal static bool Visible=>root&&root.activeInHierarchy;
         internal static bool BlocksInput=>Visible||closedFrame==Time.frameCount;
-        internal static bool Shortcut(bool held=false)=>Features.Classes&&ValConfig.ClassWindowKey!=null&&
+        internal static bool Shortcut(bool held=false)=>ValConfig.ClassWindowKey!=null&&
             (held?PreventSimilarHotkeys.IsShortcutPressed(ValConfig.ClassWindowKey.Value):PreventSimilarHotkeys.IsShortcutDown(ValConfig.ClassWindowKey.Value));
         internal static void Tick()
         {

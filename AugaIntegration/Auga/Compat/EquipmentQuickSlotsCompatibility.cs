@@ -30,7 +30,6 @@ namespace Auga
             var id=(string)AccessTools.Field(assembly.GetType(PluginType,true),"PluginId").GetRawConstantValue();
             AugaUnity.AugaModsSettings.IsEqsActive=()=>EquipmentAndQuickSlots.EquipmentAndQuickSlots.IsInitialized;
             AugaUnity.AugaModsSettings.ReadShortcut=i=>i==7?EquipmentAndQuickSlots.ValConfig.GrimoireWindowKey.Value.ToString():i==6?EquipmentAndQuickSlots.ValConfig.EffectiveTakeAllKey.ToString():i==5?EquipmentAndQuickSlots.ValConfig.EffectiveMoveObjectKey.ToString():i==4?EquipmentAndQuickSlots.ValConfig.ClassWindowKey.Value.ToString():i==3?EquipmentAndQuickSlots.ValConfig.AmmoCycleKey.Value.ToString():((BepInEx.Configuration.ConfigEntry<BepInEx.Configuration.KeyboardShortcut>[])keys.GetValue(null))[i].Value.ToString();
-            AugaUnity.AugaModsSettings.ShortcutHidden=i=>i==4&&!Overhaul.Features.Classes;
             AugaUnity.AugaModsSettings.FormatShortcut=values=>new BepInEx.Configuration.KeyboardShortcut(values[0],values.Skip(1).ToArray()).ToString();
             AugaUnity.AugaModsSettings.DisplayShortcut=value=>{
                 if(string.IsNullOrEmpty(value))return "";
