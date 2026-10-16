@@ -60,10 +60,13 @@ namespace Overhaul
             Dungeons.BossEncounter.Initialize();
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
-            Magic.StaffModels.Initialize();
-            Magic.SpellSystem.Initialize();
-            Magic.EitrFoods.Initialize();
-            Magic.GrimoireStand.Initialize();
+            if (Features.Magic)
+            {
+                Magic.StaffModels.Initialize();
+                Magic.SpellSystem.Initialize();
+                Magic.EitrFoods.Initialize();
+                Magic.GrimoireStand.Initialize();
+            }
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
@@ -84,7 +87,7 @@ namespace Overhaul
             XPortal.XPortal.Initialize();
 		}
 
-        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); }
+        public void Update() { XPortal.XPortal.Update(); if (Features.Classes) Leveling.ClassWindow.Tick(); if (Features.Magic) Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); }
 
         public void LateUpdate()
         {
@@ -141,6 +144,8 @@ namespace Overhaul
             foreach (var type in Assembly.GetExecutingAssembly().GetTypes())
                 if (type.Namespace != null && (type.Namespace == "Overhaul" || type.Namespace.StartsWith("Overhaul.")))
                 {
+                    if (!Features.Magic && type.Namespace == "Overhaul.Magic") continue;
+                    if (!Features.Classes && (type.DeclaringType ?? type) == typeof(Leveling.ClassWindow)) continue;
                     // A patch that no longer fits the game (after a Valheim update) is reported and skipped; the others still apply.
                     try { _harmony.CreateClassProcessor(type).Patch(); }
                     catch (System.Exception e) { while (e.InnerException != null) e = e.InnerException; Log.LogError("Patch " + type.FullName + " not applied: " + e.GetType().Name + ": " + e.Message); }

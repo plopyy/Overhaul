@@ -1,6 +1,11 @@
 ﻿# Changelog
 
-## 2.2.2 (in progress)
+## 2.3.0 (in progress)
+
+### Changed
+- The new magic system (Overhaul staffs and their recipes, spells, magic power, eitr from food and the eitr dishes, the grimoire stand, the grimoire window and its key) and the unfinished class window (and its key) are switched off in this version; they come back in later versions. Staffs and weapons work as in 2.2.1, and the Shortcuts settings no longer list the class and grimoire keys. (2.3.0.89)
+
+## 2.2.2 (not released)
 
 ### Added
 - **Grimoire stand**, a new hammer piece (Crafting, at a workbench: 8 fine wood, 4 bronze, 1 surtling core): a candlelit book stand with a candle holder and floor candles whose flames flicker. Its grimoire is closed, plays its opening animation as soon as any player comes near (within 4 m) and its closing animation when nobody is left around; every player sees it. Using it opens the grimoire window, which closes if you walk away from the stand. It can be moved with the move key like the other functional pieces. Its build menu icon shows the stand itself. (2.2.2.152)
