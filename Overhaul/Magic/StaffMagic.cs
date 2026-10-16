@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using UnityEngine;
 
 namespace Overhaul.Magic
 {
@@ -44,7 +45,7 @@ namespace Overhaul.Magic
         }
 
         // The staff's projectile (and its area) carries the hit's damage, skill factor included: the spell being cast
-        // (SpellSystem) turns its magic power into the spell's element there (a second Setup from the same hit finds no
+        // (SpellSystem) sets the projectile's speed and gravity and turns its magic power into the spell's element there (a second Setup from the same hit finds no
         // magic power left).
         [HarmonyPatch]
         static class SpellHit
@@ -54,9 +55,11 @@ namespace Overhaul.Magic
                 yield return AccessTools.Method(typeof(Projectile), nameof(Projectile.Setup));
                 yield return AccessTools.Method(typeof(Aoe), nameof(Aoe.Setup));
             }
-            static void Prefix(Character owner, HitData hitData, ItemDrop.ItemData item)
+            static void Prefix(object __instance, Character owner, ref Vector3 velocity, HitData hitData, ItemDrop.ItemData item)
             {
-                if (IsStaff(item)) SpellSystem.OnHitSetup(owner, hitData);
+                if (!IsStaff(item)) return;
+                SpellSystem.OnHitSetup(owner, hitData);
+                if (__instance is Projectile projectile) SpellSystem.OnProjectileSetup(owner, projectile, ref velocity);
             }
         }
 

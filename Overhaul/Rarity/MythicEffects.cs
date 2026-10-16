@@ -121,7 +121,8 @@ namespace Overhaul.Rarity
             }
         }
 
-        // --- ZeusWrath: each projectile of the weapon has a Value % chance, on impact, to call a rain of lightning: 16 bolts
+        // --- ZeusWrath: each projectile of the weapon rolls its own Value % chance; on impact it calls a rain of lightning
+        // around what it hit (the creature, else the impact point; a spell striking where it aims hits there): 16 bolts
         // at random moments over 6 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
         // (its projectile hitting at once), dealing the triggering projectile's damage as lightning ---
 
@@ -144,16 +145,23 @@ namespace Overhaul.Rarity
         [HarmonyPatch(typeof(Projectile), "OnHit")]
         private static class WrathStrike
         {
-            private static void Prefix(Projectile __instance, Vector3 hitPoint)
+            private static void Prefix(Projectile __instance, Collider collider, Vector3 hitPoint)
             {
                 if (!Wrathful.TryGetValue(__instance, out _)) return;
-                Wrathful.Remove(__instance);
                 var player = Player.m_localPlayer;
+                // Touching the caster is not the impact: the roll waits for the real one.
+                var struck = collider ? collider.GetComponentInParent<Character>() : null;
+                if (struck && struck == __instance.m_owner) return;
+                Wrathful.Remove(__instance);
                 if (!player || __instance.m_owner != player) return;
+                // Rain centre: the creature hit, else the impact point; a sphere cast that starts inside a collider
+                // reports no point (zero), so the projectile's own position stands in when the point is off.
+                Vector3 center = struck ? struck.transform.position
+                    : hitPoint == Vector3.zero || Vector3.Distance(hitPoint, __instance.transform.position) > 3f ? __instance.transform.position : hitPoint;
                 var hit = __instance.m_originalHitData?.Clone() ?? new HitData();
                 float damage = __instance.m_damage.GetTotalDamage();
                 hit.m_damage = new HitData.DamageTypes { m_lightning = damage > 0 ? damage : hit.m_damage.GetTotalDamage() };
-                player.StartCoroutine(Rain(player, hitPoint, hit));
+                player.StartCoroutine(Rain(player, center, hit));
             }
         }
 

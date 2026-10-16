@@ -26,7 +26,7 @@ namespace Overhaul.Magic
             public int Tier, Level;
             // Rank of the spell itself (the grimoire's pips): 1 until spells rank up with the class level.
             public int Rank = 1;
-            public float Power, Eitr, ProjectileScale, SlowPercent, SlowDuration, StunChance, StunDuration;
+            public float Power, Eitr, ProjectileScale, ProjectileSpeed, ProjectileGravity, SlowPercent, SlowDuration, StunChance, StunDuration;
             public bool Known => Level <= 0;
             public bool HasEffect => SlowPercent > 0 && SlowDuration > 0 || StunChance > 0 && StunDuration > 0;
             public string EffectName => "Overhaul_Spell_" + Id;
@@ -81,6 +81,9 @@ namespace Overhaul.Magic
                     Attack = RarityConfig.Get(v, "Attack", "StaffFireball"),
                     Projectile = RarityConfig.Get(v, "Projectile", null),
                     ProjectileScale = RarityConfig.Float(v, "ProjectileScale", 1),
+                    ProjectileSpeed = RarityConfig.Float(v, "ProjectileSpeed", 1),
+                    // Negative: the projectile keeps its own gravity.
+                    ProjectileGravity = RarityConfig.Float(v, "ProjectileGravity", -1),
                     SlowPercent = Mathf.Clamp(RarityConfig.Float(v, "SlowPercent", 0), 0, 95),
                     SlowDuration = RarityConfig.Float(v, "SlowDuration", 0),
                     StunChance = Mathf.Clamp(RarityConfig.Float(v, "StunChance", 0), 0, 100),
@@ -172,6 +175,15 @@ namespace Overhaul.Magic
             if (spell == null || hit == null) return;
             StaffMagic.Convert(ref hit.m_damage, spell.Element, spell.Power);
             if (spell.HasEffect) hit.m_statusEffectHash = spell.EffectName.GetStableHashCode();
+        }
+
+        // The spell's speed and gravity on each projectile of the cast.
+        internal static void OnProjectileSetup(Character owner, Projectile projectile, ref Vector3 velocity)
+        {
+            var spell = CastBy(owner);
+            if (spell == null || !projectile) return;
+            velocity *= spell.ProjectileSpeed;
+            if (spell.ProjectileGravity >= 0) projectile.m_gravity = spell.ProjectileGravity;
         }
 
         // ---------------------------------------------------------------- slow and stun
