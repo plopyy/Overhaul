@@ -39,7 +39,8 @@ namespace Overhaul.Magic
             foreach (Transform child in prefab.transform.Cast<Transform>().ToArray()) Object.DestroyImmediate(child.gameObject);
             var wear = prefab.GetComponent<WearNTear>();
             if (wear) { wear.m_new = wear.m_worn = wear.m_broken = null; wear.m_materialType = WearNTear.MaterialType.Wood; wear.m_health = 400; }
-            var visual = Object.Instantiate(model, prefab.transform, false); visual.name = "Model";
+            // The whole model (stand, book, candles, colliders) 20 % bigger than authored.
+            var visual = Object.Instantiate(model, prefab.transform, false); visual.name = "Model"; visual.transform.localScale = Vector3.one * 1.2f;
             int layer = LayerMask.NameToLayer("piece");
             foreach (var t in visual.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
 
