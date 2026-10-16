@@ -19,6 +19,9 @@ namespace Overhaul.Magic
         internal sealed class Staff
         {
             public string Prefab, Base, Model, Name, Station;
+            // A self-contained visual prefab of the bundle (model, its own materials and effects, in the staves' hand space,
+            // OverhaulLab): worn as is in place of the base staff's model and effects.
+            public string Visual;
             // Turn of the model around the staff's length (degrees), when it faces the wrong way in hand.
             public float Turn;
             // Magic power at quality 1 and per upgrade level.
@@ -42,15 +45,9 @@ namespace Overhaul.Magic
             // Black Forest: the staff of embers' model.
             new Staff { Prefab = "Overhaul_BlackForestStaff", Base = "StaffFireball", Name = "$overhaul_staff_blackforest", Station = "forge", Power = 20, PowerPerLevel = 5,
                 Recipe = new[] { ("Wood", 10, 5), ("Bronze", 5, 3), ("SurtlingCore", 3, 1) } },
-            // Swamp: the staff of fracturing's model and material, its red crystals and gems in ectoplasm green (SwampStaff_d:
-            // the staff's texture recoloured; SwampStaff_Model splits Ecto, the crystals, from Wood); its flames give way.
-            new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffClusterbomb", Model = "SwampStaff_Model", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
-                Materials = new Dictionary<string, (string, string, string)> {
-                    { "Wood", ("StaffClusterbomb", "FragStaff_mat", "SwampStaff_d") }, { "Ecto", ("StaffClusterbomb", "FragStaff_mat", "SwampStaff_d") } },
-                Effects = ("Ecto", "Ectoplasm"),
-                // Around the head crystals, the fuling totem's glow and sparks as on the Totemic staff (same size), in
-                // ectoplasm green.
-                Aura = ("GoblinTotem", new Vector3(.07f, 1.78f, 0), .378f, new Color(.478f, .891f, .698f)),
+            // Swamp: its own visual prefab (SwampStaff_Visual: the staff of fracturing's shape with its crystals in ectoplasm
+            // green, the totem's glow and sparks in that colour) on the staff of embers.
+            new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffFireball", Visual = "SwampStaff_Visual", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
             new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
@@ -101,7 +98,33 @@ namespace Overhaul.Magic
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
                 // After the swap, which clears the base staff's effects.
                 if (model && s.Aura.source != null) AddAura(item.ItemPrefab, PrefabManager.Instance.GetPrefab(s.Aura.source), s.Aura.center, s.Aura.height, s.Aura.tint);
+                if (s.Visual != null)
+                {
+                    var visual = bundle.LoadAsset<GameObject>(s.Visual);
+                    if (visual) Wear(item.ItemPrefab, visual); else Log.LogError("Staff visual " + s.Visual + " missing from overhaul_staffs");
+                }
                 ItemManager.Instance.AddItem(item);
+            }
+        }
+
+        // Puts a visual prefab in the staff's hand space (attach) in place of the base staff's model (hidden, its colliders
+        // kept) and effects (removed); the LOD keeps the visual's renderers.
+        static void Wear(GameObject staff, GameObject visual)
+        {
+            var attach = staff.transform.Find("attach");
+            if (!attach) { Log.LogError("Staff " + staff.name + " has no attach point"); return; }
+            foreach (var t in staff.GetComponentsInChildren<Transform>(true).Where(t => t.name == "effects" || t.parent && t.parent.name == "equiped").ToArray()) Object.DestroyImmediate(t.gameObject);
+            var hidden = attach.GetComponentsInChildren<MeshRenderer>(true).ToArray();
+            foreach (var r in hidden) r.enabled = false;
+            var worn = Object.Instantiate(visual, attach, false); worn.name = visual.name;
+            foreach (var t in worn.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = attach.gameObject.layer;
+            var lod = staff.GetComponent<LODGroup>();
+            if (lod)
+            {
+                var added = worn.GetComponentsInChildren<Renderer>(true);
+                var lods = lod.GetLODs();
+                for (int i = 0; i < lods.Length; i++) lods[i].renderers = lods[i].renderers.Where(x => !hidden.Contains(x)).Concat(i == 0 ? added : new Renderer[0]).ToArray();
+                lod.SetLODs(lods);
             }
         }
         // ---------------------------------------------------------------- icons
@@ -114,7 +137,7 @@ namespace Overhaul.Magic
         static void Icons()
         {
             if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
-            foreach (var s in Staffs.Where(s => s.Model != null))
+            foreach (var s in Staffs.Where(s => s.Model != null || s.Visual != null))
             {
                 var prefab = PrefabManager.Instance.GetPrefab(s.Prefab)?.GetComponent<ItemDrop>();
                 if (!prefab) continue;
