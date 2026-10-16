@@ -33,8 +33,12 @@ namespace Overhaul.Magic
             // Black Forest: the staff of embers' model.
             new Staff { Prefab = "Overhaul_BlackForestStaff", Base = "StaffFireball", Name = "$overhaul_staff_blackforest", Station = "forge", Power = 20, PowerPerLevel = 5,
                 Recipe = new[] { ("Wood", 10, 5), ("Bronze", 5, 3), ("SurtlingCore", 3, 1) } },
-            // Swamp: staff of embers' model until its own is made.
-            new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffFireball", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
+            // Swamp: the staff of fracturing's model, its red crystals and gems turned to ectoplasm (SwampStaff_Model:
+            // Wood keeps the staff's material, Ecto takes the ectoplasm's); its flames give way to the ectoplasm's sparkle.
+            new Staff { Prefab = "Overhaul_SwampStaff", Base = "StaffClusterbomb", Model = "SwampStaff_Model", Name = "$overhaul_staff_swamp", Station = "forge", Power = 35, PowerPerLevel = 6,
+                Materials = new Dictionary<string, (string, string, string)> {
+                    { "Wood", ("StaffClusterbomb", "FragStaff_mat", null) }, { "Ecto", ("Ectoplasm", "ectoplasm_mat", null) } },
+                Effects = ("Ecto", "Ectoplasm"),
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
             new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
