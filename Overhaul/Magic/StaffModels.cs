@@ -155,21 +155,34 @@ namespace Overhaul.Magic
                 light.transform.rotation = Quaternion.LookRotation(new Vector3(-.4f, -.5f, -1f));
                 // The staff's glow and sparks (its head effects) run a moment, so they show settled in the icon.
                 foreach (var ps in staff.GetComponentsInChildren<ParticleSystem>(true)) if (ps.gameObject != staff) { ps.Simulate(2f, false, true); ps.Pause(); }
-                cam.targetTexture = rt; cam.Render();
-                var previous = RenderTexture.active; RenderTexture.active = rt;
-                var big = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false); big.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); big.Apply();
-                RenderTexture.active = previous;
-                // Halved with alpha-weighted averaging (smooth edges on the transparent background).
+                // Shot twice, on black then on white: the game's shaders do not all write their opacity, so the opacity comes
+                // from the difference between the two (none where the background shows through), the colour from the black shot.
+                cam.targetTexture = rt;
+                Color[] Shoot(Color background)
+                {
+                    cam.backgroundColor = background; cam.Render();
+                    var previous = RenderTexture.active; RenderTexture.active = rt;
+                    var shot = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false); shot.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); shot.Apply();
+                    RenderTexture.active = previous;
+                    var pixels = shot.GetPixels(); Object.Destroy(shot); return pixels;
+                }
+                var onBlack = Shoot(new Color(0, 0, 0, 1)); var onWhite = Shoot(new Color(1, 1, 1, 1));
+                // Halved: each icon pixel averages 2 x 2 shot pixels, colours weighted by their opacity.
                 var icon = new Texture2D(IconSize, IconSize, TextureFormat.RGBA32, false);
-                var src = big.GetPixels(); var dst = new Color[IconSize * IconSize];
+                var dst = new Color[IconSize * IconSize];
                 for (int y = 0; y < IconSize; y++)
                     for (int x = 0; x < IconSize; x++)
                     {
                         Color sum = Color.clear;
-                        for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) { var c = src[(y * 2 + j) * rt.width + x * 2 + i]; float a = Mathf.Clamp01(c.a); sum += new Color(c.r * a, c.g * a, c.b * a, a); }
-                        sum /= 4; dst[y * IconSize + x] = sum.a > 0 ? new Color(sum.r / sum.a, sum.g / sum.a, sum.b / sum.a, sum.a) : Color.clear;
+                        for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++)
+                        {
+                            int at = (y * 2 + j) * rt.width + x * 2 + i; Color k = onBlack[at], w = onWhite[at];
+                            float a = Mathf.Clamp01(1 - ((w.r - k.r) + (w.g - k.g) + (w.b - k.b)) / 3);
+                            sum += new Color(k.r, k.g, k.b, a);   // on black, the colour is already weighted by the opacity
+                        }
+                        sum /= 4; dst[y * IconSize + x] = sum.a > .004f ? new Color(Mathf.Clamp01(sum.r / sum.a), Mathf.Clamp01(sum.g / sum.a), Mathf.Clamp01(sum.b / sum.a), sum.a) : Color.clear;
                     }
-                icon.SetPixels(dst); icon.Apply(); Object.Destroy(big);
+                icon.SetPixels(dst); icon.Apply();
                 return Sprite.Create(icon, new Rect(0, 0, IconSize, IconSize), new Vector2(.5f, .5f));
             }
             finally
