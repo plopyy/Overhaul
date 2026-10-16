@@ -2,6 +2,9 @@
 
 ## 2.3.0 (in progress)
 
+### Fixed
+- Tooltips (inventory items, skills, leveling stats and every other element with a tooltip) often did not show: one closed as soon as the pointer moved over another part of the element (its icon, its text…) and stayed closed until the pointer left the element and came back. A tooltip now covers its whole element, and reopens after the usual short delay while the pointer rests on it. (2.3.0.91)
+
 ### Changed
 - The new magic system (Overhaul staffs and their recipes, spells, magic power, eitr from food and the eitr dishes, the grimoire stand, the grimoire window and its key) and the unfinished class window (and its key) are switched off in this version; they come back in later versions. Staffs and weapons work as in 2.2.1, and the Shortcuts settings no longer list the class and grimoire keys. (2.3.0.89)
 
