@@ -19,6 +19,8 @@ namespace Overhaul.Magic
         internal sealed class Staff
         {
             public string Prefab, Base, Model, Name, Station;
+            // Turn of the model around the staff's length (degrees), when it faces the wrong way in hand.
+            public float Turn;
             // Magic power at quality 1 and per upgrade level.
             public float Power, PowerPerLevel;
             // Model piece name -> (game prefab holding the material, its material name, diffuse texture of the bundle or null).
@@ -61,7 +63,7 @@ namespace Overhaul.Magic
                 Recipe = new[] { ("FineWood", 10, 5), ("BlackMetal", 5, 3), ("GoblinTotem", 2, 1) } },
             // Mistlands: the staff of embers' wood, black metal bands and a black core, with the fuling totem's purple glow
             // and sparks around the core.
-            new Staff { Prefab = "Overhaul_MistlandsStaff", Base = "StaffFireball", Model = "MistlandStaff_Model", Name = "$overhaul_staff_mistlands", Station = "piece_magetable", Power = 80, PowerPerLevel = 9,
+            new Staff { Prefab = "Overhaul_MistlandsStaff", Base = "StaffFireball", Model = "MistlandStaff_Model", Turn = 180, Name = "$overhaul_staff_mistlands", Station = "piece_magetable", Power = 80, PowerPerLevel = 9,
                 Materials = new Dictionary<string, (string, string, string)> {
                     { "Wood", ("StaffFireball", "staffs_mat", null) }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "BlackCore", ("BlackCore", "BlackCore_mat", null) } },
                 Effects = ("BlackCore", "GoblinTotem"),
@@ -95,8 +97,10 @@ namespace Overhaul.Magic
                 // Magic power replaces the damage, in the generic damage (StaffMagic): the spell gives it its element.
                 shared.m_damages = new HitData.DamageTypes { m_damage = s.Power }; shared.m_damagesPerLevel = new HitData.DamageTypes { m_damage = s.PowerPerLevel };
                 if (model) Dress(item.ItemPrefab, model, s.Materials.ToDictionary(m => m.Key, m => Tweak(Material(PrefabManager.Instance.GetPrefab(m.Value.prefab), m.Value.material, m.Value.diffuse == null ? null : bundle.LoadAsset<Texture2D>(m.Value.diffuse)), s.Tweaks, s.Tints, m.Key)));
-                if (model && s.Aura.source != null) AddAura(item.ItemPrefab, PrefabManager.Instance.GetPrefab(s.Aura.source), s.Aura.center, s.Aura.height, s.Aura.tint);
+                if (model && s.Turn != 0) TurnModel(item.ItemPrefab, model, s.Turn);
                 if (s.Effects.prefab != null) SwapEffects(item.ItemPrefab, s.Effects.piece, PrefabManager.Instance.GetPrefab(s.Effects.prefab));
+                // After the swap, which clears the base staff's effects.
+                if (model && s.Aura.source != null) AddAura(item.ItemPrefab, PrefabManager.Instance.GetPrefab(s.Aura.source), s.Aura.center, s.Aura.height, s.Aura.tint);
                 ItemManager.Instance.AddItem(item);
             }
         }
@@ -193,6 +197,16 @@ namespace Overhaul.Magic
         }
 
         // A copy of the material with the staff's tweaks for that piece, or the material itself.
+        // Turns the model's pieces around the staff's length (the base mesh's Y axis, which the models are authored on).
+        // Public for the Unity preview.
+        public static void TurnModel(GameObject staff, GameObject model, float degrees)
+        {
+            var names = new HashSet<string>(model.GetComponentsInChildren<MeshFilter>(true).Select(m => m.name));
+            var host = staff.GetComponentsInChildren<MeshFilter>(true).First(m => m.name.StartsWith("default")).transform;
+            var turn = Quaternion.Euler(0, degrees, 0);
+            foreach (Transform piece in host) if (names.Contains(piece.name)) { piece.localPosition = turn * piece.localPosition; piece.localRotation = turn * piece.localRotation; }
+        }
+
         // Public for the Unity preview.
         public static Material Tweak(Material material, Dictionary<string, (string property, float value)[]> tweaks, Dictionary<string, (string property, Color color)[]> tints, string piece)
         {
