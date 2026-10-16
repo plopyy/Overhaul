@@ -57,9 +57,14 @@ namespace Overhaul.Magic
                     { "Wood", ("StaffFireball", "staffs_mat", "PlainsStaff_d") }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "Totem", ("GoblinTotem", "Idol_mat", null) } },
                 Effects = ("Totem", "GoblinTotem"),
                 Recipe = new[] { ("FineWood", 10, 5), ("BlackMetal", 5, 3), ("GoblinTotem", 2, 1) } },
-            // Mistlands and Ashlands: frost staff's and staff of embers' models until theirs are made.
-            new Staff { Prefab = "Overhaul_MistlandsStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mistlands", Station = "piece_magetable", Power = 80, PowerPerLevel = 9,
+            // Mistlands: the staff of embers' wood, black metal bands and a black core, with the fuling totem's purple glow
+            // and sparks around the core.
+            new Staff { Prefab = "Overhaul_MistlandsStaff", Base = "StaffFireball", Model = "MistlandStaff_Model", Name = "$overhaul_staff_mistlands", Station = "piece_magetable", Power = 80, PowerPerLevel = 9,
+                Materials = new Dictionary<string, (string, string, string)> {
+                    { "Wood", ("StaffFireball", "staffs_mat", null) }, { "BlackMetal", ("BlackMetal", "blackmetal", null) }, { "BlackCore", ("BlackCore", "BlackCore_mat", null) } },
+                Effects = ("BlackCore", "GoblinTotem"),
                 Recipe = new[] { ("YggdrasilWood", 10, 5), ("BlackMetal", 8, 4), ("BlackCore", 2, 1) } },
+            // Ashlands: staff of embers' model until its own is made.
             new Staff { Prefab = "Overhaul_AshlandsStaff", Base = "StaffFireball", Name = "$overhaul_staff_ashlands", Station = "piece_magetable", Power = 100, PowerPerLevel = 10,
                 Recipe = new[] { ("Blackwood", 10, 5), ("FlametalNew", 5, 3), ("MoltenCore", 2, 1) } },
         };
