@@ -61,41 +61,28 @@ namespace Overhaul.Magic
         internal const float Range = 4f, WindowRange = 6f;
         ZNetView nview;
         Piece piece;
-        Transform spine, cover;
-        float opened = -1;
+        Animator book;
+        bool open;
         readonly List<(Light light, float intensity, float seed)> lights = new List<(Light, float, float)>();
 
         void Awake()
         {
             nview = GetComponent<ZNetView>(); piece = GetComponent<Piece>();
-            spine = transform.Find("Model/Book/Spine"); cover = transform.Find("Model/Book/Cover");
+            book = GetComponentInChildren<Animator>(true);
             foreach (var l in GetComponentsInChildren<Light>(true)) lights.Add((l, l.intensity, Random.value * 100));
-            Pose(0);
         }
+
+        // A stand loaded again starts with its Animator reset: closed.
+        void OnEnable() => open = false;
 
         void Update()
         {
             foreach (var (light, intensity, seed) in lights)
                 if (light) light.intensity = intensity * (.85f + .3f * Mathf.PerlinNoise(seed, Time.time * 5));
+            // The book's Animator (OverhaulLab GrimoireBookAnimator) plays its opening and closing on the "Open" bool.
             // Building ghosts and unloaded stands keep the book closed.
-            float target = nview && nview.IsValid() && Player.IsPlayerInRange(transform.position, Range) ? 1 : 0;
-            if (opened != target) Pose(Mathf.MoveTowards(opened, target, Time.deltaTime / Duration));
-        }
-
-        // The book's hinge, as rigged in OverhaulLab (GrimoireBookRig): spine strip edges (static -Z, folding +Z), page
-        // surface height and covers' outer face. Closed, the spine stands up on the static cover's edge, stretched to the
-        // book's thickness, and the cover lies 180 degrees over on the spine's far end.
-        const float Duration = .9f, StaticEdge = -.0715f, FoldEdge = .0485f, PageTop = .109f, CoverFace = .030f;
-        void Pose(float t)
-        {
-            opened = Mathf.Clamp01(t);
-            if (!spine || !cover) return;
-            float eased = opened * opened * (3 - 2 * opened), closed = 1 - eased;
-            float width = FoldEdge - StaticEdge, stretch = Mathf.Lerp(1, 2 * (PageTop - CoverFace) / width, closed);
-            var turn = Quaternion.Euler(-90 * closed, 0, 0);
-            spine.localPosition = new Vector3(0, CoverFace, StaticEdge); spine.localRotation = turn; spine.localScale = new Vector3(1, 1, stretch);
-            cover.localPosition = spine.localPosition + turn * new Vector3(0, 0, width * stretch);
-            cover.localRotation = Quaternion.Euler(-180 * closed, 0, 0); cover.localScale = Vector3.one;
+            bool near = nview && nview.IsValid() && Player.IsPlayerInRange(transform.position, Range);
+            if (book && near != open) { open = near; book.SetBool("Open", open); }
         }
 
         public string GetHoverName() => piece ? piece.m_name : "";
