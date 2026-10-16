@@ -2688,5 +2688,8 @@
   "overhaul_food_onioninfusion": "Onion infusion",
   "overhaul_food_onioninfusion_desc": "An onion and mushroom infusion sweetened with honey that revives your eitr.",
   "overhaul_food_cloudflatbread": "Cloud flatbread",
-  "overhaul_food_cloudflatbread_desc": "A barley flatbread with cloudberries and yellow mushrooms, full of eitr."
+  "overhaul_food_cloudflatbread_desc": "A barley flatbread with cloudberries and yellow mushrooms, full of eitr.",
+  "overhaul_grimoirestand": "Grimoire stand",
+  "overhaul_grimoirestand_desc": "A candlelit stand holding the grimoire. It opens as you come near and lets you choose your staffs’ spells.",
+  "overhaul_grimoirestand_read": "Read the grimoire"
 }

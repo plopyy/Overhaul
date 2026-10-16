@@ -2791,5 +2791,8 @@
   "overhaul_food_onioninfusion": "Infusion d’oignon",
   "overhaul_food_onioninfusion_desc": "Une infusion d’oignon et de champignons adoucie au miel, qui ravive l’eitr.",
   "overhaul_food_cloudflatbread": "Galette de nuage",
-  "overhaul_food_cloudflatbread_desc": "Une galette d’orge aux baies de nuage et aux champignons jaunes, gorgée d’eitr."
+  "overhaul_food_cloudflatbread_desc": "Une galette d’orge aux baies de nuage et aux champignons jaunes, gorgée d’eitr.",
+  "overhaul_grimoirestand": "Pupitre du grimoire",
+  "overhaul_grimoirestand_desc": "Un pupitre éclairé à la bougie où repose le grimoire. Il s’ouvre à votre approche et permet de choisir les sorts de vos bâtons.",
+  "overhaul_grimoirestand_read": "Lire le grimoire"
 }

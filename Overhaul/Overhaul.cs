@@ -63,6 +63,7 @@ namespace Overhaul
             Magic.StaffModels.Initialize();
             Magic.SpellSystem.Initialize();
             Magic.EitrFoods.Initialize();
+            Magic.GrimoireStand.Initialize();
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Rarity.RarityConfig.Initialize();
@@ -115,6 +116,7 @@ namespace Overhaul
             Magic.StaffModels.Shutdown();
             Magic.SpellSystem.Shutdown();
             Magic.EitrFoods.Shutdown();
+            Magic.GrimoireStand.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();

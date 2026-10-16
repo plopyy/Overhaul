@@ -16,7 +16,7 @@ namespace Overhaul.Storage
         internal static bool Functional(Piece p)
         {
             if(!p || p.GetComponent<Door>() || p.GetComponent<Ship>() || p.GetComponent<Vagon>() || p.GetComponent<TerrainModifier>() || p.GetComponent<TerrainOp>())return false;
-            return p.GetComponent<CraftingStation>() || p.GetComponent<StationExtension>() || p.GetComponent<Container>() ||
+            return p.GetComponent<CraftingStation>() || p.GetComponent<StationExtension>() || p.GetComponent<Magic.GrimoireStandPiece>() || p.GetComponent<Container>() ||
                 p.GetComponent<Smelter>() || p.GetComponent<Fermenter>() || p.GetComponent<CookingStation>() ||
                 p.GetComponent<Fireplace>() || p.GetComponent<ItemStand>() || p.GetComponent<ArmorStand>() ||
                 p.GetComponent<Beehive>() || p.GetComponent<SapCollector>() || p.GetComponent<WispSpawner>() ||

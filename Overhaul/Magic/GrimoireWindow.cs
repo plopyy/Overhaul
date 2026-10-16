@@ -32,6 +32,8 @@ namespace Overhaul.Magic
 
         static GameObject root, panel;
         static Player owner;
+        // Grimoire stand the window was opened from (null with the shortcut): walking away from it closes the window.
+        static Transform stand;
         static int closedFrame = -1;
         static Image ghost;
         internal static bool Visible => root && root.activeInHierarchy;
@@ -63,11 +65,13 @@ namespace Overhaul.Magic
             {
                 if (player.IsDead() || player.IsTeleporting() || Menu.IsVisible() || Console.IsVisible() || InventoryGui.IsVisible() || Minimap.IsOpen() || StoreGui.IsVisible() || TextInput.IsVisible() || (Chat.instance && Chat.instance.HasFocus())) { Close(); return; }
                 if (Shortcut() || ZInput.GetKeyDown(KeyCode.Escape) || ZInput.GetButtonDown("JoyButtonB")) Close();
+                else if (stand != null && (!stand || Vector3.Distance(stand.position, player.transform.position) > GrimoireStandPiece.WindowRange)) Close();
             }
-            else if (player.TakeInput() && !player.IsDead() && !player.InPlaceMode() && !InventoryGui.IsVisible() && !Minimap.IsOpen() && !StoreGui.IsVisible() && Shortcut()) Open();
+            else if (player.TakeInput() && !player.IsDead() && !player.InPlaceMode() && !InventoryGui.IsVisible() && !Minimap.IsOpen() && !StoreGui.IsVisible() && Shortcut()) Open(null);
         }
-        static void Open()
+        internal static void Open(Transform from)
         {
+            stand = from;
             if (!Auga.Auga.Assets.Grimoire || !Hud.instance) return;
             if (!root)
             {
