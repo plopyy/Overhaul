@@ -95,7 +95,7 @@ namespace Overhaul.Magic
         // A staff with its own model gets its own icon, rendered by the game itself (the editor does not light the game's
         // shaders like the game): the item held upright on a layer of its own, far from the world, photographed with its
         // own camera and light like the game's staff icons (head in close-up, staff on a diagonal, head up right, foot cut
-        // off), on a transparent background. Once per session, on machines that draw (not a dedicated server).
+        // off), its head glow and sparks included, on a transparent background. Once per session, on machines that draw (not a dedicated server).
         const int IconLayer = 31, IconSize = 128;
         static readonly Dictionary<string, Sprite> IconCache = new Dictionary<string, Sprite>();
         static void Icons()
@@ -126,14 +126,15 @@ namespace Overhaul.Magic
             try
             {
                 foreach (var body in staff.GetComponentsInChildren<Rigidbody>(true)) body.isKinematic = true;
-                foreach (var ps in staff.GetComponentsInChildren<ParticleSystem>(true)) ps.gameObject.SetActive(false);
-                foreach (var l in staff.GetComponentsInChildren<Light>(true)) l.enabled = false;
+                // The item's ground glint (a particle system on its root) is left out.
+                foreach (var ps in staff.GetComponents<ParticleSystem>()) ps.gameObject.GetComponent<ParticleSystemRenderer>().enabled = false;
                 var lod = staff.GetComponent<LODGroup>(); if (lod) lod.ForceLOD(0);
                 // Upright: the staff mesh's own axes made the world's (the item prefab lies it down on the ground).
                 var mesh = staff.GetComponentsInChildren<MeshFilter>(true).First(m => m.name.StartsWith("default"));
                 staff.transform.rotation = Quaternion.Inverse(Quaternion.Inverse(staff.transform.rotation) * mesh.transform.rotation);
                 foreach (var t in staff.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = IconLayer;
-                var renderers = staff.GetComponentsInChildren<Renderer>(true).Where(x => x.enabled && x.gameObject.activeInHierarchy).ToArray();
+                // Framed on the model alone (the particles would stretch the bounds).
+                var renderers = staff.GetComponentsInChildren<MeshRenderer>(true).Where(x => x.enabled && x.gameObject.activeInHierarchy).ToArray();
                 var bounds = renderers[0].bounds; foreach (var x in renderers) bounds.Encapsulate(x.bounds);
                 float height = bounds.size.y;
                 var center = new Vector3(bounds.center.x, bounds.max.y - height * .2f, bounds.center.z);
@@ -143,6 +144,8 @@ namespace Overhaul.Magic
                 cam.transform.position = center + new Vector3(0, 0, 3); cam.transform.LookAt(center); cam.transform.Rotate(0, 0, 38, Space.Self);
                 light.type = LightType.Directional; light.cullingMask = 1 << IconLayer; light.intensity = 1.3f; light.color = new Color(1, .96f, .9f);
                 light.transform.rotation = Quaternion.LookRotation(new Vector3(-.4f, -.5f, -1f));
+                // The staff's glow and sparks (its head effects) run a moment, so they show settled in the icon.
+                foreach (var ps in staff.GetComponentsInChildren<ParticleSystem>(true)) if (ps.gameObject != staff) { ps.Simulate(2f, false, true); ps.Pause(); }
                 cam.targetTexture = rt; cam.Render();
                 var previous = RenderTexture.active; RenderTexture.active = rt;
                 var big = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false); big.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0); big.Apply();
