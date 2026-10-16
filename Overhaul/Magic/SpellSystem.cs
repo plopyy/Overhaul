@@ -110,6 +110,9 @@ namespace Overhaul.Magic
                     var clone = PrefabManager.Instance.CreateClonedPrefab(name, source);
                     clone.transform.localScale = source.transform.localScale * spell.ProjectileScale;
                     var p = clone.GetComponent<Projectile>(); if (p) p.m_rayRadius *= spell.ProjectileScale;
+                    // Its particles and light grow with it (particles otherwise keep their authored size).
+                    foreach (var ps in clone.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+                    foreach (var light in clone.GetComponentsInChildren<Light>(true)) light.range *= spell.ProjectileScale;
                     PrefabManager.Instance.AddPrefab(clone);
                     Projectiles[spell.Id] = clone;
                 }
@@ -136,6 +139,8 @@ namespace Overhaul.Magic
             if (Projectiles.TryGetValue(spell.Id, out var resized)) attack.m_attackProjectile = resized;
             else if (!string.IsNullOrEmpty(spell.Projectile)) attack.m_attackProjectile = ProjectileSource(spell) ?? attack.m_attackProjectile;
             attack.m_attackEitr = spell.Eitr;
+            // A projectile that flies straight is aimed straight at the crosshair, not lobbed.
+            if (spell.ProjectileGravity == 0) attack.m_launchAngle = 0;
             return Attacks[spell.Id] = attack;
         }
 
