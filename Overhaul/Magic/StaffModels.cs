@@ -46,7 +46,7 @@ namespace Overhaul.Magic
                 Effects = ("Ecto", "Ectoplasm"),
                 // Around the head crystals, the fuling totem's glow and sparks as on the Totemic staff (same size), in
                 // ectoplasm green.
-                Aura = ("GoblinTotem", new Vector3(.07f, 1.78f, 0), .378f, new Color(.35f, 1f, .45f)),
+                Aura = ("GoblinTotem", new Vector3(.07f, 1.78f, 0), .378f, new Color(.478f, .891f, .698f)),
                 Recipe = new[] { ("ElderBark", 10, 5), ("Iron", 5, 3), ("Ectoplasm", 5, 2) } },
             // Mountains: the frost staff's model.
             new Staff { Prefab = "Overhaul_MountainStaff", Base = "StaffIceShards", Name = "$overhaul_staff_mountain", Station = "forge", Power = 50, PowerPerLevel = 7,
