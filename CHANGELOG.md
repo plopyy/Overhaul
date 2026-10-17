@@ -2,6 +2,9 @@
 
 ## 2.3.0 (in progress)
 
+### Added
+- **Enchanting table**, a new hammer piece (Crafting, at a workbench; provisional recipe: 10 stone, 6 fine wood, 4 bone fragments, 1 surtling core): Eikthyr’s altar holding maps of the cartography table, a rune table, crypt bones and eternal candles burning with their purple flames, all in the game’s own textures. It does nothing yet: enchanting comes in a later version. (2.3.0.92)
+
 ### Fixed
 - Tooltips (inventory items, skills, leveling stats and every other element with a tooltip) often did not show: one closed as soon as the pointer moved over another part of the element (its icon, its text…) and stayed closed until the pointer left the element and came back. A tooltip now covers its whole element, and reopens after the usual short delay while the pointer rests on it. (2.3.0.91)
 

@@ -2794,5 +2794,7 @@
   "overhaul_food_cloudflatbread_desc": "Une galette d’orge aux baies de nuage et aux champignons jaunes, gorgée d’eitr.",
   "overhaul_grimoirestand": "Pupitre du grimoire",
   "overhaul_grimoirestand_desc": "Un pupitre éclairé à la bougie où repose le grimoire. Il s’ouvre à votre approche et permet de choisir les sorts de vos bâtons.",
-  "overhaul_grimoirestand_read": "Lire le grimoire"
+  "overhaul_grimoirestand_read": "Lire le grimoire",
+  "overhaul_enchanttable": "Établi d’enchantement",
+  "overhaul_enchanttable_desc": "Un vieil autel couvert de runes, de cartes et d’ossements, éclairé par des bougies éternelles. C’est ici qu’on enchantera."
 }
