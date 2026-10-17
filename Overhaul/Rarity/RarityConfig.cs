@@ -19,6 +19,8 @@ namespace Overhaul.Rarity
         internal bool CanBeSet;
         internal Color[] Colors = { Color.white };
         internal Color Color => Colors[0];
+        // The Catalyst rarity belongs to catalyst items only: never drawn for loot or enchanting.
+        internal bool ForCatalysts => string.Equals(Id, ItemRarity.CatalystRarity, StringComparison.OrdinalIgnoreCase);
         // Gradient order: the first colour in the middle, the others alternately on each side (2, 1, 3 for three colours).
         internal Color[] Gradient
         {
@@ -96,7 +98,7 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else AddEnchantSections(path);
+            else { AddCatalystRarity(path); AddEnchantSections(path); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
@@ -113,6 +115,36 @@ namespace Overhaul.Rarity
             int start = title > 1 ? defaults.LastIndexOf('\n', title - 2) + 1 : 0;
             File.WriteAllText(path, text.TrimEnd() + Environment.NewLine + Environment.NewLine + defaults.Substring(start));
             Utility.Log.LogInfo("RaritySystem.cfg: enchanting table sections added");
+        }
+
+        // Files made before the Catalyst rarity get its section from the defaults, after their last rarity.
+        private static void AddCatalystRarity(string path)
+        {
+            string section = "[Rarity_" + ItemRarity.CatalystRarity + "]";
+            string text = File.ReadAllText(path);
+            if (text.Contains(section)) return;
+            string defaults = Utility.ConfigSections.Defaults(FileName);
+            int from = defaults.IndexOf(section, StringComparison.Ordinal);
+            if (from < 0) return;
+            int to = NextBlock(defaults, from);
+            string block = defaults.Substring(from, to - from).TrimEnd();
+            int last = text.LastIndexOf("[Rarity_", StringComparison.Ordinal);
+            int at = last < 0 ? text.Length : NextBlock(text, last);
+            File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
+            Utility.Log.LogInfo("RaritySystem.cfg: Catalyst rarity added");
+        }
+
+        // End of the section starting at index: the next section header or comment line, or the end of the text.
+        private static int NextBlock(string text, int index)
+        {
+            int line = text.IndexOf('\n', index);
+            while (line >= 0 && line + 1 < text.Length)
+            {
+                char c = text[line + 1];
+                if (c == '[' || c == '#') return line + 1;
+                line = text.IndexOf('\n', line + 1);
+            }
+            return text.Length;
         }
 
         private static void Use(RarityData data) { Current = data; Changed?.Invoke(); }
@@ -185,7 +217,7 @@ namespace Overhaul.Rarity
                         });
                         break;
                     case "catalyst":
-                        data.Catalysts[id] = Get(v, "Rarity", null);
+                        data.Catalysts[id] = ItemRarity.CatalystRarity;
                         break;
                     case "lootlist":
                         data.LootLists[id] = new LootListDef
@@ -224,12 +256,13 @@ namespace Overhaul.Rarity
             foreach (var catalyst in data.Catalysts)
             {
                 if (!ObjectDB.instance.GetItemPrefab(catalyst.Key)) Utility.Log.LogWarning("RaritySystem.cfg: unknown catalyst item " + catalyst.Key);
-                if (data.Rarity(catalyst.Value) == null) Utility.Log.LogWarning("RaritySystem.cfg: unknown rarity " + catalyst.Value + " for catalyst " + catalyst.Key);
+                if (data.Rarity(catalyst.Value) == null) Utility.Log.LogWarning("RaritySystem.cfg: no [Rarity_" + catalyst.Value + "] section for catalyst " + catalyst.Key);
             }
             foreach (var list in data.LootLists.Values)
             {
                 foreach (string item in list.Items) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in loot list " + list.Id);
-                if (list.Weights.Length != data.Rarities.Count) Utility.Log.LogWarning("RaritySystem.cfg: loot list " + list.Id + " has " + list.Weights.Length + " rarity weights for " + data.Rarities.Count + " rarities");
+                int drawn = data.Rarities.Count(r => !r.ForCatalysts);
+                if (list.Weights.Length != drawn) Utility.Log.LogWarning("RaritySystem.cfg: loot list " + list.Id + " has " + list.Weights.Length + " rarity weights for " + drawn + " rarities");
             }
             foreach (var mob in data.MobLoots)
             {

@@ -64,7 +64,7 @@ namespace Overhaul.Rarity
             foreach (var pair in data.EnchantTiers) if (pair.Key <= tier) weights = pair.Value;
             if (weights == null) return new float[data.Rarities.Count];
             var odds = new float[data.Rarities.Count]; float total = 0;
-            for (int i = 0; i < odds.Length; i++) total += odds[i] = i < weights.Length && i > 0 ? Mathf.Max(0, weights[i]) : 0;
+            for (int i = 0; i < odds.Length; i++) total += odds[i] = i < weights.Length && i > 0 && !data.Rarities[i].ForCatalysts ? Mathf.Max(0, weights[i]) : 0;
             if (total > 0) for (int i = 0; i < odds.Length; i++) odds[i] = odds[i] * 100f / total;
             return odds;
         }
