@@ -46,7 +46,7 @@ namespace Overhaul
             if (badgeBorder) { Tint(badgeBorder, rarity ?? BaseBorder, hasItem ? gradient : null, 0); badgeBorder.enabled = hasItem && upgradable; }
         }
 
-        // Catalyst slots of the item, as small squares up the left edge of the cell from its bottom left corner (OverhaulCatalysts, built into the
+        // Catalyst slots of the item, as diamonds centred on the left border line (tips on it), centred on the cell height (OverhaulCatalysts, built into the
         // cell prefab): one per slot of its rarity, an empty one with the base border, a filled one with the catalyst's icon
         // and its rarity's border. Hidden for items without catalyst slots.
         internal static void Catalysts(GameObject cell, ItemDrop.ItemData item)
