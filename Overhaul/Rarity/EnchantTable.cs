@@ -25,10 +25,10 @@ namespace Overhaul.Rarity
             ("Rune", "piece_magetable_ext", "runetable_mat"),
         };
         // The eternal candles are the galdr table's, 0.3 times their size and turned 263° (fitted on the model's mesh):
-        // their three flames and their light, at the same spots of the model.
+        // their three flames and their light, at the same spots of the model (table top raised by 0.25 m on 2026-10-17).
         const float CandleScale = .3f;
-        static readonly Vector3[] Flames = { new Vector3(-.296f, .895f, .787f), new Vector3(-.359f, 1f, .737f), new Vector3(-.387f, .952f, .815f) };
-        static readonly Vector3 CandleLight = new Vector3(-.333f, 1.036f, .771f);
+        static readonly Vector3[] Flames = { new Vector3(-.296f, 1.145f, .787f), new Vector3(-.359f, 1.25f, .737f), new Vector3(-.387f, 1.202f, .815f) };
+        static readonly Vector3 CandleLight = new Vector3(-.333f, 1.286f, .771f);
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
         internal static void Shutdown() => PrefabManager.OnVanillaPrefabsAvailable -= Register;
