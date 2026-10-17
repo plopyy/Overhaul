@@ -56,21 +56,22 @@ namespace Overhaul.Magic
             PieceManager.Instance.AddPiece(custom);
         }
 
-        // The pack's model in the game's look: the stand in the wood wall's planks, the flat flame sprites (black edged
-        // in the game) replaced by the resin candle's animated flame, and a dimmer, warmer candle light.
+        // The pack's model in the game's look: the stand and the tall candle holder in the wood wall's planks (their post
+        // turned along the grain in the bundle), the flat flame sprites (black edged in the game) replaced by the resin
+        // candle's animated flame, and a dimmer, warmer candle light. The game prefabs borrowed are held (GamePrefabs).
         static void GameLook(GameObject visual)
         {
-            var wall = PrefabManager.Instance.GetPrefab("woodwall")?.transform.Find("New/_Combined Mesh [high]")?.GetComponent<MeshRenderer>()?.sharedMaterial;
-            var stand = visual.transform.Find("Stand")?.GetComponentInChildren<MeshRenderer>(true);
-            if (wall && stand)
+            var wall = GamePrefabs.Held("woodwall")?.transform.Find("New/_Combined Mesh [high]")?.GetComponent<MeshRenderer>()?.sharedMaterial;
+            var woodParts = visual.GetComponentsInChildren<MeshRenderer>(true).Where(r => r.name == "Magic Book-Stand 1" || r.name == "Tall Candle Holder 1").ToArray();
+            if (wall && woodParts.Length > 0)
             {
-                // The stand's texture is a wood atlas over half of its UV square: one plank texture per atlas half.
+                // Their textures are wood atlases over about half of their UV square: one plank texture per atlas half.
                 var wood = new Material(wall) { name = "GrimoireStand_wood", mainTextureScale = new Vector2(2, 2) };
-                stand.sharedMaterials = stand.sharedMaterials.Select(_ => wood).ToArray();
+                foreach (var part in woodParts) part.sharedMaterials = part.sharedMaterials.Select(_ => wood).ToArray();
             }
             else Log.LogWarning("Grimoire stand: wood wall material not found, pack wood kept");
 
-            var flame = PrefabManager.Instance.GetPrefab("Candle_resin")?.transform.Find("high/vfx")?.gameObject;
+            var flame = GamePrefabs.Held("Candle_resin")?.transform.Find("high/vfx")?.gameObject;
             var sprites = visual.GetComponentsInChildren<SpriteRenderer>(true);
             if (flame && sprites.Length > 0)
             {
