@@ -14,6 +14,9 @@ namespace Overhaul.Storage
         internal virtual int Width => 3;
         internal virtual int Height => 2;
         internal virtual int WorkSlots => 1;
+        // Size of the second inventory (fuel, or the enchanting table's catalysts).
+        internal virtual int FuelWidth => 3;
+        internal virtual int FuelHeight => 2;
         internal virtual bool SingleItems => false;
         internal abstract string Title { get; }
         internal abstract string MaterialLabel { get; }
@@ -37,6 +40,7 @@ namespace Overhaul.Storage
             else if (c is ArmorStand armor) a = new ArmorInventory(armor);
             else if (c is Catapult catapult) a = new CatapultInventory(catapult);
             else if (c is OfferingBowl bowl) a = new OfferingInventory(bowl);
+            else if (c is CraftingStation station && station.m_name == Rarity.EnchantTable.StationName) a = new Rarity.EnchantInventory(station);
             if (a != null) a.Source = c;
             return a;
         }

@@ -24,14 +24,14 @@ namespace Overhaul.Storage
         {
             var rule = Active(inventory);
             if (rule == null) return true;
-            if (pos.HasValue && (pos.Value.x < 0 || pos.Value.y < 0 || pos.Value.x >= (rule.Fuel ? 3 : rule.Store.Adapter.Width) || pos.Value.y >= (rule.Fuel ? 2 : rule.Store.Adapter.Height))) return false;
+            if (pos.HasValue && (pos.Value.x < 0 || pos.Value.y < 0 || pos.Value.x >= (rule.Fuel ? rule.Store.Adapter.FuelWidth : rule.Store.Adapter.Width) || pos.Value.y >= (rule.Fuel ? rule.Store.Adapter.FuelHeight : rule.Store.Adapter.Height))) return false;
             return rule.Store.Adapter.Accepts(item, rule.Fuel, pos);
         }
         internal static Vector2i Destination(Inventory inventory, ItemDrop.ItemData item)
         {
             var rule = Get(inventory);
             if (rule == null) return new Vector2i(-1, -1);
-            int width = rule.Fuel ? 3 : rule.Store.Adapter.Width, height = rule.Fuel ? 2 : rule.Store.Adapter.Height;
+            int width = rule.Fuel ? rule.Store.Adapter.FuelWidth : rule.Store.Adapter.Width, height = rule.Fuel ? rule.Store.Adapter.FuelHeight : rule.Store.Adapter.Height;
             for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
             {
                 var pos = new Vector2i(x, y); var existing = inventory.GetItemAt(x, y);
@@ -98,7 +98,7 @@ namespace Overhaul.Storage
             private static bool Prefix(Inventory __instance, ItemDrop.ItemData item, int stack, ref bool __result)
             {
                 var rule = Active(__instance); if (rule == null) return true;
-                int free = 0, width = rule.Fuel ? 3 : rule.Store.Adapter.Width, height = rule.Fuel ? 2 : rule.Store.Adapter.Height;
+                int free = 0, width = rule.Fuel ? rule.Store.Adapter.FuelWidth : rule.Store.Adapter.Width, height = rule.Fuel ? rule.Store.Adapter.FuelHeight : rule.Store.Adapter.Height;
                 for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
                 {
                     if (!Allows(__instance, item, new Vector2i(x, y))) continue;
@@ -115,7 +115,7 @@ namespace Overhaul.Storage
             private static bool Prefix(Inventory __instance, ref Vector2i __result)
             {
                 var rule = Active(__instance); if (rule == null) return true;
-                int width = rule.Fuel ? 3 : rule.Store.Adapter.Width, height = rule.Fuel ? 2 : rule.Store.Adapter.Height;
+                int width = rule.Fuel ? rule.Store.Adapter.FuelWidth : rule.Store.Adapter.Width, height = rule.Fuel ? rule.Store.Adapter.FuelHeight : rule.Store.Adapter.Height;
                 for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
                     if (__instance.GetItemAt(x, y) == null) { __result = new Vector2i(x, y); return false; }
                 __result = new Vector2i(-1, -1); return false;
