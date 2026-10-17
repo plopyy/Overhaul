@@ -41,6 +41,7 @@ namespace Overhaul.Magic
             if (wear) { wear.m_new = wear.m_worn = wear.m_broken = null; wear.m_materialType = WearNTear.MaterialType.Wood; wear.m_health = 400; }
             // The whole model (stand, book, candles, colliders) 20 % bigger than authored.
             var visual = Object.Instantiate(model, prefab.transform, false); visual.name = "Model"; visual.transform.localScale = Vector3.one * 1.2f;
+            GameLook(visual);
             int layer = LayerMask.NameToLayer("piece");
             foreach (var t in visual.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
 
@@ -53,6 +54,55 @@ namespace Overhaul.Magic
                 .Select(r => new Piece.Requirement { m_resItem = PrefabManager.Instance.GetPrefab(r.Item1).GetComponent<ItemDrop>(), m_amount = r.Item2, m_recover = true }).ToArray();
             prefab.AddComponent<GrimoireStandPiece>();
             PieceManager.Instance.AddPiece(custom);
+        }
+
+        // The pack's model in the game's look: the stand in the wood wall's planks, the flat flame sprites (black edged
+        // in the game) replaced by the resin candle's animated flame, and a dimmer, warmer candle light.
+        static void GameLook(GameObject visual)
+        {
+            var wall = PrefabManager.Instance.GetPrefab("woodwall")?.transform.Find("New/_Combined Mesh [high]")?.GetComponent<MeshRenderer>()?.sharedMaterial;
+            var stand = visual.transform.Find("Stand")?.GetComponentInChildren<MeshRenderer>(true);
+            if (wall && stand)
+            {
+                // The stand's texture is a wood atlas over half of its UV square: one plank texture per atlas half.
+                var wood = new Material(wall) { name = "GrimoireStand_wood", mainTextureScale = new Vector2(2, 2) };
+                stand.sharedMaterials = stand.sharedMaterials.Select(_ => wood).ToArray();
+            }
+            else Log.LogWarning("Grimoire stand: wood wall material not found, pack wood kept");
+
+            var flame = PrefabManager.Instance.GetPrefab("Candle_resin")?.transform.Find("high/vfx")?.gameObject;
+            var sprites = visual.GetComponentsInChildren<SpriteRenderer>(true);
+            if (flame && sprites.Length > 0)
+            {
+                // Each candle's flame is two crossed sprites: one game flame per wick, sized on the sprites.
+                var wicks = new List<(Vector3 position, float height, Transform parent)>();
+                foreach (var sprite in sprites)
+                {
+                    if (!sprite.sprite) { Object.DestroyImmediate(sprite.gameObject); continue; }
+                    // From the sprite itself: renderer bounds are empty on the inactive prefab.
+                    var b = sprite.sprite.bounds; var t = sprite.transform;
+                    var center = t.TransformPoint(b.center); float h = b.size.y * t.lossyScale.y;
+                    if (!wicks.Any(w => (w.position - center).sqrMagnitude < .02f * .02f)) wicks.Add((center, h, t.parent));
+                    Object.DestroyImmediate(sprite.gameObject);
+                }
+                foreach (var (position, height, parent) in wicks)
+                {
+                    var copy = Object.Instantiate(flame, parent, false); copy.name = "flame";
+                    // The game's flame burns from its root up: its root at the sprites' bottom.
+                    copy.transform.position = position - Vector3.up * height * .5f;
+                    copy.transform.rotation = Quaternion.identity;
+                    copy.transform.localScale = Vector3.one * (height / .25f / parent.lossyScale.y);
+                    foreach (var ps in copy.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+                }
+            }
+            else Log.LogWarning("Grimoire stand: resin candle flame not found, pack sprites kept");
+
+            foreach (var light in visual.GetComponentsInChildren<Light>(true))
+            {
+                light.color = new Color(1f, .72f, .36f);
+                light.intensity = 1.6f;
+                light.range = 4f;
+            }
         }
     }
 
