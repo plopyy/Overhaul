@@ -46,7 +46,7 @@ namespace Overhaul
             if (badgeBorder) { Tint(badgeBorder, rarity ?? BaseBorder, hasItem ? gradient : null, 0); badgeBorder.enabled = hasItem && upgradable; }
         }
 
-        // Catalyst slots of the item, as small diamonds at the bottom left of the cell (OverhaulCatalysts, built into the
+        // Catalyst slots of the item, as small squares up the left edge of the cell from its bottom left corner (OverhaulCatalysts, built into the
         // cell prefab): one per slot of its rarity, an empty one with the base border, a filled one with the catalyst's icon
         // and its rarity's border. Hidden for items without catalyst slots.
         internal static void Catalysts(GameObject cell, ItemDrop.ItemData item)
@@ -70,12 +70,12 @@ namespace Overhaul
             group.gameObject.SetActive(icons.Length > 0);
             for (int i = 0; i < group.childCount; i++)
             {
-                var diamond = group.GetChild(i);
-                diamond.gameObject.SetActive(i < icons.Length);
+                var square = group.GetChild(i);
+                square.gameObject.SetActive(i < icons.Length);
                 if (i >= icons.Length) continue;
-                var icon = diamond.Find("Icon")?.GetComponent<Image>();
+                var icon = square.Find("Icon")?.GetComponent<Image>();
                 if (icon) { icon.sprite = icons[i]; icon.enabled = icons[i]; }
-                var border = diamond.Find("Border")?.GetComponent<Image>();
+                var border = square.Find("Border")?.GetComponent<Image>();
                 if (border) border.color = icons[i] && colors[i] != null ? colors[i].Value : BaseBorder;
             }
         }
