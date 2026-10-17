@@ -34,22 +34,6 @@ namespace Auga.Compat
         }
     }
     [UiModule(UiModule.RightPanel)]
-    [HarmonyPatch(typeof(UITooltip),"OnHoverStart")]
-    internal static class OverhaulCardTooltipHover
-    {
-        private static void Prefix(UITooltip __instance,ref GameObject __0)
-        {
-            var card=__instance.transform;
-            if(!card.parent || (card.parent.name!="Stats" && card.parent.name!="Passives"))return;
-            for(var parent=card.parent;parent;parent=parent.parent)
-                if(parent.name=="TabContent_Overhaul")
-                {
-                    // Native LateUpdate must monitor the complete card, not the first child hit.
-                    __0=card.gameObject;return;
-                }
-        }
-    }
-    [UiModule(UiModule.RightPanel)]
     [HarmonyPatch(typeof(InventoryGui),nameof(InventoryGui.OnOpenSkills))]
     internal static class OverhaulSkillsButton
     {

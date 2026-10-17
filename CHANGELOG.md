@@ -2,6 +2,10 @@
 
 ## 2.2.2 (in progress)
 
+### Fixed
+- Tooltips (inventory items, skills, leveling stats and every other element with a tooltip) often did not show: one closed as soon as the pointer moved over another part of the element (its icon, its text…) and stayed closed until the pointer left the element and came back. A tooltip now covers its whole element, and reopens after the usual short delay while the pointer rests on it. (2.2.2.1)
+- Character selection screen: with a mod that turns the game's achievements back on, the character list stopped with an error (NullReferenceException in GetActiveCombatDifficulty) while showing each character's deaths, builds and crafts. (2.2.2.1)
+
 ## 2.2.1 (released)
 
 ### Added
