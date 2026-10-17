@@ -117,7 +117,24 @@ namespace Overhaul.Rarity
                 + " | " + string.Join(" | ", parts);
         }
         void Start() { Log.LogInfo("Enchanting table diagnostic: start " + (Player.IsPlacementGhost(gameObject) ? "(ghost) " : "") + Describe(gameObject)); Invoke(nameof(Later), 2f); }
+        int frames;
+        void Update()
+        {
+            if (++frames > 6) return;
+            Log.LogInfo("Enchanting table diagnostic: frame " + frames + (Player.IsPlacementGhost(gameObject) ? " (ghost) " : " ") + transform.position.ToString("F2")
+                + " drawn " + string.Join(",", GetComponentsInChildren<MeshRenderer>().Select(r => r.name + "=" + r.isVisible)));
+        }
+        // Who removes the table: the game's network removal, with the call stack.
+        [HarmonyLib.HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
+        static class NetworkRemoval
+        {
+            static void Prefix(GameObject go)
+            {
+                if (go && go.name.StartsWith(EnchantTable.Name))
+                    Log.LogInfo("Enchanting table diagnostic: ZNetScene.Destroy " + go.name + "\n" + System.Environment.StackTrace);
+            }
+        }
         void Later() => Log.LogInfo("Enchanting table diagnostic: 2 s later " + Describe(gameObject));
-        void OnDestroy() => Log.LogInfo("Enchanting table diagnostic: destroyed " + name);
+        void OnDestroy() => Log.LogInfo("Enchanting table diagnostic: destroyed " + name + " after " + frames + " frames\n" + System.Environment.StackTrace);
     }
 }
