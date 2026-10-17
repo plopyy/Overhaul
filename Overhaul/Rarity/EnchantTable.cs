@@ -112,9 +112,23 @@ namespace Overhaul.Rarity
             var t = go.transform;
             var parts = go.GetComponentsInChildren<Renderer>(true).Select(r => r.name + (r.enabled ? "" : " OFF") + (r.gameObject.activeInHierarchy ? "" : " INACTIVE")
                 + " layer " + LayerMask.LayerToName(r.gameObject.layer) + " visible " + r.isVisible + " bounds " + r.bounds.center.ToString("F2") + "/" + r.bounds.size.ToString("F2")
-                + " mats " + string.Join("+", r.sharedMaterials.Select(m => m ? m.name + ":" + m.shader.name : "null")));
+                + " mats " + string.Join("+", r.sharedMaterials.Select(m => m ? m.name + ":" + (m.shader ? m.shader.name + (m.shader.isSupported ? "" : " UNSUPPORTED") : "NO SHADER") + " queue " + m.renderQueue
+                    + " tex " + string.Join("/", m.GetTexturePropertyNames().Select(p => p + "=" + (m.GetTexture(p) ? m.GetTexture(p).name : "none"))) : "null"))
+                + MeshInfo(r));
+            var cam = Camera.main;
+            var camInfo = cam ? " | camera " + cam.name + " at " + cam.transform.position.ToString("F1") + " distance " + Vector3.Distance(cam.transform.position, t.position).ToString("F1")
+                + " far " + cam.farClipPlane + " draws layer piece " + ((cam.cullingMask & (1 << LayerMask.NameToLayer("piece"))) != 0) + " ghost " + ((cam.cullingMask & (1 << LayerMask.NameToLayer("ghost"))) != 0) : " | no main camera";
             return go.name + " active " + go.activeInHierarchy + " pos " + t.position.ToString("F2") + " rot " + t.eulerAngles.ToString("F0") + " scale " + t.lossyScale.ToString("F3")
-                + " | " + string.Join(" | ", parts);
+                + " | " + string.Join(" | ", parts) + camInfo;
+        }
+        static string MeshInfo(Renderer r)
+        {
+            var mf = r.GetComponent<MeshFilter>();
+            if (!mf) return "";
+            var m = mf.sharedMesh;
+            if (!m) return " MESH NULL";
+            long indices = 0; for (int i = 0; i < m.subMeshCount; i++) indices += m.GetIndexCount(i);
+            return " mesh " + m.name + " " + m.vertexCount + "v " + indices + "i sub " + m.subMeshCount + " readable " + m.isReadable + " meshbounds " + m.bounds.size.ToString("F2");
         }
         void Start() { Log.LogInfo("Enchanting table diagnostic: start " + (Player.IsPlacementGhost(gameObject) ? "(ghost) " : "") + Describe(gameObject)); Invoke(nameof(Later), 2f); }
         int frames;
@@ -122,7 +136,10 @@ namespace Overhaul.Rarity
         {
             if (++frames > 6) return;
             Log.LogInfo("Enchanting table diagnostic: frame " + frames + (Player.IsPlacementGhost(gameObject) ? " (ghost) " : " ") + transform.position.ToString("F2")
-                + " drawn " + string.Join(",", GetComponentsInChildren<MeshRenderer>().Select(r => r.name + "=" + r.isVisible)));
+                + " drawn " + string.Join(",", GetComponentsInChildren<MeshRenderer>().Select(r => r.name + "=" + r.isVisible))
+                // Control: the local player's own renderers, surely on screen.
+                + " | player drawn " + (Player.m_localPlayer ? Player.m_localPlayer.GetComponentsInChildren<Renderer>().Count(r => r.isVisible) + "/" + Player.m_localPlayer.GetComponentsInChildren<Renderer>().Length : "none")
+                + (frames == 1 ? " | " + Describe(gameObject) : ""));
         }
         // Who removes the table: the game's network removal, with the call stack.
         [HarmonyLib.HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
