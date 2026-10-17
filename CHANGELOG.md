@@ -29,6 +29,7 @@
 ## 2.2.2 (in progress)
 
 ### Fixed
+- At startup, the crypt rooms looked through for the boss rooms' materials were let go while their textures were still loading: the game closed their files mid-load ("failed to load runetablet_vegvisir" in the console) and a vegvisir could show without its textures. They are now let go once loaded. (2.3.0.102)
 - Tooltips (inventory items, skills, leveling stats and every other element with a tooltip) often did not show: one closed as soon as the pointer moved over another part of the element (its icon, its text…) and stayed closed until the pointer left the element and came back. A tooltip now covers its whole element, and reopens after the usual short delay while the pointer rests on it. (2.2.2.1)
 - Character selection screen: with a mod that turns the game's achievements back on, the character list stopped with an error (NullReferenceException in GetActiveCombatDifficulty) while showing each character's deaths, builds and crafts. (2.2.2.1)
 

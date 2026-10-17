@@ -9,6 +9,10 @@ namespace Overhaul.Dungeons
     {
         private const string Prefix="OverhaulNative:";
         private static readonly List<DungeonDB.RoomData> retained=new List<DungeonDB.RoomData>();
+        // Rooms looked through but not kept: released a few seconds later, once the textures their load started have
+        // arrived (released at once, the game closed their bundle mid-load: "failed to load runetablet_vegvisir...").
+        private static readonly List<DungeonDB.RoomData> pending=new List<DungeonDB.RoomData>();
+        private static float releaseAt;
         internal static void Bind(params GameObject[] prefabs)
         {
             var renderers=prefabs.SelectMany(p=>p.GetComponentsInChildren<Renderer>(true)).ToArray();
@@ -24,13 +28,15 @@ namespace Overhaul.Dungeons
                         foreach(var material in renderer.sharedMaterials)
                             if(material&&needed.Remove(material.name)){found[material.name]=material;keep=true;}
                 }
-                finally{if(keep)retained.Add(room);else room.m_prefab.Release();}
+                finally{if(keep)retained.Add(room);else{pending.Add(room);releaseAt=Time.realtimeSinceStartup+10f;}}
             }
             if(needed.Count>0)throw new InvalidOperationException("Missing native crypt materials: "+string.Join(", ",needed));
             foreach(var renderer in renderers)
                 renderer.sharedMaterials=renderer.sharedMaterials.Select(m=>m&&m.name.StartsWith(Prefix)?found[m.name.Substring(Prefix.Length)]:m).ToArray();
         }
+        internal static void Tick()
+        {if(pending.Count>0&&Time.realtimeSinceStartup>=releaseAt){foreach(var room in pending)room.m_prefab.Release();pending.Clear();}}
         internal static void Release()
-        {foreach(var room in retained)room.m_prefab.Release();retained.Clear();}
+        {foreach(var room in retained.Concat(pending))room.m_prefab.Release();retained.Clear();pending.Clear();}
     }
 }
