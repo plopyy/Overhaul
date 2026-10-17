@@ -97,8 +97,9 @@ namespace Overhaul.Commands
                 {
                     if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
                     if (args.Length < 2 || !Player.m_localPlayer) { args.Context.AddString("Usage : o_rarity <objet> [rarete]"); return; }
-                    var rarities = Rarity.RarityConfig.Current.Rarities;
-                    var rarity = args.Length > 2 ? Rarity.RarityConfig.Current.Rarity(args[2]) : rarities.Count > 0 ? rarities[UnityEngine.Random.Range(0, rarities.Count)] : null;
+                    // The Catalyst rarity is the catalysts' own: never given to other items.
+                    var rarities = Rarity.RarityConfig.Current.Rarities.Where(r => !r.ForCatalysts).ToList();
+                    var rarity = args.Length > 2 ? rarities.FirstOrDefault(r => string.Equals(r.Id, args[2], System.StringComparison.OrdinalIgnoreCase)) : rarities.Count > 0 ? rarities[UnityEngine.Random.Range(0, rarities.Count)] : null;
                     if (rarity == null) { args.Context.AddString("Overhaul : rarete inconnue. Raretes : " + string.Join(", ", rarities.Select(r => r.Id))); return; }
                     var player = Player.m_localPlayer.transform;
                     var drop = Rarity.ItemRarity.Drop(args[1], rarity, player.position + player.forward * 2f + UnityEngine.Vector3.up);

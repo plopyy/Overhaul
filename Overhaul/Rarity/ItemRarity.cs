@@ -12,6 +12,8 @@ namespace Overhaul.Rarity
     // block, upgrades included) by its BaseStatBonus %, and rolls its enchantment lines (see Enchantments).
     internal static class ItemRarity
     {
+        // Rarity every catalyst item has (its [Rarity_Catalyst] section gives its colour and aura).
+        internal const string CatalystRarity = "Catalyst";
         internal const string RarityKey = "overhaul_rarity", EnchantKey = "overhaul_enchants", MythicKey = "overhaul_mythic";
         internal const string EmptyEnchant = "None";
 
@@ -110,12 +112,14 @@ namespace Overhaul.Rarity
         {
             var rarities = RarityConfig.Current.Rarities;
             float total = 0;
-            for (int i = 0; i < rarities.Count && i < weights.Length; i++) total += Mathf.Max(0, weights[i]);
+            // The Catalyst rarity is never drawn.
+            float Weight(int i) => rarities[i].ForCatalysts ? 0 : Mathf.Max(0, weights[i]);
+            for (int i = 0; i < rarities.Count && i < weights.Length; i++) total += Weight(i);
             if (total <= 0) return rarities.FirstOrDefault();
             float roll = Random.Range(0f, total);
             for (int i = 0; i < rarities.Count && i < weights.Length; i++)
             {
-                roll -= Mathf.Max(0, weights[i]);
+                roll -= Weight(i);
                 if (roll < 0) return rarities[i];
             }
             return rarities[Mathf.Min(weights.Length, rarities.Count) - 1];
@@ -274,9 +278,9 @@ namespace Overhaul.Rarity
             var tint = tooltip.GetComponent<TooltipRarityTint>() ?? tooltip.gameObject.AddComponent<TooltipRarityTint>();
             tint.Apply(tooltip, rarity);
             if (rarity == null) return;
-            // A catalyst is shown as such instead of a material, without enchantment lines or catalyst slots.
+            // A catalyst shows its Catalyst rarity alone, without enchantment lines or catalyst slots.
             bool catalyst = IsCatalyst(item, out _);
-            tooltip.SetSubtitle(rarity.Paint(rarity.Name) + "\n" + (catalyst ? Localization.instance.Localize("$overhaul_rarity_catalyst") : tooltip.GenerateItemSubtext(item)));
+            tooltip.SetSubtitle(rarity.Paint(rarity.Name) + (catalyst ? "" : "\n" + tooltip.GenerateItemSubtext(item)));
             var rows = new List<TooltipRow>();
             if (catalyst) { tint.Texts(tooltip, rarity); return; }
             // Enchantment lines in the rarity colour, with their value for the item's biome; an empty line
