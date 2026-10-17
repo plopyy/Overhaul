@@ -24,7 +24,7 @@ namespace Overhaul.Rarity
 
         DeviceStore store; EnchantInventory table; InventoryGrid catalystGrid;
         int tab, line = -1, choice;
-        string[] choices; ItemDrop.ItemData choicesItem;
+        string[] choices; ItemDrop.ItemData shownItem;
         float nextRefresh;
         TMP_Text itemName, itemRarity, trophyName, trophyRank, lockedHint;
         Button enchantButton, rollButton;
@@ -104,7 +104,8 @@ namespace Overhaul.Rarity
             var item = table.Item; var rarity = item != null ? ItemRarity.Of(item) : null;
             if (itemName) { itemName.text = item != null ? Localization.instance.Localize(item.m_shared.m_name) : ""; itemName.color = rarity?.Color ?? Color.white; }
             if (itemRarity) { itemRarity.text = rarity != null ? rarity.Name : ""; itemRarity.color = rarity?.Color ?? Color.white; }
-            if (choicesItem != item) { choices = null; choicesItem = null; line = -1; }
+            // Another item on the table: no line chosen and no offers left from the previous one.
+            if (shownItem != item) { shownItem = item; choices = null; line = -1; }
             bool owner = store.Owner && !EnchantCost.Busy;
 
             // Enchant tab.
@@ -207,7 +208,7 @@ namespace Overhaul.Rarity
                 var picked = new List<string> { lines[index] };
                 while (picked.Count < 3 && pool.Count > 0) { int pick = UnityEngine.Random.Range(0, pool.Count); picked.Add(pool[pick].Id); pool.RemoveAt(pick); }
                 store.Change(() => item.m_customData[LockKey] = index.ToString(CultureInfo.InvariantCulture));
-                choices = picked.ToArray(); choicesItem = item; choice = 0; line = index;
+                choices = picked.ToArray(); choice = 0; line = index;
                 Refresh();
             });
         }
@@ -215,7 +216,7 @@ namespace Overhaul.Rarity
         void Pick(int index)
         {
             var item = table.Item;
-            if (!store.Owner || choices == null || index >= choices.Length || item != choicesItem || line < 0) return;
+            if (!store.Owner || choices == null || index >= choices.Length || item != shownItem || line < 0) return;
             var lines = ItemRarity.Enchants(item); if (line >= lines.Length) return;
             lines[line] = choices[index];
             store.Change(() => item.m_customData[ItemRarity.EnchantKey] = string.Join(",", lines));
