@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -70,17 +71,32 @@ namespace Overhaul.Rarity
             PieceManager.Instance.AddPiece(custom);
         }
 
+        // The game loads some prefabs (location props, pickables, station extensions) on demand and unloads their asset
+        // bundle once nobody holds them: the materials borrowed from them would lose their textures and stop drawing.
+        // Each source prefab is held for the whole session.
+        static readonly Dictionary<string, SoftReferenceableAssets.SoftReference<GameObject>> held = new Dictionary<string, SoftReferenceableAssets.SoftReference<GameObject>>();
+        static GameObject Held(string name)
+        {
+            if (!held.TryGetValue(name, out var reference))
+            {
+                reference = AssetManager.Instance.GetSoftReference<GameObject>(name);
+                if (reference.IsValid) { reference.LoadAsync(); reference.WaitForLoadToComplete(); held[name] = reference; }
+                if (reference.IsValid && !reference.Asset) Log.LogWarning("Enchanting table: " + name + " could not be loaded");
+            }
+            return reference.IsValid && reference.Asset ? reference.Asset : PrefabManager.Instance.GetPrefab(name);
+        }
+
         static void Dress(GameObject visual)
         {
             foreach (var (part, source, name) in Materials)
             {
                 var renderer = visual.transform.Find(part)?.GetComponent<MeshRenderer>();
-                var material = PrefabManager.Instance.GetPrefab(source)?.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name);
+                var material = Held(source)?.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name);
                 if (!renderer || !material) { Log.LogWarning("Enchanting table: " + part + " left without the " + name + " material of " + source); continue; }
                 renderer.sharedMaterials = Enumerable.Repeat(material, renderer.sharedMaterials.Length).ToArray();
             }
 
-            var candles = PrefabManager.Instance.GetPrefab("piece_magetable_ext2")?.transform.Find("new");
+            var candles = Held("piece_magetable_ext2")?.transform.Find("new");
             var flame = candles?.Find("flames")?.gameObject;
             var light = candles?.GetComponentInChildren<Light>(true)?.gameObject;
             if (!flame) { Log.LogWarning("Enchanting table: eternal candle flames not found"); return; }
