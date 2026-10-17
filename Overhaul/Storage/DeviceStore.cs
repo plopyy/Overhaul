@@ -59,7 +59,7 @@ namespace Overhaul.Storage
             store.fuelKey = (prefix + "fuel_items").GetStableHashCode();
             store.workKey = (prefix + "working_items").GetStableHashCode();
             store.Items = new Inventory(adapter.Title, null, adapter.Width, adapter.Height);
-            store.Fuel = new Inventory(adapter.FuelLabel, null, 3, 2);
+            store.Fuel = new Inventory(adapter.FuelLabel, null, adapter.FuelWidth, adapter.FuelHeight);
             store.Working = new Inventory("Processing", null, Math.Max(1, adapter.WorkSlots), 1);
             DeviceInventoryRules.Register(store.Items, store, false);
             DeviceInventoryRules.Register(store.Fuel, store, true);
@@ -99,7 +99,7 @@ namespace Overhaul.Storage
         internal void Save()
         {
             if (!Ready || !Owner) return;
-            Resize(Items, Adapter.Height); Resize(Fuel, 2);
+            Resize(Items, Adapter.Height); Resize(Fuel, Adapter.FuelHeight);
             Write(Items, itemsKey, ref itemsBytes);
             Write(Fuel, fuelKey, ref fuelBytes);
             Write(Working, workKey, ref workBytes);
@@ -116,7 +116,7 @@ namespace Overhaul.Storage
             var bytes = Data.GetByteArray(key, null);
             if (bytes == null || previous != null && previous.SequenceEqual(bytes)) return;
             inventory.Load(new ZPackage(bytes)); previous = bytes;
-            Resize(inventory, inventory == Items ? Adapter.Height : inventory == Fuel ? 2 : 1);
+            Resize(inventory, inventory == Items ? Adapter.Height : inventory == Fuel ? Adapter.FuelHeight : 1);
         }
         private static void Resize(Inventory inventory, int minimum) => inventory.m_height = Math.Max(minimum, inventory.GetAllItems().Select(i => i.m_gridPos.y + 1).DefaultIfEmpty(0).Max());
         internal bool Load()

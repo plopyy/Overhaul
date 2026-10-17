@@ -108,11 +108,7 @@ namespace Overhaul.Rarity
         // (only the empty or invalid ones are drawn). Lines left without a candidate stay empty.
         internal static string[] Roll(ItemDrop.ItemData item, RarityDef rarity, string[] keep = null)
         {
-            var data = RarityConfig.Current;
-            string[] categories = Categories(item);
-            var pool = Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
-                && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order
-                && (e.EnchantItemTypes.Count == 0 || categories.Any(e.EnchantItemTypes.Contains))).ToList();
+            var pool = Pool(item, rarity);
             var lines = new string[rarity.EnchantCount];
             for (int i = 0; i < lines.Length; i++)
             {
@@ -129,6 +125,16 @@ namespace Overhaul.Rarity
                 pool.RemoveAt(pick);
             }
             return lines;
+        }
+
+        // Every enchantment the item can carry at that rarity.
+        internal static List<Effects.EffectDef> Pool(ItemDrop.ItemData item, RarityDef rarity)
+        {
+            var data = RarityConfig.Current;
+            string[] categories = Categories(item);
+            return Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
+                && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order
+                && (e.EnchantItemTypes.Count == 0 || categories.Any(e.EnchantItemTypes.Contains))).ToList();
         }
 
         // Mythic enchantments for the rarity's MythicCount: distinct ones with code, allowed on the item's category.

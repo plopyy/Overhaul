@@ -49,7 +49,7 @@ namespace Overhaul.Storage
         internal void Show(DeviceStore device)
         {
             Restore(); store = device;
-            string prefab = store.Adapter is ArmorInventory ? "StationArmorStand" : store.Adapter is StandInventory ? "StationSingleItemStand" : store.Adapter.Dual ? "StationDualVertical_Separation2" : "StationSingleLateral_Separation2";
+            string prefab = store.Adapter is Rarity.EnchantInventory ? "EnchantTableWindow" : store.Adapter is ArmorInventory ? "StationArmorStand" : store.Adapter is StandInventory ? "StationSingleItemStand" : store.Adapter.Dual ? "StationDualVertical_Separation2" : "StationSingleLateral_Separation2";
             originalGrid = gui.m_containerGrid; originalName = gui.m_containerName;
             originalSize = gui.m_container.sizeDelta; originalPosition = gui.m_container.anchoredPosition;
             foreach (Transform child in gui.m_container)
@@ -80,6 +80,7 @@ namespace Overhaul.Storage
             AddActions();
             materialGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "MaterialInventory");
             if (store.Adapter is ArmorInventory) PrepareArmor();
+            else if (store.Adapter is Rarity.EnchantInventory) PrepareEnchant();
             fuelGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "FuelInventory");
             activeGrid = materialGrid; inputFrame = -1;
             Bind(materialGrid, store.Items); if (fuelGrid) Bind(fuelGrid, store.Fuel);
@@ -91,15 +92,20 @@ namespace Overhaul.Storage
             }
             gui.m_containerGrid = materialGrid; gui.m_containerName = panel.transform.Find("Title").GetComponent<TMP_Text>();
             gui.m_firstContainerUpdate = false; gui.m_containerHoldState = -1; gui.m_containerHoldTime = float.NegativeInfinity; gui.m_waitForContainerStack = false;
+            if (store.Adapter is Rarity.EnchantInventory) panel.AddComponent<Rarity.EnchantPanel>().Init(store, fuelGrid);
             Refresh();
         }
         private void AddActions()
         {
             var close = panel.transform.Find("Close").GetComponent<Button>();
             var buttons = new List<Button>();
-            var take = Instantiate(close, close.transform.parent, false); take.name = "TakeAll";
-            take.onClick = new Button.ButtonClickedEvent(); take.onClick.AddListener(gui.OnTakeAll);
-            ButtonText(take, "$overhaul_chest_take_all"); buttons.Add(take);
+            // The enchanting table keeps its single Close button.
+            if (!(store.Adapter is Rarity.EnchantInventory))
+            {
+                var take = Instantiate(close, close.transform.parent, false); take.name = "TakeAll";
+                take.onClick = new Button.ButtonClickedEvent(); take.onClick.AddListener(gui.OnTakeAll);
+                ButtonText(take, "$overhaul_chest_take_all"); buttons.Add(take);
+            }
             if (store.Adapter is ArmorInventory)
             {
                 var equip = Instantiate(close, close.transform.parent, false); equip.name = "PlaceEquipment";
@@ -136,6 +142,17 @@ namespace Overhaul.Storage
             var mask = materialGrid.GetComponent<RectMask2D>(); if (mask) mask.enabled = false;
             materialGrid.GetComponent<ScrollRect>().enabled = false;
         }
+        // The enchanting table: its two cells (item, trophy) go to the window's ItemSlot and TrophySlot anchors.
+        private void PrepareEnchant()
+        {
+            armorAnchors = new[] { panel.transform.Find("ItemPanel/ItemSlot"), panel.transform.Find("EnchantPage/TrophySlot") };
+            var donor = Prefab("StationSingleLateral_Separation2").GetComponentInChildren<InventoryGrid>(true);
+            materialGrid = Instantiate(donor, panel.transform, false); materialGrid.name = "EnchantInventory";
+            var rect = (RectTransform)materialGrid.transform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var mask = materialGrid.GetComponent<RectMask2D>(); if (mask) mask.enabled = false;
+            materialGrid.GetComponent<ScrollRect>().enabled = false;
+            foreach (var graphic in materialGrid.GetComponents<Graphic>()) graphic.enabled = false;
+        }
         private void Bind(InventoryGrid grid, Inventory inventory)
         {
             grid.m_uiGroup = originalGrid.m_uiGroup;
@@ -159,7 +176,7 @@ namespace Overhaul.Storage
             if (!panel || !store || !store.Owner) return;
             if (fuelGrid) fuelGrid.UpdateInventory(store.Fuel, null, gui.m_dragItem);
             if (armorAnchors == null) return;
-            for (int i = 0; i < Math.Min(7, materialGrid.m_elements.Count); i++)
+            for (int i = 0; i < Math.Min(armorAnchors.Length, materialGrid.m_elements.Count); i++)
             {
                 var element = materialGrid.m_elements[i]; var anchor = armorAnchors[i];
                 if (element.transform.parent != anchor)

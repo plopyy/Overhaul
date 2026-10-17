@@ -76,6 +76,10 @@ namespace Overhaul.Rarity
         internal readonly Dictionary<string, string> Catalysts = new Dictionary<string, string>(StringComparer.Ordinal);
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, List<string>> MobLoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        // Enchanting table: odds per tier (EnchantTier_N, rarity weights in Rarity order), line change cost, tiers added by rank.
+        internal readonly SortedDictionary<int, float[]> EnchantTiers = new SortedDictionary<int, float[]>();
+        internal (string Item, int Amount)[] RerollCost = new (string, int)[0];
+        internal int CaptainTiers = 1, EliteTiers = 1, BossTiers = 2;
         internal string Text = "";
 
         internal RarityDef Rarity(string id) => id == null ? null : Rarities.FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.OrdinalIgnoreCase));
@@ -92,8 +96,23 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
+            else AddEnchantSections(path);
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
+        }
+
+        // Files made before the enchanting table get its sections (and only those) from the defaults.
+        private static void AddEnchantSections(string path)
+        {
+            string text = File.ReadAllText(path);
+            if (text.Contains("[EnchantTable]")) return;
+            string defaults = Utility.ConfigSections.Defaults(FileName);
+            int title = defaults.IndexOf("# === Enchanting table ===", StringComparison.Ordinal);
+            if (title < 0) return;
+            // From the "# ====" line above the title.
+            int start = title > 1 ? defaults.LastIndexOf('\n', title - 2) + 1 : 0;
+            File.WriteAllText(path, text.TrimEnd() + Environment.NewLine + Environment.NewLine + defaults.Substring(start));
+            Utility.Log.LogInfo("RaritySystem.cfg: enchanting table sections added");
         }
 
         private static void Use(RarityData data) { Current = data; Changed?.Invoke(); }
@@ -177,6 +196,14 @@ namespace Overhaul.Rarity
                             Chance = Float(v, "LootChance", Float(v, "LootChange", 100)),
                             Items = List(Get(v, "ItemList", ""))
                         };
+                        break;
+                    case "enchanttable":
+                        data.RerollCost = List(Get(v, "RerollCost", "")).Select(c => c.Split(':')).Where(p => p.Length == 2)
+                            .Select(p => (p[0].Trim(), int.TryParse(p[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0)).Where(c => c.Item2 > 0).ToArray();
+                        data.CaptainTiers = Int(v, "CaptainTiers", 1); data.EliteTiers = Int(v, "EliteTiers", 1); data.BossTiers = Int(v, "BossTiers", 2);
+                        break;
+                    case "enchanttier":
+                        if (int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int tier)) data.EnchantTiers[tier] = List(Get(v, "Rarity", "")).Select(w => ParseFloat(w)).ToArray();
                         break;
                     case "mobloot":
                         if (!data.MobLoots.TryGetValue(id, out var lists)) data.MobLoots[id] = lists = new List<string>();
