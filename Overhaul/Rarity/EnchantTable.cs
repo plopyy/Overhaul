@@ -68,8 +68,6 @@ namespace Overhaul.Rarity
                 DistanceMultiplier = 1.1f, ParticleSimulationTime = -1f
             });
             if (icon) piece.m_icon = icon;
-            prefab.AddComponent<EnchantTableDiagnostic>();
-            Log.LogInfo("Enchanting table diagnostic: prefab " + EnchantTableDiagnostic.Describe(prefab));
             PieceManager.Instance.AddPiece(custom);
         }
 
@@ -83,7 +81,7 @@ namespace Overhaul.Rarity
             {
                 reference = AssetManager.Instance.GetSoftReference<GameObject>(name);
                 if (reference.IsValid) { reference.LoadAsync(); reference.WaitForLoadToComplete(); held[name] = reference; }
-                Log.LogInfo("Enchanting table: " + name + (reference.IsValid ? " held (" + (reference.Asset ? "loaded" : "NOT loaded") + ")" : " has no soft reference, taken from the prefab list"));
+                if (reference.IsValid && !reference.Asset) Log.LogWarning("Enchanting table: " + name + " could not be loaded");
             }
             return reference.IsValid && reference.Asset ? reference.Asset : PrefabManager.Instance.GetPrefab(name);
         }
@@ -115,59 +113,5 @@ namespace Overhaul.Rarity
                 var l = copy.GetComponent<Light>(); l.range *= .5f;
             }
         }
-    }
-}
-
-namespace Overhaul.Rarity
-{
-    // Temporary: the table and its ghost show nothing in game. Logs what the placed table and its ghost look like.
-    internal sealed class EnchantTableDiagnostic : MonoBehaviour
-    {
-        internal static string Describe(GameObject go)
-        {
-            var t = go.transform;
-            var parts = go.GetComponentsInChildren<Renderer>(true).Select(r => r.name + (r.enabled ? "" : " OFF") + (r.gameObject.activeInHierarchy ? "" : " INACTIVE")
-                + " layer " + LayerMask.LayerToName(r.gameObject.layer) + " visible " + r.isVisible + " bounds " + r.bounds.center.ToString("F2") + "/" + r.bounds.size.ToString("F2")
-                + " mats " + string.Join("+", r.sharedMaterials.Select(m => m ? m.name + ":" + (m.shader ? m.shader.name + (m.shader.isSupported ? "" : " UNSUPPORTED") : "NO SHADER") + " queue " + m.renderQueue
-                    + " tex " + string.Join("/", m.GetTexturePropertyNames().Select(p => p + "=" + (m.GetTexture(p) ? m.GetTexture(p).name : "none"))) : "null"))
-                + MeshInfo(r));
-            var cam = Camera.main;
-            var camInfo = cam ? " | camera " + cam.name + " at " + cam.transform.position.ToString("F1") + " distance " + Vector3.Distance(cam.transform.position, t.position).ToString("F1")
-                + " far " + cam.farClipPlane + " draws layer piece " + ((cam.cullingMask & (1 << LayerMask.NameToLayer("piece"))) != 0) + " ghost " + ((cam.cullingMask & (1 << LayerMask.NameToLayer("ghost"))) != 0) : " | no main camera";
-            return go.name + " active " + go.activeInHierarchy + " pos " + t.position.ToString("F2") + " rot " + t.eulerAngles.ToString("F0") + " scale " + t.lossyScale.ToString("F3")
-                + " | " + string.Join(" | ", parts) + camInfo;
-        }
-        static string MeshInfo(Renderer r)
-        {
-            var mf = r.GetComponent<MeshFilter>();
-            if (!mf) return "";
-            var m = mf.sharedMesh;
-            if (!m) return " MESH NULL";
-            long indices = 0; for (int i = 0; i < m.subMeshCount; i++) indices += m.GetIndexCount(i);
-            return " mesh " + m.name + " " + m.vertexCount + "v " + indices + "i sub " + m.subMeshCount + " readable " + m.isReadable + " meshbounds " + m.bounds.size.ToString("F2");
-        }
-        void Start() { Log.LogInfo("Enchanting table diagnostic: start " + (Player.IsPlacementGhost(gameObject) ? "(ghost) " : "") + Describe(gameObject)); Invoke(nameof(Later), 2f); }
-        int frames;
-        void Update()
-        {
-            if (++frames > 6) return;
-            Log.LogInfo("Enchanting table diagnostic: frame " + frames + (Player.IsPlacementGhost(gameObject) ? " (ghost) " : " ") + transform.position.ToString("F2")
-                + " drawn " + string.Join(",", GetComponentsInChildren<MeshRenderer>().Select(r => r.name + "=" + r.isVisible))
-                // Control: the local player's own renderers, surely on screen.
-                + " | player drawn " + (Player.m_localPlayer ? Player.m_localPlayer.GetComponentsInChildren<Renderer>().Count(r => r.isVisible) + "/" + Player.m_localPlayer.GetComponentsInChildren<Renderer>().Length : "none")
-                + (frames == 1 ? " | " + Describe(gameObject) : ""));
-        }
-        // Who removes the table: the game's network removal, with the call stack.
-        [HarmonyLib.HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Destroy))]
-        static class NetworkRemoval
-        {
-            static void Prefix(GameObject go)
-            {
-                if (go && go.name.StartsWith(EnchantTable.Name))
-                    Log.LogInfo("Enchanting table diagnostic: ZNetScene.Destroy " + go.name + "\n" + System.Environment.StackTrace);
-            }
-        }
-        void Later() => Log.LogInfo("Enchanting table diagnostic: 2 s later " + Describe(gameObject));
-        void OnDestroy() => Log.LogInfo("Enchanting table diagnostic: destroyed " + name + " after " + frames + " frames\n" + System.Environment.StackTrace);
     }
 }
