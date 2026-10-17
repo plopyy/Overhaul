@@ -2691,5 +2691,7 @@
   "overhaul_food_cloudflatbread_desc": "A barley flatbread with cloudberries and yellow mushrooms, full of eitr.",
   "overhaul_grimoirestand": "Grimoire stand",
   "overhaul_grimoirestand_desc": "A candlelit stand holding the grimoire. It opens as you come near and lets you choose your staffs’ spells.",
-  "overhaul_grimoirestand_read": "Read the grimoire"
+  "overhaul_grimoirestand_read": "Read the grimoire",
+  "overhaul_enchanttable": "Enchanting table",
+  "overhaul_enchanttable_desc": "An old altar covered with runes, maps and bones, lit by eternal candles. Enchanting will be done here."
 }

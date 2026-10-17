@@ -187,6 +187,7 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_staffs"><LogicalName>Overhaul.Assets.overhaul_staffs</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_grimoirestand"><LogicalName>Overhaul.Assets.overhaul_grimoirestand</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_enchanttable"><LogicalName>Overhaul.Assets.overhaul_enchanttable</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_shields">
       <LogicalName>Overhaul.Assets.overhaul_shields</LogicalName>
     </EmbeddedResource>
