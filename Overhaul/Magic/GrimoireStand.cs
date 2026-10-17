@@ -57,8 +57,8 @@ namespace Overhaul.Magic
         }
 
         // The pack's model in the game's look: the stand and the tall candle holder in the wood wall's planks (their post
-        // turned along the grain in the bundle), the flat flame sprites (black edged in the game) replaced by the resin
-        // candle's animated flame, and a dimmer, warmer candle light. The game prefabs borrowed are held (GamePrefabs).
+        // turned along the grain in the bundle) and a dimmer, warmer candle light; the pack's own candle flame sprites stay,
+        // drawn by the bundle's FlameSprite shader. The game prefabs borrowed are held (GamePrefabs).
         static void GameLook(GameObject visual)
         {
             var wall = GamePrefabs.Held("woodwall")?.transform.Find("New/_Combined Mesh [high]")?.GetComponent<MeshRenderer>()?.sharedMaterial;
@@ -70,33 +70,6 @@ namespace Overhaul.Magic
                 foreach (var part in woodParts) part.sharedMaterials = part.sharedMaterials.Select(_ => wood).ToArray();
             }
             else Log.LogWarning("Grimoire stand: wood wall material not found, pack wood kept");
-
-            var flame = GamePrefabs.Held("Candle_resin")?.transform.Find("high/vfx")?.gameObject;
-            var sprites = visual.GetComponentsInChildren<SpriteRenderer>(true);
-            if (flame && sprites.Length > 0)
-            {
-                // Each candle's flame is two crossed sprites: one game flame per wick, sized on the sprites.
-                var wicks = new List<(Vector3 position, float height, Transform parent)>();
-                foreach (var sprite in sprites)
-                {
-                    if (!sprite.sprite) { Object.DestroyImmediate(sprite.gameObject); continue; }
-                    // From the sprite itself: renderer bounds are empty on the inactive prefab.
-                    var b = sprite.sprite.bounds; var t = sprite.transform;
-                    var center = t.TransformPoint(b.center); float h = b.size.y * t.lossyScale.y;
-                    if (!wicks.Any(w => (w.position - center).sqrMagnitude < .02f * .02f)) wicks.Add((center, h, t.parent));
-                    Object.DestroyImmediate(sprite.gameObject);
-                }
-                foreach (var (position, height, parent) in wicks)
-                {
-                    var copy = Object.Instantiate(flame, parent, false); copy.name = "flame";
-                    // The game's flame burns from its root up: its root at the sprites' bottom.
-                    copy.transform.position = position - Vector3.up * height * .5f;
-                    copy.transform.rotation = Quaternion.identity;
-                    copy.transform.localScale = Vector3.one * (height / .25f / parent.lossyScale.y);
-                    foreach (var ps in copy.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
-                }
-            }
-            else Log.LogWarning("Grimoire stand: resin candle flame not found, pack sprites kept");
 
             foreach (var light in visual.GetComponentsInChildren<Light>(true))
             {
