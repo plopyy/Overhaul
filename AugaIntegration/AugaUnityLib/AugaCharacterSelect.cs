@@ -113,6 +113,11 @@ namespace AugaUnity
             Update();
         }
 
+        // With achievements on, the game's GetStat asks the server options window for the world's difficulty; on the
+        // character screen that window does not exist yet and GetStat throws. The stats of the default difficulty then.
+        internal static float Stat(PlayerProfile profile, PlayerStatType stat) =>
+            ServerOptionsGUI.m_instance ? profile.GetStat(stat) : profile.m_playerStats[0][stat];
+
         public void Setup(PlayerProfile profile, int index, RenderTexture renderTexture)
         {
             if (Localization.instance != null) Localization.instance.Localize(transform);
@@ -120,7 +125,7 @@ namespace AugaUnity
             _index = index;
             CharacterName.text = profile.m_playerName;
             Button.onClick.AddListener(() => FejdStartup.instance.SetSelectedProfile(_profile.m_filename));
-            StatsText.text = $"{profile.GetStat(PlayerStatType.Deaths)}\n{profile.GetStat(PlayerStatType.Builds)}\n{profile.GetStat(PlayerStatType.Crafts)}";
+            StatsText.text = $"{Stat(profile, PlayerStatType.Deaths)}\n{Stat(profile, PlayerStatType.Builds)}\n{Stat(profile, PlayerStatType.Crafts)}";
 
             Image.texture = AugaCharacterSelectPhotoBooth.GetPhoto(profile);
 
