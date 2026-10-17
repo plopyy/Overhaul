@@ -2,6 +2,9 @@
 
 ## 2.3.0 (in progress)
 
+### Fixed
+- Character selection screen: with a mod that turns the game's achievements back on, the character list stopped with an error (NullReferenceException in GetActiveCombatDifficulty) while showing each character's deaths, builds and crafts. (2.3.0.93)
+
 ### Added
 - **Enchanting table**, a new hammer piece (Crafting, at a workbench; provisional recipe: 10 stone, 6 fine wood, 4 bone fragments, 1 surtling core): Eikthyr’s altar holding maps of the cartography table, a rune table, crypt bones and eternal candles burning with their purple flames, all in the game’s own textures. It does nothing yet: enchanting comes in a later version. (2.3.0.92)
 

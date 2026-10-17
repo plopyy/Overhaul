@@ -30,7 +30,7 @@ namespace AugaUnity
             _sb.Clear();
 
             _sb.AppendLine($"{profile.m_playerName}:");
-            _sb.AppendLine($"   Deaths: {profile.GetStat(PlayerStatType.Deaths)}, Builds: {profile.GetStat(PlayerStatType.Builds)}, Crafts: {profile.GetStat(PlayerStatType.Crafts)}");
+            _sb.AppendLine($"   Deaths: {CharacterSelectPortrait.Stat(profile, PlayerStatType.Deaths)}, Builds: {CharacterSelectPortrait.Stat(profile, PlayerStatType.Builds)}, Crafts: {CharacterSelectPortrait.Stat(profile, PlayerStatType.Crafts)}");
 
             var worldNames = SaveSystem.GetWorldList().Where(x => profile.m_worldData.ContainsKey(x.m_uid)).Select(x => x.m_name);
             _sb.AppendLine($"   Local Worlds: {string.Join(", ", worldNames)}");
