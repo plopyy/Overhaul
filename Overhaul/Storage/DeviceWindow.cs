@@ -142,21 +142,9 @@ namespace Overhaul.Storage
             var mask = materialGrid.GetComponent<RectMask2D>(); if (mask) mask.enabled = false;
             materialGrid.GetComponent<ScrollRect>().enabled = false;
         }
-        // The enchanting table: its two cells (item, trophy) go to the window's ItemSlot and TrophySlot anchors.
-        private void PrepareEnchant()
-        {
+        // The enchanting table: its window's MaterialInventory grid (prefab) makes the two cells, moved to these anchors.
+        private void PrepareEnchant() =>
             armorAnchors = new[] { panel.transform.Find("ItemPanel/ItemSlot"), panel.transform.Find("EnchantPage/TrophySlot") };
-            var donor = Prefab("StationSingleLateral_Separation2").GetComponentInChildren<InventoryGrid>(true);
-            materialGrid = Instantiate(donor, panel.transform, false); materialGrid.name = "EnchantInventory";
-            var rect = (RectTransform)materialGrid.transform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
-            var mask = materialGrid.GetComponent<RectMask2D>(); if (mask) mask.enabled = false;
-            materialGrid.GetComponent<ScrollRect>().enabled = false;
-            foreach (var graphic in materialGrid.GetComponents<Graphic>()) graphic.enabled = false;
-            // Stretched over the window, it must not catch the clicks meant for the lines and buttons: behind everything, and
-            // transparent to clicks (its cells, moved to the anchors, are no longer under it).
-            materialGrid.transform.SetAsFirstSibling();
-            var group = materialGrid.gameObject.AddComponent<CanvasGroup>(); group.blocksRaycasts = false; group.interactable = false;
-        }
         private void Bind(InventoryGrid grid, Inventory inventory)
         {
             grid.m_uiGroup = originalGrid.m_uiGroup;
