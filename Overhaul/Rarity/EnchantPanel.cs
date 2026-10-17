@@ -13,8 +13,8 @@ namespace Overhaul.Rarity
     // on the left, three tabs on the right.
     // Enchant: the trophy, its tier's odds per rarity, and Enchant (uses the trophy up, draws the item's rarity and lines again).
     // Change: the item's lines; the first line changed is locked as the only one that can change again. Reroll pays the cost
-    // and offers the current line and two other effects; clicking one puts it on the item (the current one stays selected
-    // until another is clicked, so closing keeps it). Missing cost items blink red like crafting requirements.
+    // and offers the current line and two other effects; clicking one puts it on the item and closes the offers (closing the
+    // window keeps the current line). Missing cost items blink red like crafting requirements.
     // Catalysts: the item's catalyst slots (the table's second inventory, written into the item).
     internal sealed class EnchantPanel : MonoBehaviour
     {
@@ -220,7 +220,8 @@ namespace Overhaul.Rarity
             var lines = ItemRarity.Enchants(item); if (line >= lines.Length) return;
             lines[line] = choices[index];
             store.Change(() => item.m_customData[ItemRarity.EnchantKey] = string.Join(",", lines));
-            choice = index;
+            // The pick is final: the offers close until the next reroll.
+            choices = null; choice = 0;
             Refresh();
         }
     }
