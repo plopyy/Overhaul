@@ -46,6 +46,41 @@ namespace Overhaul
             if (badgeBorder) { Tint(badgeBorder, rarity ?? BaseBorder, hasItem ? gradient : null, 0); badgeBorder.enabled = hasItem && upgradable; }
         }
 
+        // Catalyst slots of the item, as small diamonds at the bottom left of the cell (OverhaulCatalysts, built into the
+        // cell prefab): one per slot of its rarity, an empty one with the base border, a filled one with the catalyst's icon
+        // and its rarity's border. Hidden for items without catalyst slots.
+        internal static void Catalysts(GameObject cell, ItemDrop.ItemData item)
+        {
+            var slots = Rarity.ItemRarity.Catalysts(item);
+            var icons = new Sprite[slots.Length]; var colors = new Color?[slots.Length];
+            for (int i = 0; i < slots.Length; i++)
+            {
+                if (slots[i].Length == 0) continue;
+                icons[i] = ObjectDB.instance?.GetItemPrefab(slots[i])?.GetComponent<ItemDrop>()?.m_itemData.GetIcon();
+                colors[i] = Rarity.RarityConfig.Current.Catalysts.TryGetValue(slots[i], out string rarity) ? Rarity.RarityConfig.Current.Rarity(rarity)?.Color : null;
+            }
+            ApplyCatalysts(cell, icons, colors);
+        }
+
+        // icons: one per catalyst slot, null for an empty slot; colors: the socketed catalyst's rarity colour.
+        public static void ApplyCatalysts(GameObject cell, Sprite[] icons, Color?[] colors)
+        {
+            var group = cell ? cell.transform.Find(CatalystsName) : null;
+            if (!group) return;
+            group.gameObject.SetActive(icons.Length > 0);
+            for (int i = 0; i < group.childCount; i++)
+            {
+                var diamond = group.GetChild(i);
+                diamond.gameObject.SetActive(i < icons.Length);
+                if (i >= icons.Length) continue;
+                var icon = diamond.Find("Icon")?.GetComponent<Image>();
+                if (icon) { icon.sprite = icons[i]; icon.enabled = icons[i]; }
+                var border = diamond.Find("Border")?.GetComponent<Image>();
+                if (border) border.color = icons[i] && colors[i] != null ? colors[i].Value : BaseBorder;
+            }
+        }
+        private const string CatalystsName = "OverhaulCatalysts";
+
         // Auga windows darken from right to left (#241E17 to #4B3E33). A fixed slot colour vanishes into
         // the middle of them, so each slot is kept at 72 % of the window colour behind it.
         private static readonly Color WindowLeft = new Color32(0x24, 0x1E, 0x17, 255), WindowRight = new Color32(0x4B, 0x3E, 0x33, 255);
@@ -155,6 +190,7 @@ namespace Overhaul
                     ItemDrop.ItemData item = element.m_used ? inventory.GetItemAt(element.Position.x, element.Position.y) : null;
                     Apply(element.gameObject, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), false, item != null && item.m_shared.m_maxQuality > 1, element == hovered, WindowPosition(element.transform),
                         equipped: item != null && item.m_equipped && !InEquipmentWindow(element.transform), gradient: Rarity.ItemRarity.GradientOf(item));
+                    Catalysts(element.gameObject, item);
                 }
             }
         }
