@@ -87,6 +87,7 @@ namespace Overhaul
             EquipmentAndQuickSlots.EquipmentAndQuickSlots.LateUpdate();
             Commands.AdminCommands.Tick();
             Dungeons.DungeonRuntime.Tick();
+            Dungeons.BossNativeMaterials.Tick();
             DynamicCombat.UpdateDodgeAttackSpeed();
             DynamicCombat.UpdateDodgeAura();
             DynamicCombat.UpdateAttackLocomotionPose();
