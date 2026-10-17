@@ -67,6 +67,8 @@ namespace Overhaul.Rarity
                 DistanceMultiplier = 1.1f, ParticleSimulationTime = -1f
             });
             if (icon) piece.m_icon = icon;
+            prefab.AddComponent<EnchantTableDiagnostic>();
+            Log.LogInfo("Enchanting table diagnostic: prefab " + EnchantTableDiagnostic.Describe(prefab));
             PieceManager.Instance.AddPiece(custom);
         }
 
@@ -97,5 +99,25 @@ namespace Overhaul.Rarity
                 var l = copy.GetComponent<Light>(); l.range *= .5f;
             }
         }
+    }
+}
+
+namespace Overhaul.Rarity
+{
+    // Temporary: the table and its ghost show nothing in game. Logs what the placed table and its ghost look like.
+    internal sealed class EnchantTableDiagnostic : MonoBehaviour
+    {
+        internal static string Describe(GameObject go)
+        {
+            var t = go.transform;
+            var parts = go.GetComponentsInChildren<Renderer>(true).Select(r => r.name + (r.enabled ? "" : " OFF") + (r.gameObject.activeInHierarchy ? "" : " INACTIVE")
+                + " layer " + LayerMask.LayerToName(r.gameObject.layer) + " visible " + r.isVisible + " bounds " + r.bounds.center.ToString("F2") + "/" + r.bounds.size.ToString("F2")
+                + " mats " + string.Join("+", r.sharedMaterials.Select(m => m ? m.name + ":" + m.shader.name : "null")));
+            return go.name + " active " + go.activeInHierarchy + " pos " + t.position.ToString("F2") + " rot " + t.eulerAngles.ToString("F0") + " scale " + t.lossyScale.ToString("F3")
+                + " | " + string.Join(" | ", parts);
+        }
+        void Start() { Log.LogInfo("Enchanting table diagnostic: start " + (Player.IsPlacementGhost(gameObject) ? "(ghost) " : "") + Describe(gameObject)); Invoke(nameof(Later), 2f); }
+        void Later() => Log.LogInfo("Enchanting table diagnostic: 2 s later " + Describe(gameObject));
+        void OnDestroy() => Log.LogInfo("Enchanting table diagnostic: destroyed " + name);
     }
 }
