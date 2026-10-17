@@ -60,6 +60,18 @@ namespace Overhaul.Rarity
         // Every colour of a multicolour rarity (drawn as a gradient), or null.
         internal static Color[] GradientOf(ItemDrop.ItemData item) { var rarity = Of(item); return rarity != null && rarity.Colors.Length > 1 ? rarity.Gradient : null; }
 
+        // Catalysts socketed in the item: one entry per catalyst slot of its rarity, the catalyst's prefab name or "" for an empty slot.
+        internal const string CatalystKey = "overhaul_catalysts";
+        internal static string[] Catalysts(ItemDrop.ItemData item)
+        {
+            var rarity = Of(item);
+            if (rarity == null || rarity.CatalystSlots <= 0 || IsCatalyst(item, out _)) return new string[0];
+            var slots = new string[rarity.CatalystSlots];
+            string[] saved = item.m_customData != null && item.m_customData.TryGetValue(CatalystKey, out string value) ? value.Split(',') : new string[0];
+            for (int i = 0; i < slots.Length; i++) slots[i] = i < saved.Length ? saved[i] : "";
+            return slots;
+        }
+
         internal static string[] Enchants(ItemDrop.ItemData item) =>
             item?.m_customData != null && item.m_customData.TryGetValue(EnchantKey, out string value) && value.Length > 0 ? value.Split(',') : new string[0];
 
