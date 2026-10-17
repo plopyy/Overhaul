@@ -16,7 +16,7 @@ namespace Overhaul.Storage
             private static IEnumerable<MethodBase> TargetMethods()
             {
                 foreach (var type in new[] { typeof(Smelter), typeof(CookingStation), typeof(Fermenter), typeof(Fireplace), typeof(ItemStand), typeof(ArmorStand) }) yield return AccessTools.Method(type, "Awake");
-                foreach (var type in new[] { typeof(ShieldGenerator), typeof(Catapult), typeof(OfferingBowl) }) yield return AccessTools.Method(type, "Start");
+                foreach (var type in new[] { typeof(ShieldGenerator), typeof(Catapult), typeof(OfferingBowl), typeof(CraftingStation) }) yield return AccessTools.Method(type, "Start");
             }
             [HarmonyPriority(Priority.Last)]
             private static void Postfix(Component __instance) => DeviceStore.Attach(__instance);

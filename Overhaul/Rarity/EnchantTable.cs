@@ -1,5 +1,4 @@
 using System.Linq;
-using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -13,7 +12,7 @@ namespace Overhaul.Rarity
     // tear, model (Eikthyr's altar holding the cartography table's maps, a rune table, crypt bones and eternal candles) and
     // colliders. What a bundle cannot hold is added here: the game's materials on its parts, the galdr table's eternal candle
     // flames and light on the model's anchors, the stone build and break effects, and the build menu icon. Using it opens the
-    // enchanting window; it can be moved like the other functional pieces. The candle glow swells while the player is near.
+    // enchanting window (Rarity.EnchantInventory, opened like a chest); it can be moved like the other functional pieces. The candle glow swells while the player is near.
     internal static class EnchantTable
     {
         internal const string Name = "Overhaul_EnchantTable";
@@ -103,28 +102,13 @@ namespace Overhaul.Rarity
                 var l = copy.GetComponent<Light>(); l.range *= .5f;
             }
         }
-
-        // Using the table opens the enchanting window instead of the crafting one.
-        [HarmonyPatch(typeof(CraftingStation), nameof(CraftingStation.Interact))]
-        private static class Use
-        {
-            private static bool Prefix(CraftingStation __instance, Humanoid user, bool repeat, ref bool __result)
-            {
-                if (__instance.m_name != StationName) return true;
-                __result = false;
-                if (repeat || user != Player.m_localPlayer || !__instance.InUseDistance(user)) return false;
-                // The enchanting window comes with the enchanting itself.
-                ((Player)user).Message(MessageHud.MessageType.Center, "$overhaul_enchant_soon");
-                return false;
-            }
-        }
     }
 
     // The violet glow of the eternal candles swells while the local player is within reach of the table, and fades back
     // when they leave. Seen by each player for themself: no network traffic.
     internal sealed class EnchantTableGlow : MonoBehaviour
     {
-        const float Reach = 5f, Boost = 2.5f, RangeBoost = 1.4f, FlameBoost = 1.3f, Speed = 2f, FlameScale = .3f;
+        const float Reach = 5f, Boost = 1.5f, RangeBoost = 1.15f, FlameBoost = 1.2f, Speed = 2f, FlameScale = .3f;
         Light glow; LightFlicker flicker; LightLod lod;
         float intensity, range, level;
         Transform[] flames;
