@@ -292,7 +292,7 @@ namespace Overhaul.Effects
             private static readonly ConditionalWeakTable<Projectile, Marked> Projectiles = new ConditionalWeakTable<Projectile, Marked>();
             private static Projectile fireball;
 
-            private static Projectile Fireball()
+            internal static Projectile Fireball()
             {
                 if (fireball || !ObjectDB.instance) return fireball;
                 var staff = ObjectDB.instance.GetItemPrefab("StaffFireball")?.GetComponent<ItemDrop>();
