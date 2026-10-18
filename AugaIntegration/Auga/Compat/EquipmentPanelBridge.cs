@@ -131,12 +131,8 @@ namespace Auga
                 else if (isAmmo) anchor = panel.Find("AmmoSlots/Ammo" + (slotIndex - EquipmentAndQuickSlots.Slots.AmmoSlotStartIndex));
                 if (!anchor) { element.transform.SetParent(hidden, false); element.gameObject.SetActive(false); continue; }
                 r.SetParent(anchor, false); r.anchorMin = r.anchorMax = r.pivot = new Vector2(.5f, .5f); r.anchoredPosition = Vector2.zero;
-                var label = element.transform.Find("binding").GetComponent<TMP_Text>();
-                label.text = Flag(quick, slot) ? (string)quickText.Invoke(null, new object[] { (int)index.GetValue(slot,null) }) : "";
-                // Native inventory refresh hides bindings outside the first inventory row.
-                // EQS quick slots live in reserved rows: restore their binding visibility.
-                label.gameObject.SetActive(Flag(quick, slot));
-                label.enabled = true;
+                // Quick slots show their key; the other slots none.
+                AugaUnity.ItemSlot.SetHotKey(element.gameObject, Flag(quick, slot) ? (string)quickText.Invoke(null, new object[] { (int)index.GetValue(slot,null) }) : null);
                 var button = element.GetComponent<Button>();
                 var colors = button.colors;
                 var normal = grid.m_elementPrefab.GetComponent<Button>().colors.normalColor;
