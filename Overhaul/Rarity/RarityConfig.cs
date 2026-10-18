@@ -61,6 +61,15 @@ namespace Overhaul.Rarity
         internal HashSet<string> Items = new HashSet<string>(StringComparer.Ordinal);
     }
 
+    // What a catalyst does once socketed in worn gear (Catalyst sections): its effect, fixed values and permanent bonuses.
+    internal sealed class CatalystDef
+    {
+        internal string Id, Effect, Dot;
+        internal readonly Dictionary<string, float> Values = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        internal (string Effect, float Value)[] Bonuses = new (string, float)[0];
+        internal float Get(string key, float fallback = 0) => Values.TryGetValue(key, out float value) ? value : fallback;
+    }
+
     internal sealed class LootListDef
     {
         internal string Id;
@@ -76,6 +85,7 @@ namespace Overhaul.Rarity
         internal readonly List<BiomeDef> Biomes = new List<BiomeDef>();
         internal readonly Dictionary<string, MythicDef> Mythics = new Dictionary<string, MythicDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, string> Catalysts = new Dictionary<string, string>(StringComparer.Ordinal);
+        internal readonly Dictionary<string, CatalystDef> CatalystEffects = new Dictionary<string, CatalystDef>(StringComparer.Ordinal);
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, List<string>> MobLoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         // Enchanting table: odds per tier (EnchantTier_N, rarity weights in Rarity order), line change cost, tiers added by rank.
@@ -98,7 +108,7 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else { AddCatalystRarity(path); AddEnchantSections(path); }
+            else { AddCatalystRarity(path); AddEnchantSections(path); AddCatalystEffects(path); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
@@ -132,6 +142,32 @@ namespace Overhaul.Rarity
             int at = last < 0 ? text.Length : NextBlock(text, last);
             File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
             Utility.Log.LogInfo("RaritySystem.cfg: Catalyst rarity added");
+        }
+
+        // Files made before the catalyst effects: every Catalyst section without an effect takes the default one's settings
+        // (sections that already have an effect, set by hand, are left as they are).
+        private static void AddCatalystEffects(string path)
+        {
+            string text = File.ReadAllText(path), defaults = Utility.ConfigSections.Defaults(FileName);
+            int changed = 0, from = 0;
+            while ((from = defaults.IndexOf("[Catalyst_", from, StringComparison.Ordinal)) >= 0)
+            {
+                int end = NextBlock(defaults, from);
+                string block = defaults.Substring(from, end - from).TrimEnd();
+                from = end;
+                string header = block.Substring(0, block.IndexOf(']') + 1);
+                int at = text.IndexOf(header, StringComparison.Ordinal);
+                if (at < 0) continue;
+                int stop = NextBlock(text, at);
+                string current = text.Substring(at, stop - at);
+                bool hasEffect = current.Split('\n').Any(l => l.Trim().StartsWith("Effect", StringComparison.Ordinal) && l.Contains('=') && l.Substring(l.IndexOf('=') + 1).Trim().Length > 0);
+                if (hasEffect) continue;
+                text = text.Substring(0, at) + block + Environment.NewLine + Environment.NewLine + text.Substring(stop).TrimStart('\r', '\n');
+                changed++;
+            }
+            if (changed == 0) return;
+            File.WriteAllText(path, text);
+            Utility.Log.LogInfo("RaritySystem.cfg: effects added to " + changed + " catalysts");
         }
 
         // End of the section starting at index: the next section header or comment line, or the end of the text.
@@ -218,6 +254,11 @@ namespace Overhaul.Rarity
                         break;
                     case "catalyst":
                         data.Catalysts[id] = ItemRarity.CatalystRarity;
+                        var def = new CatalystDef { Id = id, Effect = Get(v, "Effect", null), Dot = Get(v, "Dot", null) };
+                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks" })
+                            if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
+                        def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
+                        if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;
                         break;
                     case "lootlist":
                         data.LootLists[id] = new LootListDef

@@ -34,6 +34,9 @@ namespace Overhaul.Rarity
             if (fuel)
             {
                 if (!ItemRarity.IsCatalyst(item, out _)) return false;
+                // The same catalyst only once per item.
+                string prefab = item.m_dropPrefab ? item.m_dropPrefab.name : Enchantments.Prefab(item);
+                if (Store.Fuel.GetAllItems().Any(other => other != item && (other.m_dropPrefab ? other.m_dropPrefab.name : null) == prefab)) return false;
                 return pos.HasValue ? pos.Value.y == 0 && pos.Value.x < CatalystSlots : Enumerable.Range(0, CatalystSlots).Any(x => Store.Fuel.GetItemAt(x, 0) == null);
             }
             bool gear = Gear(item), trophy = EnchantOdds.Of(item) != null;
