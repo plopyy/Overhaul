@@ -284,25 +284,8 @@ namespace Overhaul.Effects
                 foreach (var hud in __instance.m_huds.Values)
                     if (hud.m_character && Vector3.Distance(hud.m_character.transform.position, __instance.m_refPoint) <= ShowDistance) hud.m_hoverTimer = 0;
             }
-            // TEMPORARY diagnostic (health bars not visible with the Auga EnemyHud): the state of the bars every 10 s.
-            static float nextReport;
-            static void Report(EnemyHud enemyHud)
-            {
-                if (Time.time < nextReport) return; nextReport = Time.time + 10;
-                var root = enemyHud.m_hudRoot;
-                global::Overhaul.Utility.Log.LogInfo($"HUD diag: {enemyHud.name} parent={enemyHud.transform.parent?.name} rootActive={(root ? root.activeInHierarchy : false)} huds={enemyHud.m_huds.Count} maxDist={enemyHud.m_maxShowDistance} screen={Screen.width}x{Screen.height}");
-                foreach (var hud in enemyHud.m_huds.Values)
-                {
-                    if (!hud.m_gui) { global::Overhaul.Utility.Log.LogInfo("HUD diag:  gui null"); continue; }
-                    var t = hud.m_gui.transform; var canvas = hud.m_gui.GetComponentInParent<Canvas>();
-                    var health = t.Find("Health") as RectTransform; var fast = hud.m_healthFast ? hud.m_healthFast.transform as RectTransform : null;
-                    var group = hud.m_gui.GetComponentInParent<CanvasGroup>();
-                    global::Overhaul.Utility.Log.LogInfo($"HUD diag:  {hud.m_character?.m_name} active={hud.m_gui.activeSelf}/{hud.m_gui.activeInHierarchy} pos={t.position} local={t.localPosition} lossy={t.lossyScale} canvas={canvas?.name}/{canvas?.renderMode}/{canvas?.enabled} group={group?.alpha} health={health?.rect} fast={fast?.rect} name={hud.m_name?.text}");
-                }
-            }
             private static void Postfix(EnemyHud __instance)
             {
-                Report(__instance);
                 foreach (var hud in __instance.m_huds.Values)
                 {
                     if (!hud.m_gui || !hud.m_character) continue;
