@@ -12,6 +12,7 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Fixed
+- Character selection screen: with achievements turned back on, the stats could still stop the character list with an error when the game's server options window existed but was not set up yet; they now fall back to the default difficulty in every case (from 2.2.2.3). (2.3.0.140)
 - With a full inventory, items on the ground are no longer pulled to your feet without being picked up. (2.3.0.139)
 - An older Effects.cfg (a server's, sent to every player) gets the effects added since, notably the DoT bonuses and the Fire and Frost immunities: without them the Molten core and Freeze gland immunities did nothing and DoTs still landed. (2.3.0.138)
 - Damage over time icons now show under creature health bars and in your own status effects (the effects list included): the Overhaul health bars no longer depend on the (disabled by default) Hud UI module, they have their own EnemyHud module, on by default, and their own canvas (they were built but never drawn). (2.3.0.137)
