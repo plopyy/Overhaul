@@ -9,7 +9,7 @@ namespace Overhaul.Effects
 {
     internal enum DotType { Burn, Frostbite, Shock, Poison, Bleed }
 
-    // Damage over time, replacing the game's own burning, poison, frost and lightning effects, on players and creatures alike.
+    // Damage over time, replacing every DoT of the game (burning, poison, frost, lightning, spirit), on players and creatures alike.
     // Fire, frost, lightning and poison hits put their DoT on the target (Burn, Frostbite, Shock, Poison); Bleed comes from
     // effects. A DoT lasts 3 s and deals its base damage every second. A new one of the same type adds a stack (5 at most)
     // and restarts the 3 s; it ends entirely when the time runs out. Damage per second:
@@ -192,6 +192,23 @@ namespace Overhaul.Effects
         private static class Frost { private static bool Prefix(Character __instance) { Start(__instance, DotType.Frostbite, rawFrost); return false; } }
         [HarmonyPatch(typeof(Character), "AddLightningDamage")]
         private static class Lightning { private static bool Prefix(Character __instance) { Start(__instance, DotType.Shock, rawLightning); return false; } }
+
+        // No status effect of the game's own DoTs ever starts (attacks carrying one, the Ashlands lava...). The lava's burning
+        // becomes a Burn: a fifth of the lava damage the character is taking at that heat.
+        static readonly HashSet<int> Replaced = new HashSet<int> { SEMan.s_statusEffectBurning, SEMan.s_statusEffectPoison, SEMan.s_statusEffectFrost, SEMan.s_statusEffectLightning, SEMan.s_statusEffectSpirit };
+        [HarmonyPatch(typeof(SEMan), nameof(SEMan.AddStatusEffect), typeof(StatusEffect), typeof(bool), typeof(int), typeof(float), typeof(short))]
+        private static class GameDots
+        {
+            private static bool Prefix(SEMan __instance, StatusEffect statusEffect, ref StatusEffect __result)
+            {
+                if (!statusEffect || !Replaced.Contains(statusEffect.NameHash())) return true;
+                var c = __instance.m_character;
+                if (c && statusEffect.NameHash() == SEMan.s_statusEffectBurning && c.m_lavaHeatLevel > 0 && c.m_nview && c.m_nview.IsOwner())
+                    Apply(c, DotType.Burn, BaseOf(c.m_lavaHeatLevel >= 1 ? c.m_lavaFullDamage : c.m_lavaFirstDamage), ZDOID.None);
+                __result = null;
+                return false;
+            }
+        }
 
         // ------------------------------------------------------------------ side effects
         // Frostbite slows.
