@@ -28,7 +28,7 @@ namespace Overhaul.Effects
             "ParryBonus", "BackstabBonus", "Knockback", "LifeSteal", "DamageReflect", "HarvestBonus", "CarryWeight",
             "CritChance", "LootBonus", "Indestructible", "ExplosiveProjectile", "CastSpeed",
             "PhysicDmg", "Armor", "MiningDmg", "ChoppingDmg", "UnlimitedAmmo", "MagicPower", "MagicDmg", "ResistMagic",
-            "BurnDamage", "FrostbiteDamage", "ShockDamage", "PoisonDamage", "BleedDamage",
+            "BurnDamage", "FrostbiteDamage", "ShockDamage", "PoisonDamage", "BleedDamage", "FireImmunity", "FrostImmunity",
         };
         internal static bool Known(string id) => Implemented.Contains(id);
 
