@@ -19,6 +19,7 @@ namespace Overhaul.Rarity
         internal override int FuelWidth => 2;
         internal override int FuelHeight => 1;
         internal override bool SingleItems => true;
+        internal override bool SingleFuel => true;
         internal override string Title => Station.m_name;
         internal override string MaterialLabel => "";
 
