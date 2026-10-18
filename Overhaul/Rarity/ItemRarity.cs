@@ -270,6 +270,7 @@ namespace Overhaul.Rarity
                 label == "$item_durability" && item != null && Enchantments.ItemValue(item, "Indestructible") >= 1 ? new System.Tuple<string, string>(label, "∞") : new System.Tuple<string, string>(label, value));
             Enchantments.Initialize();
             CatalystEffects.Initialize();
+            Gems.Initialize();
         }
 
         private static void Tooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)

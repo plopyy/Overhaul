@@ -157,7 +157,15 @@ namespace Overhaul.Rarity
                 from = end;
                 string header = block.Substring(0, block.IndexOf(']') + 1);
                 int at = text.IndexOf(header, StringComparison.Ordinal);
-                if (at < 0) continue;
+                if (at < 0)
+                {
+                    // A catalyst the file does not list yet (the orange and yellow gems): added after its last catalyst.
+                    int last = text.LastIndexOf("[Catalyst_", StringComparison.Ordinal);
+                    int place = last < 0 ? text.Length : NextBlock(text, last);
+                    text = text.Substring(0, place).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(place).TrimStart('\r', '\n');
+                    changed++;
+                    continue;
+                }
                 int stop = NextBlock(text, at);
                 string current = text.Substring(at, stop - at);
                 bool hasEffect = current.Split('\n').Any(l => l.Trim().StartsWith("Effect", StringComparison.Ordinal) && l.Contains('=') && l.Substring(l.IndexOf('=') + 1).Trim().Length > 0);
