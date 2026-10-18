@@ -640,6 +640,10 @@ namespace EquipmentAndQuickSlots {
                 if (__result)
                     return;
 
+                // Like the game: no stack given (auto pickup passes -1) means the whole item stack.
+                if (stack <= 0)
+                    stack = item.m_stack;
+
                 int freeStackSpace = __instance.FindFreeStackSpace(item.m_shared.m_name, item.m_worldLevel);
                 int freeQuickSlotStackSpace = __instance.GetEmptySlots() * item.m_shared.m_maxStackSize;
 
