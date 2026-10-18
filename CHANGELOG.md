@@ -27,6 +27,8 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- A server shutting down (restart, update) now disconnects its players first, before saving the world: they go back to the main menu with the disconnected message, instead of staying in game with the connection problem icon while the server was already restarting. (2.3.0.144)
+- Item slots: the catalyst diamonds are 50 % bigger (they may spill over the next cell), to be seen clearly. (2.3.0.144)
 - Enchanting table: a catalyst slot takes a single catalyst, not a stack. (2.3.0.143)
 - Character selection screen: with achievements turned back on, the stats could still stop the character list with an error when the game's server options window existed but was not set up yet; they now fall back to the default difficulty in every case (from 2.2.2.3). (2.3.0.140)
 - With a full inventory, items on the ground are no longer pulled to your feet without being picked up ("Your inventory is full"), empty quick slots included: they only count as room for the items they accept. (2.3.0.142)
