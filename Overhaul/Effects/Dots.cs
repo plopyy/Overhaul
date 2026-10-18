@@ -210,6 +210,30 @@ namespace Overhaul.Effects
             }
         }
 
+        // ------------------------------------------------------------------ immunities (on/off effects of the player)
+        // FireImmunity: no fire damage, so never a Burn. FrostImmunity: no frost damage, never a Frostbite, and no Cold or
+        // Freezing from the weather.
+        static bool Has(Character c, string effect) => c is Player && Effects.Get(c, effect) >= 1;
+        [HarmonyPatch(typeof(Character), nameof(Character.GetDamageModifiers))]
+        private static class Immunities
+        {
+            private static void Postfix(Character __instance, ref HitData.DamageModifiers __result)
+            {
+                if (Has(__instance, "FireImmunity")) __result.m_fire = HitData.DamageModifier.Immune;
+                if (Has(__instance, "FrostImmunity")) __result.m_frost = HitData.DamageModifier.Immune;
+            }
+        }
+        [HarmonyPatch(typeof(SEMan), nameof(SEMan.AddStatusEffect), typeof(StatusEffect), typeof(bool), typeof(int), typeof(float), typeof(short))]
+        private static class NoCold
+        {
+            private static bool Prefix(SEMan __instance, StatusEffect statusEffect, ref StatusEffect __result)
+            {
+                if (!statusEffect || (statusEffect.NameHash() != SEMan.s_statusEffectCold && statusEffect.NameHash() != SEMan.s_statusEffectFreezing)) return true;
+                if (!Has(__instance.m_character, "FrostImmunity")) return true;
+                __result = null; return false;
+            }
+        }
+
         // ------------------------------------------------------------------ side effects
         // Frostbite slows.
         [HarmonyPatch(typeof(SEMan), nameof(SEMan.ApplyStatusEffectSpeedMods))]
