@@ -63,7 +63,8 @@ namespace Overhaul.Effects
         {
             private static void Prefix(Character __instance, HitData hit)
             {
-                if (hit == null || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player) return;
+                // DoT ticks carry no bonus of the attacker (only their own DoT bonus, applied by Dots).
+                if (hit == null || Dots.IsDot(hit) || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player) return;
                 if (hit.GetTotalDamage() <= 0) return;
                 float fire = Effects.Get(player, "FireDmg"), frost = Effects.Get(player, "FrostDmg"), lightning = Effects.Get(player, "LightningDmg"),
                     poison = Effects.Get(player, "PoisonDmg"), spirit = Effects.Get(player, "SpiritDmg");
@@ -94,7 +95,8 @@ namespace Overhaul.Effects
             internal static void Mark(HitData hit) { if (hit != null) Hits.GetValue(hit, _ => new Marked()); }
             private static bool Is(HitData hit) => hit != null && Hits.TryGetValue(hit, out _);
 
-            private static bool StaggeringOrCritical(Character target, HitData hit) => target.IsStaggering() || Is(hit);
+            // DoT damage is never critical.
+            private static bool StaggeringOrCritical(Character target, HitData hit) => !Dots.IsDot(hit) && (target.IsStaggering() || Is(hit));
 
             [HarmonyPatch(typeof(Character), "RPC_Damage")]
             private static class Native
