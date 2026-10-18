@@ -115,18 +115,22 @@ namespace Overhaul.Effects
 
         // The local player's DoTs in their status effect bar: one status per DoT, its stacks as the icon text.
         static readonly Dictionary<int, SE_Dot> shown = new Dictionary<int, SE_Dot>();
+        // Shown under the health bars and in the player's status effects: the five DoTs (with their stacks), then the Root debuff.
+        static readonly string[] Shown = { "Burn", "Frostbite", "Shock", "Poison", "Bleed", "Root" };
+        static int Level(Character c, int t) => t < Names.Length ? Stacks(c, (DotType)t) : Root.Rooted(c) ? 1 : 0;
+
         static void PlayerIcons()
         {
             var player = Player.m_localPlayer; if (!player) return;
             var seman = player.GetSEMan();
-            for (int t = 0; t < Names.Length; t++)
+            for (int t = 0; t < Shown.Length; t++)
             {
-                int stacks = Stacks(player, (DotType)t);
+                int stacks = Level(player, t);
                 shown.TryGetValue(t, out var se);
                 if (stacks > 0 && (se == null || !seman.HaveStatusEffect(se.NameHash())))
                 {
                     var template = ScriptableObject.CreateInstance<SE_Dot>();
-                    template.name = "Overhaul_Dot_" + Names[t]; template.m_name = "$overhaul_dot_" + Names[t].ToLowerInvariant(); template.m_icon = Icon(t);
+                    template.name = "Overhaul_Dot_" + Shown[t]; template.m_name = "$overhaul_dot_" + Shown[t].ToLowerInvariant(); template.m_icon = Icon(t);
                     se = (SE_Dot)seman.AddStatusEffect(template, false);
                     shown[t] = se;
                 }
@@ -139,7 +143,7 @@ namespace Overhaul.Effects
         internal static Sprite Icon(int t)
         {
             var hud = EnemyHud.instance ? EnemyHud.instance.m_baseHud : null;
-            var image = hud ? hud.transform.Find("OverhaulDots/" + Names[t])?.GetComponent<Image>() : null;
+            var image = hud ? hud.transform.Find("OverhaulDots/" + Shown[t])?.GetComponent<Image>() : null;
             return image ? image.sprite : null;
         }
 
@@ -285,9 +289,9 @@ namespace Overhaul.Effects
                 {
                     if (!hud.m_gui || !hud.m_character) continue;
                     var row = hud.m_gui.transform.Find("OverhaulDots"); if (!row) continue;
-                    for (int t = 0; t < Names.Length && t < row.childCount; t++)
+                    for (int t = 0; t < Shown.Length && t < row.childCount; t++)
                     {
-                        int stacks = Stacks(hud.m_character, (DotType)t);
+                        int stacks = Level(hud.m_character, t);
                         var icon = row.GetChild(t);
                         if (icon.gameObject.activeSelf != stacks > 0) icon.gameObject.SetActive(stacks > 0);
                         if (stacks > 0) { var text = icon.Find("Stacks")?.GetComponent<TMP_Text>(); if (text) text.text = stacks > 1 ? stacks.ToString() : ""; }
