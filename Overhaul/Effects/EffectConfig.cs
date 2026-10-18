@@ -44,8 +44,30 @@ namespace Overhaul.Effects
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(EffectConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
+            try { AddMissingEffects(path); }
+            catch (Exception e) { Utility.Log.LogWarning("Effects.cfg: new effects not added: " + e.Message); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("Effects.cfg unreadable: " + e.Message); }
+        }
+
+        // An older file gets the effects added since (the DoT bonuses, the immunities...): each missing [Effect_] section of
+        // the defaults is appended with the comment lines just above it; existing sections are left as they are.
+        private static void AddMissingEffects(string path)
+        {
+            string text = File.ReadAllText(path), defaults = Utility.ConfigSections.Defaults(FileName);
+            var lines = defaults.Replace("\r\n", "\n").Split('\n');
+            var added = new List<string>();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (!line.StartsWith("[Effect_", StringComparison.Ordinal) || text.IndexOf(line, StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                int start = i; while (start > 0 && lines[start - 1].TrimStart().StartsWith("#", StringComparison.Ordinal)) start--;
+                int end = i + 1; while (end < lines.Length && !lines[end].TrimStart().StartsWith("[", StringComparison.Ordinal) && !lines[end].TrimStart().StartsWith("#", StringComparison.Ordinal)) end++;
+                added.Add(string.Join(Environment.NewLine, lines, start, end - start).TrimEnd());
+            }
+            if (added.Count == 0) return;
+            File.WriteAllText(path, text.TrimEnd() + Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, added) + Environment.NewLine);
+            Utility.Log.LogInfo("Effects.cfg: " + added.Count + " new effects added");
         }
 
         private static void Use(EffectData data) { Current = data; Effects.Invalidate(); }
