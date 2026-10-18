@@ -26,9 +26,11 @@ namespace Overhaul
 
             Image glowImage = cell.transform.Find(GlowName)?.GetComponent<Image>();
             Image borderImage = cell.transform.Find(BorderName)?.GetComponent<Image>();
+            // A HUD slot (ItemSlot.IsHUD) has no rarity ground: the border alone shows the rarity.
+            bool hudSlot = AugaUnity.ItemSlot.Of(cell)?.IsHUD ?? false;
             if (glowImage)
             {
-                glowImage.gameObject.SetActive(hasItem && rarity != null);
+                glowImage.gameObject.SetActive(hasItem && rarity != null && !hudSlot);
                 if (rarity != null) Tint(glowImage, rarity.Value, gradient, 0);
             }
             // The border marks items with a rarity; any hovered cell, empty or not, shows it too (base colour).
@@ -177,8 +179,16 @@ namespace Overhaul
         [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.UpdateGui))]
         private static class Grid
         {
-            private static void Postfix(InventoryGrid __instance)
+            private static void Prefix(InventoryGrid __instance, out int __state) => __state = __instance.m_elements.Count;
+
+            private static void Postfix(InventoryGrid __instance, Player player, int __state)
             {
+                // Cells the grid just built: the game's rule for their key (the player's first row: 1 to 8) as their HotKey.
+                for (int i = __state; i < __instance.m_elements.Count; i++)
+                {
+                    var cell = __instance.m_elements[i];
+                    if (cell) AugaUnity.ItemSlot.SetHotKey(cell.gameObject, player && cell.Position.y == 0 ? (cell.Position.x + 1).ToString() : null);
+                }
                 Inventory inventory = __instance.GetInventory();
                 if (inventory == null) return;
                 var hovered = __instance.GetHoveredElement();
@@ -213,7 +223,12 @@ namespace Overhaul
                     ItemDrop.ItemData item = __instance.m_items.FirstOrDefault(it => it.m_gridPos.x == i);
                     var element = __instance.m_elements[i];
                     if (element.m_equiped) element.m_equiped.SetActive(false);
+                    // The key the game wrote in the cell becomes its HotKey parameter (an empty one hides it).
+                    var binding = element.m_go.transform.Find("binding")?.GetComponent<TMPro.TMP_Text>();
+                    var slot = AugaUnity.ItemSlot.Of(element.m_go);
+                    if (slot && binding && binding.text != (slot.HotKey ?? "")) slot.HotKey = binding.text;
                     Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, equipped: item != null && item.m_equipped, gradient: Rarity.ItemRarity.GradientOf(item));
+                    Catalysts(element.m_go, item);
                 }
             }
         }
