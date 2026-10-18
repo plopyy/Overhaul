@@ -85,7 +85,7 @@ namespace Overhaul
             XPortal.XPortal.Initialize();
 		}
 
-        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); }
+        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); }
 
         public void LateUpdate()
         {
