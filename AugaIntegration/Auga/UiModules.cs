@@ -6,7 +6,7 @@ using HarmonyLib;
 
 namespace Auga
 {
-    internal enum UiModule { Settings, MainMenu, Inventory, Hud, OtherUi, CharacterSelection, WorldSelection, Vitals, QuickInventory, RightPanel, PauseMenu, TextInput, Construction }
+    internal enum UiModule { Settings, MainMenu, Inventory, Hud, OtherUi, CharacterSelection, WorldSelection, Vitals, QuickInventory, RightPanel, PauseMenu, TextInput, Construction, EnemyHud }
 
     [AttributeUsage(AttributeTargets.Class)]
     internal sealed class UiModuleAttribute : Attribute
@@ -30,7 +30,7 @@ namespace Auga
                     EnabledModules[module] = true;
                     continue;
                 }
-                bool defaultValue = module == UiModule.Settings || module == UiModule.CharacterSelection || module == UiModule.WorldSelection || module == UiModule.Vitals || module == UiModule.QuickInventory || module == UiModule.RightPanel || module == UiModule.PauseMenu || module == UiModule.TextInput || module == UiModule.Construction;
+                bool defaultValue = module == UiModule.Settings || module == UiModule.CharacterSelection || module == UiModule.WorldSelection || module == UiModule.Vitals || module == UiModule.QuickInventory || module == UiModule.RightPanel || module == UiModule.PauseMenu || module == UiModule.TextInput || module == UiModule.Construction || module == UiModule.EnemyHud;
                 var entry = config.Bind("UI Modules", module.ToString(), defaultValue,
                     "Active les remplacements Auga de ce module. Redemarrage du jeu necessaire. " +
                     "Desactive : interface native. Valeur par defaut : " + defaultValue.ToString().ToLowerInvariant() + ". " +

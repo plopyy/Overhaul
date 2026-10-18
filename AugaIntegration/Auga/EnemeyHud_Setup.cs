@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace Auga
 {
     [HarmonyPatch]
-    [UiModule(UiModule.Hud)]
+    [UiModule(UiModule.EnemyHud)]
     public static class EnemyHud_Setup
     {
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.Awake))]
