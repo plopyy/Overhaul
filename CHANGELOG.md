@@ -12,6 +12,7 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Fixed
+- Damage over time icons now show under creature health bars: the Overhaul health bars no longer depend on the (disabled by default) Hud UI module, they have their own EnemyHud module, on by default. (2.3.0.135)
 - Zeus’s Wrath: each projectile rolls its chance when it hits (one that vanishes without hitting anything never triggers it), and the rain of lightning falls around the triggering projectile’s impact point, whatever it hit, instead of sometimes on the caster, notably with the ice shard. Your own projectiles (spells, arrows, bolts…) now go through you instead of stopping or exploding on you.
 - Valheim 1.0.20 compatibility: the SQLite world storage reads worlds of any format from 41 on (1.0.20 uses 42), and saves in the running game's format.
 - The god command works on a dedicated server for an administrator with devcommands on.
