@@ -27,6 +27,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- Enchanting table: a catalyst slot takes a single catalyst, not a stack. (2.3.0.143)
 - Character selection screen: with achievements turned back on, the stats could still stop the character list with an error when the game's server options window existed but was not set up yet; they now fall back to the default difficulty in every case (from 2.2.2.3). (2.3.0.140)
 - With a full inventory, items on the ground are no longer pulled to your feet without being picked up ("Your inventory is full"), empty quick slots included: they only count as room for the items they accept. (2.3.0.142)
 - An older Effects.cfg (a server's, sent to every player) gets the effects added since, notably the DoT bonuses and the Fire and Frost immunities: without them the Molten core and Freeze gland immunities did nothing and DoTs still landed. (2.3.0.138)

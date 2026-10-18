@@ -18,6 +18,8 @@ namespace Overhaul.Storage
         internal virtual int FuelWidth => 3;
         internal virtual int FuelHeight => 2;
         internal virtual bool SingleItems => false;
+        // One item per cell in the second inventory too (the enchanting table's catalyst slots).
+        internal virtual bool SingleFuel => false;
         internal abstract string Title { get; }
         internal abstract string MaterialLabel { get; }
         internal virtual string FuelLabel => "";
