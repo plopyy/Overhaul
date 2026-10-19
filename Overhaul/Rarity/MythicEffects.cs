@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -746,6 +746,84 @@ namespace Overhaul.Rarity
                 if (__instance is Player || !Stunned(__instance)) return true;
                 __result = false; return false;
             }
+        }
+
+        // --- Homing: the thrown weapon (the spear's special attack) goes through up to Value enemies, each taking its hit,
+        // and does not fall where it stops: a spectral copy of it (MythicVfx Mythic_SpectralWeapon, narrow trail) flies back
+        // to the player at 25 m/s, shaft first, and the weapon is back in the inventory and in hand (dropped at the
+        // player's feet when the inventory is full) ---
+
+        private const float HomingSpeed = 25f;
+        private sealed class Pierce { internal int Left; internal readonly HashSet<Character> Through = new HashSet<Character>(); }
+        private sealed class PierceHit { internal bool Through; internal ItemDrop.ItemData Kept, Returning; }
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce> Piercing = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce>();
+
+        [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
+        private static class HomingThrow
+        {
+            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
+            {
+                if (!owner || owner != Player.m_localPlayer || item == null || !__instance.m_respawnItemOnHit) return;
+                int through = Mathf.RoundToInt(Enchantments.MythicValue(item, "Homing"));
+                if (through > 0) Piercing.GetValue(__instance, _ => new Pierce()).Left = through;
+            }
+        }
+
+        [HarmonyPatch(typeof(Projectile), "OnHit")]
+        private static class HomingHit
+        {
+            private static bool Prefix(Projectile __instance, Collider collider, out PierceHit __state)
+            {
+                __state = null;
+                if (!Piercing.TryGetValue(__instance, out var pierce)) return true;
+                var owner = __instance.m_owner;
+                var c = collider ? collider.GetComponentInParent<Character>() : null;
+                if (c && c == owner) return true;
+                // An enemy already gone through is no new contact.
+                if (c && pierce.Through.Contains(c)) return false;
+                __state = new PierceHit();
+                if (c && pierce.Left > 0 && !c.IsDead() && BaseAI.IsEnemy(owner, c))
+                {
+                    // Through it: the hit is dealt, the weapon flies on and nothing falls.
+                    pierce.Left--; pierce.Through.Add(c);
+                    __state.Through = true; __state.Kept = __instance.m_spawnItem;
+                    __instance.m_onlyStopOnTerrain = true; __instance.m_spawnItem = null;
+                    return true;
+                }
+                // Where it stops: no weapon falls, it comes back.
+                __state.Returning = __instance.m_spawnItem; __instance.m_spawnItem = null;
+                return true;
+            }
+
+            private static void Postfix(Projectile __instance, Vector3 hitPoint, PierceHit __state)
+            {
+                if (__state == null) return;
+                if (__state.Through) { __instance.m_onlyStopOnTerrain = false; __instance.m_spawnItem = __state.Kept; return; }
+                if (__state.Returning == null) return;
+                Piercing.Remove(__instance);
+                if (__instance.m_owner is Player player && player) player.StartCoroutine(Return(player, __state.Returning, hitPoint == Vector3.zero ? __instance.transform.position : hitPoint));
+                else ItemDrop.DropItem(__state.Returning, 1, hitPoint, Quaternion.identity);
+            }
+        }
+
+        private static System.Collections.IEnumerator Return(Player owner, ItemDrop.ItemData item, Vector3 from)
+        {
+            var copy = MythicVfx.SpawnSpectral(Enchantments.Prefab(item), from, Quaternion.identity, true);
+            Vector3 position = from;
+            while (owner && !owner.IsDead())
+            {
+                Vector3 hand = owner.transform.position + Vector3.up * 1.3f + owner.transform.right * .3f;
+                Vector3 to = hand - position;
+                float step = HomingSpeed * Time.deltaTime;
+                if (to.magnitude <= step) break;
+                position += to.normalized * step;
+                if (copy) { copy.transform.position = position; copy.transform.rotation = Quaternion.LookRotation(to); }
+                yield return null;
+            }
+            if (copy && ZNetScene.instance) ZNetScene.instance.Destroy(copy);
+            if (!owner || owner.IsDead()) { ItemDrop.DropItem(item, 1, position, Quaternion.identity); yield break; }
+            if (owner.GetInventory().AddItem(item)) { if (!owner.IsItemEquiped(item)) owner.EquipItem(item); }
+            else ItemDrop.DropItem(item, 1, owner.transform.position + Vector3.up, Quaternion.identity);
         }
     }
 }

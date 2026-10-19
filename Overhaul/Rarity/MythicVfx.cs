@@ -39,12 +39,13 @@ namespace Overhaul.Rarity
             return Object.Instantiate(prefab, position, rotation);
         }
 
-        // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO.
-        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation)
+        // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO;
+        // narrow: a thin trail at its middle instead of one along the blade (for a weapon flying straight).
+        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, bool narrow = false)
         {
             var copy = Spawn("Mythic_SpectralWeapon", position, rotation);
             var view = copy ? copy.GetComponent<ZNetView>() : null;
-            if (view && view.IsValid()) view.GetZDO().Set(SpectralCopy.ItemKey, item);
+            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, narrow); }
             return copy;
         }
 
@@ -60,7 +61,7 @@ namespace Overhaul.Rarity
     // model, on the spectral material of the prefab's Model slot.
     internal sealed class SpectralCopy : MonoBehaviour
     {
-        internal static readonly int ItemKey = "overhaul_spectral_item".GetStableHashCode();
+        internal static readonly int ItemKey = "overhaul_spectral_item".GetStableHashCode(), NarrowKey = "overhaul_spectral_narrow".GetStableHashCode();
         bool built;
 
         void Update()
@@ -86,7 +87,15 @@ namespace Overhaul.Rarity
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 part.layer = gameObject.layer;
             }
-            PlaceTrail(transform, slot, model);
+            if (view.GetZDO().GetBool(NarrowKey, false)) Narrow(transform, slot); else PlaceTrail(transform, slot, model);
+        }
+
+        // A thin trail at the middle of the copy.
+        internal static void Narrow(Transform root, Transform slot)
+        {
+            var trail = root.Find("Trail")?.GetComponent<TrailRenderer>();
+            if (!trail) return;
+            trail.transform.position = slot.position; trail.widthMultiplier = .15f; trail.Clear();
         }
 
         // The trail along the blade: at the middle of the weapon's own trail marks (equiped/trail/base and tip), as wide as
