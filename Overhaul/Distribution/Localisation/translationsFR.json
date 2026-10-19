@@ -2747,6 +2747,8 @@
   "overhaul_mythic_zeuswrath_desc": "chaque attaque ou projectile a {0} % de chances de déclencher une pluie de 16 éclairs dans un rayon de 10 m pendant 6 secondes",
   "overhaul_mythic_dragonfist": "Poing du dragon",
   "overhaul_mythic_dragonfist_desc": "chaque 4e attaque projette un dragon d'énergie droit devant, qui inflige {0} % des dégâts de l'attaque à chaque ennemi sur son passage jusqu'à 5 m",
+  "overhaul_mythic_windblade": "Lame de vent",
+  "overhaul_mythic_windblade_desc": "le dernier coup de chaque combo libère une onde tranchante droit devant, qui inflige {0} % des dégâts de l'attaque à chaque ennemi traversé jusqu'à 8 m",
   "overhaul_grimoire_installed": "Sorts installés",
   "overhaul_grimoire_rank_hint": "Les sorts gagnent un rang avec le niveau de classe",
   "overhaul_grimoire_rank1": "Rang I",
