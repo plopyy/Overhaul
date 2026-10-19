@@ -1,6 +1,7 @@
 using System.Linq;
 using Jotunn.Configs;
 using Jotunn.Entities;
+using Jotunn;
 using Jotunn.Managers;
 using Overhaul.Utility;
 using UnityEngine;
@@ -10,8 +11,8 @@ namespace Overhaul.Rarity
     // Enchanting table: the EnchantTable_Piece prefab of overhaul_enchanttable (OverhaulLab EnchantTableBundle), a complete
     // crafting station of its own with no build range: network object, piece (hammer Crafting tab, at a workbench), wear and
     // tear, model (Eikthyr's altar holding the cartography table's maps, a rune table, crypt bones and eternal candles) and
-    // colliders. What a bundle cannot hold is added here: the game's materials on its parts, the galdr table's eternal candle
-    // flames and light on the model's anchors, the stone build and break effects, and the build menu icon. Using it opens the
+    // colliders; its parts wear the game's own materials through Jotunn mocks (JVLmock_<material>, swapped by Jotunn).
+    // What a bundle cannot hold is added here: the galdr table's eternal candle flames and light on the model's anchors, the stone build and break effects, and the build menu icon. Using it opens the
     // enchanting window (Rarity.EnchantInventory, opened like a chest); it can be moved like the other functional pieces. The candle glow swells while the player is near.
     internal static class EnchantTable
     {
@@ -19,15 +20,10 @@ namespace Overhaul.Rarity
         internal const string StationName = "$overhaul_enchanttable";
         static AssetBundle bundle;
 
-        // Model part -> game prefab and material it wears.
-        static readonly (string part, string prefab, string material)[] Materials =
-        {
-            ("Autel", "offeraltar_deer", "altar"),
-            ("Skull", "Pickable_ForestCryptRemains03", "fi_village_catacombs"),
-            ("Candles", "piece_magetable_ext2", "MageCandle_MAT"),
-            ("Carto", "piece_cartographytable", "Cartographer_mat"),
-            ("Runes", "piece_magetable_ext", "runetable_mat"),
-        };
+        // The game prefabs whose materials the model wears (JVLmock_ materials in the bundle, swapped by Jotunn): altar,
+        // crypt bones, eternal candles, maps, runes. Held for the session so the game keeps their textures loaded.
+        static readonly string[] MaterialSources =
+            { "offeraltar_deer", "Pickable_ForestCryptRemains03", "piece_magetable_ext2", "piece_cartographytable", "piece_magetable_ext" };
         // The eternal candles are the galdr table's, 0.3 times their size.
         const float CandleScale = .3f;
 
@@ -44,6 +40,9 @@ namespace Overhaul.Rarity
 
             var prefab = PrefabManager.Instance.CreateClonedPrefab(Name, source);
             var visual = prefab.transform.Find("Model").gameObject;
+            // The bundle's JVLmock_ materials become the game's now, before the icon is drawn from the model.
+            foreach (var held in MaterialSources) GamePrefabs.Held(held);
+            prefab.FixReferences(true);
             Dress(visual);
             // Stone sounds and debris when built, hit and destroyed: the stone wall's.
             var stone = PrefabManager.Instance.GetPrefab("stone_wall_1x1");
@@ -73,15 +72,6 @@ namespace Overhaul.Rarity
 
         static void Dress(GameObject visual)
         {
-            foreach (var (part, source, name) in Materials)
-            {
-                // A part or a group of them (the runes, one object each).
-                var renderers = visual.transform.Find(part)?.GetComponentsInChildren<MeshRenderer>(true);
-                var material = GamePrefabs.Held(source)?.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name);
-                if (renderers == null || renderers.Length == 0 || !material) { Log.LogWarning("Enchanting table: " + part + " left without the " + name + " material of " + source); continue; }
-                foreach (var renderer in renderers) renderer.sharedMaterials = Enumerable.Repeat(material, renderer.sharedMaterials.Length).ToArray();
-            }
-
             var candles = GamePrefabs.Held("piece_magetable_ext2")?.transform.Find("new");
             var flame = candles?.Find("flames")?.gameObject;
             var light = candles?.GetComponentInChildren<Light>(true)?.gameObject;
