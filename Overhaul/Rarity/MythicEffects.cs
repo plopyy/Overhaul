@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing", "Prospector" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing", "Prospector", "SpectralDagger" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -210,12 +210,6 @@ namespace Overhaul.Rarity
 
         private const float WindReach = 8f, WindFlight = .4f, WindRadius = 1.3f;
 
-        // --- BladeNova: each attack of the weapon has Value % chance to send 10 spectral daggers out from a circle around the
-        // player (MythicVfx Mythic_BladeNova), to 6 m in 0.35 s: every enemy the widening circle of daggers reaches is
-        // hit once for 60 % of the attack's damage, all as pierce damage ---
-
-        private const float NovaReach = 6f, NovaFlight = .35f, NovaDamage = 60f;
-
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
         {
@@ -246,14 +240,6 @@ namespace Overhaul.Rarity
                 {
                     MythicVfx.Spawn("Mythic_WindBlade", player.transform.position, Quaternion.LookRotation(forward));
                     player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, wind), WindReach, WindFlight, WindRadius, t => t));
-                }
-                float nova = Enchantments.MythicValue(weapon, "BladeNova");
-                if (nova > 0 && UnityEngine.Random.value * 100f < nova)
-                {
-                    MythicVfx.Spawn("Mythic_BladeNova", player.transform.position, Quaternion.LookRotation(forward));
-                    var hit = AttackHit(__instance, player, NovaDamage);
-                    hit.m_damage = new HitData.DamageTypes { m_pierce = hit.m_damage.GetTotalDamage() };
-                    player.StartCoroutine(Ring(player, origin, hit, NovaReach, NovaFlight, t => 1 - (1 - t) * (1 - t)));
                 }
             }
         }
@@ -888,6 +874,68 @@ namespace Overhaul.Rarity
             if (InventoryGui.instance) InventoryGui.instance.m_craftBonusEffect.Create(point, Quaternion.identity);
             if (DamageText.instance) DamageText.instance.ShowText(DamageText.TextType.Bonus, point + Vector3.up * .5f, "+" + count, true);
             MythicVfx.Play("Mythic_Prospect", point, 2f);
+        }
+
+        // --- SpectralDagger: each hit of the weapon on a creature has Value % chance to call a spectral copy of the dagger
+        // (MythicVfx Mythic_SpectralWeapon, narrow trail, seen by every player): it pops up above the player's right shoulder,
+        // backflips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
+        // half as pierce and half as spirit damage ---
+
+        private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f;
+        private static bool daggerStriking;
+
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class SpectralDaggerCall
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                var player = Player.m_localPlayer;
+                if (daggerStriking || hit == null || !player || __instance == player || __instance is Player || hit.GetAttacker() != player || __instance.IsDead()) return;
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || hit.m_skill != weapon.m_shared.m_skillType || Effects.Dots.IsDot(hit)) return;
+                float chance = Enchantments.MythicValue(weapon, "SpectralDagger");
+                if (chance <= 0 || UnityEngine.Random.value * 100f >= chance) return;
+                string item = Enchantments.Prefab(weapon);
+                if (string.IsNullOrEmpty(item)) return;
+                var strike = hit.Clone();
+                float damage = hit.m_damage.GetTotalDamage() * DaggerDamage;
+                strike.m_damage = new HitData.DamageTypes { m_pierce = damage / 2, m_spirit = damage / 2 };
+                player.StartCoroutine(SpectralDagger(player, __instance, item, strike));
+            }
+        }
+
+        private static System.Collections.IEnumerator SpectralDagger(Player owner, Character target, string item, HitData hit)
+        {
+            Vector3 Shoulder() => owner.transform.position + Vector3.up * 2.1f + owner.transform.right * .45f - owner.transform.forward * .1f;
+            // Point up, its flat facing the camera behind the player.
+            Quaternion Up() => Quaternion.LookRotation(Vector3.up, -owner.transform.forward);
+            var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), true);
+            if (!dagger) yield break;
+            for (float t = 0; t < DaggerPop + DaggerFlip + DaggerTurn && dagger && owner; t += Time.deltaTime)
+            {
+                Quaternion rotation = Up();
+                if (t < DaggerPop) dagger.transform.localScale = Vector3.one * Mathf.Lerp(.2f, 1, t / DaggerPop);
+                else
+                {
+                    dagger.transform.localScale = Vector3.one;
+                    if (t < DaggerPop + DaggerFlip) rotation = Quaternion.AngleAxis(-360 * Mathf.SmoothStep(0, 1, (t - DaggerPop) / DaggerFlip), owner.transform.right) * rotation;
+                    else if (target) rotation = Quaternion.Slerp(rotation, Quaternion.LookRotation(target.GetCenterPoint() - dagger.transform.position), (t - DaggerPop - DaggerFlip) / DaggerTurn);
+                }
+                dagger.transform.SetPositionAndRotation(Shoulder(), rotation);
+                yield return null;
+            }
+            while (dagger && target && !target.IsDead())
+            {
+                Vector3 to = target.GetCenterPoint() - dagger.transform.position;
+                float step = DaggerSpeed * Time.deltaTime;
+                dagger.transform.rotation = Quaternion.LookRotation(to);
+                if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
+                hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
+                daggerStriking = true;
+                try { target.Damage(hit); } finally { daggerStriking = false; }
+                break;
+            }
+            if (dagger && ZNetScene.instance) ZNetScene.instance.Destroy(dagger);
         }
     }
 }
