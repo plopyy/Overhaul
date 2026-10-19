@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -209,6 +209,12 @@ namespace Overhaul.Rarity
 
         private const float WindReach = 8f, WindFlight = .4f, WindRadius = 1.3f;
 
+        // --- BladeNova: each attack of the weapon has Value % chance to send 10 spectral daggers out from a circle around the
+        // player (MythicVfx Mythic_BladeNova), to 6 m in 0.35 s: every enemy the widening circle of daggers reaches is
+        // hit once for 60 % of the attack's damage, all as pierce damage ---
+
+        private const float NovaReach = 6f, NovaFlight = .35f, NovaDamage = 60f;
+
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
         {
@@ -239,6 +245,14 @@ namespace Overhaul.Rarity
                 {
                     MythicVfx.Spawn("Mythic_WindBlade", player.transform.position, Quaternion.LookRotation(forward));
                     player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, wind), WindReach, WindFlight, WindRadius, t => t));
+                }
+                float nova = Enchantments.MythicValue(weapon, "BladeNova");
+                if (nova > 0 && UnityEngine.Random.value * 100f < nova)
+                {
+                    MythicVfx.Spawn("Mythic_BladeNova", player.transform.position, Quaternion.LookRotation(forward));
+                    var hit = AttackHit(__instance, player, NovaDamage);
+                    hit.m_damage = new HitData.DamageTypes { m_pierce = hit.m_damage.GetTotalDamage() };
+                    player.StartCoroutine(Ring(player, origin, hit, NovaReach, NovaFlight, t => 1 - (1 - t) * (1 - t)));
                 }
             }
         }
@@ -281,6 +295,29 @@ namespace Overhaul.Rarity
                     if (!target || target == owner || target.IsDead() || !BaseAI.IsEnemy(owner, target) || !struck.Add(target)) continue;
                     var each = hit.Clone();
                     each.m_point = collider.ClosestPoint(origin); each.m_dir = forward;
+                    target.Damage(each);
+                }
+                yield return null;
+            }
+        }
+
+        // A ring widening around origin up to reach in flight seconds, its edge at progress(time / flight) of reach: each
+        // frame, every enemy inside the edge is hit if it was not yet.
+        private static System.Collections.IEnumerator Ring(Player owner, Vector3 origin, HitData hit, float reach, float flight, Func<float, float> progress)
+        {
+            if (waveMask == 0) waveMask = LayerMask.GetMask("character", "character_net", "character_ghost", "character_noenv", "hitbox");
+            var struck = new HashSet<Character>();
+            for (float t = 0; t <= flight; t += Time.deltaTime)
+            {
+                if (!owner || owner.IsDead()) yield break;
+                foreach (var collider in Physics.OverlapSphere(origin, Mathf.Max(reach * progress(t / flight), .5f), waveMask))
+                {
+                    var target = collider.GetComponentInParent<Character>();
+                    if (!target || target == owner || target.IsDead() || !BaseAI.IsEnemy(owner, target) || !struck.Add(target)) continue;
+                    var each = hit.Clone();
+                    each.m_point = collider.ClosestPoint(origin);
+                    Vector3 away = each.m_point - origin; away.y = 0;
+                    each.m_dir = away.sqrMagnitude > 1e-4f ? away.normalized : owner.transform.forward;
                     target.Damage(each);
                 }
                 yield return null;
