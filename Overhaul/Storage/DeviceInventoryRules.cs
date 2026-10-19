@@ -10,7 +10,7 @@ namespace Overhaul.Storage
 {
     internal static class DeviceInventoryRules
     {
-        internal sealed class Rule { internal DeviceStore Store; internal bool Fuel; internal bool Single => !Fuel && Store.Adapter.SingleItems; }
+        internal sealed class Rule { internal DeviceStore Store; internal bool Fuel; internal bool Single => Fuel ? Store.Adapter.SingleFuel : Store.Adapter.SingleItems; }
         private static readonly ConditionalWeakTable<Inventory, Rule> Rules = new ConditionalWeakTable<Inventory, Rule>();
         internal static void Register(Inventory inventory, DeviceStore store, bool fuel) => Rules.Add(inventory, new Rule { Store = store, Fuel = fuel });
         internal static void Unregister(Inventory inventory) => Rules.Remove(inventory);

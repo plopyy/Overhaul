@@ -640,12 +640,16 @@ namespace EquipmentAndQuickSlots {
                 if (__result)
                     return;
 
-                int freeStackSpace = __instance.FindFreeStackSpace(item.m_shared.m_name, item.m_worldLevel);
-                int freeQuickSlotStackSpace = __instance.GetEmptySlots() * item.m_shared.m_maxStackSize;
+                // Like the game: no stack given (auto pickup passes -1) means the whole item stack.
+                if (stack <= 0)
+                    stack = item.m_stack;
 
-                int sizeCombined = freeStackSpace + freeQuickSlotStackSpace;
-                if (sizeCombined < 0)
-                    sizeCombined = int.MaxValue;
+                // Room exactly where AddItem would put it: the stacks and empty cells of the visible grid, else a free
+                // slot this item belongs in (an empty quick or equipment slot that refuses it is no room at all: counting
+                // it pulled items to the player's feet that could then never be picked up).
+                int freeStackSpace = __instance.FindFreeStackSpace(item.m_shared.m_name, item.m_worldLevel);
+                int freeVisibleCells = VisibleRows * __instance.m_width - __instance.m_inventory.Count(invItem => !IsItemInSlot(invItem));
+                long sizeCombined = (long)freeStackSpace + (long)Mathf.Max(0, freeVisibleCells) * item.m_shared.m_maxStackSize;
 
                 if (sizeCombined >= stack) {
                     __result = true;

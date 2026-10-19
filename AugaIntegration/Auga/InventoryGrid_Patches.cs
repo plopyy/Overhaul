@@ -40,11 +40,7 @@ public static class InventoryGrid_Patches
             var componentInChildren = gameObject.GetComponentInChildren<UIInputHandler>();
             componentInChildren.m_onRightDown += new Action<UIInputHandler>(__instance.OnRightClick);
             componentInChildren.m_onLeftDown += new Action<UIInputHandler>(__instance.OnLeftClick);
-            var component = gameObject.transform.Find("binding").GetComponent<TMP_Text>();
-            if ((bool) (UnityEngine.Object) player && _y == 0)
-              component.text = (_x + 1).ToString();
-            else
-              component.enabled = false;
+            AugaUnity.ItemSlot.SetHotKey(gameObject, (bool) (UnityEngine.Object) player && _y == 0 ? (_x + 1).ToString() : null);
             __instance.m_elements.Add(new InventoryGrid.Element()
             {
               m_pos = new Vector2i(_x, _y),

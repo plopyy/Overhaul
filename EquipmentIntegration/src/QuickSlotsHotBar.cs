@@ -212,11 +212,8 @@ namespace EquipmentAndQuickSlots {
 
                 inCall = false;
 
-                for (int i = 0; i < __instance.m_elements.Count; i++) {
-                    Transform binding = __instance.m_elements[i].m_go.transform.Find("binding");
-                    if (binding && binding.GetComponent<TMP_Text>() is TMP_Text text)
-                        text.text = !ZInput.IsGamepadActive() ? slots[QuickSlotStartIndex + i].GetShortcutText() : string.Empty;
-                }
+                for (int i = 0; i < __instance.m_elements.Count; i++)
+                    AugaUnity.ItemSlot.SetHotKey(__instance.m_elements[i].m_go, !ZInput.IsGamepadActive() ? slots[QuickSlotStartIndex + i].GetShortcutText() : null);
             }
 
             [HarmonyFinalizer]

@@ -139,11 +139,12 @@ namespace Overhaul.Effects
             }
         }
 
-        // The icons come from the health bar template (AugaEnemyHud prefab, OverhaulDots row).
+        // The icons come from the health bar template (AugaEnemyHud prefab, OverhaulDots row), read from the loaded prefab so
+        // they exist whichever health bar is in use (a status effect without an icon is never shown).
         internal static Sprite Icon(int t)
         {
-            var hud = EnemyHud.instance ? EnemyHud.instance.m_baseHud : null;
-            var image = hud ? hud.transform.Find("OverhaulDots/" + Shown[t])?.GetComponent<Image>() : null;
+            var hud = Auga.Auga.Assets.EnemyHud;
+            var image = hud ? hud.transform.Find("HudRoot/HudBase/OverhaulDots/" + Shown[t])?.GetComponent<Image>() : null;
             return image ? image.sprite : null;
         }
 
@@ -272,7 +273,7 @@ namespace Overhaul.Effects
 
         // ------------------------------------------------------------------ health bars
         // Shown for every creature within ShowDistance, aimed at or not, with its DoT icons and stacks under the bar.
-        internal const float ShowDistance = 15f;
+        internal const float ShowDistance = 50f;
         [HarmonyPatch(typeof(EnemyHud), "Awake")]
         private static class Distance { private static void Postfix(EnemyHud __instance) => __instance.m_maxShowDistance = Mathf.Max(__instance.m_maxShowDistance, ShowDistance); }
         [HarmonyPatch(typeof(EnemyHud), "UpdateHuds")]
