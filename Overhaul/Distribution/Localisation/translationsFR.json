@@ -2754,6 +2754,8 @@
   "overhaul_mythic_reaper": "Bourreau",
   "overhaul_mythic_ricochetaxe": "Hache ricochet",
   "overhaul_mythic_twinblade": "Lame jumelle",
+  "overhaul_mythic_whirlwind": "Tourbillon",
+  "overhaul_mythic_whirlwind_desc": "votre attaque spéciale attire vers vous chaque créature touchée et l'étourdit {0} s (moitié moins pour les boss) : elle ne peut ni bouger ni attaquer",
   "overhaul_mythic_twinblade_desc": "chaque coup a {0} % de chances d'être doublé par une copie spectrale de l'épée qui tranche la cible et inflige à nouveau les dégâts du coup en dégâts d'esprit",
   "overhaul_mythic_ricochetaxe_desc": "votre attaque spéciale lance aussi une copie spectrale de la hache, qui rebondit sur jusqu'à {0} ennemis proches et inflige à chacun 70 % des dégâts de l'attaque en dégâts d'esprit",
   "overhaul_mythic_reaper_desc": "+40 % de dégâts contre les créatures sous 30 % de vie ; chacune tuée ainsi met une âme en réserve (3 au maximum), et votre prochaine attaque lourde les consomme toutes : {0} % de dégâts en plus par âme, 30 % de portée en plus et un arc plus large",
