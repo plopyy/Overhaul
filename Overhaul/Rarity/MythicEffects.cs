@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -618,6 +618,60 @@ namespace Overhaul.Rarity
                 if (!target) break;
             }
             if (axe && ZNetScene.instance) ZNetScene.instance.Destroy(axe);
+        }
+
+        // --- TwinBlade: each hit of the weapon on a creature has Value % chance to be doubled: a spectral copy of the sword
+        // (MythicVfx Mythic_SpectralWeapon, seen by every player) appears 1 m from the target on the player's side and cuts
+        // through it in a 70 degree arc in 0.25 s, dealing the hit's damage again as spirit damage halfway through ---
+
+        private const float TwinSwing = .25f, TwinArc = 70f, TwinReach = 1f;
+        private static bool twinStriking;
+
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class TwinBlade
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                var player = Player.m_localPlayer;
+                if (twinStriking || hit == null || !player || __instance == player || __instance is Player || hit.GetAttacker() != player || __instance.IsDead()) return;
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || hit.m_skill != weapon.m_shared.m_skillType || Effects.Dots.IsDot(hit)) return;
+                float chance = Enchantments.MythicValue(weapon, "TwinBlade");
+                if (chance <= 0 || UnityEngine.Random.value * 100f >= chance) return;
+                string item = Enchantments.Prefab(weapon);
+                if (string.IsNullOrEmpty(item)) return;
+                var twin = hit.Clone();
+                twin.m_damage = new HitData.DamageTypes { m_spirit = hit.m_damage.GetTotalDamage() };
+                player.StartCoroutine(Twin(player, __instance, item, twin));
+            }
+        }
+
+        private static System.Collections.IEnumerator Twin(Player owner, Character target, string item, HitData hit)
+        {
+            Vector3 center = target.GetCenterPoint();
+            Vector3 side = owner.transform.position - target.transform.position; side.y = 0;
+            side = side.sqrMagnitude > 1e-4f ? side.normalized : -target.transform.forward;
+            Vector3 pivot = center + side * TwinReach;
+            var sword = MythicVfx.SpawnSpectral(item, pivot, Quaternion.LookRotation(-side));
+            bool struck = false;
+            for (float t = 0; t <= TwinSwing && sword; t += Time.deltaTime)
+            {
+                float k = Mathf.SmoothStep(0, 1, t / TwinSwing);
+                sword.transform.rotation = Quaternion.LookRotation(Quaternion.Euler(0, Mathf.Lerp(-TwinArc / 2, TwinArc / 2, k), 0) * -side);
+                if (!struck && k >= .5f)
+                {
+                    struck = true;
+                    if (target && !target.IsDead())
+                    {
+                        hit.m_point = target.GetCenterPoint(); hit.m_dir = -side;
+                        twinStriking = true;
+                        try { target.Damage(hit); } finally { twinStriking = false; }
+                    }
+                }
+                yield return null;
+            }
+            yield return new WaitForSeconds(.05f);
+            if (sword && ZNetScene.instance) ZNetScene.instance.Destroy(sword);
         }
     }
 }
