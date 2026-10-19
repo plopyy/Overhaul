@@ -258,7 +258,8 @@ namespace Overhaul.Rarity
         }
 
         // --- Earthquake: 1 s after the weapon's ground hit (area attack), a second, wider shockwave bursts where it struck
-        // (MythicVfx Mythic_Earthquake): every enemy within 6 m is hit once for Value % of the attack's damage and staggered ---
+        // (MythicVfx Mythic_Earthquake): every enemy within 6 m is hit once for Value % of the attack's damage and staggered.
+        // The weapon's own ground-hit smoke is cut short so the aftershock shows ---
 
         private const float QuakeDelay = 1f, QuakeReach = 6f, QuakeSpread = .25f, QuakeStagger = 10f;
         private static int groundMask;
@@ -281,6 +282,36 @@ namespace Overhaul.Rarity
                 var hit = AttackHit(__instance, player, quake);
                 hit.m_staggerMultiplier = QuakeStagger;
                 player.StartCoroutine(Aftershock(player, point, hit));
+            }
+        }
+
+        // The weapon's own ground-hit smoke clears in under a second, so the aftershock shows: while the attack's area hit
+        // creates its effects, the long-lived particle systems they hold (the dust cloud) get their lifetime scaled down.
+        private const float QuakeSmoke = .9f;
+        private static bool quakeHit;
+
+        [HarmonyPatch(typeof(Attack), "DoAreaAttack")]
+        private static class QuakeSmokeWatch
+        {
+            private static void Prefix(Attack __instance) =>
+                quakeHit = __instance.m_character == Player.m_localPlayer && Enchantments.MythicValue(__instance.m_weapon, "Earthquake") > 0;
+            private static void Finalizer() => quakeHit = false;
+        }
+
+        [HarmonyPatch(typeof(EffectList), nameof(EffectList.Create))]
+        private static class QuakeSmokeClear
+        {
+            private static void Postfix(GameObject[] __result)
+            {
+                if (!quakeHit || __result == null) return;
+                foreach (var effect in __result)
+                    if (effect)
+                        foreach (var ps in effect.GetComponentsInChildren<ParticleSystem>(true))
+                        {
+                            var main = ps.main;
+                            float life = main.startLifetime.constantMax;
+                            if (life > QuakeSmoke) main.startLifetimeMultiplier *= QuakeSmoke / life;
+                        }
             }
         }
 
