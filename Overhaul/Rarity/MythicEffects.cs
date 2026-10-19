@@ -881,7 +881,8 @@ namespace Overhaul.Rarity
         // (enchantment lines and leveling bonus). Each pops up (with Mythic_DaggerPop) point up in the next free place of a half
         // circle over the head, from the right shoulder to the left one (4 places, a place is free again once its dagger flies
         // off; none left, no more daggers), front-flips once, turns to the creature hit and flies at it at 25 m/s, point first,
-        // dealing 80 % of the hit's damage, half as pierce and half as spirit damage. Daggers of one call pop 0.08 s apart ---
+        // dealing 80 % of the hit's damage, half as pierce and half as spirit damage, in a blue burst (Mythic_DaggerHit).
+        // Daggers of one call pop 0.08 s apart ---
 
         private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f, DaggerStagger = .08f;
         private static bool daggerStriking;
@@ -957,6 +958,7 @@ namespace Overhaul.Rarity
                 dagger.transform.rotation = Quaternion.LookRotation(to, owner.transform.right);
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
+                MythicVfx.Spawn("Mythic_DaggerHit", hit.m_point, Quaternion.LookRotation(-hit.m_dir));
                 daggerStriking = true;
                 try { target.Damage(hit); } finally { daggerStriking = false; }
                 break;
