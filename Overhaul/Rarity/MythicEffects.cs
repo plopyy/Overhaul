@@ -920,7 +920,7 @@ namespace Overhaul.Rarity
                 {
                     dagger.transform.localScale = Vector3.one;
                     if (t < DaggerPop + DaggerFlip) rotation = Quaternion.AngleAxis(-360 * Mathf.SmoothStep(0, 1, (t - DaggerPop) / DaggerFlip), owner.transform.right) * rotation;
-                    else if (target) rotation = Quaternion.Slerp(rotation, Quaternion.LookRotation(target.GetCenterPoint() - dagger.transform.position), (t - DaggerPop - DaggerFlip) / DaggerTurn);
+                    else if (target) rotation = Quaternion.Slerp(rotation, Quaternion.LookRotation(target.GetCenterPoint() - dagger.transform.position, -owner.transform.right), (t - DaggerPop - DaggerFlip) / DaggerTurn);
                 }
                 dagger.transform.SetPositionAndRotation(Shoulder(), rotation);
                 yield return null;
@@ -929,7 +929,8 @@ namespace Overhaul.Rarity
             {
                 Vector3 to = target.GetCenterPoint() - dagger.transform.position;
                 float step = DaggerSpeed * Time.deltaTime;
-                dagger.transform.rotation = Quaternion.LookRotation(to);
+                // Point first, the blade kept upright as it popped up.
+                dagger.transform.rotation = Quaternion.LookRotation(to, -owner.transform.right);
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
                 daggerStriking = true;
