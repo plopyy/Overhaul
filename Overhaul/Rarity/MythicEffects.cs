@@ -876,13 +876,25 @@ namespace Overhaul.Rarity
             MythicVfx.Play("Mythic_Prospect", point, 2f);
         }
 
-        // --- SpectralDagger: each hit of the weapon on a creature has Value % chance to call a spectral copy of the dagger
-        // (MythicVfx Mythic_SpectralWeapon with a 40 cm trail, seen by every player): it pops up above the player's right
-        // shoulder, point up (with Mythic_DaggerPop), front-flips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
-        // half as pierce and half as spirit damage ---
+        // --- SpectralDagger: each hit of the weapon on a creature has Value % chance to call spectral copies of the dagger
+        // (MythicVfx Mythic_SpectralWeapon with a 40 cm trail, seen by every player): one, plus the player's extra projectiles
+        // (enchantment lines and leveling bonus). Each pops up (with Mythic_DaggerPop) point up in the next free place of a half
+        // circle over the head, from the right shoulder to the left one (4 places, a place is free again once its dagger flies
+        // off; none left, no more daggers), front-flips once, turns to the creature hit and flies at it at 25 m/s, point first,
+        // dealing 80 % of the hit's damage, half as pierce and half as spirit damage. Daggers of one call pop 0.08 s apart ---
 
-        private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f;
+        private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f, DaggerStagger = .08f;
         private static bool daggerStriking;
+        // Until when each place is taken (a dagger holding it until it flies off, at the latest once its flip is due to end).
+        private static readonly float[] DaggerPlaces = new float[4];
+
+        // Place i of the half circle over the player's head (0: right shoulder, 3: left shoulder).
+        private static Vector3 DaggerPlace(Player owner, int i)
+        {
+            float a = (15 + 50 * i) * Mathf.Deg2Rad;
+            var t = owner.transform;
+            return t.position + Vector3.up * 1.75f - t.forward * .1f + (t.right * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a)) * .6f;
+        }
 
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
         private static class SpectralDaggerCall
@@ -900,13 +912,23 @@ namespace Overhaul.Rarity
                 var strike = hit.Clone();
                 float damage = hit.m_damage.GetTotalDamage() * DaggerDamage;
                 strike.m_damage = new HitData.DamageTypes { m_pierce = damage / 2, m_spirit = damage / 2 };
-                player.StartCoroutine(SpectralDagger(player, __instance, item, strike));
+                int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                    + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
+                for (int i = 0, place = 0; i < count; i++)
+                {
+                    while (place < DaggerPlaces.Length && Time.time < DaggerPlaces[place]) place++;
+                    if (place >= DaggerPlaces.Length) break;
+                    DaggerPlaces[place] = Time.time + i * DaggerStagger + DaggerPop + DaggerFlip + DaggerTurn + .1f;
+                    player.StartCoroutine(SpectralDagger(player, __instance, item, strike.Clone(), place, i * DaggerStagger));
+                }
             }
         }
 
-        private static System.Collections.IEnumerator SpectralDagger(Player owner, Character target, string item, HitData hit)
+        private static System.Collections.IEnumerator SpectralDagger(Player owner, Character target, string item, HitData hit, int place, float delay)
         {
-            Vector3 Shoulder() => owner.transform.position + Vector3.up * 2.1f + owner.transform.right * .45f - owner.transform.forward * .1f;
+            if (delay > 0) yield return new WaitForSeconds(delay);
+            if (!owner) yield break;
+            Vector3 Shoulder() => DaggerPlace(owner, place);
             // Point up, the blade's curve towards the back (the weapon models lie in their XZ plane).
             Quaternion Up() => Quaternion.LookRotation(Vector3.up, owner.transform.right);
             MythicVfx.Spawn("Mythic_DaggerPop", Shoulder(), Up());
@@ -925,6 +947,8 @@ namespace Overhaul.Rarity
                 dagger.transform.SetPositionAndRotation(Shoulder(), rotation);
                 yield return null;
             }
+            // The place is free for the next dagger once this one flies off.
+            DaggerPlaces[place] = 0;
             while (dagger && target && !target.IsDead())
             {
                 Vector3 to = target.GetCenterPoint() - dagger.transform.position;
