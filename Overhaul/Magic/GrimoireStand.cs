@@ -9,8 +9,8 @@ namespace Overhaul.Magic
 {
     // Grimoire stand: a hammer piece (Crafting tab, at a workbench) made from the game's table (network object,
     // wear and tear, build and destroy effects) wearing the overhaul_grimoirestand model (OverhaulLab GrimoireStand:
-    // book stand, rigged grimoire, candle holder and candles). The book opens while any player stands nearby and
-    // closes when none does; every machine sees the players around it, so everyone sees the same book without network
+    // book stand, rigged grimoire, candle holder and candles). The book opens, and the holder's candles float up,
+    // while any player stands nearby; both settle back when none does; every machine sees the players around it, so everyone sees the same book without network
     // traffic. Using the stand opens the grimoire window. It can be moved like the other functional pieces.
     internal static class GrimoireStand
     {
@@ -86,14 +86,14 @@ namespace Overhaul.Magic
         internal const float Range = 4f, WindowRange = 6f;
         ZNetView nview;
         Piece piece;
-        Animator book;
+        Animator[] animators;
         bool open;
         readonly List<(Light light, float intensity, float seed)> lights = new List<(Light, float, float)>();
 
         void Awake()
         {
             nview = GetComponent<ZNetView>(); piece = GetComponent<Piece>();
-            book = GetComponentInChildren<Animator>(true);
+            animators = GetComponentsInChildren<Animator>(true);
             foreach (var l in GetComponentsInChildren<Light>(true)) lights.Add((l, l.intensity, Random.value * 100));
         }
 
@@ -104,10 +104,13 @@ namespace Overhaul.Magic
         {
             foreach (var (light, intensity, seed) in lights)
                 if (light) light.intensity = intensity * (.85f + .3f * Mathf.PerlinNoise(seed, Time.time * 5));
-            // The book's Animator (OverhaulLab GrimoireBookAnimator) plays its opening and closing on the "Open" bool.
+            // The book's Animator (OverhaulLab GrimoireBookAnimator) plays its opening and closing on the "Open" bool, and
+            // the tall holder's candles (GrimoireCandlesAnimator) rise, float and settle back on it at the same time.
             // Building ghosts and unloaded stands keep the book closed.
             bool near = nview && nview.IsValid() && Player.IsPlayerInRange(transform.position, Range);
-            if (book && near != open) { open = near; book.SetBool("Open", open); }
+            if (near == open) return;
+            open = near;
+            foreach (var animator in animators) if (animator) animator.SetBool("Open", open);
         }
 
         public string GetHoverName() => piece ? piece.m_name : "";
