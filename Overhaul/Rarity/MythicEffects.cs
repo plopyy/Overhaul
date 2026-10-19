@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -387,6 +387,68 @@ namespace Overhaul.Rarity
                     target.Damage(each);
                 }
                 yield return null;
+            }
+        }
+
+        // --- ArmorBreak: each hit of the weapon on a creature adds a stack of armour break to it (5 at most, 6 s, restarted
+        // by each hit): it takes Value % more damage per stack, from everyone. The stacks live in the creature's ZDO, set by
+        // its owner (the hitting player asks it with an RPC), and the owner applies them to every hit it receives ---
+
+        private const int BreakMax = 5;
+        private const float BreakDuration = 6f;
+        private const string BreakRpc = "Overhaul_ArmorBreak";
+        private static readonly int BreakStacksKey = "overhaul_armorbreak_stacks".GetStableHashCode(),
+            BreakValueKey = "overhaul_armorbreak_value".GetStableHashCode(), BreakEndKey = "overhaul_armorbreak_end".GetStableHashCode();
+        private static double NetNow => ZNet.instance ? ZNet.instance.GetTimeSeconds() : Time.time;
+
+        // Active stacks of armour break on a character (0 once their time is up).
+        internal static int BreakStacks(Character c)
+        {
+            var zdo = c && c.m_nview && c.m_nview.IsValid() ? c.m_nview.GetZDO() : null;
+            if (zdo == null) return 0;
+            int stacks = zdo.GetInt(BreakStacksKey, 0);
+            return stacks > 0 && NetNow < zdo.GetFloat(BreakEndKey, 0) ? stacks : 0;
+        }
+
+        [HarmonyPatch(typeof(Game), "Start")]
+        private static class BreakRegister { private static void Postfix() => ZRoutedRpc.instance.Register<ZDOID, float>(BreakRpc, OnBreak); }
+
+        // The local player's weapon hit (its own skill, not a spell or a damage over time) on a creature: one more stack.
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class BreakHit
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                var player = Player.m_localPlayer;
+                if (hit == null || !player || __instance == player || __instance is Player || hit.GetAttacker() != player) return;
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || hit.m_skill != weapon.m_shared.m_skillType || Effects.Dots.IsDot(hit)) return;
+                float value = Enchantments.MythicValue(weapon, "ArmorBreak");
+                var zdo = value > 0 && __instance.m_nview && __instance.m_nview.IsValid() ? __instance.m_nview.GetZDO() : null;
+                if (zdo == null || zdo.GetOwner() == 0) return;
+                ZRoutedRpc.instance.InvokeRoutedRPC(zdo.GetOwner(), BreakRpc, __instance.GetZDOID(), value);
+            }
+        }
+
+        private static void OnBreak(long sender, ZDOID id, float value)
+        {
+            var c = ZNetScene.instance ? ZNetScene.instance.FindInstance(id)?.GetComponent<Character>() : null;
+            if (!c || !c.m_nview.IsOwner() || c.IsDead()) return;
+            var zdo = c.m_nview.GetZDO();
+            int stacks = BreakStacks(c);
+            zdo.Set(BreakStacksKey, Mathf.Min(BreakMax, stacks + 1));
+            zdo.Set(BreakValueKey, stacks > 0 ? Mathf.Max(value, zdo.GetFloat(BreakValueKey, 0)) : value);
+            zdo.Set(BreakEndKey, (float)(NetNow + BreakDuration));
+        }
+
+        [HarmonyPatch(typeof(Character), "RPC_Damage")]
+        private static class BreakTaken
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                if (hit == null || !__instance.m_nview || !__instance.m_nview.IsOwner()) return;
+                int stacks = BreakStacks(__instance);
+                if (stacks > 0) hit.m_damage.Modify(1 + stacks * __instance.m_nview.GetZDO().GetFloat(BreakValueKey, 0) / 100f);
             }
         }
     }

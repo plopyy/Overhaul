@@ -2647,6 +2647,8 @@
   "overhaul_mythic_windblade": "Wind Blade",
   "overhaul_mythic_bladenova": "Blade Nova",
   "overhaul_mythic_earthquake": "Earthquake",
+  "overhaul_mythic_armorbreak": "Armour Break",
+  "overhaul_mythic_armorbreak_desc": "each hit breaks the target's armour: it takes {0} % more damage from everyone per stack, up to 5 stacks, for 6 seconds (renewed by each hit)",
   "overhaul_mythic_earthquake_desc": "1 second after each ground hit, a second, wider shockwave bursts where it struck, dealing {0} % of the attack's damage to every enemy within 6 m and staggering them",
   "overhaul_mythic_bladenova_desc": "each attack has a {0} % chance to send 10 spectral daggers flying out in a circle around you, dealing 60 % of the attack's damage as pierce damage to every enemy within 6 m",
   "overhaul_mythic_windblade_desc": "the last hit of each combo sends a cutting wave straight ahead, dealing {0} % of the attack's damage to every enemy it crosses up to 8 m",
