@@ -2645,6 +2645,8 @@
   "overhaul_mythic_dragonfist": "Dragon Fist",
   "overhaul_mythic_dragonfist_desc": "every 4th attack hurls a dragon of energy straight ahead, dealing {0} % of the attack's damage to every enemy in its path up to 5 m",
   "overhaul_mythic_windblade": "Wind Blade",
+  "overhaul_mythic_bladenova": "Blade Nova",
+  "overhaul_mythic_bladenova_desc": "each attack has a {0} % chance to send 10 spectral daggers flying out in a circle around you, dealing 60 % of the attack's damage as pierce damage to every enemy within 6 m",
   "overhaul_mythic_windblade_desc": "the last hit of each combo sends a cutting wave straight ahead, dealing {0} % of the attack's damage to every enemy it crosses up to 8 m",
   "overhaul_grimoire_installed": "Installed spells",
   "overhaul_grimoire_rank_hint": "Spells gain a rank with class level",
