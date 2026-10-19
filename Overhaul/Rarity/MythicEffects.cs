@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -449,6 +450,101 @@ namespace Overhaul.Rarity
                 if (hit == null || !__instance.m_nview || !__instance.m_nview.IsOwner()) return;
                 int stacks = BreakStacks(__instance);
                 if (stacks > 0) hit.m_damage.Modify(1 + stacks * __instance.m_nview.GetZDO().GetFloat(BreakValueKey, 0) / 100f);
+            }
+        }
+
+        // --- Reaper: the weapon executes: +40 % damage on a creature under 30 % health. Each creature killed after the
+        // weapon hit it under that threshold stores a soul (3 at most, kept in the player's ZDO so every machine shows its
+        // orbs, MythicVfx Mythic_Souls). The next heavy (secondary) attack spends them all: Value % more damage per soul,
+        // 30 % more reach and a 40 % wider arc ---
+
+        private const float ReaperThreshold = .3f, ReaperExecute = 40f, ReaperRange = 1.3f, ReaperArc = 1.4f;
+        private const int ReaperSouls = 3;
+        private static readonly int SoulsKey = "overhaul_reaper_souls".GetStableHashCode();
+        // Creatures the weapon hit under the threshold, until they die or a while passes.
+        private static readonly Dictionary<Character, float> Doomed = new Dictionary<Character, float>();
+
+        internal static int Souls(Character c) => c && c.m_nview && c.m_nview.IsValid() ? c.m_nview.GetZDO().GetInt(SoulsKey, 0) : 0;
+        private static void SetSouls(Player player, int souls) { if (player.m_nview && player.m_nview.IsValid()) player.m_nview.GetZDO().Set(SoulsKey, souls); }
+
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class ReaperHit
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                var player = Player.m_localPlayer;
+                if (hit == null || !player || __instance == player || __instance is Player || hit.GetAttacker() != player || __instance.IsDead()) return;
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || hit.m_skill != weapon.m_shared.m_skillType || Effects.Dots.IsDot(hit) || Enchantments.MythicValue(weapon, "Reaper") <= 0) return;
+                if (__instance.GetHealthPercentage() >= ReaperThreshold) return;
+                hit.ApplyModifier(1 + ReaperExecute / 100f);
+                Doomed[__instance] = Time.time + 2f;
+            }
+        }
+
+        // A kill of the local player (CatalystEffects.Killed): a doomed creature now gone or dead stores a soul.
+        internal static void Killed()
+        {
+            var player = Player.m_localPlayer;
+            if (!player || Doomed.Count == 0) return;
+            bool reaped = false;
+            foreach (var c in Doomed.Keys.ToList())
+            {
+                if (!c || c.IsDead() || c.GetHealth() <= 0) { reaped = true; Doomed.Remove(c); }
+                else if (Time.time > Doomed[c]) Doomed.Remove(c);
+            }
+            if (reaped && Enchantments.MythicValue(player.GetCurrentWeapon(), "Reaper") > 0) SetSouls(player, Mathf.Min(ReaperSouls, Souls(player) + 1));
+        }
+
+        private sealed class Reach { internal float Range, Angle, Multiplier; }
+
+        [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
+        private static class ReaperHarvest
+        {
+            private static void Prefix(Attack __instance, out Reach __state)
+            {
+                __state = null;
+                var player = __instance.m_character as Player;
+                if (!player || player != Player.m_localPlayer || !player.m_currentAttackIsSecondary) return;
+                float value = Enchantments.MythicValue(__instance.m_weapon, "Reaper");
+                int souls = Souls(player);
+                if (value <= 0 || souls <= 0) return;
+                __state = new Reach { Range = __instance.m_attackRange, Angle = __instance.m_attackAngle, Multiplier = __instance.m_damageMultiplier };
+                __instance.m_attackRange *= ReaperRange;
+                __instance.m_attackAngle = Mathf.Min(360, __instance.m_attackAngle * ReaperArc);
+                __instance.m_damageMultiplier *= 1 + souls * value / 100f;
+                SetSouls(player, 0);
+            }
+            private static void Finalizer(Attack __instance, Reach __state)
+            {
+                if (__state == null) return;
+                __instance.m_attackRange = __state.Range; __instance.m_attackAngle = __state.Angle; __instance.m_damageMultiplier = __state.Multiplier;
+            }
+        }
+
+        // The souls' orbs on every player holding some, one orb per soul; none once spent. The souls stay stored with the
+        // player when the weapon is put away.
+        private static readonly Dictionary<Player, GameObject> Orbs = new Dictionary<Player, GameObject>();
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class SoulOrbs
+        {
+            private static void Postfix(Player __instance)
+            {
+                int souls = Souls(__instance);
+                Orbs.TryGetValue(__instance, out var orbs);
+                if (souls <= 0) { if (orbs) { UnityEngine.Object.Destroy(orbs); Orbs.Remove(__instance); } return; }
+                if (!orbs)
+                {
+                    orbs = MythicVfx.Attach("Mythic_Souls", __instance.transform);
+                    if (!orbs) return;
+                    Orbs[__instance] = orbs;
+                }
+                for (int i = 1; i <= ReaperSouls; i++)
+                {
+                    var orb = orbs.transform.Find("Orbit/Soul" + i);
+                    if (orb && orb.gameObject.activeSelf != i <= souls) orb.gameObject.SetActive(i <= souls);
+                }
             }
         }
     }

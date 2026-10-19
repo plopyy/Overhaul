@@ -163,6 +163,7 @@ namespace Overhaul.Rarity
         internal static void Killed(Vector3 position)
         {
             var player = Player.m_localPlayer; if (!player) return;
+            MythicEffects.Killed();
             foreach (var def in Active(player))
             {
                 if (def.Effect == "KillFrenzy")
