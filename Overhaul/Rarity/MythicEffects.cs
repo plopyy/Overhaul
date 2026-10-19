@@ -794,7 +794,7 @@ namespace Overhaul.Rarity
 
         private static System.Collections.IEnumerator Return(Player owner, ItemDrop.ItemData item, Vector3 from)
         {
-            var copy = MythicVfx.SpawnSpectral(Enchantments.Prefab(item), from, Quaternion.identity, true);
+            var copy = MythicVfx.SpawnSpectral(Enchantments.Prefab(item), from, Quaternion.identity, .15f);
             Vector3 position = from;
             while (owner && !owner.IsDead())
             {
@@ -877,8 +877,8 @@ namespace Overhaul.Rarity
         }
 
         // --- SpectralDagger: each hit of the weapon on a creature has Value % chance to call a spectral copy of the dagger
-        // (MythicVfx Mythic_SpectralWeapon, narrow trail, seen by every player): it pops up above the player's right shoulder,
-        // backflips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
+        // (MythicVfx Mythic_SpectralWeapon with a 40 cm trail, seen by every player): it pops up above the player's right
+        // shoulder, point up and edge forward (with Mythic_DaggerPop), backflips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
         // half as pierce and half as spirit damage ---
 
         private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f;
@@ -907,9 +907,10 @@ namespace Overhaul.Rarity
         private static System.Collections.IEnumerator SpectralDagger(Player owner, Character target, string item, HitData hit)
         {
             Vector3 Shoulder() => owner.transform.position + Vector3.up * 2.1f + owner.transform.right * .45f - owner.transform.forward * .1f;
-            // Point up, its flat facing the camera behind the player.
-            Quaternion Up() => Quaternion.LookRotation(Vector3.up, -owner.transform.forward);
-            var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), true);
+            // Point up and edge forward (the weapon models lie in their XZ plane, edge along -X).
+            Quaternion Up() => Quaternion.LookRotation(Vector3.up, -owner.transform.right);
+            MythicVfx.Spawn("Mythic_DaggerPop", Shoulder(), Up());
+            var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), .4f);
             if (!dagger) yield break;
             for (float t = 0; t < DaggerPop + DaggerFlip + DaggerTurn && dagger && owner; t += Time.deltaTime)
             {
