@@ -622,9 +622,9 @@ namespace Overhaul.Rarity
 
         // --- TwinBlade: each hit of the weapon on a creature has Value % chance to be doubled: a spectral copy of the sword
         // (MythicVfx Mythic_SpectralWeapon, seen by every player) appears 1 m from the target on the player's side and cuts
-        // through it in a 70 degree arc in 0.25 s, dealing the hit's damage again as spirit damage halfway through ---
+        // through it in a 100 degree arc in 0.25 s, dealing the hit's damage again as spirit damage halfway through ---
 
-        private const float TwinSwing = .25f, TwinArc = 70f, TwinReach = 1f;
+        private const float TwinSwing = .25f, TwinArc = 100f, TwinReach = 1f;
         private static bool twinStriking;
 
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]

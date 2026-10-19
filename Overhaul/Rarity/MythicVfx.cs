@@ -86,6 +86,20 @@ namespace Overhaul.Rarity
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 part.layer = gameObject.layer;
             }
+            PlaceTrail(transform, slot, model);
+        }
+
+        // The trail along the blade: at the middle of the weapon's own trail marks (equiped/trail/base and tip), as wide as
+        // the blade between them; kept where it is when the weapon has no marks.
+        internal static void PlaceTrail(Transform root, Transform slot, Transform model)
+        {
+            var trail = root.Find("Trail")?.GetComponent<TrailRenderer>();
+            var from = model.Find("equiped/trail/base"); var to = model.Find("equiped/trail/tip");
+            if (!trail || !from || !to) return;
+            Vector3 a = slot.TransformPoint(model.InverseTransformPoint(from.position)), b = slot.TransformPoint(model.InverseTransformPoint(to.position));
+            trail.transform.position = (a + b) / 2;
+            trail.widthMultiplier = Vector3.Distance(a, b);
+            trail.Clear();
         }
     }
 }
