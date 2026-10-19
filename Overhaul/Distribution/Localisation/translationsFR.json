@@ -2749,6 +2749,8 @@
   "overhaul_mythic_dragonfist_desc": "chaque 4e attaque projette un dragon d'énergie droit devant, qui inflige {0} % des dégâts de l'attaque à chaque ennemi sur son passage jusqu'à 5 m",
   "overhaul_mythic_windblade": "Lame de vent",
   "overhaul_mythic_bladenova": "Vague de lames",
+  "overhaul_mythic_earthquake": "Séisme",
+  "overhaul_mythic_earthquake_desc": "1 seconde après chaque coup au sol, une seconde onde de choc plus large éclate au point d'impact, qui inflige {0} % des dégâts de l'attaque à chaque ennemi dans un rayon de 6 m et les fait vaciller",
   "overhaul_mythic_bladenova_desc": "chaque attaque a {0} % de chances de projeter 10 dagues spectrales en cercle autour de vous, qui infligent 60 % des dégâts de l'attaque en dégâts perçants à chaque ennemi dans un rayon de 6 m",
   "overhaul_mythic_windblade_desc": "le dernier coup de chaque combo libère une onde tranchante droit devant, qui inflige {0} % des dégâts de l'attaque à chaque ennemi traversé jusqu'à 8 m",
   "overhaul_grimoire_installed": "Sorts installés",

@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -255,6 +255,41 @@ namespace Overhaul.Rarity
                     player.StartCoroutine(Ring(player, origin, hit, NovaReach, NovaFlight, t => 1 - (1 - t) * (1 - t)));
                 }
             }
+        }
+
+        // --- Earthquake: 1 s after the weapon's ground hit (area attack), a second, wider shockwave bursts where it struck
+        // (MythicVfx Mythic_Earthquake): every enemy within 6 m is hit once for Value % of the attack's damage and staggered ---
+
+        private const float QuakeDelay = 1f, QuakeReach = 6f, QuakeSpread = .25f, QuakeStagger = 10f;
+        private static int groundMask;
+
+        [HarmonyPatch(typeof(Attack), "DoAreaAttack")]
+        private static class Earthquake
+        {
+            private static void Postfix(Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var weapon = __instance.m_weapon;
+                if (!player || player != Player.m_localPlayer || weapon == null) return;
+                float quake = Enchantments.MythicValue(weapon, "Earthquake");
+                if (quake <= 0) return;
+                // Where the attack struck (as the game places it), down on the ground.
+                var transform = player.transform;
+                Vector3 point = transform.position + Vector3.up * __instance.m_attackHeight + transform.forward * __instance.m_attackRange + transform.right * __instance.m_attackOffset;
+                if (groundMask == 0) groundMask = LayerMask.GetMask("terrain", "Default", "static_solid", "piece");
+                if (Physics.Raycast(point + Vector3.up, Vector3.down, out RaycastHit ground, 6f, groundMask)) point = ground.point;
+                var hit = AttackHit(__instance, player, quake);
+                hit.m_staggerMultiplier = QuakeStagger;
+                player.StartCoroutine(Aftershock(player, point, hit));
+            }
+        }
+
+        private static System.Collections.IEnumerator Aftershock(Player owner, Vector3 point, HitData hit)
+        {
+            yield return new WaitForSeconds(QuakeDelay);
+            if (!owner || owner.IsDead()) yield break;
+            MythicVfx.Spawn("Mythic_Earthquake", point, Quaternion.identity);
+            yield return Ring(owner, point + Vector3.up * .5f, hit, QuakeReach, QuakeSpread, t => t);
         }
 
         // The attack's hit at percent % of its damage: the weapon's damage with the attack's multiplier and the skill factor,
