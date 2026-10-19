@@ -9,9 +9,10 @@ namespace Overhaul.Magic
 {
     // Grimoire stand: a hammer piece (Crafting tab, at a workbench) made from the game's table (network object,
     // wear and tear, build and destroy effects) wearing the overhaul_grimoirestand model (OverhaulLab GrimoireStand:
-    // book stand, rigged grimoire, candle holder and candles). The book opens, and the holder's candles float up,
-    // while any player stands nearby; both settle back when none does; every machine sees the players around it, so everyone sees the same book without network
-    // traffic. Using the stand opens the grimoire window. It can be moved like the other functional pieces.
+    // book stand, rigged grimoire, candle holder and candles, in the wood wall's planks and a warm candle light). The book
+    // opens, and the holder's candles float up, while any player stands nearby; both settle back when none does. Every
+    // machine sees the players around it, so everyone sees the same book without network traffic. Using the stand opens
+    // the grimoire window. It can be moved like the other functional pieces.
     internal static class GrimoireStand
     {
         internal const string Name = "Overhaul_GrimoireStand";
@@ -41,7 +42,6 @@ namespace Overhaul.Magic
             if (wear) { wear.m_new = wear.m_worn = wear.m_broken = null; wear.m_materialType = WearNTear.MaterialType.Wood; wear.m_health = 400; }
             // The whole model (stand, book, candles, colliders) 20 % bigger than authored.
             var visual = Object.Instantiate(model, prefab.transform, false); visual.name = "Model"; visual.transform.localScale = Vector3.one * 1.2f;
-            GameLook(visual);
             int layer = LayerMask.NameToLayer("piece");
             foreach (var t in visual.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
 
@@ -53,30 +53,10 @@ namespace Overhaul.Magic
             piece.m_resources = new[] { ("FineWood", 8), ("Bronze", 4), ("SurtlingCore", 1) }
                 .Select(r => new Piece.Requirement { m_resItem = PrefabManager.Instance.GetPrefab(r.Item1).GetComponent<ItemDrop>(), m_amount = r.Item2, m_recover = true }).ToArray();
             prefab.AddComponent<GrimoireStandPiece>();
+            // The bundle's JVLmock_woodwall becomes the game's wood wall material, its prefab held for the session.
+            GamePrefabs.Held("woodwall");
+            custom.FixReference = true;
             PieceManager.Instance.AddPiece(custom);
-        }
-
-        // The pack's model in the game's look: the stand and the tall candle holder in the wood wall's planks (their post
-        // turned along the grain in the bundle) and a dimmer, warmer candle light; the pack's own candle flame sprites stay,
-        // drawn by the bundle's FlameSprite shader. The game prefabs borrowed are held (GamePrefabs).
-        static void GameLook(GameObject visual)
-        {
-            var wall = GamePrefabs.Held("woodwall")?.transform.Find("New/_Combined Mesh [high]")?.GetComponent<MeshRenderer>()?.sharedMaterial;
-            var woodParts = visual.GetComponentsInChildren<MeshRenderer>(true).Where(r => r.name == "Magic Book-Stand 1" || r.name == "Tall Candle Holder 1").ToArray();
-            if (wall && woodParts.Length > 0)
-            {
-                // Their textures are wood atlases over about half of their UV square: one plank texture per atlas half.
-                var wood = new Material(wall) { name = "GrimoireStand_wood", mainTextureScale = new Vector2(2, 2) };
-                foreach (var part in woodParts) part.sharedMaterials = part.sharedMaterials.Select(_ => wood).ToArray();
-            }
-            else Log.LogWarning("Grimoire stand: wood wall material not found, pack wood kept");
-
-            foreach (var light in visual.GetComponentsInChildren<Light>(true))
-            {
-                light.color = new Color(1f, .72f, .36f);
-                light.intensity = 1.6f;
-                light.range = 4f;
-            }
         }
     }
 
