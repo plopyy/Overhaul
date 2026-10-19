@@ -122,7 +122,8 @@ namespace Overhaul.Rarity
         void Start()
         {
             nview = GetComponent<ZNetView>(); runes = GetComponentInChildren<Animator>(true);
-            glow = GetComponentInChildren<Light>(true);
+            // The candles' light (the runes' own glow light is theirs, driven by their Animator).
+            glow = transform.Find("Model/LightAnchor")?.GetComponentInChildren<Light>(true);
             flames = GetComponentsInChildren<Transform>(true).Where(t => t.name == "flame").ToArray();
             if (!glow) return;
             // The game's flicker and light distance scripts rewrite intensity and range from their own base every frame:
