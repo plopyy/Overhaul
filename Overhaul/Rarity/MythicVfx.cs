@@ -40,12 +40,12 @@ namespace Overhaul.Rarity
         }
 
         // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO;
-        // narrow: a thin trail at its middle instead of one along the blade (for a weapon flying straight).
-        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, bool narrow = false)
+        // trailWidth: a trail that wide at its middle instead of one along the blade (for a weapon flying straight); 0: along the blade.
+        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, float trailWidth = 0)
         {
             var copy = Spawn("Mythic_SpectralWeapon", position, rotation);
             var view = copy ? copy.GetComponent<ZNetView>() : null;
-            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, narrow); }
+            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, trailWidth); }
             return copy;
         }
 
@@ -94,15 +94,16 @@ namespace Overhaul.Rarity
                 renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 part.layer = gameObject.layer;
             }
-            if (view.GetZDO().GetBool(NarrowKey, false)) Narrow(transform, slot); else PlaceTrail(transform, slot, model);
+            float width = view.GetZDO().GetFloat(NarrowKey, 0);
+            if (width > 0) Narrow(transform, slot, width); else PlaceTrail(transform, slot, model);
         }
 
-        // A thin trail at the middle of the copy.
-        internal static void Narrow(Transform root, Transform slot)
+        // A trail of the given width at the middle of the copy.
+        internal static void Narrow(Transform root, Transform slot, float width)
         {
             var trail = root.Find("Trail")?.GetComponent<TrailRenderer>();
             if (!trail) return;
-            trail.transform.position = slot.position; trail.widthMultiplier = .15f; trail.Clear();
+            trail.transform.position = slot.position; trail.widthMultiplier = width; trail.Clear();
         }
 
         // The trail along the blade: at the middle of the weapon's own trail marks (equiped/trail/base and tip), as wide as
