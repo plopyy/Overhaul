@@ -48,7 +48,7 @@ namespace Overhaul.Rarity
         }
 
         // Gear categories for EnchantItemTypes. AllWeapons and Armor stand for their whole group.
-        private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool", "Pickaxe", "Axe", "Fists" };
+        private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool", "Pickaxe", "Axe", "Fists", "Greatsword" };
         private static readonly Dictionary<string, string[]> Groups = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             { "AllWeapons", new[] { "Melee", "Bow", "Staff" } },
@@ -79,6 +79,8 @@ namespace Overhaul.Rarity
             if (shared.m_skillType == Skills.SkillType.Axes && shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon) list.Add("Tool");
             // Fist weapons (claws, knucklechains) are melee weapons with a category of their own.
             if (shared.m_skillType == Skills.SkillType.Unarmed) list.Add("Fists");
+            // Two-handed swords too.
+            if (shared.m_skillType == Skills.SkillType.Swords && shared.m_itemType == ItemDrop.ItemData.ItemType.TwoHandedWeapon) list.Add("Greatsword");
             return list.ToArray();
         }
 

@@ -2644,6 +2644,8 @@
   "overhaul_mythic_zeuswrath_desc": "each attack or projectile has a {0} % chance to call a rain of 16 lightning bolts within 10 m over 6 seconds",
   "overhaul_mythic_dragonfist": "Dragon Fist",
   "overhaul_mythic_dragonfist_desc": "every 4th attack hurls a dragon of energy straight ahead, dealing {0} % of the attack's damage to every enemy in its path up to 5 m",
+  "overhaul_mythic_windblade": "Wind Blade",
+  "overhaul_mythic_windblade_desc": "the last hit of each combo sends a cutting wave straight ahead, dealing {0} % of the attack's damage to every enemy it crosses up to 8 m",
   "overhaul_grimoire_installed": "Installed spells",
   "overhaul_grimoire_rank_hint": "Spells gain a rank with class level",
   "overhaul_grimoire_rank1": "Rank I",
