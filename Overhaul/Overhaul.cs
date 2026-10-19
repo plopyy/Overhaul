@@ -69,6 +69,7 @@ namespace Overhaul
             Rarity.RarityConfig.Initialize();
             Rarity.ItemRarity.Initialize();
             Rarity.EnchantTable.Initialize();
+            Rarity.MythicVfx.Initialize();
             Storage.FeedingTrough.Initialize();
             Storage.CharcoalKilnWoods.Initialize();
             Patches.WoodenArrowRecipe.Initialize();
@@ -120,6 +121,7 @@ namespace Overhaul
             Magic.EitrFoods.Shutdown();
             Magic.GrimoireStand.Shutdown();
             Rarity.EnchantTable.Shutdown();
+            Rarity.MythicVfx.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();
