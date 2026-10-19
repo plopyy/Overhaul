@@ -27,6 +27,7 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Changed
+- Enchanting table: its parts now wear the game’s own materials straight from its model (altar, bones, candles, maps, runes), with no material swapped while the game loads. (2.3.0.149)
 - One item slot for every place: the hotbar and quick slot cells are now the inventory's own slot in its HUD look (a prefab variant), so everything on it (rarity border, catalyst diamonds, quality badge...) shows in the hotbar too, and any later change applies everywhere. Its two parameters: IsHUD (on: transparent black ground, no rarity ground; off: the window's brown ground, darker to the left, with the rarity ground) and HotKey (the key shown in the top left corner, none when empty). (2.3.0.146)
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
