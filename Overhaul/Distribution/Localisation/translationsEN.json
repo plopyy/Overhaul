@@ -2651,6 +2651,8 @@
   "overhaul_mythic_reaper": "Reaper",
   "overhaul_mythic_ricochetaxe": "Ricochet Axe",
   "overhaul_mythic_twinblade": "Twin Blade",
+  "overhaul_mythic_whirlwind": "Whirlwind",
+  "overhaul_mythic_whirlwind_desc": "your special attack pulls every creature it hits towards you and stuns it for {0} s (half as long for bosses): it can neither move nor attack",
   "overhaul_mythic_twinblade_desc": "each hit has a {0} % chance to be doubled by a spectral copy of the sword that cuts through the target, dealing the hit's damage again as spirit damage",
   "overhaul_mythic_ricochetaxe_desc": "your special attack also throws a spectral copy of the axe that bounces between up to {0} nearby enemies, dealing 70 % of the attack's damage to each as spirit damage",
   "overhaul_mythic_reaper_desc": "+40 % damage on creatures under 30 % health; each one you kill that way stores a soul (3 at most), and your next heavy attack spends them all for {0} % more damage per soul, with 30 % more reach and a wider arc",

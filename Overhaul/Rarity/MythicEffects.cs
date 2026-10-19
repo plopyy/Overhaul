@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -672,6 +672,80 @@ namespace Overhaul.Rarity
             }
             yield return new WaitForSeconds(.05f);
             if (sword && ZNetScene.instance) ZNetScene.instance.Destroy(sword);
+        }
+
+        // --- Whirlwind: the weapon's special (secondary) attack, the atgeir's spin, pulls every creature it hits towards the
+        // player and stuns it for Value seconds (half as long for bosses): it neither moves nor attacks. The stun lives in
+        // the creature's ZDO, set by its owner (the hitting player asks it with an RPC) ---
+
+        private const float WhirlPull = 120f;
+        private const string StunRpc = "Overhaul_MythicStun";
+        private static readonly int StunKey = "overhaul_mythic_stun_end".GetStableHashCode();
+
+        internal static bool Stunned(Character c)
+        {
+            var zdo = c && c.m_nview && c.m_nview.IsValid() ? c.m_nview.GetZDO() : null;
+            return zdo != null && NetNow < zdo.GetFloat(StunKey, 0);
+        }
+
+        [HarmonyPatch(typeof(Game), "Start")]
+        private static class StunRegister { private static void Postfix() => ZRoutedRpc.instance.Register<ZDOID, float>(StunRpc, OnStun); }
+
+        private static void OnStun(long sender, ZDOID id, float seconds)
+        {
+            var c = ZNetScene.instance ? ZNetScene.instance.FindInstance(id)?.GetComponent<Character>() : null;
+            if (!c || !c.m_nview.IsOwner() || c.IsDead()) return;
+            if (c.IsBoss()) seconds /= 2;
+            var zdo = c.m_nview.GetZDO();
+            zdo.Set(StunKey, Mathf.Max(zdo.GetFloat(StunKey, 0), (float)(NetNow + seconds)));
+            c.Stagger(-c.transform.forward);
+        }
+
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class WhirlHit
+        {
+            private static void Prefix(Character __instance, HitData hit)
+            {
+                var player = Player.m_localPlayer;
+                if (hit == null || !player || __instance == player || __instance is Player || hit.GetAttacker() != player || !player.m_currentAttackIsSecondary) return;
+                var weapon = player.GetCurrentWeapon();
+                if (weapon == null || hit.m_skill != weapon.m_shared.m_skillType || Effects.Dots.IsDot(hit)) return;
+                float seconds = Enchantments.MythicValue(weapon, "Whirlwind");
+                if (seconds <= 0) return;
+                // Pulled in: the hit's push turned towards the player, and stronger.
+                Vector3 pull = player.transform.position - __instance.transform.position; pull.y = 0;
+                if (pull.sqrMagnitude > 1e-4f) { hit.m_dir = pull.normalized; hit.m_pushForce = Mathf.Max(hit.m_pushForce, WhirlPull); }
+                var zdo = __instance.m_nview && __instance.m_nview.IsValid() ? __instance.m_nview.GetZDO() : null;
+                if (zdo != null && zdo.GetOwner() != 0) ZRoutedRpc.instance.InvokeRoutedRPC(zdo.GetOwner(), StunRpc, __instance.GetZDOID(), seconds);
+            }
+        }
+
+        // A stunned creature's AI stands still and it starts no attack.
+        [HarmonyPatch]
+        private static class StunnedAI
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(MonsterAI), nameof(MonsterAI.UpdateAI));
+                yield return AccessTools.Method(typeof(AnimalAI), nameof(AnimalAI.UpdateAI));
+            }
+            [HarmonyPriority(Priority.First)]
+            private static bool Prefix(BaseAI __instance, ref bool __result)
+            {
+                if (!Stunned(__instance.m_character)) return true;
+                __instance.StopMoving(); __result = true; return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
+        private static class StunnedAttack
+        {
+            [HarmonyPriority(Priority.First)]
+            private static bool Prefix(Humanoid __instance, ref bool __result)
+            {
+                if (__instance is Player || !Stunned(__instance)) return true;
+                __result = false; return false;
+            }
         }
     }
 }
