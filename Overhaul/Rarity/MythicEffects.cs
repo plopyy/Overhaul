@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -546,6 +546,78 @@ namespace Overhaul.Rarity
                     if (orb && orb.gameObject.activeSelf != i <= souls) orb.gameObject.SetActive(i <= souls);
                 }
             }
+        }
+
+        // --- RicochetAxe: the weapon's special (secondary) attack also throws a spectral copy of it (MythicVfx
+        // Mythic_SpectralWeapon, seen by every player) at the nearest enemy ahead within 12 m; from each enemy it hits it
+        // bounces to the nearest one not yet hit within 8 m, up to Value enemies, then vanishes. Each takes 70 % of the
+        // attack's damage as spirit damage. It flies at 20 m/s, spinning flat; with no enemy ahead it flies 10 m and vanishes ---
+
+        private const float RicochetFirst = 12f, RicochetBounce = 8f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetDamage = 70f, RicochetCone = 75f;
+
+        [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
+        private static class RicochetThrow
+        {
+            private static void Postfix(Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var weapon = __instance.m_weapon;
+                if (!player || player != Player.m_localPlayer || weapon == null || !player.m_currentAttackIsSecondary) return;
+                int bounces = Mathf.RoundToInt(Enchantments.MythicValue(weapon, "RicochetAxe"));
+                if (bounces <= 0) return;
+                string item = Enchantments.Prefab(weapon);
+                if (string.IsNullOrEmpty(item)) return;
+                var hit = AttackHit(__instance, player, RicochetDamage);
+                hit.m_damage = new HitData.DamageTypes { m_spirit = hit.m_damage.GetTotalDamage() };
+                Vector3 start = player.transform.position + Vector3.up * 1.2f + player.transform.forward * .6f;
+                var axe = MythicVfx.SpawnSpectral(item, start, Quaternion.identity);
+                if (axe) player.StartCoroutine(Ricochet(player, axe, hit, bounces));
+            }
+        }
+
+        // The nearest living enemy of owner within range of from, not yet struck; ahead only within cone degrees of forward.
+        private static Character NextTarget(Player owner, Vector3 from, float range, HashSet<Character> struck, Vector3 forward, float cone)
+        {
+            Character best = null; float bestDistance = range;
+            foreach (var c in Character.GetAllCharacters())
+            {
+                if (!c || c == owner || c.IsDead() || struck.Contains(c) || !BaseAI.IsEnemy(owner, c)) continue;
+                Vector3 to = c.GetCenterPoint() - from;
+                float distance = to.magnitude;
+                if (distance > bestDistance) continue;
+                if (cone < 180 && Vector3.Angle(forward, new Vector3(to.x, 0, to.z)) > cone) continue;
+                best = c; bestDistance = distance;
+            }
+            return best;
+        }
+
+        private static System.Collections.IEnumerator Ricochet(Player owner, GameObject axe, HitData hit, int bounces)
+        {
+            var struck = new HashSet<Character>();
+            Vector3 forward = owner.transform.forward; forward.y = 0; forward.Normalize();
+            var target = NextTarget(owner, axe.transform.position, RicochetFirst, struck, forward, RicochetCone);
+            Vector3 end = axe.transform.position + forward * 10f;
+            float spin = 0;
+            while (axe)
+            {
+                Vector3 aim = target ? target.GetCenterPoint() : end;
+                Vector3 to = aim - axe.transform.position;
+                float step = RicochetSpeed * Time.deltaTime;
+                spin += RicochetSpin * Time.deltaTime;
+                axe.transform.rotation = Quaternion.Euler(0, spin, 0);
+                if (to.magnitude > step) { axe.transform.position += to.normalized * step; yield return null; continue; }
+                axe.transform.position = aim;
+                if (!target) break;
+                if (!target.IsDead())
+                {
+                    var each = hit.Clone(); each.m_point = aim; each.m_dir = to.normalized;
+                    target.Damage(each);
+                }
+                struck.Add(target);
+                target = struck.Count < bounces ? NextTarget(owner, aim, RicochetBounce, struck, Vector3.forward, 180) : null;
+                if (!target) break;
+            }
+            if (axe && ZNetScene.instance) ZNetScene.instance.Destroy(axe);
         }
     }
 }
