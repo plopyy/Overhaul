@@ -184,6 +184,7 @@
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_swampbossroom"><LogicalName>Overhaul.Assets.overhaul_swampbossroom</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_bossroom"><LogicalName>Overhaul.Assets.overhaul_bossroom</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_mythicvfx"><LogicalName>Overhaul.Assets.overhaul_mythicvfx</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Distribution\*.cfg"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Distribution\Localisation\*.json"><LogicalName>Overhaul.Defaults.%(Filename)%(Extension)</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_dash">
       <LogicalName>Overhaul.Assets.overhaul_dash</LogicalName>
     </EmbeddedResource>
