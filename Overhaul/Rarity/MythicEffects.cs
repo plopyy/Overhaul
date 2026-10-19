@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "BladeNova", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing", "Prospector" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -824,6 +824,70 @@ namespace Overhaul.Rarity
             if (!owner || owner.IsDead()) { ItemDrop.DropItem(item, 1, position, Quaternion.identity); yield break; }
             if (owner.GetInventory().AddItem(item)) { if (!owner.IsItemEquiped(item)) owner.EquipItem(item); }
             else ItemDrop.DropItem(item, 1, owner.transform.position + Vector3.up, Quaternion.identity);
+        }
+
+        // --- Prospector: ore veins and rocks hit with the pickaxe drop each of their items twice with Value % chance. The rock
+        // is handled on its owner's machine: the miner's chance is published in their ZDO, and the owner tells the miner
+        // when the ore was doubled, who sees the game's bonus craft effect (its crystal chime) with a golden "+N" and a small
+        // golden burst (MythicVfx Mythic_Prospect) where the pickaxe struck ---
+
+        private const string ProspectRpc = "Overhaul_Prospect";
+        private static readonly int ProspectKey = "overhaul_prospector".GetStableHashCode();
+        private static Player miner;
+        private static Vector3 minePoint;
+
+        [HarmonyPatch(typeof(Game), "Start")]
+        private static class ProspectRegister { private static void Postfix() => ZRoutedRpc.instance.Register<Vector3, int>(ProspectRpc, (sender, point, count) => Prospected(point, count)); }
+
+        // The local player's chance, published for the rocks' owners.
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class ProspectPublish
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer || !__instance.m_nview || !__instance.m_nview.IsValid()) return;
+                float chance = Enchantments.MythicValue(__instance.GetCurrentWeapon(), "Prospector");
+                var zdo = __instance.m_nview.GetZDO();
+                if (!Mathf.Approximately(zdo.GetFloat(ProspectKey, 0), chance)) zdo.Set(ProspectKey, chance);
+            }
+        }
+
+        [HarmonyPatch]
+        private static class ProspectMining
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(MineRock), "RPC_Hit");
+                yield return AccessTools.Method(typeof(MineRock5), "RPC_Damage");
+            }
+            private static void Prefix(HitData hit)
+            {
+                miner = hit != null && hit.m_skill == Skills.SkillType.Pickaxes ? hit.GetAttacker() as Player : null;
+                if (miner) minePoint = hit.m_point;
+            }
+            private static void Finalizer() => miner = null;
+        }
+
+        [HarmonyPatch(typeof(DropTable), nameof(DropTable.GetDropList), typeof(int))]
+        private static class ProspectDrops
+        {
+            private static void Postfix(List<GameObject> __result)
+            {
+                if (!miner || __result == null || __result.Count == 0 || !miner.m_nview || !miner.m_nview.IsValid()) return;
+                float chance = miner == Player.m_localPlayer ? Enchantments.MythicValue(miner.GetCurrentWeapon(), "Prospector") : miner.m_nview.GetZDO().GetFloat(ProspectKey, 0);
+                if (chance <= 0 || UnityEngine.Random.value * 100f >= chance) return;
+                int count = __result.Count;
+                for (int i = 0; i < count; i++) __result.Add(__result[i]);
+                if (miner == Player.m_localPlayer) Prospected(minePoint, count);
+                else ZRoutedRpc.instance.InvokeRoutedRPC(miner.m_nview.GetZDO().GetOwner(), ProspectRpc, minePoint, count);
+            }
+        }
+
+        private static void Prospected(Vector3 point, int count)
+        {
+            if (InventoryGui.instance) InventoryGui.instance.m_craftBonusEffect.Create(point, Quaternion.identity);
+            if (DamageText.instance) DamageText.instance.ShowText(DamageText.TextType.Bonus, point + Vector3.up * .5f, "+" + count, true);
+            MythicVfx.Play("Mythic_Prospect", point, 2f);
         }
     }
 }

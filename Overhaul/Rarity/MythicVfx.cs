@@ -49,6 +49,13 @@ namespace Overhaul.Rarity
             return copy;
         }
 
+        // A local (not networked) effect played once at position, removed after life seconds.
+        internal static void Play(string name, Vector3 position, float life)
+        {
+            if (!local.TryGetValue(name, out var prefab) || !prefab) { Utility.Log.LogWarning("Mythic effect " + name + " not found"); return; }
+            Object.Destroy(Object.Instantiate(prefab, position, Quaternion.identity), life);
+        }
+
         // A copy of a local (not networked) effect following parent, until destroyed.
         internal static GameObject Attach(string name, Transform parent)
         {
