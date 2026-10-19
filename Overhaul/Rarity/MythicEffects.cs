@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -192,6 +192,72 @@ namespace Overhaul.Rarity
                 RainStrike = true;
                 try { bolt.OnHit(ground.collider, ground.point, false, ground.normal); }
                 finally { RainStrike = false; }
+            }
+        }
+
+        // --- DragonFist: every 4th attack of the weapon hurls a dragon of energy straight ahead (MythicVfx Mythic_DragonFist,
+        // seen by every player): it hits every enemy on its way, up to 5 m, once each, for Value % of the attack's damage
+        // (same damage types). The hits follow the dragon's head as it flies out ---
+
+        private const int DragonEvery = 4;
+        private const float DragonReach = 5.2f, DragonFlight = .8f, DragonRadius = 1.2f;
+        private static int dragonCount;
+        private static ItemDrop.ItemData dragonWeapon;
+
+        [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
+        private static class DragonPunch
+        {
+            private static void Postfix(Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var weapon = __instance.m_weapon;
+                if (!player || player != Player.m_localPlayer || weapon == null) return;
+                float value = Enchantments.MythicValue(weapon, "DragonFist");
+                if (value <= 0) return;
+                // The count is the weapon's own: another weapon starts it again.
+                if (weapon != dragonWeapon) { dragonWeapon = weapon; dragonCount = 0; }
+                if (++dragonCount < DragonEvery) return;
+                dragonCount = 0;
+
+                Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
+                MythicVfx.Spawn("Mythic_DragonFist", player.transform.position, Quaternion.LookRotation(forward));
+                var hit = new HitData
+                {
+                    m_damage = weapon.GetDamage(),
+                    m_toolTier = (short)weapon.m_shared.m_toolTier,
+                    m_pushForce = weapon.m_shared.m_attackForce,
+                    m_backstabBonus = weapon.m_shared.m_backstabBonus,
+                    m_staggerMultiplier = __instance.m_staggerMultiplier,
+                    m_skill = weapon.m_shared.m_skillType,
+                    m_hitType = HitData.HitType.PlayerHit,
+                };
+                hit.m_damage.Modify(value / 100f * __instance.m_damageMultiplier * player.GetRandomSkillFactor(weapon.m_shared.m_skillType));
+                hit.SetAttacker(player);
+                player.StartCoroutine(Dragon(player, player.transform.position + Vector3.up, forward, hit));
+            }
+        }
+
+        private static int dragonMask;
+
+        // The dragon's head flies out fast then slows (as the effect does): each frame, every enemy between the player and
+        // the head, within the dragon's width, is hit if it was not yet.
+        private static System.Collections.IEnumerator Dragon(Player owner, Vector3 origin, Vector3 forward, HitData hit)
+        {
+            if (dragonMask == 0) dragonMask = LayerMask.GetMask("character", "character_net", "character_ghost", "character_noenv", "hitbox");
+            var struck = new HashSet<Character>();
+            for (float t = 0; t <= DragonFlight; t += Time.deltaTime)
+            {
+                if (!owner || owner.IsDead()) yield break;
+                float reach = DragonReach * (1 - Mathf.Pow(1 - t / DragonFlight, 2.5f));
+                foreach (var collider in Physics.OverlapCapsule(origin + forward * .3f, origin + forward * Mathf.Max(reach, .3f), DragonRadius, dragonMask))
+                {
+                    var target = collider.GetComponentInParent<Character>();
+                    if (!target || target == owner || target.IsDead() || !BaseAI.IsEnemy(owner, target) || !struck.Add(target)) continue;
+                    var each = hit.Clone();
+                    each.m_point = collider.ClosestPoint(origin); each.m_dir = forward;
+                    target.Damage(each);
+                }
+                yield return null;
             }
         }
     }
