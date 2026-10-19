@@ -878,7 +878,7 @@ namespace Overhaul.Rarity
 
         // --- SpectralDagger: each hit of the weapon on a creature has Value % chance to call a spectral copy of the dagger
         // (MythicVfx Mythic_SpectralWeapon with a 40 cm trail, seen by every player): it pops up above the player's right
-        // shoulder, point up and edge forward (with Mythic_DaggerPop), backflips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
+        // shoulder, point up (with Mythic_DaggerPop), front-flips once, turns to the creature hit and flies at it at 25 m/s, point first, dealing 80 % of the hit's damage,
         // half as pierce and half as spirit damage ---
 
         private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f;
@@ -907,8 +907,8 @@ namespace Overhaul.Rarity
         private static System.Collections.IEnumerator SpectralDagger(Player owner, Character target, string item, HitData hit)
         {
             Vector3 Shoulder() => owner.transform.position + Vector3.up * 2.1f + owner.transform.right * .45f - owner.transform.forward * .1f;
-            // Point up and edge forward (the weapon models lie in their XZ plane, edge along -X).
-            Quaternion Up() => Quaternion.LookRotation(Vector3.up, -owner.transform.right);
+            // Point up, the blade's curve towards the back (the weapon models lie in their XZ plane).
+            Quaternion Up() => Quaternion.LookRotation(Vector3.up, owner.transform.right);
             MythicVfx.Spawn("Mythic_DaggerPop", Shoulder(), Up());
             var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), .4f);
             if (!dagger) yield break;
@@ -919,8 +919,8 @@ namespace Overhaul.Rarity
                 else
                 {
                     dagger.transform.localScale = Vector3.one;
-                    if (t < DaggerPop + DaggerFlip) rotation = Quaternion.AngleAxis(-360 * Mathf.SmoothStep(0, 1, (t - DaggerPop) / DaggerFlip), owner.transform.right) * rotation;
-                    else if (target) rotation = Quaternion.Slerp(rotation, Quaternion.LookRotation(target.GetCenterPoint() - dagger.transform.position, -owner.transform.right), (t - DaggerPop - DaggerFlip) / DaggerTurn);
+                    if (t < DaggerPop + DaggerFlip) rotation = Quaternion.AngleAxis(360 * Mathf.SmoothStep(0, 1, (t - DaggerPop) / DaggerFlip), owner.transform.right) * rotation;
+                    else if (target) rotation = Quaternion.Slerp(rotation, Quaternion.LookRotation(target.GetCenterPoint() - dagger.transform.position, owner.transform.right), (t - DaggerPop - DaggerFlip) / DaggerTurn);
                 }
                 dagger.transform.SetPositionAndRotation(Shoulder(), rotation);
                 yield return null;
@@ -929,8 +929,8 @@ namespace Overhaul.Rarity
             {
                 Vector3 to = target.GetCenterPoint() - dagger.transform.position;
                 float step = DaggerSpeed * Time.deltaTime;
-                // Point first, the blade kept upright as it popped up.
-                dagger.transform.rotation = Quaternion.LookRotation(to, -owner.transform.right);
+                // Point first, the blade upright and its curve up (the front flip carried on by a quarter turn).
+                dagger.transform.rotation = Quaternion.LookRotation(to, owner.transform.right);
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
                 daggerStriking = true;
