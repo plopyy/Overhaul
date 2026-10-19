@@ -26,7 +26,7 @@ namespace Overhaul.Rarity
             ("Skull", "Pickable_ForestCryptRemains03", "fi_village_catacombs"),
             ("Candles", "piece_magetable_ext2", "MageCandle_MAT"),
             ("Carto", "piece_cartographytable", "Cartographer_mat"),
-            ("Rune", "piece_magetable_ext", "runetable_mat"),
+            ("Runes", "piece_magetable_ext", "runetable_mat"),
         };
         // The eternal candles are the galdr table's, 0.3 times their size.
         const float CandleScale = .3f;
@@ -75,10 +75,11 @@ namespace Overhaul.Rarity
         {
             foreach (var (part, source, name) in Materials)
             {
-                var renderer = visual.transform.Find(part)?.GetComponent<MeshRenderer>();
+                // A part or a group of them (the runes, one object each).
+                var renderers = visual.transform.Find(part)?.GetComponentsInChildren<MeshRenderer>(true);
                 var material = GamePrefabs.Held(source)?.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).FirstOrDefault(m => m && m.name == name);
-                if (!renderer || !material) { Log.LogWarning("Enchanting table: " + part + " left without the " + name + " material of " + source); continue; }
-                renderer.sharedMaterials = Enumerable.Repeat(material, renderer.sharedMaterials.Length).ToArray();
+                if (renderers == null || renderers.Length == 0 || !material) { Log.LogWarning("Enchanting table: " + part + " left without the " + name + " material of " + source); continue; }
+                foreach (var renderer in renderers) renderer.sharedMaterials = Enumerable.Repeat(material, renderer.sharedMaterials.Length).ToArray();
             }
 
             var candles = GamePrefabs.Held("piece_magetable_ext2")?.transform.Find("new");
@@ -104,7 +105,8 @@ namespace Overhaul.Rarity
         }
     }
 
-    // The violet glow of the eternal candles swells while the local player is within reach of the table, and fades back
+    // The wooden runes float above the table while any player is near. The violet glow of the eternal candles swells
+    // while the local player is within reach of the table, and fades back
     // when they leave. Seen by each player for themself: no network traffic.
     internal sealed class EnchantTableGlow : MonoBehaviour
     {
@@ -112,9 +114,14 @@ namespace Overhaul.Rarity
         Light glow; LightFlicker flicker; LightLod lod;
         float intensity, range, level;
         Transform[] flames;
+        ZNetView nview; Animator runes; bool open;
+
+        // A table loaded again starts with its Animator reset: runes down.
+        void OnEnable() => open = false;
 
         void Start()
         {
+            nview = GetComponent<ZNetView>(); runes = GetComponentInChildren<Animator>(true);
             glow = GetComponentInChildren<Light>(true);
             flames = GetComponentsInChildren<Transform>(true).Where(t => t.name == "flame").ToArray();
             if (!glow) return;
@@ -127,6 +134,11 @@ namespace Overhaul.Rarity
 
         void Update()
         {
+            // The wooden runes (OverhaulLab FloatingPieces) rise off the table, float and settle back on the "Open" bool
+            // while any player is within reach, like the grimoire stand's candles: every machine sees the same.
+            // Building ghosts keep them down.
+            bool near = nview && nview.IsValid() && Player.IsPlayerInRange(transform.position, Reach);
+            if (runes && near != open) { open = near; runes.SetBool("Open", open); }
             var player = Player.m_localPlayer;
             float target = player && Vector3.Distance(player.transform.position, transform.position) <= Reach ? 1f : 0f;
             if (level == target) return;
