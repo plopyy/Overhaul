@@ -206,10 +206,10 @@ namespace Overhaul.Rarity
         private static ItemDrop.ItemData dragonWeapon;
 
         // --- WindBlade: the last hit of the weapon's combo sends a cutting wave straight ahead (MythicVfx Mythic_WindBlade):
-        // 8 m in 0.4 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
-        // visual, 0.85 to 1.6 times its size), hitting every enemy it crosses once for Value % of the attack's damage ---
+        // 12 m in 0.55 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
+        // visual, 0.85 to 2.8 times its size), hitting every enemy it crosses once for Value % of the attack's damage ---
 
-        private const float WindReach = 8f, WindFlight = .4f, WindRadius = 1.1f, WindGrowth = 1.9f;
+        private const float WindReach = 12f, WindFlight = .55f, WindRadius = 1.1f, WindGrowth = 3.3f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
