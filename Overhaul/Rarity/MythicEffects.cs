@@ -972,7 +972,7 @@ namespace Overhaul.Rarity
             Vector3 Shoulder() => DaggerPlace(owner, place);
             // Point up, the blade's curve towards the back (the weapon models lie in their XZ plane).
             Quaternion Up() => Quaternion.LookRotation(Vector3.up, owner.transform.right);
-            var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), .4f);
+            var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), .4f, 1, true);
             if (!dagger) yield break;
             for (float t = 0; t < DaggerPop + DaggerFlip + DaggerTurn && dagger && owner; t += Time.deltaTime)
             {
@@ -997,7 +997,7 @@ namespace Overhaul.Rarity
                 dagger.transform.rotation = Quaternion.LookRotation(to, owner.transform.right);
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
-                MythicVfx.SpectralHit(hit.m_point, hit.m_dir);
+                MythicVfx.SpectralHit(hit.m_point, hit.m_dir, true);
                 owner.GetCurrentWeapon()?.m_shared.m_hitEffect.Create(hit.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
                 daggerStriking = true;
                 try { target.Damage(hit); } finally { daggerStriking = false; }
