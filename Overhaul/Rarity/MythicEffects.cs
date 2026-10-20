@@ -798,7 +798,9 @@ namespace Overhaul.Rarity
             private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
                 if (!owner || owner != Player.m_localPlayer || item == null || !__instance.m_respawnItemOnHit) return;
-                if (Carried.TryGetValue(item, out var carrier) && carrier && carrier != __instance) { __instance.m_spawnItem = null; ExtraThrown.Add(__instance, ExtraThrown); }
+                // Only a carrier still in flight makes this one an extra of the same throw: the previous throw's projectile can
+                // linger where it stopped, and a new throw is a carrier of its own.
+                if (Carried.TryGetValue(item, out var carrier) && carrier && carrier != __instance && !carrier.m_didHit) { __instance.m_spawnItem = null; ExtraThrown.Add(__instance, ExtraThrown); }
                 else Carried[item] = __instance;
                 int through = Mathf.RoundToInt(Enchantments.MythicValue(item, "Homing"));
                 if (through > 0) Piercing.GetValue(__instance, _ => new Pierce()).Left = through;
