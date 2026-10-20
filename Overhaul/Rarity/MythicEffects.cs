@@ -761,6 +761,20 @@ namespace Overhaul.Rarity
         // the same item, so only the first one does; the others deal their hit and vanish (no copy of the weapon falls or
         // comes back).
         private static readonly Dictionary<ItemDrop.ItemData, Projectile> Carried = new Dictionary<ItemDrop.ItemData, Projectile>();
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, object> ExtraThrown = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, object>();
+
+        // An extra projectile of a throw vanishes where it stops instead of staying stuck there.
+        [HarmonyPatch(typeof(Projectile), "OnHit")]
+        private static class ExtraVanish
+        {
+            private static void Postfix(Projectile __instance)
+            {
+                if (!__instance.m_didHit || !ExtraThrown.TryGetValue(__instance, out _)) return;
+                ExtraThrown.Remove(__instance);
+                var view = __instance.GetComponent<ZNetView>();
+                if (view && view.IsValid() && view.IsOwner() && ZNetScene.instance) ZNetScene.instance.Destroy(__instance.gameObject);
+            }
+        }
 
         [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
         private static class HomingThrow
@@ -768,7 +782,7 @@ namespace Overhaul.Rarity
             private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
                 if (!owner || owner != Player.m_localPlayer || item == null || !__instance.m_respawnItemOnHit) return;
-                if (Carried.TryGetValue(item, out var carrier) && carrier && carrier != __instance) __instance.m_spawnItem = null;
+                if (Carried.TryGetValue(item, out var carrier) && carrier && carrier != __instance) { __instance.m_spawnItem = null; ExtraThrown.Add(__instance, ExtraThrown); }
                 else Carried[item] = __instance;
                 int through = Mathf.RoundToInt(Enchantments.MythicValue(item, "Homing"));
                 if (through > 0) Piercing.GetValue(__instance, _ => new Pierce()).Left = through;
