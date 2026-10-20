@@ -227,7 +227,16 @@ namespace Overhaul
                     var binding = element.m_go.transform.Find("binding")?.GetComponent<TMPro.TMP_Text>();
                     var slot = AugaUnity.ItemSlot.Of(element.m_go);
                     if (slot && binding && binding.text != (slot.HotKey ?? "")) slot.HotKey = binding.text;
-                    Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, equipped: item != null && item.m_equipped, gradient: Rarity.ItemRarity.GradientOf(item));
+                    // The game's hotbar leaves the inventory slot's quality and no-teleport marks as the prefab has them: set like
+                    // the inventory does (quality for an upgradable item, no-teleport for an item that cannot go through portals).
+                    var quality = element.m_go.transform.Find("quality")?.GetComponent<TMPro.TMP_Text>();
+                    bool upgradable = item != null && item.m_shared.m_maxQuality > 1;
+                    if (quality) { quality.enabled = upgradable; if (upgradable) quality.text = item.m_quality.ToString(); }
+                    var qualityGround = element.m_go.transform.Find("quality_bkg")?.GetComponent<Image>();
+                    if (qualityGround) qualityGround.enabled = upgradable;
+                    var noTeleport = element.m_go.transform.Find("noteleport")?.GetComponent<Image>();
+                    if (noTeleport) noTeleport.enabled = item != null && !item.m_shared.m_teleportable && !(ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.TeleportAll));
+                    Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, upgradable, equipped: item != null && item.m_equipped, gradient: Rarity.ItemRarity.GradientOf(item));
                     Catalysts(element.m_go, item);
                 }
             }
