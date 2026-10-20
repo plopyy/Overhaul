@@ -233,28 +233,10 @@ namespace Overhaul.Effects
 
         // --- Attack speed: melee and bows use AttackSpeed, magic weapons CastSpeed ---
 
-        [HarmonyPatch(typeof(CharacterAnimEvent), nameof(CharacterAnimEvent.CustomFixedUpdate))]
-        private static class AnimationSpeed
-        {
-            // The animator speed the game set last (attack events change it) and the one we set from it, so the
-            // factor is applied once instead of compounding every frame.
-            private sealed class State { internal float Base = 1, Set = float.NaN; }
-            private static readonly ConditionalWeakTable<CharacterAnimEvent, State> States = new ConditionalWeakTable<CharacterAnimEvent, State>();
+        // AttackSpeed and CastSpeed act on the attack animation together with the weapon rework's rate, in one place
+        // (Patches.CharacterAnimEventPatches): applied apart, each took the other's speed for the game's and they compounded.
 
-            private static void Postfix(CharacterAnimEvent __instance)
-            {
-                if (!(__instance.m_character is Humanoid humanoid) || !Local(humanoid) || !__instance.m_animator) return;
-                var state = States.GetOrCreateValue(__instance);
-                if (!humanoid.InAttack()) { state.Set = float.NaN; return; }
-                float speed = __instance.m_animator.speed;
-                if (float.IsNaN(state.Set) || !Mathf.Approximately(speed, state.Set)) state.Base = speed;
-                float factor = Mathf.Max(.1f, 1 + Pct(humanoid, Magic(humanoid.GetCurrentWeapon()) ? "CastSpeed" : "AttackSpeed"));
-                state.Set = state.Base * factor;
-                __instance.m_animator.speed = state.Set;
-            }
-        }
-
-        private static bool Magic(ItemDrop.ItemData weapon) =>
+        internal static bool Magic(ItemDrop.ItemData weapon) =>
             weapon != null && (weapon.m_shared.m_skillType == Skills.SkillType.ElementalMagic || weapon.m_shared.m_skillType == Skills.SkillType.BloodMagic);
 
         // Bows draw (and aim) faster with CastSpeed.
