@@ -2663,7 +2663,7 @@
   "overhaul_mythic_armorbreak_desc": "each hit makes the target take {0} % more damage per stack (5 stacks at most, 6 s)",
   "overhaul_mythic_earthquake_desc": "ground hits cause an aftershock dealing {0} % of the attack's damage and staggering enemies",
   "overhaul_mythic_spectraldagger_desc": "{0} % chance per hit to throw a spectral dagger dealing 25 % of the hit's damage",
-  "overhaul_mythic_windblade_desc": "the last hit of each combo sends a cutting wave dealing {0} % of the attack's damage",
+  "overhaul_mythic_windblade_desc": "charged heavy attack: hold to charge (3 s at most), release to send a cutting wave dealing {0} % of the attack's damage, up to 3 times bigger",
   "overhaul_grimoire_installed": "Installed spells",
   "overhaul_grimoire_rank_hint": "Spells gain a rank with class level",
   "overhaul_grimoire_rank1": "Rank I",
