@@ -323,8 +323,8 @@ namespace Overhaul.Rarity
                 // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
                 float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
                 Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
-                // Upright, leaning GetsugaLean degrees off vertical the way the slash falls.
-                var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 90 - GetsugaLean);
+                // Upright (its arc over the top), leaning GetsugaLean degrees the way the slash falls.
+                var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, GetsugaLean);
                 // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave starts
                 // at the chest.
                 var wave = MythicVfx.Spawn("Mythic_Getsuga", origin - rotation * Vector3.up, rotation);
