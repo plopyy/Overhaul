@@ -563,12 +563,13 @@ namespace Overhaul.Rarity
         }
 
         // --- RicochetAxe: the weapon's special (secondary) attack also throws three spectral copies of it (MythicVfx
-        // Mythic_SpectralWeapon, seen by every player), spinning flat: one straight ahead, two curving out 1.5 m on each
-        // side in an arc, all three meeting 6 m ahead, where they vanish. Each axe strikes everything it passes through
-        // within 1 m once (Strike: enemies and world destructibles, with the weapon's impact effect and a spectral hit), for
+        // Mythic_SpectralWeapon, seen by every player, 1.6 times as big), spinning flat on themselves (their trail following only their path):
+        // one straight ahead, two curving out 1.5 m on each side in an arc, all three meeting 6 m ahead along the aim
+        // (pitch included), where they vanish. Each axe strikes everything it passes through
+        // within 1.5 m once (Strike: enemies and world destructibles, with the weapon's impact effect and a spectral hit), for
         // Value % of the attack's damage (Spectral: physical as spirit, elements kept) ---
 
-        private const float RicochetRange = 6f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetSpread = 1.5f, RicochetRadius = 1f;
+        private const float RicochetRange = 6f, RicochetSpeed = 20f, RicochetSpin = 2520f, RicochetTrail = .55f, RicochetSpread = 1.5f, RicochetRadius = 1.5f, RicochetScale = 1.6f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class RicochetThrow
@@ -584,12 +585,13 @@ namespace Overhaul.Rarity
                 if (string.IsNullOrEmpty(item)) return;
                 var hit = AttackHit(__instance, player, 100);
                 hit.m_damage = Spectral(hit.m_damage, percent);
-                Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
-                Vector3 start = player.transform.position + Vector3.up * 1.2f + forward * .6f;
-                Vector3 side = Vector3.Cross(Vector3.up, forward);
+                Vector3 flat = player.transform.forward; flat.y = 0; flat.Normalize();
+                Vector3 forward = Quaternion.AngleAxis(-Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1)) * Mathf.Rad2Deg, Vector3.Cross(Vector3.up, flat)) * flat;
+                Vector3 start = player.transform.position + Vector3.up * 1.2f + flat * .6f;
+                Vector3 side = Vector3.Cross(Vector3.up, flat);
                 for (int lane = -1; lane <= 1; lane++)
                 {
-                    var axe = MythicVfx.SpawnSpectral(item, start, Quaternion.identity);
+                    var axe = MythicVfx.SpawnSpectral(item, start, Quaternion.LookRotation(forward), RicochetTrail, RicochetScale, false, RicochetSpin);
                     if (axe) player.StartCoroutine(Ricochet(player, axe, hit, weapon.m_shared.m_hitEffect, start + forward * RicochetRange, side * (lane * RicochetSpread)));
                 }
             }
@@ -601,14 +603,16 @@ namespace Overhaul.Rarity
         {
             var struck = new HashSet<IDestructible>();
             Vector3 start = axe.transform.position, control = (start + end) / 2 + bow * 2;
-            float length = Vector3.Distance(start, end) + bow.magnitude * 1.2f, spin = 0, t = 0;
+            float length = Vector3.Distance(start, end) + bow.magnitude * 1.2f, t = 0;
+            // The axe's plane: its path and the throw's sideways axis (tilted with the aim); the spin is the model's own.
+            Vector3 up = Vector3.Cross(end - start, bow.sqrMagnitude > 1e-4f ? bow : Vector3.Cross(Vector3.up, end - start));
+            if (Vector3.Dot(up, Vector3.up) < 0) up = -up;
             while (axe && t < 1)
             {
                 t = Mathf.Min(1, t + RicochetSpeed * Time.deltaTime / length);
                 Vector3 position = (1 - t) * (1 - t) * start + 2 * (1 - t) * t * control + t * t * end;
                 Vector3 dir = 2 * (1 - t) * (control - start) + 2 * t * (end - control);
-                spin += RicochetSpin * Time.deltaTime;
-                axe.transform.SetPositionAndRotation(position, Quaternion.Euler(0, spin, 0));
+                axe.transform.SetPositionAndRotation(position, Quaternion.LookRotation(dir, up));
                 foreach (var collider in Physics.OverlapSphere(position, RicochetRadius, WaveMask))
                     if (Strike(owner, collider, position, dir.normalized, hit, impact, struck) is Vector3 point) MythicVfx.SpectralHit(point, dir);
                 yield return null;
