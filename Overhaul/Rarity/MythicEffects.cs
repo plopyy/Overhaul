@@ -205,13 +205,92 @@ namespace Overhaul.Rarity
         private static int dragonCount;
         private static ItemDrop.ItemData dragonWeapon;
 
-        // --- WindBlade: the last hit of the weapon's combo sends a cutting wave straight ahead (MythicVfx Mythic_WindBlade):
-        // 25 m in 1.15 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
-        // visual, 0.85 to 3.5 times its size), hitting every enemy it crosses once for Value % of the attack's damage. Each extra
-        // projectile of the player (enchantment lines and leveling bonus) adds a wave sent at the same time, turned about the
-        // heading: n waves are 180 / n degrees apart (two make a cross), each hitting on its own ---
+        // --- WindBlade: the weapon's heavy (secondary) attack becomes a charged one. While the key is held, the swing stops
+        // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
+        // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
+        // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 3.5 times its size), hitting
+        // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
+        // with the time held frozen, up to 3 s. Each extra projectile of the player (enchantment lines and leveling bonus) adds
+        // a wave sent at the same time, turned about the heading: n waves are 180 / n degrees apart (two make a cross) ---
 
-        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 4.1f;
+        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 3.3f, WindGrowth = 4.1f;
+        private const float GetsugaLead = .2f, GetsugaCharge = 3f, GetsugaMax = 3f;
+
+        // The heavy attack being charged: whether the key is still held, how long it was held frozen, the swing's hit time
+        // (normalized, -1 until read from its clip) and whether its wave has gone.
+        private sealed class GetsugaState { internal Attack Attack; internal bool Held = true, Fired; internal float Charged, HitAt = -1; internal int Layer; }
+        private static GetsugaState getsuga;
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class GetsugaHold
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer) return;
+                var attack = __instance.m_currentAttack;
+                if (attack == null || !__instance.m_currentAttackIsSecondary || attack.m_weapon == null || Enchantments.MythicValue(attack.m_weapon, "WindBlade") <= 0)
+                {
+                    getsuga = null;
+                    return;
+                }
+                if (getsuga == null || getsuga.Attack != attack) getsuga = new GetsugaState { Attack = attack };
+                if (!getsuga.Held || getsuga.Fired) return;
+                if (!__instance.m_secondaryAttackHold) { getsuga.Held = false; return; }
+                var animator = __instance.m_animator;
+                if (!animator) return;
+                for (int layer = 0; layer < animator.layerCount && getsuga.HitAt < 0; layer++)
+                {
+                    if (animator.IsInTransition(layer)) continue;
+                    foreach (var clip in animator.GetCurrentAnimatorClipInfo(layer))
+                    {
+                        var hit = clip.clip ? clip.clip.events.FirstOrDefault(e => e.functionName == "OnAttackTrigger" || e.functionName == "Hit") : null;
+                        if (hit == null || clip.clip.length <= 0) continue;
+                        getsuga.HitAt = Mathf.Max(0, hit.time - GetsugaLead) / clip.clip.length;
+                        getsuga.Layer = layer;
+                        break;
+                    }
+                }
+                if (getsuga.HitAt < 0 || animator.GetCurrentAnimatorStateInfo(getsuga.Layer).normalizedTime < getsuga.HitAt) return;
+                // Held at the top of the swing: kept frozen a little longer each frame, it resumes once the key is let go.
+                __instance.m_animEvent.FreezeFrame(.05f);
+                getsuga.Charged += Time.deltaTime;
+            }
+        }
+
+        [HarmonyPatch(typeof(Attack), nameof(Attack.OnAttackTrigger))]
+        private static class GetsugaRelease
+        {
+            private static void Postfix(Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var weapon = __instance.m_weapon;
+                if (!player || player != Player.m_localPlayer || weapon == null || !player.m_currentAttackIsSecondary || player.m_currentAttack != __instance) return;
+                float wind = Enchantments.MythicValue(weapon, "WindBlade");
+                if (wind <= 0) return;
+                if (getsuga == null || getsuga.Attack != __instance) getsuga = new GetsugaState { Attack = __instance };
+                if (getsuga.Fired) return;
+                getsuga.Fired = true;
+                float charge = 1 + (GetsugaCharge - 1) * Mathf.Clamp01(getsuga.Charged / GetsugaMax);
+                Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
+                Vector3 origin = player.transform.position + Vector3.up;
+                // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
+                float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
+                Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
+                int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                    + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
+                var hit = AttackHit(__instance, player, wind);
+                for (int i = 0; i < count; i++)
+                {
+                    var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 180f / count * i);
+                    // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave
+                    // starts at the chest.
+                    var wave = MythicVfx.Spawn("Mythic_Getsuga", origin - rotation * Vector3.up, rotation);
+                    var view = wave ? wave.GetComponent<ZNetView>() : null;
+                    if (view && view.IsValid()) view.GetZDO().Set(GetsugaSize.SizeKey, charge);
+                    player.StartCoroutine(Wave(player, origin, aim, hit.Clone(), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
+                }
+            }
+        }
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
@@ -238,24 +317,6 @@ namespace Overhaul.Rarity
                     }
                 }
 
-                float wind = Enchantments.MythicValue(weapon, "WindBlade");
-                if (wind > 0 && __instance.m_attackChainLevels > 1 && __instance.m_currentAttackCainLevel == __instance.m_attackChainLevels - 1)
-                {
-                    // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
-                    float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
-                    Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
-                    int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
-                        + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
-                    var hit = AttackHit(__instance, player, wind);
-                    for (int i = 0; i < count; i++)
-                    {
-                        var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 180f / count * i);
-                        // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave
-                        // starts at the chest.
-                        MythicVfx.Spawn("Mythic_WindBlade", origin - rotation * Vector3.up, rotation);
-                        player.StartCoroutine(Wave(player, origin, aim, hit.Clone(), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t, WindGrowth));
-                    }
-                }
             }
         }
 
