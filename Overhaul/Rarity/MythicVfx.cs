@@ -36,7 +36,11 @@ namespace Overhaul.Rarity
         {
             var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(name) : null;
             if (!prefab) { Utility.Log.LogWarning("Mythic effect " + name + " not found"); return null; }
-            return Object.Instantiate(prefab, position, rotation);
+            var copy = Object.Instantiate(prefab, position, rotation);
+            // Its sounds play in the game's sound effects volume.
+            var sfx = AudioMan.instance ? AudioMan.instance.m_masterMixer.FindMatchingGroups("SFX").FirstOrDefault() : null;
+            if (sfx) foreach (var audio in copy.GetComponentsInChildren<AudioSource>(true)) audio.outputAudioMixerGroup = sfx;
+            return copy;
         }
 
         // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO;
