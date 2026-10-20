@@ -206,10 +206,12 @@ namespace Overhaul.Rarity
         private static ItemDrop.ItemData dragonWeapon;
 
         // --- WindBlade: the last hit of the weapon's combo sends a cutting wave straight ahead (MythicVfx Mythic_WindBlade):
-        // 12 m in 0.55 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
-        // visual, 0.85 to 2.8 times its size), hitting every enemy it crosses once for Value % of the attack's damage ---
+        // 25 m in 1.15 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
+        // visual, 0.85 to 3.5 times its size), hitting every enemy it crosses once for Value % of the attack's damage. Each extra
+        // projectile of the player (enchantment lines and leveling bonus) adds a wave sent at the same time, turned about the
+        // heading: n waves are 180 / n degrees apart (two make a cross), each hitting on its own ---
 
-        private const float WindReach = 12f, WindFlight = .55f, WindRadius = 1.1f, WindGrowth = 3.3f;
+        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 4.1f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
@@ -242,10 +244,17 @@ namespace Overhaul.Rarity
                     // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
                     float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
                     Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
-                    var rotation = Quaternion.LookRotation(aim);
-                    // The prefab carries its wave 1 m up and 0.5 m ahead of its origin: placed so the wave starts at the chest.
-                    MythicVfx.Spawn("Mythic_WindBlade", origin - rotation * Vector3.up, rotation);
-                    player.StartCoroutine(Wave(player, origin, aim, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t, WindGrowth));
+                    int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                        + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
+                    var hit = AttackHit(__instance, player, wind);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 180f / count * i);
+                        // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave
+                        // starts at the chest.
+                        MythicVfx.Spawn("Mythic_WindBlade", origin - rotation * Vector3.up, rotation);
+                        player.StartCoroutine(Wave(player, origin, aim, hit.Clone(), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t, WindGrowth));
+                    }
                 }
             }
         }
