@@ -749,8 +749,8 @@ namespace Overhaul.Rarity
 
         // --- Homing: the thrown weapon (the spear's special attack) goes through up to Value enemies, each taking its hit,
         // and does not fall where it stops: a spectral copy of it (MythicVfx Mythic_SpectralWeapon, narrow trail) flies back
-        // to the player at 25 m/s, shaft first, and the weapon is back in the inventory and in hand (dropped at the
-        // player's feet when the inventory is full) ---
+        // to the player at 25 m/s, shaft first, and once the throw is over the weapon is back in the inventory, and in hand
+        // if the hand is empty (dropped at the player's feet when the inventory is full) ---
 
         private const float HomingSpeed = 25f;
         private sealed class Pierce { internal int Left; internal readonly HashSet<Character> Through = new HashSet<Character>(); }
@@ -820,8 +820,12 @@ namespace Overhaul.Rarity
                 yield return null;
             }
             if (copy && ZNetScene.instance) ZNetScene.instance.Destroy(copy);
+            // The throw has taken the spear out of the inventory: it comes back once that attack is over (3 s at most), as
+            // equipping in the middle of an attack leaves the character stuck in it.
+            for (float wait = 0; owner && !owner.IsDead() && owner.InAttack() && wait < 3f; wait += Time.deltaTime) yield return null;
             if (!owner || owner.IsDead()) { ItemDrop.DropItem(item, 1, position, Quaternion.identity); yield break; }
-            if (owner.GetInventory().AddItem(item)) { if (!owner.IsItemEquiped(item)) owner.EquipItem(item); }
+            // Back in hand unless another weapon was taken up meanwhile.
+            if (owner.GetInventory().AddItem(item)) { if (!owner.IsItemEquiped(item) && owner.m_rightItem == null) owner.EquipItem(item); }
             else ItemDrop.DropItem(item, 1, owner.transform.position + Vector3.up, Quaternion.identity);
         }
 
