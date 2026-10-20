@@ -209,13 +209,12 @@ namespace Overhaul.Rarity
         // slash) instead of its own thrust, the heavy attack's other settings kept. While the key is held, the swing stops
         // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
         // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
-        // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 10.5 times its size), hitting
+        // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 7.5 times its size), upright and leaning 15 degrees the way the slash falls, hitting
         // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
-        // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it. Each extra projectile of the player (enchantment lines and leveling bonus) adds
-        // a wave sent at the same time, turned about the heading: n waves are 180 / n degrees apart (two make a cross) ---
+        // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it ---
 
-        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 12.4f;
-        private const float GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
+        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 8.8f;
+        private const float GetsugaLean = 15f, GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
 
         // The heavy attack being charged: whether the key is still held, how long it was held frozen, the swing's hit time
         // (normalized, -1 until read from its clip) and whether its wave has gone.
@@ -324,19 +323,14 @@ namespace Overhaul.Rarity
                 // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
                 float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
                 Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
-                int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
-                    + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
-                var hit = AttackHit(__instance, player, wind);
-                for (int i = 0; i < count; i++)
-                {
-                    var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 180f / count * i);
-                    // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave
-                    // starts at the chest.
-                    var wave = MythicVfx.Spawn("Mythic_Getsuga", origin - rotation * Vector3.up, rotation);
-                    var view = wave ? wave.GetComponent<ZNetView>() : null;
-                    if (view && view.IsValid()) view.GetZDO().Set(GetsugaSize.SizeKey, charge);
-                    player.StartCoroutine(Wave(player, origin, aim, hit.Clone(), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
-                }
+                // Upright, leaning GetsugaLean degrees off vertical the way the slash falls.
+                var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 90 - GetsugaLean);
+                // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave starts
+                // at the chest.
+                var wave = MythicVfx.Spawn("Mythic_Getsuga", origin - rotation * Vector3.up, rotation);
+                var view = wave ? wave.GetComponent<ZNetView>() : null;
+                if (view && view.IsValid()) view.GetZDO().Set(GetsugaSize.SizeKey, charge);
+                player.StartCoroutine(Wave(player, origin, aim, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
             }
         }
 
