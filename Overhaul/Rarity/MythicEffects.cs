@@ -211,7 +211,7 @@ namespace Overhaul.Rarity
         // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
         // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 10.5 times its size), hitting
         // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
-        // with the time held frozen, up to 3 s. Each extra projectile of the player (enchantment lines and leveling bonus) adds
+        // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it. Each extra projectile of the player (enchantment lines and leveling bonus) adds
         // a wave sent at the same time, turned about the heading: n waves are 180 / n degrees apart (two make a cross) ---
 
         private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 12.4f;
@@ -221,6 +221,37 @@ namespace Overhaul.Rarity
         // (normalized, -1 until read from its clip) and whether its wave has gone.
         private sealed class GetsugaState { internal Attack Attack; internal bool Held = true, Fired; internal float Charged, HitAt = -1; internal int Layer; }
         private static GetsugaState getsuga;
+
+        // The charge shown on a player (0: none, else its size factor, 1 to 3), in its ZDO for every machine.
+        private static readonly int GetsugaChargeKey = "overhaul_getsuga_charge".GetStableHashCode();
+        private static void ShowCharge(Player player, float charge)
+        {
+            var view = player.m_nview;
+            if (view && view.IsValid() && view.GetZDO().GetFloat(GetsugaChargeKey, 0) != charge) view.GetZDO().Set(GetsugaChargeKey, charge);
+        }
+        private static float ChargeFactor(float held) => 1 + (GetsugaCharge - 1) * Mathf.Clamp01(held / GetsugaMax);
+
+        // The charge's aura (MythicVfx Mythic_GetsugaCharge, black smoke and blue rings) on every player charging, from its
+        // normal size to 1.6 times it at full charge.
+        private static readonly Dictionary<Player, GameObject> Auras = new Dictionary<Player, GameObject>();
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class GetsugaAura
+        {
+            private static void Postfix(Player __instance)
+            {
+                float charge = __instance.m_nview && __instance.m_nview.IsValid() ? __instance.m_nview.GetZDO().GetFloat(GetsugaChargeKey, 0) : 0;
+                Auras.TryGetValue(__instance, out var aura);
+                if (charge <= 0) { if (aura) { UnityEngine.Object.Destroy(aura); Auras.Remove(__instance); } return; }
+                if (!aura)
+                {
+                    aura = MythicVfx.Attach("Mythic_GetsugaCharge", __instance.transform);
+                    if (!aura) return;
+                    Auras[__instance] = aura;
+                }
+                aura.transform.localScale = Vector3.one * Mathf.Lerp(1, 1.6f, (charge - 1) / (GetsugaCharge - 1));
+            }
+        }
 
         [HarmonyPatch(typeof(Attack), nameof(Attack.Start))]
         private static class GetsugaSwing
@@ -245,11 +276,12 @@ namespace Overhaul.Rarity
                 if (attack == null || !__instance.m_currentAttackIsSecondary || attack.m_weapon == null || Enchantments.MythicValue(attack.m_weapon, "WindBlade") <= 0)
                 {
                     getsuga = null;
+                    ShowCharge(__instance, 0);
                     return;
                 }
                 if (getsuga == null || getsuga.Attack != attack) getsuga = new GetsugaState { Attack = attack };
-                if (!getsuga.Held || getsuga.Fired) return;
-                if (!__instance.m_secondaryAttackHold) { getsuga.Held = false; return; }
+                if (!getsuga.Held || getsuga.Fired) { ShowCharge(__instance, 0); return; }
+                if (!__instance.m_secondaryAttackHold) { getsuga.Held = false; ShowCharge(__instance, 0); return; }
                 var animator = __instance.m_animator;
                 if (!animator) return;
                 for (int layer = 0; layer < animator.layerCount && getsuga.HitAt < 0; layer++)
@@ -268,6 +300,7 @@ namespace Overhaul.Rarity
                 // Held at the top of the swing: kept frozen a little longer each frame, it resumes once the key is let go.
                 __instance.m_animEvent.FreezeFrame(.05f);
                 getsuga.Charged += Time.deltaTime;
+                ShowCharge(__instance, ChargeFactor(getsuga.Charged));
             }
         }
 
@@ -284,7 +317,8 @@ namespace Overhaul.Rarity
                 if (getsuga == null || getsuga.Attack != __instance) getsuga = new GetsugaState { Attack = __instance };
                 if (getsuga.Fired) return;
                 getsuga.Fired = true;
-                float charge = 1 + (GetsugaCharge - 1) * Mathf.Clamp01(getsuga.Charged / GetsugaMax);
+                float charge = ChargeFactor(getsuga.Charged);
+                ShowCharge(player, 0);
                 Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
                 Vector3 origin = player.transform.position + Vector3.up;
                 // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
