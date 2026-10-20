@@ -206,9 +206,10 @@ namespace Overhaul.Rarity
         private static ItemDrop.ItemData dragonWeapon;
 
         // --- WindBlade: the last hit of the weapon's combo sends a cutting wave straight ahead (MythicVfx Mythic_WindBlade):
-        // 8 m in 0.4 s at a steady speed, hitting every enemy it crosses once for Value % of the attack's damage ---
+        // 8 m in 0.4 s at a steady speed, along the character's heading tilted to the aim's pitch, growing as it goes (as its
+        // visual, 0.85 to 1.6 times its size), hitting every enemy it crosses once for Value % of the attack's damage ---
 
-        private const float WindReach = 8f, WindFlight = .4f, WindRadius = 1.3f;
+        private const float WindReach = 8f, WindFlight = .4f, WindRadius = 1.1f, WindGrowth = 1.9f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class MeleeWaves
@@ -238,8 +239,13 @@ namespace Overhaul.Rarity
                 float wind = Enchantments.MythicValue(weapon, "WindBlade");
                 if (wind > 0 && __instance.m_attackChainLevels > 1 && __instance.m_currentAttackCainLevel == __instance.m_attackChainLevels - 1)
                 {
-                    MythicVfx.Spawn("Mythic_WindBlade", player.transform.position, Quaternion.LookRotation(forward));
-                    player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t));
+                    // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
+                    float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
+                    Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
+                    var rotation = Quaternion.LookRotation(aim);
+                    // The prefab carries its wave 1 m up and 0.5 m ahead of its origin: placed so the wave starts at the chest.
+                    MythicVfx.Spawn("Mythic_WindBlade", origin - rotation * Vector3.up, rotation);
+                    player.StartCoroutine(Wave(player, origin, aim, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t, WindGrowth));
                 }
             }
         }
@@ -352,15 +358,16 @@ namespace Overhaul.Rarity
         }
 
         // A wave flying from origin along forward up to reach in flight seconds, its front at progress(time / flight) of
-        // reach: each frame, everything between the origin and the front, within radius, is struck if it was not yet.
-        private static System.Collections.IEnumerator Wave(Player owner, Vector3 origin, Vector3 forward, HitData hit, EffectList impact, float reach, float flight, float radius, Func<float, float> progress)
+        // reach: each frame, everything between the origin and the front, within radius (growing to grow times it by the
+        // end), is struck if it was not yet.
+        private static System.Collections.IEnumerator Wave(Player owner, Vector3 origin, Vector3 forward, HitData hit, EffectList impact, float reach, float flight, float radius, Func<float, float> progress, float grow = 1)
         {
             var struck = new HashSet<IDestructible>();
             for (float t = 0; t <= flight; t += Time.deltaTime)
             {
                 if (!owner || owner.IsDead()) yield break;
                 float front = Mathf.Max(reach * progress(t / flight), .3f);
-                foreach (var collider in Physics.OverlapCapsule(origin + forward * .3f, origin + forward * front, radius, WaveMask))
+                foreach (var collider in Physics.OverlapCapsule(origin + forward * .3f, origin + forward * front, radius * Mathf.Lerp(1, grow, t / flight), WaveMask))
                     Strike(owner, collider, origin, forward, hit, impact, struck);
                 yield return null;
             }
