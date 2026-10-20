@@ -45,13 +45,14 @@ namespace Overhaul.Rarity
 
         // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO;
         // It pops up in a blue flash (Mythic_SpectralPop, Mythic_DaggerPop when small). trailWidth: a trail that wide at its middle instead of one along
-        // the blade (for a weapon flying straight); 0: along the blade. scale: the copy's size, seen by every player.
-        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, float trailWidth = 0, float scale = 1, bool small = false)
+        // the blade (for a weapon flying straight); 0: along the blade. scale: the copy's size; spin: degrees per second the model turns about its own up axis, the copy and its
+        // trail keeping their heading; all seen by every player.
+        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, float trailWidth = 0, float scale = 1, bool small = false, float spin = 0)
         {
             Spawn(small ? "Mythic_DaggerPop" : "Mythic_SpectralPop", position, rotation);
             var copy = Spawn("Mythic_SpectralWeapon", position, rotation);
             var view = copy ? copy.GetComponent<ZNetView>() : null;
-            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, trailWidth); view.GetZDO().Set(SpectralCopy.ScaleKey, scale); }
+            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, trailWidth); view.GetZDO().Set(SpectralCopy.ScaleKey, scale); view.GetZDO().Set(SpectralCopy.SpinKey, spin); }
             return copy;
         }
 
@@ -79,11 +80,19 @@ namespace Overhaul.Rarity
     internal sealed class SpectralCopy : MonoBehaviour
     {
         internal static readonly int ItemKey = "overhaul_spectral_item".GetStableHashCode(), NarrowKey = "overhaul_spectral_narrow".GetStableHashCode(),
-            ScaleKey = "overhaul_spectral_scale".GetStableHashCode();
+            ScaleKey = "overhaul_spectral_scale".GetStableHashCode(), SpinKey = "overhaul_spectral_spin".GetStableHashCode();
         bool built;
+        Transform spinning;
+        Quaternion rest;
+        float spin, angle;
 
         void Update()
         {
+            if (spinning)
+            {
+                angle += spin * Time.deltaTime;
+                spinning.localRotation = rest * Quaternion.Euler(0, angle, 0);
+            }
             if (built) return;
             var view = GetComponent<ZNetView>();
             string name = view && view.IsValid() ? view.GetZDO().GetString(ItemKey, "") : "";
@@ -108,6 +117,8 @@ namespace Overhaul.Rarity
             }
             float width = view.GetZDO().GetFloat(NarrowKey, 0);
             if (width > 0) Narrow(transform, slot, width); else PlaceTrail(transform, slot, model);
+            spin = view.GetZDO().GetFloat(SpinKey, 0);
+            if (spin != 0) { spinning = slot; rest = slot.localRotation; }
         }
 
         // A trail of the given width at the middle of the copy.
