@@ -205,21 +205,35 @@ namespace Overhaul.Rarity
         private static int dragonCount;
         private static ItemDrop.ItemData dragonWeapon;
 
-        // --- WindBlade: the weapon's heavy (secondary) attack becomes a charged one. While the key is held, the swing stops
+        // --- WindBlade: the weapon's heavy (secondary) attack becomes a charged one, with the last swing of its combo (a big
+        // slash) instead of its own thrust, the heavy attack's other settings kept. While the key is held, the swing stops
         // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
         // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
-        // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 3.5 times its size), hitting
+        // along the character's heading tilted to the aim's pitch, growing as it goes (0.85 to 10.5 times its size), hitting
         // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
         // with the time held frozen, up to 3 s. Each extra projectile of the player (enchantment lines and leveling bonus) adds
         // a wave sent at the same time, turned about the heading: n waves are 180 / n degrees apart (two make a cross) ---
 
-        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 3.3f, WindGrowth = 4.1f;
-        private const float GetsugaLead = .2f, GetsugaCharge = 3f, GetsugaMax = 3f;
+        private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 1.1f, WindGrowth = 12.4f;
+        private const float GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
 
         // The heavy attack being charged: whether the key is still held, how long it was held frozen, the swing's hit time
         // (normalized, -1 until read from its clip) and whether its wave has gone.
         private sealed class GetsugaState { internal Attack Attack; internal bool Held = true, Fired; internal float Charged, HitAt = -1; internal int Layer; }
         private static GetsugaState getsuga;
+
+        [HarmonyPatch(typeof(Attack), nameof(Attack.Start))]
+        private static class GetsugaSwing
+        {
+            private static void Prefix(Attack __instance, Humanoid character, ItemDrop.ItemData weapon)
+            {
+                if (!(character is Player) || weapon == null || Enchantments.MythicValue(weapon, "WindBlade") <= 0) return;
+                var primary = weapon.m_shared.m_attack; var secondary = weapon.m_shared.m_secondaryAttack;
+                if (primary == null || secondary == null || __instance.m_attackAnimation != secondary.m_attackAnimation || primary.m_attackChainLevels < 1) return;
+                __instance.m_attackAnimation = primary.m_attackAnimation + (primary.m_attackChainLevels > 1 ? (primary.m_attackChainLevels - 1).ToString() : "");
+                __instance.m_attackChainLevels = 1; __instance.m_attackRandomAnimations = 0;
+            }
+        }
 
         [HarmonyPatch(typeof(Player), "Update")]
         private static class GetsugaHold
