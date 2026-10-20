@@ -318,6 +318,19 @@ namespace Overhaul.Rarity
 
         // The attack's hit at percent % of its damage: the weapon's damage with the attack's multiplier and the skill factor,
         // its tool tier, push, backstab and stagger.
+        // A spectral weapon's damage: percent % of damage, its physical part (and its spirit) as spirit damage, its elements
+        // (the weapon's elemental enchantments, the leveling elements) kept as they are; pierceShare of the physical part
+        // stays pierce instead.
+        private static HitData.DamageTypes Spectral(HitData.DamageTypes damage, float percent, float pierceShare = 0)
+        {
+            float k = percent / 100f, physical = (damage.m_damage + damage.m_blunt + damage.m_slash + damage.m_pierce) * k;
+            return new HitData.DamageTypes
+            {
+                m_pierce = physical * pierceShare, m_spirit = physical * (1 - pierceShare) + damage.m_spirit * k,
+                m_fire = damage.m_fire * k, m_frost = damage.m_frost * k, m_lightning = damage.m_lightning * k, m_poison = damage.m_poison * k,
+            };
+        }
+
         private static HitData AttackHit(Attack attack, Player player, float percent)
         {
             var weapon = attack.m_weapon;
@@ -345,16 +358,18 @@ namespace Overhaul.Rarity
 
         // One contact of a wave or ring: the thing it hits (a creature that is an enemy or a training dummy, or a world
         // destructible, never a building piece), once per wave, takes the hit with the weapon's own impact effect and sound.
-        private static void Strike(Player owner, Collider collider, Vector3 from, Vector3 dir, HitData hit, EffectList impact, HashSet<IDestructible> struck)
+        // Returns the point struck, null when nothing was.
+        private static Vector3? Strike(Player owner, Collider collider, Vector3 from, Vector3 dir, HitData hit, EffectList impact, HashSet<IDestructible> struck)
         {
             var target = collider.GetComponentInParent<IDestructible>();
-            if (target == null || target is WearNTear || target as Component == owner) return;
-            if (target is Character c && (c.IsDead() || !(BaseAI.IsEnemy(owner, c) || c.m_faction == Character.Faction.TrainingDummy))) return;
-            if (!struck.Add(target)) return;
+            if (target == null || target is WearNTear || target as Component == owner) return null;
+            if (target is Character c && (c.IsDead() || !(BaseAI.IsEnemy(owner, c) || c.m_faction == Character.Faction.TrainingDummy))) return null;
+            if (!struck.Add(target)) return null;
             var each = hit.Clone();
             each.m_point = collider.ClosestPoint(from); each.m_dir = dir; each.m_hitCollider = collider;
             impact?.Create(each.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
             target.Damage(each);
+            return each.m_point;
         }
 
         // A wave flying from origin along forward up to reach in flight seconds, its front at progress(time / flight) of
@@ -549,11 +564,11 @@ namespace Overhaul.Rarity
 
         // --- RicochetAxe: the weapon's special (secondary) attack also throws three spectral copies of it (MythicVfx
         // Mythic_SpectralWeapon, seen by every player), spinning flat: one straight ahead, two curving out 1.5 m on each
-        // side in an arc, all three meeting 8 m ahead, where they vanish. Each axe strikes everything it passes through
-        // within 1 m once (Strike: enemies and world destructibles, with the weapon's impact effect), for Value % of the
-        // attack's damage as spirit damage ---
+        // side in an arc, all three meeting 6 m ahead, where they vanish. Each axe strikes everything it passes through
+        // within 1 m once (Strike: enemies and world destructibles, with the weapon's impact effect and a spectral hit), for
+        // Value % of the attack's damage (Spectral: physical as spirit, elements kept) ---
 
-        private const float RicochetRange = 8f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetSpread = 1.5f, RicochetRadius = 1f;
+        private const float RicochetRange = 6f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetSpread = 1.5f, RicochetRadius = 1f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class RicochetThrow
@@ -567,8 +582,8 @@ namespace Overhaul.Rarity
                 if (percent <= 0) return;
                 string item = Enchantments.Prefab(weapon);
                 if (string.IsNullOrEmpty(item)) return;
-                var hit = AttackHit(__instance, player, percent);
-                hit.m_damage = new HitData.DamageTypes { m_spirit = hit.m_damage.GetTotalDamage() };
+                var hit = AttackHit(__instance, player, 100);
+                hit.m_damage = Spectral(hit.m_damage, percent);
                 Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
                 Vector3 start = player.transform.position + Vector3.up * 1.2f + forward * .6f;
                 Vector3 side = Vector3.Cross(Vector3.up, forward);
@@ -595,7 +610,7 @@ namespace Overhaul.Rarity
                 spin += RicochetSpin * Time.deltaTime;
                 axe.transform.SetPositionAndRotation(position, Quaternion.Euler(0, spin, 0));
                 foreach (var collider in Physics.OverlapSphere(position, RicochetRadius, WaveMask))
-                    Strike(owner, collider, position, dir.normalized, hit, impact, struck);
+                    if (Strike(owner, collider, position, dir.normalized, hit, impact, struck) is Vector3 point) MythicVfx.SpectralHit(point, dir);
                 yield return null;
             }
             if (axe && ZNetScene.instance) ZNetScene.instance.Destroy(axe);
@@ -603,14 +618,17 @@ namespace Overhaul.Rarity
 
         // --- TwinBlade: each hit of the weapon on a creature has Value % chance to be doubled: a spectral copy of the sword
         // (MythicVfx Mythic_SpectralWeapon, seen by every player) appears 1 m from the target on the player's side and cuts
-        // through it in a 100 degree arc in 0.25 s, dealing the hit's damage again as spirit damage halfway through ---
+        // through it in a 100 degree arc in 0.45 s, half as big again as the sword, dealing the hit's damage again halfway through
+        // (Spectral: physical as spirit, elements kept), with a spectral hit ---
 
-        private const float TwinSwing = .25f, TwinArc = 100f, TwinReach = 1f;
+        private const float TwinSwing = .45f, TwinArc = 100f, TwinReach = 1.3f, TwinScale = 1.5f;
         private static bool twinStriking;
 
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
         private static class TwinBlade
         {
+            // Before the hit gets the player's gear elements (EffectPatches.Dealt), which the copy's own hit gets again.
+            [HarmonyPriority(Priority.First)]
             private static void Prefix(Character __instance, HitData hit)
             {
                 var player = Player.m_localPlayer;
@@ -622,7 +640,7 @@ namespace Overhaul.Rarity
                 string item = Enchantments.Prefab(weapon);
                 if (string.IsNullOrEmpty(item)) return;
                 var twin = hit.Clone();
-                twin.m_damage = new HitData.DamageTypes { m_spirit = hit.m_damage.GetTotalDamage() };
+                twin.m_damage = Spectral(hit.m_damage, 100);
                 player.StartCoroutine(Twin(player, __instance, item, twin));
             }
         }
@@ -633,7 +651,7 @@ namespace Overhaul.Rarity
             Vector3 side = owner.transform.position - target.transform.position; side.y = 0;
             side = side.sqrMagnitude > 1e-4f ? side.normalized : -target.transform.forward;
             Vector3 pivot = center + side * TwinReach;
-            var sword = MythicVfx.SpawnSpectral(item, pivot, Quaternion.LookRotation(-side));
+            var sword = MythicVfx.SpawnSpectral(item, pivot, Quaternion.LookRotation(-side), 0, TwinScale);
             bool struck = false;
             for (float t = 0; t <= TwinSwing && sword; t += Time.deltaTime)
             {
@@ -645,6 +663,7 @@ namespace Overhaul.Rarity
                     if (target && !target.IsDead())
                     {
                         hit.m_point = target.GetCenterPoint(); hit.m_dir = -side;
+                        MythicVfx.SpectralHit(hit.m_point, hit.m_dir);
                         twinStriking = true;
                         try { target.Damage(hit); } finally { twinStriking = false; }
                     }
@@ -901,10 +920,10 @@ namespace Overhaul.Rarity
         // (enchantment lines and leveling bonus). Each pops up (with Mythic_DaggerPop) point up in the next free place of a half
         // circle over the head, from the right shoulder to the left one (4 places, a place is free again once its dagger flies
         // off; none left, no more daggers), front-flips once, turns to the creature hit and flies at it at 25 m/s, point first,
-        // dealing 80 % of the hit's damage, half as pierce and half as spirit damage, in a blue burst (Mythic_DaggerHit).
+        // dealing 25 % of the hit's damage (Spectral: half its physical part as pierce, half as spirit, elements kept), in a blue burst (Mythic_DaggerHit).
         // Daggers of one call pop 0.08 s apart ---
 
-        private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = .8f, DaggerStagger = .08f;
+        private const float DaggerPop = .1f, DaggerFlip = .35f, DaggerTurn = .1f, DaggerSpeed = 25f, DaggerDamage = 25f, DaggerStagger = .08f;
         private static bool daggerStriking;
         // Until when each place is taken (a dagger holding it until it flies off, at the latest once its flip is due to end).
         private static readonly float[] DaggerPlaces = new float[4];
@@ -920,6 +939,8 @@ namespace Overhaul.Rarity
         [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
         private static class SpectralDaggerCall
         {
+            // Before the hit gets the player's gear elements (EffectPatches.Dealt), which the dagger's own hit gets again.
+            [HarmonyPriority(Priority.First)]
             private static void Prefix(Character __instance, HitData hit)
             {
                 var player = Player.m_localPlayer;
@@ -931,8 +952,7 @@ namespace Overhaul.Rarity
                 string item = Enchantments.Prefab(weapon);
                 if (string.IsNullOrEmpty(item)) return;
                 var strike = hit.Clone();
-                float damage = hit.m_damage.GetTotalDamage() * DaggerDamage;
-                strike.m_damage = new HitData.DamageTypes { m_pierce = damage / 2, m_spirit = damage / 2 };
+                strike.m_damage = Spectral(hit.m_damage, DaggerDamage, .5f);
                 int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
                     + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
                 for (int i = 0, place = 0; i < count; i++)
@@ -952,7 +972,6 @@ namespace Overhaul.Rarity
             Vector3 Shoulder() => DaggerPlace(owner, place);
             // Point up, the blade's curve towards the back (the weapon models lie in their XZ plane).
             Quaternion Up() => Quaternion.LookRotation(Vector3.up, owner.transform.right);
-            MythicVfx.Spawn("Mythic_DaggerPop", Shoulder(), Up());
             var dagger = MythicVfx.SpawnSpectral(item, Shoulder(), Up(), .4f);
             if (!dagger) yield break;
             for (float t = 0; t < DaggerPop + DaggerFlip + DaggerTurn && dagger && owner; t += Time.deltaTime)
@@ -978,7 +997,7 @@ namespace Overhaul.Rarity
                 dagger.transform.rotation = Quaternion.LookRotation(to, owner.transform.right);
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
-                MythicVfx.Spawn("Mythic_DaggerHit", hit.m_point, Quaternion.LookRotation(-hit.m_dir));
+                MythicVfx.SpectralHit(hit.m_point, hit.m_dir);
                 owner.GetCurrentWeapon()?.m_shared.m_hitEffect.Create(hit.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
                 daggerStriking = true;
                 try { target.Damage(hit); } finally { daggerStriking = false; }
