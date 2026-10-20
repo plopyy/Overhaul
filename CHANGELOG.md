@@ -18,7 +18,7 @@
 ## 2.3.0 (in progress)
 
 ### Added
-- Shorter mythic enchantment descriptions, down to what each one does in play. (2.3.0.191)
+- Shorter mythic enchantment descriptions, down to what each one does in play. (2.3.0.191, 192)
 - **Dragon Fist**, the mythic enchantment of fist weapons (claws, knucklechains): every 4th attack hurls a dragon of energy straight ahead (Hovl Studio’s Dragon punch effect, seen by every player) that deals 100 % (Meadows) to 170 % (Deep North) of the attack’s damage to every enemy in its path up to 5 m, once each. New **Fists** gear category for enchantments and mythics (EnchantItemTypes / ItemTypes). (2.3.0.150)
 - **Wind Blade**, the mythic enchantment of two-handed swords: the last hit of each combo sends a translucent steel-blue crescent wave ahead (the character’s heading, tilted up or down to the aim), 8 m in 0.4 s, growing as it goes (hit width included), that deals 60 % (Meadows) to 130 % (Deep North) of the attack’s damage to every enemy it crosses, once each; seen by every player. New **Greatsword** gear category. (2.3.0.151, 180)
 - **Spectral Dagger**, the mythic enchantment of daggers: each hit on a creature has a 35 % chance to call spectral copies of the dagger in hand, one plus your extra projectiles (enchantment lines and leveling bonus): each pops up in a blue flash, point up, in the next free place of a half circle over your head from the right shoulder to the left one (4 at most; a place frees once its dagger flies off), front-flips, then flies at the creature hit, blade upright, with a glowing trail, dealing 25 % of the hit’s damage, in a blue burst; seen by every player. New **Dagger** gear category. (2.3.0.152, 167, 169-173, 189)
