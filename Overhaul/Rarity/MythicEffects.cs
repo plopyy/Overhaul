@@ -757,12 +757,19 @@ namespace Overhaul.Rarity
         private sealed class PierceHit { internal bool Through; internal ItemDrop.ItemData Kept, Returning; }
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce> Piercing = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce>();
 
+        // The thrown weapon each live projectile of the player carries: extra projectiles of a throw (projectile bonuses) carry
+        // the same item, so only the first one does; the others deal their hit and vanish (no copy of the weapon falls or
+        // comes back).
+        private static readonly Dictionary<ItemDrop.ItemData, Projectile> Carried = new Dictionary<ItemDrop.ItemData, Projectile>();
+
         [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
         private static class HomingThrow
         {
             private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
             {
                 if (!owner || owner != Player.m_localPlayer || item == null || !__instance.m_respawnItemOnHit) return;
+                if (Carried.TryGetValue(item, out var carrier) && carrier && carrier != __instance) __instance.m_spawnItem = null;
+                else Carried[item] = __instance;
                 int through = Mathf.RoundToInt(Enchantments.MythicValue(item, "Homing"));
                 if (through > 0) Piercing.GetValue(__instance, _ => new Pierce()).Left = through;
             }
@@ -789,7 +796,7 @@ namespace Overhaul.Rarity
                     __instance.m_onlyStopOnTerrain = true; __instance.m_spawnItem = null;
                     return true;
                 }
-                // Where it stops: no weapon falls, it comes back.
+                // Where it stops: no weapon falls, it comes back (an extra projectile carries none and just vanishes).
                 __state.Returning = __instance.m_spawnItem; __instance.m_spawnItem = null;
                 return true;
             }
