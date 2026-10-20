@@ -548,12 +548,12 @@ namespace Overhaul.Rarity
         }
 
         // --- RicochetAxe: the weapon's special (secondary) attack also throws three spectral copies of it (MythicVfx
-        // Mythic_SpectralWeapon, seen by every player), spinning flat: one straight ahead, two curving out on each side
-        // in an arc, all three meeting on the nearest enemy ahead within 12 m (or 12 m ahead when there is none). Each
-        // axe hits every enemy it passes within 1 m once, for Value % of the attack's damage as spirit damage, and
-        // vanishes at the end of its flight ---
+        // Mythic_SpectralWeapon, seen by every player), spinning flat: one straight ahead, two curving out 1.5 m on each
+        // side in an arc, all three meeting 8 m ahead, where they vanish. Each axe strikes everything it passes through
+        // within 1 m once (Strike: enemies and world destructibles, with the weapon's impact effect), for Value % of the
+        // attack's damage as spirit damage ---
 
-        private const float RicochetRange = 12f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetCone = 75f, RicochetSpread = 4f, RicochetRadius = 1f;
+        private const float RicochetRange = 8f, RicochetSpeed = 20f, RicochetSpin = 1440f, RicochetSpread = 1.5f, RicochetRadius = 1f;
 
         [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
         private static class RicochetThrow
@@ -571,56 +571,31 @@ namespace Overhaul.Rarity
                 hit.m_damage = new HitData.DamageTypes { m_spirit = hit.m_damage.GetTotalDamage() };
                 Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
                 Vector3 start = player.transform.position + Vector3.up * 1.2f + forward * .6f;
-                var target = NextTarget(player, start, RicochetRange, new HashSet<Character>(), forward, RicochetCone);
                 Vector3 side = Vector3.Cross(Vector3.up, forward);
                 for (int lane = -1; lane <= 1; lane++)
                 {
                     var axe = MythicVfx.SpawnSpectral(item, start, Quaternion.identity);
-                    if (axe) player.StartCoroutine(Ricochet(player, axe, hit, target, start + forward * RicochetRange, side * (lane * RicochetSpread)));
+                    if (axe) player.StartCoroutine(Ricochet(player, axe, hit, weapon.m_shared.m_hitEffect, start + forward * RicochetRange, side * (lane * RicochetSpread)));
                 }
             }
         }
 
-        // The nearest living enemy of owner within range of from, not yet struck; ahead only within cone degrees of forward.
-        private static Character NextTarget(Player owner, Vector3 from, float range, HashSet<Character> struck, Vector3 forward, float cone)
+        // One axe's flight: a quadratic curve from its start to end, bowed out by bow at its middle; everything within
+        // RicochetRadius of the axe is struck once.
+        private static System.Collections.IEnumerator Ricochet(Player owner, GameObject axe, HitData hit, EffectList impact, Vector3 end, Vector3 bow)
         {
-            Character best = null; float bestDistance = range;
-            foreach (var c in Character.GetAllCharacters())
-            {
-                if (!c || c == owner || c.IsDead() || struck.Contains(c) || !BaseAI.IsEnemy(owner, c)) continue;
-                Vector3 to = c.GetCenterPoint() - from;
-                float distance = to.magnitude;
-                if (distance > bestDistance) continue;
-                if (cone < 180 && Vector3.Angle(forward, new Vector3(to.x, 0, to.z)) > cone) continue;
-                best = c; bestDistance = distance;
-            }
-            return best;
-        }
-
-        // One axe's flight: a quadratic curve from start to the target (followed while it moves) or to end, bowed out by
-        // bow at its middle; every enemy within RicochetRadius of the axe takes the hit once.
-        private static System.Collections.IEnumerator Ricochet(Player owner, GameObject axe, HitData hit, Character target, Vector3 end, Vector3 bow)
-        {
-            var struck = new HashSet<Character>();
-            Vector3 start = axe.transform.position;
-            float spin = 0, t = 0;
+            var struck = new HashSet<IDestructible>();
+            Vector3 start = axe.transform.position, control = (start + end) / 2 + bow * 2;
+            float length = Vector3.Distance(start, end) + bow.magnitude * 1.2f, spin = 0, t = 0;
             while (axe && t < 1)
             {
-                Vector3 aim = target && !target.IsDead() ? target.GetCenterPoint() : end;
-                Vector3 control = (start + aim) / 2 + bow * 2;
-                float length = Vector3.Distance(start, aim) + bow.magnitude * 1.2f;
-                t = Mathf.Min(1, t + RicochetSpeed * Time.deltaTime / Mathf.Max(length, .1f));
-                Vector3 position = (1 - t) * (1 - t) * start + 2 * (1 - t) * t * control + t * t * aim;
+                t = Mathf.Min(1, t + RicochetSpeed * Time.deltaTime / length);
+                Vector3 position = (1 - t) * (1 - t) * start + 2 * (1 - t) * t * control + t * t * end;
+                Vector3 dir = 2 * (1 - t) * (control - start) + 2 * t * (end - control);
                 spin += RicochetSpin * Time.deltaTime;
                 axe.transform.SetPositionAndRotation(position, Quaternion.Euler(0, spin, 0));
-                foreach (var c in Character.GetAllCharacters())
-                {
-                    if (!c || c == owner || c.IsDead() || struck.Contains(c) || !BaseAI.IsEnemy(owner, c)) continue;
-                    if (Vector3.Distance(c.GetCenterPoint(), position) > RicochetRadius + c.GetRadius()) continue;
-                    struck.Add(c);
-                    var each = hit.Clone(); each.m_point = position; each.m_dir = (c.GetCenterPoint() - start).normalized;
-                    c.Damage(each);
-                }
+                foreach (var collider in Physics.OverlapSphere(position, RicochetRadius, WaveMask))
+                    Strike(owner, collider, position, dir.normalized, hit, impact, struck);
                 yield return null;
             }
             if (axe && ZNetScene.instance) ZNetScene.instance.Destroy(axe);
