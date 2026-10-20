@@ -212,6 +212,20 @@ namespace Overhaul
             return false;
         }
 
+        // The food corner as the inventory sets it: shown for food, in the colour of what it mostly gives (the inventory grid's colours).
+        private static void Food(Image corner, ItemDrop.ItemData item)
+        {
+            var shared = item?.m_shared;
+            bool isFood = shared != null && shared.m_itemType == ItemDrop.ItemData.ItemType.Consumable && (shared.m_food > 0 || shared.m_foodStamina > 0 || shared.m_foodEitr > 0);
+            corner.enabled = isFood;
+            var grid = InventoryGui.instance ? InventoryGui.instance.m_playerGrid : null;
+            if (!isFood || !grid) return;
+            if (shared.m_food < shared.m_foodEitr / 2 && shared.m_foodStamina < shared.m_foodEitr / 2) corner.color = grid.m_foodEitrColor;
+            else if (shared.m_foodStamina < shared.m_food / 2) corner.color = grid.m_foodHealthColor;
+            else if (shared.m_food < shared.m_foodStamina / 2) corner.color = grid.m_foodStaminaColor;
+            else corner.color = Color.white;
+        }
+
         [HarmonyPatch(typeof(HotkeyBar), nameof(HotkeyBar.UpdateIcons))]
         private static class Hotbar
         {
@@ -227,8 +241,9 @@ namespace Overhaul
                     var binding = element.m_go.transform.Find("binding")?.GetComponent<TMPro.TMP_Text>();
                     var slot = AugaUnity.ItemSlot.Of(element.m_go);
                     if (slot && binding && binding.text != (slot.HotKey ?? "")) slot.HotKey = binding.text;
-                    // The game's hotbar leaves the inventory slot's quality and no-teleport marks as the prefab has them: set like
-                    // the inventory does (quality for an upgradable item, no-teleport for an item that cannot go through portals).
+                    // The game's hotbar leaves the inventory slot's marks as the prefab has them: set like the inventory does
+                    // (quality for an upgradable item, no-teleport for an item that cannot go through portals, the food corner for food in
+                    // its kind's colour, the queued mark for an item waiting to be equipped).
                     var quality = element.m_go.transform.Find("quality")?.GetComponent<TMPro.TMP_Text>();
                     bool upgradable = item != null && item.m_shared.m_maxQuality > 1;
                     if (quality) { quality.enabled = upgradable; if (upgradable) quality.text = item.m_quality.ToString(); }
@@ -236,6 +251,10 @@ namespace Overhaul
                     if (qualityGround) qualityGround.enabled = upgradable;
                     var noTeleport = element.m_go.transform.Find("noteleport")?.GetComponent<Image>();
                     if (noTeleport) noTeleport.enabled = item != null && !item.m_shared.m_teleportable && !(ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.TeleportAll));
+                    var food = element.m_go.transform.Find("foodicon")?.GetComponent<Image>();
+                    if (food) Food(food, item);
+                    var queued = element.m_go.transform.Find("queued")?.GetComponent<Image>();
+                    if (queued) queued.enabled = item != null && player.IsEquipActionQueued(item);
                     Apply(element.m_go, element.m_icon, item != null, Rarity.ItemRarity.ColorOf(item), true, upgradable, equipped: item != null && item.m_equipped, gradient: Rarity.ItemRarity.GradientOf(item));
                     Catalysts(element.m_go, item);
                 }
