@@ -108,7 +108,7 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else { AddCatalystRarity(path); AddEnchantSections(path); AddCatalystEffects(path); }
+            else { AddCatalystRarity(path); AddEnchantSections(path); AddCatalystEffects(path); RicochetAxePercent(path); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
@@ -125,6 +125,19 @@ namespace Overhaul.Rarity
             int start = title > 1 ? defaults.LastIndexOf('\n', title - 2) + 1 : 0;
             File.WriteAllText(path, text.TrimEnd() + Environment.NewLine + Environment.NewLine + defaults.Substring(start));
             Utility.Log.LogInfo("RaritySystem.cfg: enchanting table sections added");
+        }
+
+        // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent: the old default
+        // list is replaced by the new one.
+        private static void RicochetAxePercent(string path)
+        {
+            string text = File.ReadAllText(path), old = "Value = [2,2,3,3,3,4,4,5]";
+            int at = text.IndexOf("[MythicEnchant_RicochetAxe]", StringComparison.Ordinal);
+            if (at < 0) return;
+            int stop = NextBlock(text, at), value = text.IndexOf(old, at, StringComparison.Ordinal);
+            if (value < 0 || value > stop) return;
+            File.WriteAllText(path, text.Substring(0, value) + "Value = [40,45,50,55,60,65,70,80]" + text.Substring(value + old.Length));
+            Utility.Log.LogInfo("RaritySystem.cfg: Ricochet Axe values changed to damage percents");
         }
 
         // Files made before the Catalyst rarity get its section from the defaults, after their last rarity.
