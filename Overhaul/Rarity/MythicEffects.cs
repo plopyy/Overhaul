@@ -230,7 +230,7 @@ namespace Overhaul.Rarity
                     {
                         dragonCount = 0;
                         MythicVfx.Spawn("Mythic_DragonFist", player.transform.position, Quaternion.LookRotation(forward));
-                        player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, dragon), DragonReach, DragonFlight, DragonRadius,
+                        player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, dragon), weapon.m_shared.m_hitEffect, DragonReach, DragonFlight, DragonRadius,
                             t => 1 - Mathf.Pow(1 - t, 2.5f)));
                     }
                 }
@@ -239,7 +239,7 @@ namespace Overhaul.Rarity
                 if (wind > 0 && __instance.m_attackChainLevels > 1 && __instance.m_currentAttackCainLevel == __instance.m_attackChainLevels - 1)
                 {
                     MythicVfx.Spawn("Mythic_WindBlade", player.transform.position, Quaternion.LookRotation(forward));
-                    player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, wind), WindReach, WindFlight, WindRadius, t => t));
+                    player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t));
                 }
             }
         }
@@ -268,7 +268,7 @@ namespace Overhaul.Rarity
                 if (Physics.Raycast(point + Vector3.up, Vector3.down, out RaycastHit ground, 6f, groundMask)) point = ground.point;
                 var hit = AttackHit(__instance, player, quake);
                 hit.m_staggerMultiplier = QuakeStagger;
-                player.StartCoroutine(Aftershock(player, point, hit));
+                player.StartCoroutine(Aftershock(player, point, hit, weapon.m_shared.m_hitEffect));
             }
         }
 
@@ -302,12 +302,12 @@ namespace Overhaul.Rarity
             }
         }
 
-        private static System.Collections.IEnumerator Aftershock(Player owner, Vector3 point, HitData hit)
+        private static System.Collections.IEnumerator Aftershock(Player owner, Vector3 point, HitData hit, EffectList impact)
         {
             yield return new WaitForSeconds(QuakeDelay);
             if (!owner || owner.IsDead()) yield break;
             MythicVfx.Spawn("Mythic_Earthquake", point, Quaternion.identity);
-            yield return Ring(owner, point + Vector3.up * .5f, hit, QuakeReach, QuakeSpread, t => t);
+            yield return Ring(owner, point + Vector3.up * .5f, hit, impact, QuakeReach, QuakeSpread, t => t);
         }
 
         // The attack's hit at percent % of its damage: the weapon's damage with the attack's multiplier and the skill factor,
@@ -332,46 +332,52 @@ namespace Overhaul.Rarity
 
         private static int waveMask;
 
-        // A wave flying from origin along forward up to reach in flight seconds, its front at progress(time / flight) of
-        // reach: each frame, every enemy between the origin and the front, within radius, is hit if it was not yet.
-        private static System.Collections.IEnumerator Wave(Player owner, Vector3 origin, Vector3 forward, HitData hit, float reach, float flight, float radius, Func<float, float> progress)
+        // What a wave or ring can hit, as a melee attack does: creatures, the world's destructibles (rocks, trees, logs...)
+        // and pieces' layers; the latter are left alone below so player buildings never take wave damage.
+        private static int WaveMask => waveMask != 0 ? waveMask : waveMask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece",
+            "piece_nonsolid", "terrain", "character", "character_net", "character_ghost", "hitbox", "character_noenv", "vehicle");
+
+        // One contact of a wave or ring: the thing it hits (a creature that is an enemy or a training dummy, or a world
+        // destructible, never a building piece), once per wave, takes the hit with the weapon's own impact effect and sound.
+        private static void Strike(Player owner, Collider collider, Vector3 from, Vector3 dir, HitData hit, EffectList impact, HashSet<IDestructible> struck)
         {
-            if (waveMask == 0) waveMask = LayerMask.GetMask("character", "character_net", "character_ghost", "character_noenv", "hitbox");
-            var struck = new HashSet<Character>();
+            var target = collider.GetComponentInParent<IDestructible>();
+            if (target == null || target is WearNTear || target as Component == owner) return;
+            if (target is Character c && (c.IsDead() || !(BaseAI.IsEnemy(owner, c) || c.m_faction == Character.Faction.TrainingDummy))) return;
+            if (!struck.Add(target)) return;
+            var each = hit.Clone();
+            each.m_point = collider.ClosestPoint(from); each.m_dir = dir; each.m_hitCollider = collider;
+            impact?.Create(each.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
+            target.Damage(each);
+        }
+
+        // A wave flying from origin along forward up to reach in flight seconds, its front at progress(time / flight) of
+        // reach: each frame, everything between the origin and the front, within radius, is struck if it was not yet.
+        private static System.Collections.IEnumerator Wave(Player owner, Vector3 origin, Vector3 forward, HitData hit, EffectList impact, float reach, float flight, float radius, Func<float, float> progress)
+        {
+            var struck = new HashSet<IDestructible>();
             for (float t = 0; t <= flight; t += Time.deltaTime)
             {
                 if (!owner || owner.IsDead()) yield break;
                 float front = Mathf.Max(reach * progress(t / flight), .3f);
-                foreach (var collider in Physics.OverlapCapsule(origin + forward * .3f, origin + forward * front, radius, waveMask))
-                {
-                    var target = collider.GetComponentInParent<Character>();
-                    if (!target || target == owner || target.IsDead() || !BaseAI.IsEnemy(owner, target) || !struck.Add(target)) continue;
-                    var each = hit.Clone();
-                    each.m_point = collider.ClosestPoint(origin); each.m_dir = forward;
-                    target.Damage(each);
-                }
+                foreach (var collider in Physics.OverlapCapsule(origin + forward * .3f, origin + forward * front, radius, WaveMask))
+                    Strike(owner, collider, origin, forward, hit, impact, struck);
                 yield return null;
             }
         }
 
         // A ring widening around origin up to reach in flight seconds, its edge at progress(time / flight) of reach: each
-        // frame, every enemy inside the edge is hit if it was not yet.
-        private static System.Collections.IEnumerator Ring(Player owner, Vector3 origin, HitData hit, float reach, float flight, Func<float, float> progress)
+        // frame, everything inside the edge is struck if it was not yet, pushed away from the centre.
+        private static System.Collections.IEnumerator Ring(Player owner, Vector3 origin, HitData hit, EffectList impact, float reach, float flight, Func<float, float> progress)
         {
-            if (waveMask == 0) waveMask = LayerMask.GetMask("character", "character_net", "character_ghost", "character_noenv", "hitbox");
-            var struck = new HashSet<Character>();
+            var struck = new HashSet<IDestructible>();
             for (float t = 0; t <= flight; t += Time.deltaTime)
             {
                 if (!owner || owner.IsDead()) yield break;
-                foreach (var collider in Physics.OverlapSphere(origin, Mathf.Max(reach * progress(t / flight), .5f), waveMask))
+                foreach (var collider in Physics.OverlapSphere(origin, Mathf.Max(reach * progress(t / flight), .5f), WaveMask))
                 {
-                    var target = collider.GetComponentInParent<Character>();
-                    if (!target || target == owner || target.IsDead() || !BaseAI.IsEnemy(owner, target) || !struck.Add(target)) continue;
-                    var each = hit.Clone();
-                    each.m_point = collider.ClosestPoint(origin);
-                    Vector3 away = each.m_point - origin; away.y = 0;
-                    each.m_dir = away.sqrMagnitude > 1e-4f ? away.normalized : owner.transform.forward;
-                    target.Damage(each);
+                    Vector3 away = collider.ClosestPoint(origin) - origin; away.y = 0;
+                    Strike(owner, collider, origin, away.sqrMagnitude > 1e-4f ? away.normalized : owner.transform.forward, hit, impact, struck);
                 }
                 yield return null;
             }
@@ -959,6 +965,7 @@ namespace Overhaul.Rarity
                 if (to.magnitude > step) { dagger.transform.position += to.normalized * step; yield return null; continue; }
                 hit.m_point = target.GetCenterPoint(); hit.m_dir = to.normalized;
                 MythicVfx.Spawn("Mythic_DaggerHit", hit.m_point, Quaternion.LookRotation(-hit.m_dir));
+                owner.GetCurrentWeapon()?.m_shared.m_hitEffect.Create(hit.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
                 daggerStriking = true;
                 try { target.Damage(hit); } finally { daggerStriking = false; }
                 break;
