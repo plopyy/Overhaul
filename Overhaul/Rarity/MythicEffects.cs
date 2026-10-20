@@ -366,10 +366,21 @@ namespace Overhaul.Rarity
             if (target is Character c && (c.IsDead() || !(BaseAI.IsEnemy(owner, c) || c.m_faction == Character.Faction.TrainingDummy))) return null;
             if (!struck.Add(target)) return null;
             var each = hit.Clone();
-            each.m_point = collider.ClosestPoint(from); each.m_dir = dir; each.m_hitCollider = collider;
+            each.m_point = Contact(collider, from); each.m_dir = dir; each.m_hitCollider = collider;
             impact?.Create(each.m_point, Quaternion.identity, null, 1f, -1, owner.GetZDOID());
             target.Damage(each);
             return each.m_point;
+        }
+
+        // The point of collider nearest to from. ClosestPoint gives back from itself on concave mesh colliders (trees, rocks):
+        // then where a ray from from towards the collider's middle meets it, else its bounds' nearest point.
+        private static Vector3 Contact(Collider collider, Vector3 from)
+        {
+            Vector3 point = collider.ClosestPoint(from);
+            if ((point - from).sqrMagnitude > 1e-6f) return point;
+            Vector3 to = collider.bounds.center - from;
+            if (to.sqrMagnitude > 1e-6f && collider.Raycast(new Ray(from, to), out var ray, to.magnitude + collider.bounds.extents.magnitude)) return ray.point;
+            return collider.bounds.ClosestPoint(from);
         }
 
         // A wave flying from origin along forward up to reach in flight seconds, its front at progress(time / flight) of
@@ -398,7 +409,7 @@ namespace Overhaul.Rarity
                 if (!owner || owner.IsDead()) yield break;
                 foreach (var collider in Physics.OverlapSphere(origin, Mathf.Max(reach * progress(t / flight), .5f), WaveMask))
                 {
-                    Vector3 away = collider.ClosestPoint(origin) - origin; away.y = 0;
+                    Vector3 away = Contact(collider, origin) - origin; away.y = 0;
                     Strike(owner, collider, origin, away.sqrMagnitude > 1e-4f ? away.normalized : owner.transform.forward, hit, impact, struck);
                 }
                 yield return null;
