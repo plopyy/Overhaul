@@ -242,15 +242,13 @@ namespace Overhaul
                     var slot = AugaUnity.ItemSlot.Of(element.m_go);
                     if (slot && binding && binding.text != (slot.HotKey ?? "")) slot.HotKey = binding.text;
                     // The game's hotbar leaves the inventory slot's marks as the prefab has them: set like the inventory does
-                    // (quality for an upgradable item, no-teleport for an item that cannot go through portals, the food corner for food in
-                    // its kind's colour, the queued mark for an item waiting to be equipped).
+                    // (quality for an upgradable item, the food corner for food in its kind's colour, the queued mark for an item waiting
+                    // to be equipped). The no-teleport icon is off in the prefab: every item goes through portals.
                     var quality = element.m_go.transform.Find("quality")?.GetComponent<TMPro.TMP_Text>();
                     bool upgradable = item != null && item.m_shared.m_maxQuality > 1;
                     if (quality) { quality.enabled = upgradable; if (upgradable) quality.text = item.m_quality.ToString(); }
                     var qualityGround = element.m_go.transform.Find("quality_bkg")?.GetComponent<Image>();
                     if (qualityGround) qualityGround.enabled = upgradable;
-                    var noTeleport = element.m_go.transform.Find("noteleport")?.GetComponent<Image>();
-                    if (noTeleport) noTeleport.enabled = item != null && !item.m_shared.m_teleportable && !(ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.TeleportAll));
                     var food = element.m_go.transform.Find("foodicon")?.GetComponent<Image>();
                     if (food) Food(food, item);
                     var queued = element.m_go.transform.Find("queued")?.GetComponent<Image>();
