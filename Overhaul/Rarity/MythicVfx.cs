@@ -44,14 +44,20 @@ namespace Overhaul.Rarity
         }
 
         // A spectral copy of an item (its prefab name), owned by this machine: Mythic_SpectralWeapon with the item in its ZDO;
-        // trailWidth: a trail that wide at its middle instead of one along the blade (for a weapon flying straight); 0: along the blade.
-        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, float trailWidth = 0)
+        // It pops up in a small blue flash (Mythic_DaggerPop). trailWidth: a trail that wide at its middle instead of one along
+        // the blade (for a weapon flying straight); 0: along the blade. scale: the copy's size, seen by every player.
+        internal static GameObject SpawnSpectral(string item, Vector3 position, Quaternion rotation, float trailWidth = 0, float scale = 1)
         {
+            Spawn("Mythic_DaggerPop", position, rotation);
             var copy = Spawn("Mythic_SpectralWeapon", position, rotation);
             var view = copy ? copy.GetComponent<ZNetView>() : null;
-            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, trailWidth); }
+            if (view && view.IsValid()) { view.GetZDO().Set(SpectralCopy.ItemKey, item); view.GetZDO().Set(SpectralCopy.NarrowKey, trailWidth); view.GetZDO().Set(SpectralCopy.ScaleKey, scale); }
             return copy;
         }
+
+        // A spectral weapon's hit: a blue burst (Mythic_DaggerHit) at point, facing back along dir.
+        internal static void SpectralHit(Vector3 point, Vector3 dir) =>
+            Spawn("Mythic_DaggerHit", point, dir.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(-dir) : Quaternion.identity);
 
         // A local (not networked) effect played once at position, removed after life seconds.
         internal static void Play(string name, Vector3 position, float life)
@@ -72,7 +78,8 @@ namespace Overhaul.Rarity
     // model, on the spectral material of the prefab's Model slot.
     internal sealed class SpectralCopy : MonoBehaviour
     {
-        internal static readonly int ItemKey = "overhaul_spectral_item".GetStableHashCode(), NarrowKey = "overhaul_spectral_narrow".GetStableHashCode();
+        internal static readonly int ItemKey = "overhaul_spectral_item".GetStableHashCode(), NarrowKey = "overhaul_spectral_narrow".GetStableHashCode(),
+            ScaleKey = "overhaul_spectral_scale".GetStableHashCode();
         bool built;
 
         void Update()
@@ -86,6 +93,7 @@ namespace Overhaul.Rarity
             var slot = transform.Find("Model");
             var material = slot ? slot.GetComponent<MeshRenderer>()?.sharedMaterial : null;
             if (!material) return;
+            slot.localScale *= view.GetZDO().GetFloat(ScaleKey, 1);
             var model = item.transform.Find("attach") ?? item.transform;
             foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
             {
