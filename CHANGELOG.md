@@ -44,6 +44,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- Hotbar: every slot showed a quality badge "3" and the no-teleport icon (food, potions and empty slots included); they now show as in the inventory: the quality only on upgradable items, the no-teleport icon only on items that cannot go through portals. (2.3.0.175)
 - A server shutting down (restart, update) now disconnects its players first, before saving the world: they go back to the main menu with the disconnected message, instead of staying in game with the connection problem icon while the server was already restarting. (2.3.0.144)
 - Item slots: the catalyst diamonds are 50 % bigger (they may spill over the next cell), to be seen clearly. (2.3.0.144)
 - Enchanting table: a catalyst slot takes a single catalyst, not a stack. (2.3.0.143)
