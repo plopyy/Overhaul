@@ -27,6 +27,8 @@ namespace Overhaul.Rarity
                 if (!prefab.GetComponent<ZNetView>()) { local[prefab.name] = prefab; continue; }
                 // The spectral weapon builds its look from the item named in its ZDO, on every machine.
                 if (prefab.name == "Mythic_SpectralWeapon" && !prefab.GetComponent<SpectralCopy>()) prefab.AddComponent<SpectralCopy>();
+                // The Getsuga's size follows its charge, on every machine.
+                if (prefab.name == "Mythic_Getsuga" && !prefab.GetComponent<GetsugaSize>()) prefab.AddComponent<GetsugaSize>();
                 if (!PrefabManager.Instance.GetPrefab(prefab.name)) PrefabManager.Instance.AddPrefab(new CustomPrefab(prefab, false));
             }
         }
@@ -72,6 +74,27 @@ namespace Overhaul.Rarity
         {
             if (!local.TryGetValue(name, out var prefab) || !prefab) { Utility.Log.LogWarning("Mythic effect " + name + " not found"); return null; }
             return Object.Instantiate(prefab, parent, false);
+        }
+    }
+
+    // Size of Mythic_Getsuga: its particles (which do not play on their own) scaled to the charge in its ZDO, then played.
+    internal sealed class GetsugaSize : MonoBehaviour
+    {
+        internal static readonly int SizeKey = "overhaul_getsuga_size".GetStableHashCode();
+        bool played;
+
+        void Update()
+        {
+            if (played) return;
+            var view = GetComponent<ZNetView>();
+            if (!view || !view.IsValid()) return;
+            played = true;
+            float size = view.GetZDO().GetFloat(SizeKey, 1);
+            foreach (var ps in GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = ps.main; main.startSizeMultiplier *= size;
+                ps.Play(false);
+            }
         }
     }
 
