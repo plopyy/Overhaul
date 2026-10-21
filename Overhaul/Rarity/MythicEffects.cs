@@ -209,12 +209,12 @@ namespace Overhaul.Rarity
         // slash) instead of its own thrust, the heavy attack's other settings kept. While the key is held, the swing stops
         // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
         // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
-        // along the camera's aim, growing as it goes (twice its size by the end), upright and leaning 15 degrees the way the slash falls, hitting
+        // along the camera's aim, growing as it goes (twice its size by the end), upright and leaning 45 degrees the way the slash falls, hitting
         // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
         // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it ---
 
         private const float WindReach = 25f, WindFlight = 1.15f, WindRadius = 2f, WindGrowth = 2f;
-        private const float GetsugaLean = 15f, GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
+        private const float GetsugaLean = 45f, GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
 
         // The heavy attack being charged: whether the key is still held, how long it was held frozen, the swing's hit time
         // (normalized, -1 until read from its clip) and whether its wave has gone.
