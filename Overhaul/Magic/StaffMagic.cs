@@ -85,6 +85,8 @@ namespace Overhaul.Magic
                 __instance.m_useAttackSettings = false;
                 __instance.m_damage = __instance.m_radius < 1f ? new HitData.DamageTypes() : source.m_damage;
                 __instance.m_owner = source.m_owner; __instance.m_hitFriendly = false;
+                // A Zeus's Wrath bolt also hits trees and rocks, at tool tier 4.
+                if (Rarity.MythicEffects.RainStrike) { __instance.m_hitProps = true; __instance.m_toolTier = Mathf.Max(__instance.m_toolTier, 4); }
                 var spell = IsStaff(source.m_weapon) ? SpellSystem.CastBy(source.m_owner) : null;
                 __instance.m_statusEffectHash = spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0;
             }

@@ -125,7 +125,8 @@ namespace Overhaul.Rarity
         // --- ZeusWrath: each projectile of the weapon rolls its own Value % chance when it hits; if it wins, a rain of lightning falls
         // around its impact point, whatever it hit (a spell striking where it aims hits there): 16 bolts
         // at random moments over 6 seconds, on the ground within 10 m. Each bolt is the Lightning Strike staff's own
-        // (its projectile hitting at once), dealing the triggering projectile's damage as lightning ---
+        // (its projectile hitting at once), dealing the triggering projectile's damage as lightning, and as chop and pickaxe damage
+        // to trees and rocks (tool tier 4) ---
 
         private const int RainBolts = 16;
         private const float RainSeconds = 6f, RainRadius = 10f;
@@ -165,7 +166,9 @@ namespace Overhaul.Rarity
                 Vector3 center = hitPoint == Vector3.zero || Vector3.Distance(hitPoint, __instance.transform.position) > 3f ? __instance.transform.position : hitPoint;
                 var hit = __instance.m_originalHitData?.Clone() ?? new HitData();
                 float damage = __instance.m_damage.GetTotalDamage();
-                hit.m_damage = new HitData.DamageTypes { m_lightning = damage > 0 ? damage : hit.m_damage.GetTotalDamage() };
+                float bolt = damage > 0 ? damage : hit.m_damage.GetTotalDamage();
+                // Lightning that also splits trees and breaks rocks: the same damage as chop and pickaxe damage (tool tier: the area's, StaffMagic).
+                hit.m_damage = new HitData.DamageTypes { m_lightning = bolt, m_chop = bolt, m_pickaxe = bolt };
                 player.StartCoroutine(Rain(player, center, hit));
             }
         }
