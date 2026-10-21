@@ -209,7 +209,7 @@ namespace Overhaul.Rarity
         // slash) instead of its own thrust, the heavy attack's other settings kept. While the key is held, the swing stops
         // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
         // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 25 m in 1.15 s at a steady speed,
-        // along the character's heading tilted to the aim's pitch, growing as it goes (twice its size by the end), upright and leaning 15 degrees the way the slash falls, hitting
+        // along the camera's aim, growing as it goes (twice its size by the end), upright and leaning 15 degrees the way the slash falls, hitting
         // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
         // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it ---
 
@@ -338,9 +338,9 @@ namespace Overhaul.Rarity
                 ShowCharge(player, 0);
                 Vector3 forward = player.transform.forward; forward.y = 0; forward.Normalize();
                 Vector3 origin = player.transform.position + Vector3.up;
-                // Along the character's heading, tilted to the aim's pitch (its vertical direction only).
-                float pitch = Mathf.Asin(Mathf.Clamp(player.GetLookDir().y, -1, 1));
-                Vector3 aim = forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch);
+                // Where the camera looks (the local player's own camera: this runs on the attacker's machine), else the look direction.
+                var camera = GameCamera.instance;
+                Vector3 aim = (camera ? camera.transform.forward : player.GetLookDir()).normalized;
                 // Its arc upright in the plane of its flight, leaning GetsugaLean degrees the way the slash falls.
                 var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, GetsugaLean);
                 var wave = MythicVfx.Spawn("Mythic_Getsuga", origin, rotation);
