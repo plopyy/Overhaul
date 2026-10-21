@@ -214,6 +214,7 @@ namespace Overhaul.Rarity
         // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it ---
 
         private const float WindReach = 50f, WindFlight = 2.3f, WindRadius = 2f, WindGrowth = 2f;
+        private const int GetsugaTier = 4;
         private const float GetsugaLean = 45f, GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
 
         // The heavy attack being charged: whether the key is still held, how long it was held frozen, the swing's hit time
@@ -345,7 +346,11 @@ namespace Overhaul.Rarity
                 var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, GetsugaLean);
                 var wave = MythicVfx.Spawn("Mythic_Getsuga", origin, rotation);
                 if (wave) player.StartCoroutine(GetsugaFlight(wave, origin, aim, charge));
-                player.StartCoroutine(Wave(player, origin, aim, AttackHit(__instance, player, wind), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
+                // It also cuts trees and breaks rocks: its physical damage again as chop and pickaxe damage, at tool tier GetsugaTier.
+                var hit = AttackHit(__instance, player, wind);
+                float physical = hit.m_damage.m_damage + hit.m_damage.m_blunt + hit.m_damage.m_slash + hit.m_damage.m_pierce;
+                hit.m_damage.m_chop = hit.m_damage.m_pickaxe = physical; hit.m_toolTier = (short)Mathf.Max(hit.m_toolTier, GetsugaTier);
+                player.StartCoroutine(Wave(player, origin, aim, hit, weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
             }
         }
 
