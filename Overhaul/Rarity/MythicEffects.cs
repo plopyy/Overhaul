@@ -208,15 +208,28 @@ namespace Overhaul.Rarity
         private static int dragonCount;
         private static ItemDrop.ItemData dragonWeapon;
 
-        // --- WindBlade: the weapon's heavy (secondary) attack becomes a charged one, with the last swing of its combo (a big
-        // slash) instead of its own thrust, the heavy attack's other settings kept. While the key is held, the swing stops
-        // GetsugaLead seconds before its hit (the animation frozen, seen by every player); on release it ends and sends a
-        // cutting wave straight ahead (MythicVfx Mythic_Getsuga, white in a black glow): 50 m in 2.3 s at a steady speed,
-        // along the camera's aim, growing as it goes (twice its size by the end), upright and leaning 45 degrees the way the slash falls, hitting
-        // every enemy it crosses once for Value % of the attack's damage. Its size, hit width included, goes from 1 to 3 times
-        // with the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) growing with it ---
+        // --- WindBlade: the last hit of the weapon's normal combo sends a cutting wave (MythicVfx Mythic_WindBlade) where the
+        // camera aims: 30 m in 1.38 s at a steady speed, growing as it goes (0.85 to 3.5 times its size, hit width included),
+        // hitting every enemy it crosses once for Value % of the attack's damage. Each extra projectile of the player
+        // (enchantment lines and leveling bonus) adds a wave sent at the same time, turned about the aim: n waves are 180 / n
+        // degrees apart (two make a cross), each hitting on its own ---
 
-        private const float WindReach = 50f, WindFlight = 2.3f, WindRadius = 2f, WindGrowth = 2f;
+        private const float WindReach = 30f, WindFlight = 1.38f, WindRadius = 1.1f, WindGrowth = 4.1f;
+
+        // --- Getsuga Tensho, set aside for a class ultimate (GetsugaEnabled off: never used for now). The heavy (secondary)
+        // attack becomes a charged one, with the last swing of its combo (a big slash) instead of its own thrust, the heavy
+        // attack's other settings kept. While the key is held, the swing stops GetsugaLead seconds before its hit (the
+        // animation frozen, seen by every player); on release it ends and sends the user's GetsugaTensho slash (MythicVfx
+        // Mythic_Getsuga): 50 m in 2.3 s where the camera aims, growing as it goes (twice its size by the end), leaning 45
+        // degrees the way the slash falls, hitting every enemy it crosses once for GetsugaPower % of the attack's damage and
+        // cutting trees and rocks (chop and pickaxe, tool tier 4). Its size, hit width included, goes from 1 to 3 times with
+        // the time held frozen, up to 3 s; meanwhile the player wears a black and blue aura (Mythic_GetsugaCharge) ---
+
+        internal static bool GetsugaEnabled = false;
+        // The Getsuga's damage percent for this weapon, 0 when off. For now the Wind Blade's value; the class ultimate will
+        // give its own.
+        private static float GetsugaPower(ItemDrop.ItemData weapon) => GetsugaEnabled && weapon != null ? Enchantments.MythicValue(weapon, "WindBlade") : 0;
+        private const float GetsugaReach = 50f, GetsugaTime = 2.3f, GetsugaRadius = 2f, GetsugaGrowth = 2f;
         private const int GetsugaTier = 4;
         private const float GetsugaLean = 45f, GetsugaLead = .25f, GetsugaCharge = 3f, GetsugaMax = 3f;
 
@@ -257,16 +270,16 @@ namespace Overhaul.Rarity
         }
 
         // The Getsuga's flight (MythicVfx Mythic_Getsuga, a mesh: moved and scaled here, synced by its ZSyncTransform): its arc
-        // starts at the chest and goes WindReach along aim in WindFlight seconds, from charge times its size to WindGrowth
+        // starts at the chest and goes GetsugaReach along aim in GetsugaTime seconds, from charge times its size to GetsugaGrowth
         // times that.
         private static System.Collections.IEnumerator GetsugaFlight(GameObject wave, Vector3 origin, Vector3 aim, float charge)
         {
             var view = wave.GetComponent<ZNetView>();
             for (float t = 0; wave; t += Time.deltaTime)
             {
-                float k = Mathf.Clamp01(t / WindFlight);
-                wave.transform.position = origin + aim * (WindReach * k);
-                var scale = Vector3.one * (charge * Mathf.Lerp(1, WindGrowth, k));
+                float k = Mathf.Clamp01(t / GetsugaTime);
+                wave.transform.position = origin + aim * (GetsugaReach * k);
+                var scale = Vector3.one * (charge * Mathf.Lerp(1, GetsugaGrowth, k));
                 if (view && view.IsValid()) view.SetLocalScale(scale); else wave.transform.localScale = scale;
                 if (k >= 1) break;
                 yield return null;
@@ -279,7 +292,7 @@ namespace Overhaul.Rarity
         {
             private static void Prefix(Attack __instance, Humanoid character, ItemDrop.ItemData weapon)
             {
-                if (!(character is Player) || weapon == null || Enchantments.MythicValue(weapon, "WindBlade") <= 0) return;
+                if (!(character is Player) || GetsugaPower(weapon) <= 0) return;
                 var primary = weapon.m_shared.m_attack; var secondary = weapon.m_shared.m_secondaryAttack;
                 if (primary == null || secondary == null || __instance.m_attackAnimation != secondary.m_attackAnimation || primary.m_attackChainLevels < 1) return;
                 __instance.m_attackAnimation = primary.m_attackAnimation + (primary.m_attackChainLevels > 1 ? (primary.m_attackChainLevels - 1).ToString() : "");
@@ -294,7 +307,7 @@ namespace Overhaul.Rarity
             {
                 if (__instance != Player.m_localPlayer) return;
                 var attack = __instance.m_currentAttack;
-                if (attack == null || !__instance.m_currentAttackIsSecondary || attack.m_weapon == null || Enchantments.MythicValue(attack.m_weapon, "WindBlade") <= 0)
+                if (attack == null || !__instance.m_currentAttackIsSecondary || GetsugaPower(attack.m_weapon) <= 0)
                 {
                     getsuga = null;
                     ShowCharge(__instance, 0);
@@ -333,7 +346,7 @@ namespace Overhaul.Rarity
                 var player = __instance.m_character as Player;
                 var weapon = __instance.m_weapon;
                 if (!player || player != Player.m_localPlayer || weapon == null || !player.m_currentAttackIsSecondary || player.m_currentAttack != __instance) return;
-                float wind = Enchantments.MythicValue(weapon, "WindBlade");
+                float wind = GetsugaPower(weapon);
                 if (wind <= 0) return;
                 if (getsuga == null || getsuga.Attack != __instance) getsuga = new GetsugaState { Attack = __instance };
                 if (getsuga.Fired) return;
@@ -353,7 +366,7 @@ namespace Overhaul.Rarity
                 var hit = AttackHit(__instance, player, wind);
                 float physical = hit.m_damage.m_damage + hit.m_damage.m_blunt + hit.m_damage.m_slash + hit.m_damage.m_pierce;
                 hit.m_damage.m_chop = hit.m_damage.m_pickaxe = physical; hit.m_toolTier = (short)Mathf.Max(hit.m_toolTier, GetsugaTier);
-                player.StartCoroutine(Wave(player, origin, aim, hit, weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius * charge, t => t, WindGrowth));
+                player.StartCoroutine(Wave(player, origin, aim, hit, weapon.m_shared.m_hitEffect, GetsugaReach, GetsugaTime, GetsugaRadius * charge, t => t, GetsugaGrowth));
             }
         }
 
@@ -379,6 +392,25 @@ namespace Overhaul.Rarity
                         MythicVfx.Spawn("Mythic_DragonFist", player.transform.position, Quaternion.LookRotation(forward));
                         player.StartCoroutine(Wave(player, origin, forward, AttackHit(__instance, player, dragon), weapon.m_shared.m_hitEffect, DragonReach, DragonFlight, DragonRadius,
                             t => 1 - Mathf.Pow(1 - t, 2.5f)));
+                    }
+                }
+
+                float wind = Enchantments.MythicValue(weapon, "WindBlade");
+                if (wind > 0 && __instance.m_attackChainLevels > 1 && __instance.m_currentAttackCainLevel == __instance.m_attackChainLevels - 1)
+                {
+                    // Where the camera looks (the local player's own camera: this runs on the attacker's machine), else the look direction.
+                    var camera = GameCamera.instance;
+                    Vector3 aim = (camera ? camera.transform.forward : player.GetLookDir()).normalized;
+                    int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                        + (UnityEngine.Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
+                    var hit = AttackHit(__instance, player, wind);
+                    for (int i = 0; i < count; i++)
+                    {
+                        var rotation = Quaternion.LookRotation(aim) * Quaternion.Euler(0, 0, 180f / count * i);
+                        // The prefab carries its wave 1 m up (turned with it) and 0.5 m ahead of its origin: placed so the wave
+                        // starts at the chest.
+                        MythicVfx.Spawn("Mythic_WindBlade", origin - rotation * Vector3.up, rotation);
+                        player.StartCoroutine(Wave(player, origin, aim, hit.Clone(), weapon.m_shared.m_hitEffect, WindReach, WindFlight, WindRadius, t => t, WindGrowth));
                     }
                 }
 
