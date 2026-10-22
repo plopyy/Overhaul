@@ -2766,7 +2766,7 @@
   "overhaul_mythic_armorbreak_desc": "chaque coup fait subir à la cible {0} % de dégâts en plus par cumul (5 cumuls au maximum, 6 s)",
   "overhaul_mythic_earthquake_desc": "les coups au sol provoquent une réplique infligeant {0} % des dégâts de l'attaque et faisant vaciller les ennemis",
   "overhaul_mythic_spectraldagger_desc": "{0} % de chances par coup de lancer une dague spectrale infligeant 25 % des dégâts du coup",
-  "overhaul_mythic_windblade_desc": "attaque lourde chargée : maintenez pour charger (3 s au maximum), relâchez pour libérer une onde tranchante infligeant {0} % des dégâts de l'attaque, jusqu'à 3 fois plus grande",
+  "overhaul_mythic_windblade_desc": "le dernier coup de chaque combo libère une onde tranchante là où vous visez, infligeant {0} % des dégâts de l'attaque (une onde de plus par projectile supplémentaire)",
   "overhaul_grimoire_installed": "Sorts installés",
   "overhaul_grimoire_rank_hint": "Les sorts gagnent un rang avec le niveau de classe",
   "overhaul_grimoire_rank1": "Rang I",
