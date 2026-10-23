@@ -54,7 +54,7 @@ namespace Overhaul.Leveling
             if(!InvalidSave && Ready)
             {
                 Player.m_customData[SaveKey]=JsonConvert.SerializeObject(Data);
-                if(Player.m_nview && Player.m_nview.IsValid() && Player.m_nview.IsOwner())Player.m_nview.GetZDO().Set("overhaul_loot_chance",(float)Math.Min(1,Bonus("bonus_loot")));
+                if(Player.m_nview && Player.m_nview.IsValid() && Player.m_nview.IsOwner()){ var zdo=Player.m_nview.GetZDO(); zdo.Set("overhaul_loot_chance",(float)Math.Min(1,Bonus("bonus_loot"))); zdo.Set("overhaul_artisan",HasPassive("artisan")); }
             }
         }
 

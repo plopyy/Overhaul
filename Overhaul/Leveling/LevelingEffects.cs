@@ -136,6 +136,13 @@ namespace Overhaul.Leveling
         private static void Prefix(Player __instance,Piece piece,out CraftingStation __state){__state=null;if(piece && LevelingEffects.Passive(__instance,"artisan")){__state=piece.m_craftingStation;piece.m_craftingStation=null;}}
         private static void Finalizer(Piece piece,CraftingStation __state){if(piece && __state)piece.m_craftingStation=__state;}
     }
+    // Artisan also removes and repairs pieces without their station (the game checks it in CheckCanRemovePiece for both).
+    [HarmonyPatch(typeof(Player),"CheckCanRemovePiece")]
+    internal static class LevelingRemovePatch
+    {
+        private static void Prefix(Player __instance,Piece piece,out CraftingStation __state){__state=null;if(piece && LevelingEffects.Passive(__instance,"artisan")){__state=piece.m_craftingStation;piece.m_craftingStation=null;}}
+        private static void Finalizer(Piece piece,CraftingStation __state){if(piece && __state)piece.m_craftingStation=__state;}
+    }
     [HarmonyPatch(typeof(CharacterDrop),nameof(CharacterDrop.GenerateDropList))]
     internal static class LevelingLootPatch
     {

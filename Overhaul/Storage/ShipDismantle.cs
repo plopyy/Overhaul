@@ -41,7 +41,7 @@ namespace Overhaul.Storage
         {
             if (!ship.m_nview.IsOwner() || string.IsNullOrEmpty(key) || key.Length > 64) return;
             var actor = ChestAccess.Actor(sender,actorId);
-            if (actor == null || !HasWorkbench(actor.GetPosition()) || !Access(ship,actor.GetLong(ZDOVars.s_playerID,0)) || !Near(ship,actor.GetPosition(),8)) return;
+            if (actor == null || !HasWorkbench(actor.GetPosition()) && !actor.GetBool("overhaul_artisan") || !Access(ship,actor.GetLong(ZDOVars.s_playerID,0)) || !Near(ship,actor.GetPosition(),8)) return;
             var z = ship.m_nview.GetZDO();
             if (z.GetLong(UntilKey,0) > DateTime.UtcNow.Ticks && z.GetString(TokenKey,"") != key) return;
             foreach (var c in ship.GetComponentsInChildren<Container>()) { c.Load(); c.Save(); }
@@ -57,7 +57,7 @@ namespace Overhaul.Storage
                 Vector3.Distance(hit.point,p.m_eye.position) >= p.m_maxPlaceDistance) return true;
             var ship = hit.collider.GetComponentInParent<Ship>();
             if (!ship) return true;
-            if (!HasWorkbench(p.transform.position))
+            if (!HasWorkbench(p.transform.position) && !Leveling.LevelingEffects.Passive(p, "artisan"))
             { p.Message(MessageHud.MessageType.Center,"$msg_missingstation"); return false; }
             if (pending || !Access(ship,p.GetPlayerID())) return false;
             pending = ship; player = p; token = Guid.NewGuid().ToString("N"); started = Time.realtimeSinceStartup;
@@ -108,7 +108,7 @@ namespace Overhaul.Storage
             var view = pending.m_nview; var z = view.GetZDO();
             if (!view.IsOwner() || z.GetString(TokenKey,"") != token) return;
             var ship = pending; pending = null;
-            if (!HasWorkbench(player.transform.position) || !Access(ship,player.GetPlayerID())) return;
+            if (!HasWorkbench(player.transform.position) && !Leveling.LevelingEffects.Passive(player, "artisan") || !Access(ship,player.GetPlayerID())) return;
             var items = Resources(ship.GetComponent<Piece>());
             var cargo = ship.GetComponentsInChildren<Container>();
             foreach (var c in cargo) { c.Load(); items.AddRange(c.GetInventory().GetAllItems().Select(i=>i.Clone())); }
