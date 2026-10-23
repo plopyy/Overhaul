@@ -25,6 +25,7 @@ namespace Overhaul.Building
         private static AssetBundle bundle;
         private static GameObject prefab, gizmo;
         private static GameObject ghost;
+        private static bool logged;
         private static Renderer[] renderers;
         private static MaterialPropertyBlock block;
         private static readonly int Dim = Shader.PropertyToID("_Dim");
@@ -112,6 +113,7 @@ namespace Overhaul.Building
             if (current != ghost) { ghost = current; gizmo.transform.localScale = Vector3.one * Size(current); }
             gizmo.transform.SetPositionAndRotation(current.transform.position, current.transform.rotation);
             gizmo.SetActive(true);
+            if (!logged) { logged = true; var r0 = renderers[0]; Log.LogInfo("Build gizmo diag: pos " + gizmo.transform.position + " scale " + gizmo.transform.localScale.x + " layer " + gizmo.layer + " renderers " + renderers.Length + " shader " + r0.sharedMaterial?.shader?.name + " supported " + r0.sharedMaterial?.shader?.isSupported + " visible " + r0.isVisible + " enabled " + r0.enabled + " camMask " + (Camera.main ? Camera.main.cullingMask : -1) + " cam " + (Camera.main ? Camera.main.name : "none")); }
             var turn = Axis();
             char axis = turn == Vector3.right ? 'X' : turn == Vector3.forward ? 'Z' : 'Y';
             foreach (var r in renderers)
