@@ -51,6 +51,8 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> CrouchedBowAiming { get; set; }
         public static ConfigEntry<bool> StackSize100 { get; private set; }
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
+        public static ConfigEntry<UnityEngine.KeyCode> BuildPitchKey { get; private set; }
+        public static ConfigEntry<UnityEngine.KeyCode> BuildRollKey { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -59,6 +61,12 @@ namespace Overhaul.Utility
             RightShoulderOffset = config.Bind("Camera", "RightShoulderOffset", 0.45f,
                 new ConfigDescription("Local camera offset to the right in metres. Keeps the crosshair centered and aligns projectile aim with it. 0 restores vanilla camera and aim. Reduced near walls and at very close zoom.",
                     new AcceptableValueRange<float>(0f, 1.5f), new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            BuildPitchKey = config.Bind("Building", "PitchKey", UnityEngine.KeyCode.LeftAlt,
+                new ConfigDescription("Held while scrolling, tilts the building ghost forward or back (red X axis of the gizmo), 22.5 degrees per notch.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            BuildRollKey = config.Bind("Building", "RollKey", UnityEngine.KeyCode.LeftControl,
+                new ConfigDescription("Held while scrolling, rolls the building ghost left or right (blue Z axis of the gizmo), 22.5 degrees per notch.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
