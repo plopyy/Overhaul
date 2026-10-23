@@ -43,6 +43,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- **Homing**: a spear going through an enemy no longer vanishes (the game destroyed it or stuck it in the creature on that hit); it flies on and comes back as intended. (2.3.0.218)
 - A spear thrown again while the previous one still lay where it stopped vanished on hit and was lost (taken for an extra projectile of the earlier throw). (2.3.0.197)
 - Thrown weapons with extra projectiles (enchantment lines, leveling bonus): every extra spear carried the same weapon, so each dropped a copy of it where it landed (duplication), and with Homing they all came back, the same weapon put back in the inventory several times. Only the first spear of a throw now carries the weapon; the extra ones deal their hit and vanish on the spot: nothing to pick up, nothing comes back. (2.3.0.183, 185)
 - Homing (spear): catching the returning spear could leave the character stuck sliding until a reconnection, as it was equipped back in the middle of the throw; it now comes back once the throw is over, and only goes back in hand if no other weapon was taken up meanwhile. (2.3.0.182)

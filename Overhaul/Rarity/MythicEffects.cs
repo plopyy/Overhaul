@@ -937,7 +937,7 @@ namespace Overhaul.Rarity
 
         private const float HomingSpeed = 25f;
         private sealed class Pierce { internal int Left; internal readonly HashSet<Character> Through = new HashSet<Character>(); }
-        private sealed class PierceHit { internal bool Through; internal ItemDrop.ItemData Kept, Returning; }
+        private sealed class PierceHit { internal bool Through, AttachBone, AttachBody, StayDynamic; internal ItemDrop.ItemData Kept, Returning; }
         private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce> Piercing = new System.Runtime.CompilerServices.ConditionalWeakTable<Projectile, Pierce>();
 
         // The thrown weapon each live projectile of the player carries: extra projectiles of a throw (projectile bonuses) carry
@@ -993,6 +993,10 @@ namespace Overhaul.Rarity
                     pierce.Left--; pierce.Through.Add(c);
                     __state.Through = true; __state.Kept = __instance.m_spawnItem;
                     __instance.m_onlyStopOnTerrain = true; __instance.m_spawnItem = null;
+                    // The game ends a hit on a body (rigidbody) by sticking the projectile in it or destroying it, which
+                    // lost the spear: neither while going through.
+                    __state.AttachBone = __instance.m_attachToClosestBone; __state.AttachBody = __instance.m_attachToRigidBody; __state.StayDynamic = __instance.m_stayAfterHitDynamic;
+                    __instance.m_attachToClosestBone = __instance.m_attachToRigidBody = false; __instance.m_stayAfterHitDynamic = true;
                     return true;
                 }
                 // Where it stops: no weapon falls, it comes back (an extra projectile carries none and just vanishes).
@@ -1003,7 +1007,12 @@ namespace Overhaul.Rarity
             private static void Postfix(Projectile __instance, Vector3 hitPoint, PierceHit __state)
             {
                 if (__state == null) return;
-                if (__state.Through) { __instance.m_onlyStopOnTerrain = false; __instance.m_spawnItem = __state.Kept; return; }
+                if (__state.Through)
+                {
+                    __instance.m_onlyStopOnTerrain = false; __instance.m_spawnItem = __state.Kept;
+                    __instance.m_attachToClosestBone = __state.AttachBone; __instance.m_attachToRigidBody = __state.AttachBody; __instance.m_stayAfterHitDynamic = __state.StayDynamic;
+                    return;
+                }
                 if (__state.Returning == null) return;
                 Piercing.Remove(__instance);
                 if (__instance.m_owner is Player player && player) player.StartCoroutine(Return(player, __state.Returning, hitPoint == Vector3.zero ? __instance.transform.position : hitPoint));
