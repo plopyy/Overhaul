@@ -152,7 +152,16 @@ namespace Overhaul
         {
             if (!hints.m_buildHints || !hints.m_buildHints.activeInHierarchy || ZInput.IsGamepadActive() || Localization.instance == null) return;
             string copy = Clean(Localization.instance.Localize("$hud_copypiece")), rotate = Clean(Localization.instance.Localize("$hud_rotate")),
-                snapping = Clean(Localization.instance.Localize("$hud_altplace")), cycle = Clean(Localization.instance.Localize("$hud_cyclesnap"));
+                snapping = Clean(Localization.instance.Localize("$hud_altplace")), cycle = Clean(Localization.instance.Localize("$hud_cyclesnap")),
+                favourite = Clean(Localization.instance.Localize("$hud_addfavorite")), remove = Clean(Localization.instance.Localize("$hud_remove"));
+            // Hoe and cultivator: no turning, copying, snapping or removing, only their own rows.
+            var piece = Player.m_localPlayer ? Player.m_localPlayer.GetSelectedPiece() : null;
+            if (piece && (piece.m_groundPiece || piece.m_groundOnly || piece.m_cultivatedGroundOnly))
+            {
+                rows.RemoveAll(r => r.Label == copy || r.Label == rotate || r.Label == snapping || r.Label == cycle || r.Label == remove);
+                foreach (var row in rows.Where(r => r.Label == favourite)) MiddleClick(row);
+                return;
+            }
             for (int i = 0; i < rows.Count; i++)
             {
                 if (rows[i].Label == cycle) rows[i].Label = Clean(Localization.instance.Localize("$overhaul_build_cyclesnap"));
@@ -163,11 +172,7 @@ namespace Overhaul
                     rows[i].Keys.Clear();
                     rows[i].Keys.Add(new Token { Text = KeyName(Utility.OverhaulConfig.BuildSnapToggleKey.Value), Key = true });
                 }
-                if (rows[i].Label == copy)
-                {
-                    rows[i].Keys.Clear();
-                    rows[i].Keys.Add(mouseSprites[2] ? new Token { Sprite = mouseSprites[2] } : new Token { Text = ZInput.KeyCodeToDisplayName(KeyCode.Mouse2), Key = true });
-                }
+                if (rows[i].Label == copy || rows[i].Label == favourite) MiddleClick(rows[i]);
             }
             // The game's turn row becomes three, one per axis down the left column, each with its precise turn beside it.
             int at = rows.FindIndex(r => r.Label == rotate);
@@ -183,6 +188,13 @@ namespace Overhaul
                 rows.Add(Turn("$overhaul_build_fine_" + axis.Item1, wheel, precise, axis.Item2));
             }
             rows.Add(Turn("$overhaul_build_reset", null, Utility.OverhaulConfig.BuildResetKey.Value));
+        }
+
+        // Copy and favourite are on the middle mouse button: Auga's icon for it.
+        private void MiddleClick(Row row)
+        {
+            row.Keys.Clear();
+            row.Keys.Add(mouseSprites[2] ? new Token { Sprite = mouseSprites[2] } : new Token { Text = ZInput.KeyCodeToDisplayName(KeyCode.Mouse2), Key = true });
         }
 
         private static Row Turn(string label, Token wheel, params KeyCode[] keys)
