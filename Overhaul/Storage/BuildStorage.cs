@@ -23,6 +23,8 @@ namespace Overhaul.Storage
             internal float Started = Time.realtimeSinceStartup, LastRequest = -100;
             internal int Index;
             internal bool Ready;
+            // A batch (Building.QuickBuild row): placed by this once the chests are leased, not by replaying the game's input.
+            internal Action Run;
         }
         internal static bool Enabled(Player p) => p && p == Player.m_localPlayer && p.InPlaceMode() &&
             p.GetBuildTool() && p.GetBuildTool().m_skill == Skills.SkillType.Crafting;
@@ -60,9 +62,9 @@ namespace Overhaul.Storage
         }
         private static bool Valid(Pending p) => Enabled(p.Player) && !p.Player.IsDead() &&
             p.Player.GetSelectedPiece() == p.Piece && p.Player.GetRightItem() == p.Tool && p.Player.m_placementGhost &&
-            Vector3.Distance(p.Player.transform.position, p.Origin) < .5f &&
+            Vector3.Distance(p.Player.transform.position, p.Origin) < .5f && (p.Run != null ||
             Vector3.Distance(p.Player.m_placementGhost.transform.position, p.Position) < .1f &&
-            Quaternion.Angle(p.Player.m_placementGhost.transform.rotation, p.Rotation) < 1f &&
+            Quaternion.Angle(p.Player.m_placementGhost.transform.rotation, p.Rotation) < 1f) &&
             Time.realtimeSinceStartup - p.Started < 8f;
         private static bool Allowed(Container c, Pending p) => ChestAccess.Eligible(c) && c.gameObject.activeInHierarchy &&
             Vector3.Distance(c.transform.position, p.Player.transform.position) <= ChestAccess.ResourceRange &&
@@ -83,10 +85,33 @@ namespace Overhaul.Storage
                 else c.m_nview.InvokeRPC(ChestAccess.LeaseRpc, p.Player.GetZDOID(), ZDOID.None, p.Token);
             }
         }
+        // A whole row of pieces paid from the inventory and the nearby chests: the chests holding any of the piece's
+        // resources are leased as for one piece, then run places and pays the row in one transaction (RunBatch).
+        internal static bool BeginBatch(Player player, Piece piece, Action run)
+        {
+            if (!Enabled(player) || Busy || StationStorage.Busy) return false;
+            var names = new HashSet<string>(piece.m_resources.Where(r => r.m_resItem).Select(r => r.m_resItem.m_itemData.m_shared.m_name));
+            var chests = Nearby(player).Where(c => { c.Load(); return c.GetInventory().GetAllItems().Any(i => names.Contains(i.m_shared.m_name)); }).ToList();
+            if (chests.Count == 0) return false;
+            pending = new Pending { Player = player, Piece = piece, Tool = player.GetRightItem(), Origin = player.transform.position, Chests = chests, Run = run };
+            return true;
+        }
+        internal static bool RunBatch(Player player)
+        {
+            var p = pending;
+            if (p == null || p.Run == null || !p.Ready || player != p.Player) return false;
+            if (!Valid(p) || StationStorage.Busy || p.Chests.Any(c => !Allowed(c, p) || !c.m_nview.IsOwner() || !ChestAccess.OwnLease(c, p.Token)))
+            { Cancel(); return false; }
+            StationStorage.Transaction = p.Chests;
+            StationStorage.Executing = true;
+            try { p.Run(); }
+            finally { Finish(); }
+            return true;
+        }
         internal static bool Resume(Player player)
         {
             var p = pending;
-            if (p == null || !p.Ready || player != p.Player) return false;
+            if (p == null || p.Run != null || !p.Ready || player != p.Player) return false;
             if (Time.time - player.m_lastToolUseTime <= player.m_placeDelay) return false;
             if (!Valid(p) || StationStorage.Busy || p.Chests.Any(c => !Allowed(c, p) || !c.m_nview.IsOwner() || !ChestAccess.OwnLease(c, p.Token)))
             { Cancel(); return false; }

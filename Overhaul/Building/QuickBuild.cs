@@ -55,9 +55,12 @@ namespace Overhaul.Building
             private static void Prefix(Player __instance, bool takeInput)
             {
                 if (__instance != Player.m_localPlayer) return;
-                if (!__instance.InPlaceMode() || Storage.RelocationClient.Active || !__instance.m_placementGhost) { Stop(); return; }
+                if (!__instance.InPlaceMode()) { Stop(); Handles(__instance, null); BuildRotation.Hide(); return; }
+                if (Storage.RelocationClient.Active || !__instance.m_placementGhost) { Stop(); return; }
                 if (!holding)
                 {
+                    // A row waiting for its chests is placed once they are leased.
+                    if (Storage.BuildStorage.RunBatch(__instance)) return;
                     if (!takeInput || Hud.InRadial() || Hud.IsPieceSelectionVisible() || !ZInput.GetButtonDown("Attack")) return;
                     var piece = __instance.GetSelectedPiece();
                     if (piece == null || piece.m_repairPiece || piece.m_removePiece || __instance.m_placementStatus != Player.PlacementStatus.Valid) return;
@@ -81,7 +84,9 @@ namespace Overhaul.Building
             [HarmonyPriority(Priority.Low)]
             private static void Postfix(Player __instance)
             {
-                if (!holding || __instance != Player.m_localPlayer || !__instance.m_placementGhost) return;
+                if (__instance != Player.m_localPlayer) return;
+                Handles(__instance, __instance.m_placementGhost);
+                if (!holding || !__instance.m_placementGhost) return;
                 Measure(__instance);
                 var ghost = __instance.m_placementGhost;
                 ghost.SetActive(true);
@@ -97,7 +102,7 @@ namespace Overhaul.Building
             private static void Postfix(Player __instance)
             {
                 if (!holding || __instance != Player.m_localPlayer || !__instance.m_placementGhost) return;
-                __instance.m_placementGhost.GetComponent<Piece>()?.SetInvalidPlacementHeightlight(!valid);
+                Highlight(__instance.m_placementGhost, valid);
             }
         }
 
@@ -107,33 +112,91 @@ namespace Overhaul.Building
             if (kind == Kind.None) return false;
             var ghost = player.m_placementGhost;
             anchor = ghost.transform.position; turn = ghost.transform.rotation;
-            // The piece's size along its own axes, from its snap points (its collider when it has none).
-            snapPoints.Clear(); ghost.GetComponent<Piece>().GetSnapPoints(snapPoints);
-            Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
-            foreach (var point in snapPoints) { var p = ghost.transform.InverseTransformPoint(point.position); min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
-            Vector3 size = snapPoints.Count > 1 ? max - min : Vector3.zero;
-            if (size.x < .1f && size.y < .1f && size.z < .1f)
-                foreach (var collider in ghost.GetComponentsInChildren<Collider>())
-                {
-                    var box = collider.bounds; var extent = Quaternion.Inverse(turn) * box.size;
-                    size = Vector3.Max(size, new Vector3(Mathf.Abs(extent.x), Mathf.Abs(extent.y), Mathf.Abs(extent.z)));
-                }
-            switch (kind)
-            {
-                case Kind.Wall: axisA = Vector3.right; sizeA = size.x; axisB = Vector3.up; sizeB = size.y; break;
-                case Kind.Roof: axisA = Vector3.right; sizeA = size.x; axisB = Vector3.zero; sizeB = 0; break;
-                default:
-                    // Along its length, whichever axis that is (upright pole, lying beam).
-                    if (size.y >= size.x && size.y >= size.z) { axisA = Vector3.up; sizeA = size.y; }
-                    else if (size.x >= size.z) { axisA = Vector3.right; sizeA = size.x; }
-                    else { axisA = Vector3.forward; sizeA = size.z; }
-                    axisB = Vector3.zero; sizeB = 0; break;
-            }
-            if (sizeA < .1f) return false;
-            if (sizeB < .1f) axisB = Vector3.zero;
+            if (!Axes(kind, ghost, out axisA, out sizeA, out axisB, out sizeB, out _, out _)) return false;
             fromA = toA = fromB = toB = 0; valid = true;
             return true;
         }
+
+        // The piece's box in its own axes, from its snap points (its colliders when it has none).
+        private static void Extents(GameObject ghost, out Vector3 min, out Vector3 max)
+        {
+            snapPoints.Clear(); ghost.GetComponent<Piece>().GetSnapPoints(snapPoints);
+            min = Vector3.positiveInfinity; max = Vector3.negativeInfinity;
+            foreach (var point in snapPoints) { var p = ghost.transform.InverseTransformPoint(point.position); min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
+            if (snapPoints.Count > 1 && Vector3.Distance(min, max) > .1f) return;
+            min = Vector3.positiveInfinity; max = Vector3.negativeInfinity;
+            foreach (var collider in ghost.GetComponentsInChildren<Collider>())
+            {
+                var b = collider.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = ghost.transform.InverseTransformPoint(new Vector3(i % 2 == 0 ? b.min.x : b.max.x, i / 2 % 2 == 0 ? b.min.y : b.max.y, i / 4 == 0 ? b.min.z : b.max.z));
+                    min = Vector3.Min(min, corner); max = Vector3.Max(max, corner);
+                }
+            }
+            if (min.x > max.x) min = max = Vector3.zero;
+        }
+
+        // The axes a row of this kind stretches along, with the piece's size on each (B unused: zero).
+        private static bool Axes(Kind kind, GameObject ghost, out Vector3 a, out float sizeA, out Vector3 b, out float sizeB, out Vector3 min, out Vector3 max)
+        {
+            Extents(ghost, out min, out max);
+            var size = max - min;
+            b = Vector3.zero; sizeB = 0;
+            switch (kind)
+            {
+                case Kind.Wall: a = Vector3.right; sizeA = size.x; b = Vector3.up; sizeB = size.y; break;
+                case Kind.Roof: a = Vector3.right; sizeA = size.x; break;
+                default:
+                    // Along its length, whichever axis that is (upright pole, lying beam).
+                    if (size.y >= size.x && size.y >= size.z) { a = Vector3.up; sizeA = size.y; }
+                    else if (size.x >= size.z) { a = Vector3.right; sizeA = size.x; }
+                    else { a = Vector3.forward; sizeA = size.z; }
+                    break;
+            }
+            if (sizeB < .1f) { b = Vector3.zero; sizeB = 0; }
+            return sizeA >= .1f;
+        }
+
+        // A small green bar beyond each side the selected piece can be stretched to, shown until a row is started.
+        private static readonly List<GameObject> handles = new List<GameObject>();
+        private static GameObject handle;
+
+        private static void Handles(Player player, GameObject ghost)
+        {
+            var piece = ghost && !holding && ghost.activeInHierarchy && !Storage.RelocationClient.Active ? player.GetSelectedPiece() : null;
+            var shown = new List<(Vector3 at, Vector3 scale)>();
+            var pieceKind = KindOf(piece);
+            if (pieceKind != Kind.None && Axes(pieceKind, ghost, out var a, out float sa, out var b, out float sb, out var min, out var max))
+            {
+                Vector3 centre = (min + max) / 2, half = (max - min) / 2;
+                foreach (var axis in b == Vector3.zero ? new[] { a } : new[] { a, b })
+                {
+                    // Across the side: along the piece's other long axis, a third of its size.
+                    var across = axis == a && b != Vector3.zero ? b : axis == a ? Longest(Vector3.Scale(Vector3.one - Abs(a), max - min)) : a;
+                    float length = Mathf.Max(.2f, Vector3.Dot(Abs(across), max - min) / 3);
+                    var scale = Vector3.one * .06f + Abs(across) * (length - .06f);
+                    foreach (int sign in new[] { -1, 1 })
+                        shown.Add((centre + axis * sign * (Vector3.Dot(Abs(axis), half) + .15f), scale));
+                }
+            }
+            if (shown.Count > 0 && !handle) handle = BuildRotation.Asset("Overhaul_QuickBuildHandle");
+            while (handle && handles.Count < shown.Count) { var h = Object.Instantiate(handle); Object.DontDestroyOnLoad(h); handles.Add(h); }
+            for (int i = 0; i < handles.Count; i++)
+            {
+                bool used = i < shown.Count;
+                if (handles[i].activeSelf != used) handles[i].SetActive(used);
+                if (!used) continue;
+                var t = handles[i].transform;
+                t.SetPositionAndRotation(ghost.transform.TransformPoint(shown[i].at), ghost.transform.rotation);
+                t.localScale = shown[i].scale;
+            }
+        }
+
+        private static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
+
+        // The unit axis of the vector's largest component.
+        private static Vector3 Longest(Vector3 v) => v.x >= v.y && v.x >= v.z ? Vector3.right : v.y >= v.z ? Vector3.up : Vector3.forward;
 
         // The aim, as a camera ray, read in the row's own axes: on the wall's plane, or nearest to the row's line.
         private static void Measure(Player player)
@@ -178,18 +241,27 @@ namespace Overhaul.Building
         private static bool Allowed(Vector3 point) => !Location.IsInsideNoBuildLocation(point) && PrivateArea.CheckAccess(point, 0, false, false);
 
         // Resources of the whole row in the inventory (none needed in no-cost mode or with the world's free build key).
-        private static bool Affordable(Player player)
+        // Counted in the inventory, and with the nearby build chests too unless only the inventory is asked for.
+        private static bool Affordable(Player player, bool chests = true)
         {
             var piece = player.GetSelectedPiece();
             if (piece == null) return false;
             if (player.m_noPlacementCost || ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey())) return true;
             var inventory = player.GetInventory();
-            foreach (var requirement in piece.m_resources)
+            if (chests) Storage.BuildStorage.Reading++;
+            try
             {
-                if (!requirement.m_resItem) continue;
-                int need = requirement.GetAmount(1) * Count;
-                if (need > 0 && inventory.CountItems(requirement.m_resItem.m_itemData.m_shared.m_name) < need) return false;
+                foreach (var requirement in piece.m_resources)
+                {
+                    if (!requirement.m_resItem) continue;
+                    int need = requirement.GetAmount(1) * Count;
+                    string name = requirement.m_resItem.m_itemData.m_shared.m_name;
+                    // While building chests are read, the inventory count includes them (StationStorage).
+                    int have = inventory.CountItems(name);
+                    if (need > 0 && have < need) return false;
+                }
             }
+            finally { if (chests) Storage.BuildStorage.Reading--; }
             return true;
         }
 
@@ -208,7 +280,7 @@ namespace Overhaul.Building
                 copies[i].SetActive(used);
                 if (!used) continue;
                 copies[i].transform.SetPositionAndRotation(cells[i], turn);
-                copies[i].GetComponent<Piece>()?.SetInvalidPlacementHeightlight(!valid);
+                Highlight(copies[i], valid);
             }
         }
 
@@ -221,9 +293,19 @@ namespace Overhaul.Building
                 player.Message(MessageHud.MessageType.Center, Affordable(player) ? "$msg_invalidplacement" : "$msg_missingrequirement");
                 return;
             }
+            var cells = Cells().ToList();
+            var rotation = turn;
+            // What the inventory lacks comes from the nearby build chests, once they are leased.
+            if (Affordable(player, false)) Place(player, piece, cells, rotation);
+            else if (!Storage.BuildStorage.BeginBatch(player, piece, () => Place(player, piece, cells, rotation)))
+                player.Message(MessageHud.MessageType.Center, "$msg_missingrequirement");
+        }
+
+        private static void Place(Player player, Piece piece, List<Vector3> cells, Quaternion turn)
+        {
             bool free = player.m_noPlacementCost || ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey());
             bool first = true;
-            foreach (var cell in Cells().ToList())
+            foreach (var cell in cells)
             {
                 bool cheated = (player.m_inventory.ItemCheated(piece.m_resources, -1, true) || player.NoCostCheat()) && !PlayerProfile.s_bypassCheatChecks;
                 Game.instance.IncrementPlayerStat(PlayerStatType.Builds, 1f, cheated);
@@ -234,6 +316,14 @@ namespace Overhaul.Building
             }
             Hud.instance.m_buildUi.AddRecentPiece(piece);
             player.m_lastToolUseTime = Time.time;
+        }
+
+        // Every ghost of the row green (not built yet), red when the row cannot be built.
+        private static void Highlight(GameObject ghost, bool ok)
+        {
+            var colour = ok ? new Color(.3f, 1f, .35f) : Color.red;
+            MaterialMan.instance.SetValue<Color>(ghost, ShaderProps._Color, colour, false);
+            MaterialMan.instance.SetValue<Color>(ghost, ShaderProps._EmissionColor, colour * .7f, false);
         }
 
         private static void Stop()
