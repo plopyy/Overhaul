@@ -150,6 +150,9 @@ namespace Overhaul.Building
             }
         }
 
+        // Out of building mode the game no longer updates the ghost: the gizmo goes with it.
+        internal static void Hide() { if (gizmo && gizmo.activeSelf) gizmo.SetActive(false); }
+
         private static void Follow(GameObject current)
         {
             bool shown = current && current.activeInHierarchy && Tiltable(current.GetComponent<Piece>());
@@ -168,12 +171,18 @@ namespace Overhaul.Building
             }
         }
 
+        // A prefab of overhaul_buildgizmo (the gizmo, the quick build handle).
+        internal static GameObject Asset(string name)
+        {
+            if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_buildgizmo");
+            return bundle ? bundle.LoadAsset<GameObject>(name) : null;
+        }
+
         private static bool Create()
         {
             if (!prefab)
             {
-                if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_buildgizmo");
-                prefab = bundle ? bundle.LoadAsset<GameObject>("Overhaul_BuildGizmo") : null;
+                prefab = Asset("Overhaul_BuildGizmo");
                 if (!prefab) { Log.LogError("Build rotation: Overhaul_BuildGizmo missing"); return false; }
             }
             gizmo = Object.Instantiate(prefab);
