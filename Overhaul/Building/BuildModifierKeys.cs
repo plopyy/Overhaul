@@ -1,49 +1,67 @@
 using System.Collections.Generic;
 using HarmonyLib;
+using UnityEngine.InputSystem;
 
 namespace Overhaul.Building
 {
     // In building mode Ctrl, Alt and Shift belong to building (turning the ghost about X/Z, placing without snapping):
-    // any other game action bound to one of them on the keyboard (crouch, run/dash, auto pickup toggle…) does nothing
-    // while the hammer, hoe or cultivator is out. Gamepad bindings are left alone.
+    // every game action bound to one of them on the keyboard (crouch, run/dash, auto pickup toggle…) is switched off at
+    // its source, its input action, while the hammer, hoe or cultivator is out, so no key press reaches it whoever
+    // reads it; they are switched back on when leaving building mode. The game's own building action (AltPlace) stays.
+    // Gamepad-only actions are left alone.
     internal static class BuildModifierKeys
     {
-        // The building actions themselves.
         private static readonly HashSet<string> Building = new HashSet<string> { "AltPlace" };
         private static readonly string[] Modifiers = { "/leftCtrl", "/rightCtrl", "/ctrl", "/leftAlt", "/rightAlt", "/alt", "/leftShift", "/rightShift", "/shift" };
-        private static readonly Dictionary<string, bool> onModifier = new Dictionary<string, bool>();
-        private static int frame = -1;
+        private static readonly List<ZInput.ButtonDef> off = new List<ZInput.ButtonDef>();
 
-        private static bool Blocked(string name)
+        private static bool OnModifier(InputAction action)
         {
-            var player = Player.m_localPlayer;
-            if (!player || !player.InPlaceMode() || name == null || Building.Contains(name)) return false;
-            // Bindings can change in the settings: looked up again each frame.
-            if (frame != UnityEngine.Time.frameCount) { frame = UnityEngine.Time.frameCount; onModifier.Clear(); }
-            if (onModifier.TryGetValue(name, out bool blocked)) return blocked;
-            blocked = false;
-            var def = ZInput.instance?.GetButtonDef(name);
-            string path = def?.ButtonAction?.bindings.Count > 0 ? def.ButtonAction.bindings[0].effectivePath : null;
-            if (path != null && path.StartsWith("<Keyboard>"))
-                foreach (var key in Modifiers) if (path.EndsWith(key, System.StringComparison.OrdinalIgnoreCase)) { blocked = true; break; }
-            onModifier[name] = blocked;
-            return blocked;
+            if (action == null) return false;
+            foreach (var binding in action.bindings)
+            {
+                string path = binding.effectivePath;
+                if (path == null || !path.StartsWith("<Keyboard>")) continue;
+                foreach (var key in Modifiers) if (path.EndsWith(key, System.StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
         }
 
-        // Blocked: the action reads as not pressed and the game's check is skipped.
-        private static bool Skip(string name, ref bool result)
+        private static void Switch(bool building)
         {
-            if (!Blocked(name)) return true;
-            result = false; return false;
+            if (building == off.Count > 0 || ZInput.instance == null) return;
+            if (!building)
+            {
+                foreach (var def in off) def?.ButtonAction?.Enable();
+                off.Clear();
+                return;
+            }
+            foreach (var pair in ZInput.instance.m_buttons)
+            {
+                var def = pair.Value;
+                if (Building.Contains(pair.Key) || def?.ButtonAction == null || !def.ButtonAction.enabled || !OnModifier(def.ButtonAction)) continue;
+                def.ButtonAction.Disable(); def.ResetState();
+                off.Add(def);
+            }
+            // Nothing on a modifier: an empty marker keeps the state "building" until leaving.
+            if (off.Count == 0) off.Add(null);
         }
 
-        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButton))]
-        private static class Held { private static bool Prefix(string name, ref bool __result) => Skip(name, ref __result); }
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class Mode
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (__instance != Player.m_localPlayer) return;
+                Switch(__instance.InPlaceMode());
+            }
+        }
 
-        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButtonDown))]
-        private static class Down { private static bool Prefix(string name, ref bool __result) => Skip(name, ref __result); }
-
-        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetButtonUp))]
-        private static class Up { private static bool Prefix(string name, ref bool __result) => Skip(name, ref __result); }
+        // Leaving the world while building.
+        [HarmonyPatch(typeof(Player), "OnDestroy")]
+        private static class Gone
+        {
+            private static void Prefix(Player __instance) { if (__instance == Player.m_localPlayer) Switch(false); }
+        }
     }
 }

@@ -58,7 +58,7 @@ namespace Overhaul.Storage
         {
             if(!Finite(point)||!Finite(new Vector3(rotation.x,rotation.y,rotation.z))||float.IsNaN(rotation.w)||float.IsInfinity(rotation.w))return false;
             float magnitude=rotation.x*rotation.x+rotation.y*rotation.y+rotation.z*rotation.z+rotation.w*rotation.w;
-            if(Mathf.Abs(magnitude-1f)>.02f||Vector3.Dot(rotation*Vector3.up,Vector3.up)<.99f)return false;
+            if(Mathf.Abs(magnitude-1f)>.02f)return false;
             if(!Ward(point,player)||Location.IsInsideNoBuildLocation(point))return false;
             if(p.m_onlyInBiome!=Heightmap.Biome.None&&(Heightmap.FindBiome(point)&p.m_onlyInBiome)==0)return false;
             var extension=p.GetComponent<StationExtension>();

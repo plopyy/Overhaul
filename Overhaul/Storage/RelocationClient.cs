@@ -14,6 +14,7 @@ namespace Overhaul.Storage
         static RelocationGuide guide;
         static Vector3 origin;
         static int revision, request, sequence, startFrame, rotation, originalRotation, originalSnap;
+        static Quaternion buildTurns=Quaternion.identity;
         static float pendingSince;
         static bool pending, inNative;
         static bool acquiring, prepared;
@@ -81,6 +82,9 @@ namespace Overhaul.Storage
             foreach(var entry in p.m_ghostRippleDistance)previousRipple[entry.Key]=entry.Value;
             originalRotation=p.m_placeRotation;originalSnap=p.m_manualSnapPoint;
             rotation=Mathf.RoundToInt(piece.transform.eulerAngles.y/p.m_placeRotationDegrees);
+            // The ghost starts as the piece stands, tilt included (Building.BuildRotation turns it about its own axes).
+            buildTurns=Building.BuildRotation.Local;
+            Building.BuildRotation.Local=Quaternion.Inverse(Quaternion.Euler(0,rotation*p.m_placeRotationDegrees,0))*piece.transform.rotation;
             tableObject=new GameObject("Overhaul relocation table");tableObject.SetActive(false);table=tableObject.AddComponent<PieceTable>();
             table.m_selectedCategory=Piece.PieceCategory.Misc;table.m_selectedPiece=new Vector2Int[9];
             table.m_pieces=new List<GameObject>{prefab};table.m_availablePiecesByCategory.Clear();
@@ -133,7 +137,7 @@ namespace Overhaul.Storage
             foreach(var material in ghostMaterials)RelocationGuide.Release(material);ghostMaterials.Clear();
             if(player&&prepared)
             {
-                player.m_placeRotation=originalRotation;player.m_manualSnapPoint=originalSnap;player.m_placementGhostLast=previousGhostName;
+                player.m_placeRotation=originalRotation;player.m_manualSnapPoint=originalSnap;Building.BuildRotation.Local=buildTurns;player.m_placementGhostLast=previousGhostName;
                 player.m_ghostRippleDistance.Clear();foreach(var entry in previousRipple)player.m_ghostRippleDistance[entry.Key]=entry.Value;
                 if(player.m_placementMarkerInstance)player.m_placementMarkerInstance.SetActive(false);
             }
@@ -171,7 +175,7 @@ namespace Overhaul.Storage
             if(Time.frameCount!=startFrame&&(RelocationShortcut.Down||ZInput.GetKeyDown(KeyCode.Escape)||ZInput.GetButtonDown("Block")))
             {End();return;}
             if(!takeInput)return;
-            float scroll=ZInput.GetMouseScrollWheel();if(Mathf.Abs(scroll)>.001f)rotation+=scroll>0?1:-1;
+            float scroll=Building.BuildRotation.Wheel(ghost.GetComponent<Piece>());if(Mathf.Abs(scroll)>.001f)rotation+=scroll>0?1:-1;
             WithNative(()=>player.UpdatePlacementGhost(false));
             bool valid=ghost.activeSelf&&player.m_placementStatus==Player.PlacementStatus.Valid;
             if(valid)valid=Vector3.Distance(player.transform.position,ghost.transform.position)<=PieceRelocation.Reach&&
