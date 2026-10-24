@@ -254,9 +254,9 @@ namespace Overhaul
         {
             string name = sprite.name.ToLowerInvariant();
             if (!name.Contains("mouse")) return sprite;
-            if (name.Contains("wheel") || name.Contains("scroll")) return wheelSprite ? wheelSprite : sprite;
+            // mousew_icon: the game's wheel (middle click, scroll).
+            if (name.Contains("wheel") || name.Contains("scroll") || name.StartsWith("mousew")) return wheelSprite ? wheelSprite : sprite;
             int index = name.Contains("left") ? 0 : name.Contains("right") ? 1 : name.Contains("middle") ? 2 : -1;
-            if (index < 0) Utility.Log.LogInfo("Key hints: unknown mouse icon " + sprite.name);
             return index >= 0 && mouseSprites[index] ? mouseSprites[index] : sprite;
         }
 

@@ -12,7 +12,8 @@ namespace Auga
 {
 
     [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.SnapTo))]
-    [UiModule(UiModule.MainMenu)]
+    // The compendium's lists (pause menu): snapping to the selected text must not shift the list sideways out of its frame.
+    [UiModule(UiModule.PauseMenu)]
     public static class SnapTo_Patch
     {
         public static void Postfix(TextsDialog __instance, RectTransform listRoot, ScrollRect scrollRect)

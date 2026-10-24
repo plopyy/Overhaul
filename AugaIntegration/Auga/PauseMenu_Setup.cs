@@ -327,29 +327,6 @@ namespace Auga
                 return false;
             }
 
-            // TEMPORARY diagnostic (compendium lists empty or unreadable in game): the known text keys, each tab's filter and
-            // the list elements as laid out.
-            [HarmonyPostfix]
-            [HarmonyPatch(nameof(TextsDialog.Setup))]
-            public static void Setup_Diagnostic(TextsDialog __instance)
-            {
-                var filter = __instance.GetComponent<AugaTextsDialogFilter>();
-                var log = new System.Text.StringBuilder("[Compendium diag] " + __instance.name + " filter=" + (filter ? filter.Filter : "none") + " texts=" + __instance.m_texts.Count + " spacing=" + __instance.m_spacing);
-                foreach (var known in Player.m_localPlayer.GetKnownTexts()) log.Append("\n  key=" + known.Key.Replace("\u0016", "<16>"));
-                if (__instance.m_listRoot)
-                {
-                    var root = __instance.m_listRoot;
-                    log.Append("\n  listRoot rect=" + root.rect + " pos=" + root.anchoredPosition + " active=" + root.gameObject.activeInHierarchy + " layout=" + (root.GetComponent<LayoutGroup>() ? root.GetComponent<LayoutGroup>().GetType().Name : "none"));
-                    foreach (RectTransform child in root)
-                    {
-                        var label = child.GetComponentInChildren<TMPro.TMP_Text>(true);
-                        log.Append("\n  element " + child.name + " rect=" + child.rect + " pos=" + child.anchoredPosition + " scale=" + child.localScale + " active=" + child.gameObject.activeSelf);
-                        if (label) log.Append(" text='" + label.text + "' textRect=" + label.rectTransform.rect + " font=" + (label.font ? label.font.name : "NULL") + " color=" + label.color + " alpha=" + label.alpha + " enabled=" + label.enabled + " size=" + label.fontSize);
-                    }
-                }
-                Debug.Log(log.ToString());
-            }
-
             [HarmonyPostfix]
             [HarmonyPatch(nameof(TextsDialog.ShowText), typeof(TextsDialog.TextInfo))]
             public static void AddLog_Postfix(TextsDialog __instance)
