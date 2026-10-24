@@ -23,7 +23,8 @@ namespace Overhaul.Building
         private static bool holding, valid;
         private static Vector3 anchor, axisA, axisB;
         private static Quaternion turn;
-        private static float sizeA, sizeB;
+        private static float sizeA, sizeB, alongLastA, alongLastB;
+        private static Vector3 pieceMin, pieceMax;
         private static int fromA, toA, fromB, toB;
         private static readonly List<GameObject> copies = new List<GameObject>();
         private static readonly List<Transform> snapPoints = new List<Transform>();
@@ -85,8 +86,7 @@ namespace Overhaul.Building
             private static void Postfix(Player __instance)
             {
                 if (__instance != Player.m_localPlayer) return;
-                Handles(__instance, __instance.m_placementGhost);
-                if (!holding || !__instance.m_placementGhost) return;
+                if (!holding || !__instance.m_placementGhost) { Handles(__instance, __instance.m_placementGhost); return; }
                 Measure(__instance);
                 var ghost = __instance.m_placementGhost;
                 ghost.SetActive(true);
@@ -94,6 +94,9 @@ namespace Overhaul.Building
                 // The game tinted its ghost for the aimed spot (often away from the row): the row's colour instead.
                 Highlight(ghost, valid);
                 Show(__instance, ghost);
+                Handles(__instance, ghost);
+                // The gizmo on the row's last piece, the one at the aim.
+                BuildRotation.ShowAt(anchor + turn * (axisA * sizeA * (toA > 0 ? toA : fromA) + axisB * sizeB * (toB > 0 ? toB : fromB)), turn);
             }
         }
 
@@ -114,7 +117,8 @@ namespace Overhaul.Building
             if (kind == Kind.None) return false;
             var ghost = player.m_placementGhost;
             anchor = ghost.transform.position; turn = ghost.transform.rotation;
-            if (!Axes(kind, ghost, out axisA, out sizeA, out axisB, out sizeB, out _, out _)) return false;
+            if (!Axes(kind, ghost, out axisA, out sizeA, out axisB, out sizeB, out pieceMin, out pieceMax)) return false;
+            alongLastA = alongLastB = 0;
             fromA = toA = fromB = toB = 0; valid = true;
             return true;
         }
@@ -169,7 +173,8 @@ namespace Overhaul.Building
             var piece = ghost && !holding && ghost.activeInHierarchy && !Storage.RelocationClient.Active ? player.GetSelectedPiece() : null;
             var shown = new List<(Vector3 at, Vector3 scale)>();
             var pieceKind = KindOf(piece);
-            if (pieceKind != Kind.None && Axes(pieceKind, ghost, out var a, out float sa, out var b, out float sb, out var min, out var max))
+            if (holding && ghost) RowHandles(shown);
+            else if (pieceKind != Kind.None && Axes(pieceKind, ghost, out var a, out float sa, out var b, out float sb, out var min, out var max))
             {
                 Vector3 centre = (min + max) / 2, half = (max - min) / 2;
                 foreach (var axis in b == Vector3.zero ? new[] { a } : new[] { a, b })
@@ -195,6 +200,32 @@ namespace Overhaul.Building
             }
         }
 
+        // While a row grows: a bar beyond its end on each side it grows or can still grow (a wall not stretched up or down
+        // only shows the bar above it, the ground being below), stretching out as the aim moves towards the next piece.
+        private static void RowHandles(List<(Vector3 at, Vector3 scale)> shown)
+        {
+            var size = pieceMax - pieceMin;
+            var centre = (pieceMin + pieceMax) / 2 + axisA * ((fromA + toA) / 2f * sizeA) + axisB * ((fromB + toB) / 2f * sizeB);
+            foreach (var (axis, step, from, to, along, upOnly) in new[]
+                { (axisA, sizeA, fromA, toA, alongLastA, false), (axisB, sizeB, fromB, toB, alongLastB, kind == Kind.Wall) })
+            {
+                if (axis == Vector3.zero) continue;
+                var across = axis == axisA && axisB != Vector3.zero ? axisB : axis == axisA ? Longest(Vector3.Scale(Vector3.one - Abs(axisA), size)) : axisA;
+                float length = Mathf.Max(.2f, Vector3.Dot(Abs(across), size) / 3);
+                var signs = to > 0 ? new[] { 1 } : from < 0 ? new[] { -1 } : upOnly ? new[] { 1 } : new[] { -1, 1 };
+                foreach (int sign in signs)
+                {
+                    int end = sign > 0 ? to : from;
+                    float edge = sign > 0 ? Vector3.Dot(axis, pieceMax) + to * step : Vector3.Dot(axis, pieceMin) + from * step;
+                    // From 0 at the row's end to 1 halfway to the next piece, where it appears.
+                    float progress = Mathf.Clamp01((along / step - end) * sign * 2);
+                    float depth = .06f + progress * Mathf.Min(.6f, step * .3f);
+                    var at = centre + axis * (edge - Vector3.Dot(axis, centre) + sign * (.15f + depth / 2));
+                    shown.Add((at, Vector3.one * .06f + Abs(across) * (length - .06f) + Abs(axis) * (depth - .06f)));
+                }
+            }
+        }
+
         private static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
 
         // The unit axis of the vector's largest component.
@@ -216,6 +247,7 @@ namespace Overhaul.Building
                 alongA = Vector3.Dot(offset, a); alongB = Vector3.Dot(offset, b);
             }
             else alongA = Along(anchor, a, camera.position, camera.forward);
+            alongLastA = alongA; alongLastB = alongB;
             int na = Mathf.Clamp(Mathf.RoundToInt(alongA / sizeA), -MaxPerAxis, MaxPerAxis);
             int nb = axisB == Vector3.zero ? 0 : Mathf.Clamp(Mathf.RoundToInt(alongB / sizeB), -MaxPerAxis, MaxPerAxis);
             fromA = Mathf.Min(0, na); toA = Mathf.Max(0, na); fromB = Mathf.Min(0, nb); toB = Mathf.Max(0, nb);
