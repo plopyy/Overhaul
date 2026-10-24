@@ -10,7 +10,7 @@ namespace Overhaul.Building
     // Building ghost turned every way, always about its own axes as the gizmo shows them: the wheel alone turns it about
     // its Y axis, held with the pitch key (LeftAlt) about its X axis, with the roll key (LeftControl) about its Z axis,
     // 22.5° per notch like the game. Each notch turns from where the ghost stands, so it follows the bright arrow even
-    // after other turns. A new piece starts flat, keeping only the turn about the vertical (as the game does). The placed
+    // after other turns. Choosing another piece starts it flat, keeping only the turn about the vertical; placing keeps the turns. The placed
     // piece takes the ghost's rotation. Ground pieces (hoe, cultivator) keep the game's turn and get no gizmo.
     //
     // The orientation gizmo (overhaul_buildgizmo, OverhaulLab BuildGizmoBundle) follows the ghost on its pivot, the point
@@ -24,7 +24,7 @@ namespace Overhaul.Building
         private static float scroll;
         private static AssetBundle bundle;
         private static GameObject prefab, gizmo;
-        private static GameObject ghost;
+        private static GameObject ghost, selected;
         private static Renderer[] renderers;
         private static MaterialPropertyBlock block;
         private static readonly int Dim = Shader.PropertyToID("_Dim");
@@ -90,14 +90,17 @@ namespace Overhaul.Building
             }
         }
 
-        // A new piece starts flat, still facing where the last one faced: the vertical part of the own turns goes back
-        // into the game's notches.
+        // Another piece chosen starts flat, still facing where the last one faced: the vertical part of the own turns goes
+        // back into the game's notches. The ghost made again after each placement keeps its turns.
         [HarmonyPatch(typeof(Player), "SetupPlacementGhost")]
         private static class NewPiece
         {
             private static void Postfix(Player __instance)
             {
                 if (__instance != Player.m_localPlayer) return;
+                var chosen = __instance.m_buildPieces ? __instance.m_buildPieces.GetSelectedPrefab() : null;
+                if (chosen == selected) return;
+                selected = chosen;
                 Vector3 forward = local * Vector3.forward; forward.y = 0;
                 if (forward.sqrMagnitude > .01f) __instance.m_placeRotation += Mathf.RoundToInt(Quaternion.LookRotation(forward).eulerAngles.y / Step);
                 local = Quaternion.identity; scroll = 0;
