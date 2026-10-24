@@ -11,7 +11,7 @@ namespace Overhaul.Effects
     // piece, each status effect, the Resist enchantments) and the sum is applied once: damage × (1 − resistance), 100 % or
     // more being immune and below 0 a weakness. The game's levels count as SlightlyResistant 25, Resistant 50,
     // VeryResistant 75, Immune 100, SlightlyWeak −25, Weak −50, VeryWeak −100; Ignore takes the type out. Creatures are never
-    // immune to spirit; Yagluth resists it by 40 %.
+    // immune to spirit; Yagluth resists it by 40 %, skeletons and draugrs are weak to it (−50 %).
     internal static class Resistances
     {
         // The types shown in tooltips, in this order (chop and pickaxe only serve harvesting).
@@ -21,6 +21,12 @@ namespace Overhaul.Effects
         {
             ["GoblinKing"] = new Dictionary<HitData.DamageType, float> { [Spirit] = 40 },
         };
+
+        static bool Undead(Character character)
+        {
+            string name = Utils.GetPrefabName(character.gameObject);
+            return name.StartsWith("Skeleton", System.StringComparison.OrdinalIgnoreCase) && name != "Skeleton_Friendly" || name.StartsWith("Draugr", System.StringComparison.OrdinalIgnoreCase);
+        }
 
         internal static float Percent(HitData.DamageModifier modifier)
         {
@@ -64,6 +70,8 @@ namespace Overhaul.Effects
             if (!player)
             {
                 if (Creatures.TryGetValue(Utils.GetPrefabName(character.gameObject), out var set) && set.TryGetValue(type, out float value)) total = value;
+                // Skeletons and draugrs (every variant) are undead: weak to spirit.
+                else if (type == Spirit && Undead(character)) total = -50;
                 else if (type == Spirit && body == HitData.DamageModifier.Immune) total = 0;
             }
             else

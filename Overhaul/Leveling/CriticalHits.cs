@@ -79,9 +79,11 @@ namespace Overhaul.Leveling
         {
             if(IsCritical(hit))
             {
-                mod=HitData.DamageModifier.Weak;
                 if(!victim.IsStaggering() || victim.IsPlayer())
                     victim.m_critHitEffects.Create(point,Quaternion.identity,victim.transform,1,-1,hit.m_attacker);
+                // Marked so every client draws it as a critical (DamageNumbers).
+                text.ShowText(DamageText.TextType.Weak,point,damage.ToString("0.#",System.Globalization.CultureInfo.InvariantCulture)+DamageNumbers.CriticalMark,player);
+                return;
             }
             text.ShowText(mod,point,damage,player);
         }
