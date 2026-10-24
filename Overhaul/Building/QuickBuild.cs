@@ -46,7 +46,17 @@ namespace Overhaul.Building
 
         // The game's place and remove buttons inside UpdatePlacement: not seen by it while a row is held, on the press
         // that starts one.
-        private static bool Down(string name) => !Owned(name) && ZInput.GetButtonDown(name);
+        private static bool Down(string name) => !Owned(name) && (ZInput.GetButtonDown(name) || name == "Attack" && LevelingHeld());
+
+        // The hoe's level ground keeps levelling while the place button is held, at the tool's own pace (raising and
+        // paths still take a click each).
+        private static bool LevelingHeld()
+        {
+            var player = Player.m_localPlayer;
+            if (!player || !ZInput.GetButton("Attack") || Hud.InRadial() || Hud.IsPieceSelectionVisible()) return false;
+            var piece = player.GetSelectedPiece();
+            return piece && piece.m_name == "$piece_levelground" && Time.time - player.m_lastToolUseTime >= player.m_placeDelay;
+        }
         private static bool Up(string name) => !Owned(name) && ZInput.GetButtonUp(name);
         // Also on the frame a row ends: its release must not place or remove one more piece.
         private static bool Owned(string name) => (holding || ended == Time.frameCount) && (name == "Attack" || name == "Remove");
