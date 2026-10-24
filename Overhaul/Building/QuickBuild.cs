@@ -18,6 +18,9 @@ namespace Overhaul.Building
     {
         private enum Kind { None, Wall, Pillar, Roof }
         private const int MaxPerAxis = 30;
+        // Seconds the place button is held before a row starts growing.
+        private const float HoldDelay = .25f;
+        private static float began;
 
         private static Kind kind;
         private static bool holding, valid;
@@ -215,6 +218,7 @@ namespace Overhaul.Building
             if (!Axes(kind, ghost, out axisA, out sizeA, out axisB, out sizeB, out pieceMin, out pieceMax)) return false;
             alongLastA = alongLastB = 0;
             fromA = toA = fromB = toB = 0; valid = true;
+            began = Time.time;
             return true;
         }
 
@@ -343,13 +347,17 @@ namespace Overhaul.Building
                 var plane = new Plane(Vector3.Cross(a, b).normalized, anchor);
                 var ray = new Ray(camera.position, camera.forward);
                 if (!plane.Raycast(ray, out float distance) || distance > 60f) return;
-                var offset = ray.GetPoint(distance) - anchor;
+                // Aiming at the ground before the plane: the spot aimed at, not the plane under the ground.
+                var point = Physics.Raycast(ray, out var hit, distance, player.m_placeRayMask) ? hit.point : ray.GetPoint(distance);
+                var offset = point - anchor;
                 alongA = Vector3.Dot(offset, a); alongB = Vector3.Dot(offset, b);
             }
             else alongA = Along(anchor, a, camera.position, camera.forward);
             alongLastA = alongA; alongLastB = alongB;
             int na = Mathf.Clamp(Mathf.RoundToInt(alongA / sizeA), -MaxPerAxis, MaxPerAxis);
             int nb = axisB == Vector3.zero ? 0 : Mathf.Clamp(Mathf.RoundToInt(alongB / sizeB), -MaxPerAxis, MaxPerAxis);
+            // A short click places the lone piece: the row only grows once the button is held.
+            if (Time.time - began < HoldDelay) na = nb = 0;
             fromA = Mathf.Min(0, na); toA = Mathf.Max(0, na); fromB = Mathf.Min(0, nb); toB = Mathf.Max(0, nb);
             valid = destroying || Affordable(player) && Cells().All(Allowed);
         }
