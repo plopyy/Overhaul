@@ -335,7 +335,9 @@ namespace Auga
                         if (topic.Length == 0 || !listed.Add(topic)) continue;
                         __instance.m_texts.Add(new TextsDialog.TextInfo(topic, Localization.instance.Localize(tip.m_text)));
                     }
+                    Debug.Log("[Overhaul] Compendium Hugin: " + __instance.m_texts.Count + " texts, " + Player.m_localPlayer.m_shownTutorials.Count + " tips seen, " + Tutorial.instance.m_texts.Count + " tips in the game");
                 }
+                else if (filter != null && filter.Filter.Contains("tutorial")) Debug.Log("[Overhaul] Compendium Hugin: no tutorial list in this scene");
 
                 __instance.m_texts.Sort((a, b) => string.Compare(a.m_topic, b.m_topic, StringComparison.CurrentCulture));
                 return false;
