@@ -30,25 +30,25 @@ namespace AugaUnity
         // One cell per resistance column, filled by the controller (the header row holds the type names).
         public Text[] Resists;
 
-        public virtual void SetStats(Humanoid humanoid, int level)
+        public virtual void SetStats(Character humanoid, int level)
         {
             LevelLabel.text = level == 1 ? "$baselevel" : (level - 1).ToString();
             LevelStar.SetActive(level >= 2);
             Health.text = GetMaxHealth(humanoid, level).ToString("0");
         }
 
-        public virtual void SetGuardian(Humanoid humanoid, int level)
+        public virtual void SetGuardian(Character humanoid, int level)
         {
             SetStats(humanoid, level);
             Health.text = BestiaryData.GuardianHealth(humanoid).ToString("0");
         }
 
-        public static float GetMaxHealth(Humanoid humanoid, int level)
+        public static float GetMaxHealth(Character humanoid, int level)
         {
             return BestiaryData.Health != null ? BestiaryData.Health(humanoid, level) : humanoid.m_health * level;
         }
 
-        public static List<HitData.DamageType> GetDamageTypes(Humanoid humanoid, HitData.DamageModifier modifier)
+        public static List<HitData.DamageType> GetDamageTypes(Character humanoid, HitData.DamageModifier modifier)
         {
             var result = new List<HitData.DamageType>();
             foreach (HitData.DamageType damageType in Enum.GetValues(typeof(HitData.DamageType)))
@@ -68,13 +68,13 @@ namespace AugaUnity
     // guardian level (0: none) and health, its resistances (label key and percent, every shown type).
     public static class BestiaryData
     {
-        public static Func<Humanoid, int, float> Health;
-        public static Func<Humanoid, int> GuardianLevel;
-        public static Func<Humanoid, float> GuardianHealth;
-        public static Func<Humanoid, IList<KeyValuePair<string, float>>> Resistances;
-        public static Func<Humanoid, IList<BestiaryTrait>> Behavior;
+        public static Func<Character, int, float> Health;
+        public static Func<Character, int> GuardianLevel;
+        public static Func<Character, float> GuardianHealth;
+        public static Func<Character, IList<KeyValuePair<string, float>>> Resistances;
+        public static Func<Character, IList<BestiaryTrait>> Behavior;
         // "Black Forest · Captain" (text with keys), empty when unknown.
-        public static Func<Humanoid, string> Origin;
+        public static Func<Character, string> Origin;
     }
 
     // One line of a creature's behaviour: its name, what it does, and the smart face beside it.
@@ -108,7 +108,7 @@ namespace AugaUnity
 
         protected readonly List<KeyValuePair<string, GameObject>> _bestiaryItems = new List<KeyValuePair<string, GameObject>>();
         protected int _selectedBestiaryIndex = -1;
-        protected Dictionary<string, Humanoid> _trophyToMonsterCache;
+        protected Dictionary<string, Character> _trophyToMonsterCache;
 
         protected virtual void SetupTrophyToMonsterCache()
         {
@@ -121,11 +121,13 @@ namespace AugaUnity
             if (!ZNetScene.instance.m_namedPrefabs.Values.Any())
                 return;
 
-            _trophyToMonsterCache = new Dictionary<string, Humanoid>();
+            _trophyToMonsterCache = new Dictionary<string, Character>();
 
             foreach (var prefab in ZNetScene.instance.m_namedPrefabs.Values)
             {
-                var humanoid = prefab.GetComponent<Humanoid>();
+                // Any creature (deer, boar, neck... are not humanoids), never a player.
+                var humanoid = prefab.GetComponent<Character>();
+                if (humanoid is Player) continue;
                 var characterDrop = prefab.GetComponent<CharacterDrop>();
                 if (characterDrop == null || humanoid == null || characterDrop.m_drops == null || !characterDrop.m_drops.Any())
                 {
@@ -134,7 +136,8 @@ namespace AugaUnity
 
                 foreach (var drop in characterDrop.m_drops)
                 {
-                    if (drop == null)
+                    // An empty drop (a mod's or a removed item) is skipped instead of stopping the whole list.
+                    if (drop == null || drop.m_prefab == null)
                         continue;
 
                     var itemDrop = drop.m_prefab.GetComponent<ItemDrop>();
@@ -324,7 +327,7 @@ namespace AugaUnity
     public partial class AugaCompendiumController
     {
         // One column per resistance, 0 included: its type over every row, the same percent on each row, green or red.
-        protected virtual void ShowResistances(Humanoid humanoid)
+        protected virtual void ShowResistances(Character humanoid)
         {
             if (!StatHeader || StatHeader.Resists == null) return;
             var list = BestiaryData.Resistances != null ? BestiaryData.Resistances(humanoid).ToList() : new List<KeyValuePair<string, float>>();
@@ -343,7 +346,7 @@ namespace AugaUnity
             }
         }
 
-        protected virtual void ShowBehavior(Humanoid humanoid)
+        protected virtual void ShowBehavior(Character humanoid)
         {
             if (TraitNames == null) return;
             var traits = BestiaryData.Behavior != null ? BestiaryData.Behavior(humanoid) : new List<BestiaryTrait>();

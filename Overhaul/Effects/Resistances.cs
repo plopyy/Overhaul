@@ -170,7 +170,7 @@ namespace Overhaul.Effects
         }
 
         // Its behaviour as MobBehaviors.cfg sets it (the server's values): one line per trait, "Ordinary" when it has none.
-        static IList<AugaUnity.BestiaryTrait> Behavior(Humanoid creature)
+        static IList<AugaUnity.BestiaryTrait> Behavior(Character creature)
         {
             var traits = new List<AugaUnity.BestiaryTrait>();
             void Add(string id, bool smart = false, string suffix = "") => traits.Add(new AugaUnity.BestiaryTrait
