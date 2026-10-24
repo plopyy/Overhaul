@@ -239,7 +239,7 @@ namespace Overhaul
                     {
                         // Icons such as the mouse wheel or a gamepad glyph over its backdrop.
                         var glyph = child.GetComponentsInChildren<Image>(false).LastOrDefault(i => i.enabled && i.sprite);
-                        if (glyph) row.Keys.Add(new Token { Sprite = glyph.sprite });
+                        if (glyph) row.Keys.Add(new Token { Sprite = AugaMouse(glyph.sprite) });
                     }
                     continue;
                 }
@@ -247,6 +247,17 @@ namespace Overhaul
                 if (text && !string.IsNullOrWhiteSpace(text.text)) AddText(row, text.text);
                 Walk(child, row);
             }
+        }
+
+        // A mouse icon drawn by the game (the favourite's middle click...) becomes Auga's; any other glyph stays as it is.
+        private Sprite AugaMouse(Sprite sprite)
+        {
+            string name = sprite.name.ToLowerInvariant();
+            if (!name.Contains("mouse")) return sprite;
+            if (name.Contains("wheel") || name.Contains("scroll")) return wheelSprite ? wheelSprite : sprite;
+            int index = name.Contains("left") ? 0 : name.Contains("right") ? 1 : name.Contains("middle") ? 2 : -1;
+            if (index < 0) Utility.Log.LogInfo("Key hints: unknown mouse icon " + sprite.name);
+            return index >= 0 && mouseSprites[index] ? mouseSprites[index] : sprite;
         }
 
         // Native labels may carry their keys inline: "$hud_buildmenu <mspace=0.6em> E</mspace>".
