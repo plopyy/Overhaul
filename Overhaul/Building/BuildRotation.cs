@@ -76,6 +76,8 @@ namespace Overhaul.Building
             float wheel = ZInput.GetMouseScrollWheel();
             var player = Player.m_localPlayer;
             if (!player || !Tiltable(piece)) return wheel;
+            // A quick build row keeps the turn it started with.
+            if (QuickBuild.Active) { scroll = 0; return 0; }
             // The reset key sets the ghost flat and facing north again, on all three axes.
             if (Pressed(OverhaulConfig.BuildResetKey.Value) && !Hud.IsPieceSelectionVisible())
             {
