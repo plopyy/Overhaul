@@ -27,32 +27,25 @@ namespace AugaUnity
         public Text LevelLabel;
         public GameObject LevelStar;
         public Text Health;
-        public Text Weakness;
-        public Text Resistance;
-        public Text Immune;
+        // One cell per resistance column, filled by the controller (the header row holds the type names).
+        public Text[] Resists;
 
         public virtual void SetStats(Humanoid humanoid, int level)
         {
             LevelLabel.text = level == 1 ? "$baselevel" : (level - 1).ToString();
             LevelStar.SetActive(level >= 2);
             Health.text = GetMaxHealth(humanoid, level).ToString("0");
+        }
 
-            var weak = GetDamageTypes(humanoid, HitData.DamageModifier.Weak);
-            var veryWeak = GetDamageTypes(humanoid, HitData.DamageModifier.VeryWeak);
-            var allWeak = weak.Concat(veryWeak).ToArray();
-            var resist = GetDamageTypes(humanoid, HitData.DamageModifier.Resistant);
-            var veryResist = GetDamageTypes(humanoid, HitData.DamageModifier.VeryResistant);
-            var allResist = resist.Concat(veryResist).ToArray();
-            var immune = GetDamageTypes(humanoid, HitData.DamageModifier.Immune);
-
-            Weakness.text = !allWeak.Any() ? "-" : string.Join("\n", allWeak.Select(x => $"$inventory_{x.ToString().ToLowerInvariant()}"));
-            Resistance.text = !allResist.Any() ? "-" : string.Join("\n", allResist.Select(x => $"$inventory_{x.ToString().ToLowerInvariant()}"));
-            Immune.text = !immune.Any() ? "-" : string.Join("\n", immune.Select(x => $"$inventory_{x.ToString().ToLowerInvariant()}"));
+        public virtual void SetGuardian(Humanoid humanoid, int level)
+        {
+            SetStats(humanoid, level);
+            Health.text = BestiaryData.GuardianHealth(humanoid).ToString("0");
         }
 
         public static float GetMaxHealth(Humanoid humanoid, int level)
         {
-            return humanoid.m_health * level;
+            return BestiaryData.Health != null ? BestiaryData.Health(humanoid, level) : humanoid.m_health * level;
         }
 
         public static List<HitData.DamageType> GetDamageTypes(Humanoid humanoid, HitData.DamageModifier modifier)
@@ -71,7 +64,27 @@ namespace AugaUnity
         }
     }
 
-    public class AugaCompendiumController : MonoBehaviour
+    // What Overhaul knows of a creature for the bestiary: its health at a level (its own changes included), its dungeon
+    // guardian level (0: none) and health, its resistances (label key and percent, every shown type).
+    public static class BestiaryData
+    {
+        public static Func<Humanoid, int, float> Health;
+        public static Func<Humanoid, int> GuardianLevel;
+        public static Func<Humanoid, float> GuardianHealth;
+        public static Func<Humanoid, IList<KeyValuePair<string, float>>> Resistances;
+        public static Func<Humanoid, IList<BestiaryTrait>> Behavior;
+        // "Black Forest · Captain" (text with keys), empty when unknown.
+        public static Func<Humanoid, string> Origin;
+    }
+
+    // One line of a creature's behaviour: its name, what it does, and the smart face beside it.
+    public sealed class BestiaryTrait
+    {
+        public string Name, Description;
+        public bool Smart;
+    }
+
+    public partial class AugaCompendiumController : MonoBehaviour
     {
         public TabHandler TabController;
         public TextsDialog Compendium;
@@ -84,6 +97,14 @@ namespace AugaUnity
         public CompendiumItem CompendiumItemPrefab;
         public RectTransform DropsContainer;
         public List<BestiaryStatBlock> StatBlocks;
+        // The header row (type names in its Resists) and the dungeon guardian row, shown when the creature has a 3 star guardian.
+        public Text BestiaryOrigin;
+        public BestiaryStatBlock StatHeader;
+        public BestiaryStatBlock GuardianBlock;
+        // Behaviour lines (name, description, smart face), shown as many as the creature has.
+        public Text[] TraitNames;
+        public Text[] TraitDescriptions;
+        public IntelligenceFace[] TraitFaces;
 
         protected readonly List<KeyValuePair<string, GameObject>> _bestiaryItems = new List<KeyValuePair<string, GameObject>>();
         protected int _selectedBestiaryIndex = -1;
@@ -262,6 +283,12 @@ namespace AugaUnity
 
             BestiaryContent.SetActive(true);
             BestiaryName.text = humanoidPrefab.m_name;
+            if (BestiaryOrigin)
+            {
+                string origin = BestiaryData.Origin != null ? BestiaryData.Origin(humanoidPrefab) : "";
+                BestiaryOrigin.gameObject.SetActive(!string.IsNullOrEmpty(origin));
+                BestiaryOrigin.text = origin;
+            }
             BestiaryDescription.text = trophyItem.m_itemData.m_shared.m_name + "_lore";
 
             foreach (Transform child in DropsContainer)
@@ -281,9 +308,60 @@ namespace AugaUnity
                 var statBlock = StatBlocks[i];
                 statBlock.SetStats(humanoidPrefab, i + 1);
             }
+            int guardian = BestiaryData.GuardianLevel != null ? BestiaryData.GuardianLevel(humanoidPrefab) : 0;
+            if (GuardianBlock)
+            {
+                GuardianBlock.gameObject.SetActive(guardian >= 4);
+                if (guardian >= 4) GuardianBlock.SetGuardian(humanoidPrefab, guardian);
+            }
+            ShowResistances(humanoidPrefab);
+            ShowBehavior(humanoidPrefab);
 
             Localization.instance.Localize(BestiaryContent.transform);
         }
+    }
+
+    public partial class AugaCompendiumController
+    {
+        // One column per resistance, 0 included: its type over every row, the same percent on each row, green or red.
+        protected virtual void ShowResistances(Humanoid humanoid)
+        {
+            if (!StatHeader || StatHeader.Resists == null) return;
+            var list = BestiaryData.Resistances != null ? BestiaryData.Resistances(humanoid).ToList() : new List<KeyValuePair<string, float>>();
+            var rows = StatBlocks.Concat(new[] { GuardianBlock }).Where(b => b).ToList();
+            for (int i = 0; i < StatHeader.Resists.Length; i++)
+            {
+                bool used = i < list.Count;
+                StatHeader.Resists[i].gameObject.SetActive(used);
+                if (used) StatHeader.Resists[i].text = list[i].Key;
+                foreach (var row in rows)
+                {
+                    if (row.Resists == null || i >= row.Resists.Length) continue;
+                    row.Resists[i].gameObject.SetActive(used);
+                    if (used) row.Resists[i].text = Percent(list[i].Value);
+                }
+            }
+        }
+
+        protected virtual void ShowBehavior(Humanoid humanoid)
+        {
+            if (TraitNames == null) return;
+            var traits = BestiaryData.Behavior != null ? BestiaryData.Behavior(humanoid) : new List<BestiaryTrait>();
+            for (int i = 0; i < TraitNames.Length; i++)
+            {
+                bool used = i < traits.Count;
+                TraitNames[i].transform.parent.gameObject.SetActive(used);
+                if (!used) continue;
+                TraitNames[i].text = traits[i].Name;
+                TraitDescriptions[i].text = traits[i].Description;
+                // Hidden but still taking its place, so every description starts at the same spot.
+                TraitFaces[i].enabled = traits[i].Smart;
+                TraitFaces[i].Smart = true;
+            }
+        }
+
+        public static string Percent(float value) => Mathf.Abs(value) < 0.05f ? "0 %" :
+            "<color=" + (value >= 0 ? "#7fd97f" : "#ff6b5e") + ">" + (value >= 0 ? "+" : "−") + Mathf.Abs(value).ToString("0.#") + " %</color>";
     }
 
     public class AugaTextsDialogFilter : MonoBehaviour

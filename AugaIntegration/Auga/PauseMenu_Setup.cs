@@ -253,6 +253,20 @@ namespace Auga
             }
         }
 
+        // No manual save for a player connected to someone else's world: the server saves it.
+        [HarmonyPatch(typeof(Menu), nameof(Menu.Show))]
+        public static class Menu_Show_Patch
+        {
+            [UsedImplicitly]
+            public static void Postfix(Menu __instance)
+            {
+                if (!ZNet.instance || ZNet.instance.IsServer() || !__instance.m_saveButton) return;
+                __instance.m_saveButton.gameObject.SetActive(false);
+                __instance.m_saveButton.interactable = false;
+                if (__instance.lastSaveText) __instance.lastSaveText.gameObject.SetActive(false);
+            }
+        }
+
         [HarmonyPatch(typeof(Menu), nameof(Menu.OnClose))]
         public static class Menu_OnClose_Patch
         {
