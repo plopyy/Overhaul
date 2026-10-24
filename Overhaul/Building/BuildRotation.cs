@@ -125,6 +125,8 @@ namespace Overhaul.Building
             private static void Postfix(Player __instance)
             {
                 if (__instance != Player.m_localPlayer) return;
+                // While relocating, the game's own call is skipped but still runs this postfix on the hidden usual ghost.
+                if (Storage.RelocationClient.Active && !Storage.RelocationClient.Native) return;
                 Follow(__instance.m_placementGhost);
             }
         }

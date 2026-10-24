@@ -26,6 +26,8 @@ namespace Overhaul.Storage
         static readonly Dictionary<Material,float> previousRipple=new Dictionary<Material,float>();
         static readonly HashSet<Material> ghostMaterials=new HashSet<Material>();
         internal static bool Active=>Target;
+        // Inside a native placement call on the relocation's own ghost.
+        internal static bool Native=>inNative;
         internal static bool HasHammer(Player p) => p && p.m_rightItem?.m_dropPrefab
             && Utils.GetPrefabName(p.m_rightItem.m_dropPrefab) == "Hammer";
         internal static bool IdleInput()=>Player.m_localPlayer && !Console.IsVisible() && !InventoryGui.IsVisible() &&
