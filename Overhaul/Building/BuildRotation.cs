@@ -38,12 +38,23 @@ namespace Overhaul.Building
             return Vector3.up;
         }
 
+        // The ghost's own turns (after the game's vertical one), for the piece relocation which turns its own ghost.
+        internal static Quaternion Local { get => local; set { local = value; scroll = 0; } }
+
         // The wheel as the game reads it to turn the ghost: taken for a turn about the ghost's own axis.
         private static float Scroll()
         {
+            var player = Player.m_localPlayer;
+            return Wheel(player && player.m_placementGhost ? player.m_placementGhost.GetComponent<Piece>() : null);
+        }
+
+        // The wheel turns this ghost's piece about its own axes; what is left for the caller (all of it for a ground
+        // piece, nothing otherwise).
+        internal static float Wheel(Piece piece)
+        {
             float wheel = ZInput.GetMouseScrollWheel();
             var player = Player.m_localPlayer;
-            if (!player || !Tiltable(player.m_placementGhost ? player.m_placementGhost.GetComponent<Piece>() : null)) return wheel;
+            if (!player || !Tiltable(piece)) return wheel;
             scroll += wheel;
             int notch = scroll > player.m_scrollAmountThreshold ? 1 : scroll < -player.m_scrollAmountThreshold ? -1 : 0;
             if (notch != 0)
@@ -97,7 +108,8 @@ namespace Overhaul.Building
         {
             private static void Postfix(Player __instance)
             {
-                if (__instance != Player.m_localPlayer) return;
+                // The relocation's ghost sets its own turns.
+                if (__instance != Player.m_localPlayer || Storage.RelocationClient.Active) return;
                 var chosen = __instance.m_buildPieces ? __instance.m_buildPieces.GetSelectedPrefab() : null;
                 if (chosen == selected) return;
                 selected = chosen;
