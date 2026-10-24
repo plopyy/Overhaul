@@ -24,12 +24,8 @@ namespace Overhaul.Building
         private static float scroll;
         private static AssetBundle bundle;
         private static GameObject prefab, gizmo;
-<<<<<<< HEAD
-        private static GameObject ghost;
-        private static bool logged;
-=======
         private static GameObject ghost, selected;
->>>>>>> main
+        private static bool logged;
         private static Renderer[] renderers;
         private static MaterialPropertyBlock block;
         private static readonly int Dim = Shader.PropertyToID("_Dim");
