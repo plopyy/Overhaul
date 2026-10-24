@@ -9,7 +9,7 @@ namespace Overhaul.Building
 {
     // Building ghost turned every way, always about its own axes as the gizmo shows them: the wheel alone turns it about
     // its Y axis, held with the pitch key (LeftAlt) about its X axis, with the roll key (LeftControl) about its Z axis,
-    // 22.5° per notch like the game. Each notch turns from where the ghost stands, so it follows the bright arrow even
+    // 22.5° per notch like the game, 5.625° with the precise key (LeftShift) held. Each notch turns from where the ghost stands, so it follows the bright arrow even
     // after other turns. Choosing another piece starts it flat, keeping only the turn about the vertical; placing keeps the turns. The placed
     // piece takes the ghost's rotation. Ground pieces (hoe, cultivator) keep the game's turn and get no gizmo.
     //
@@ -61,7 +61,7 @@ namespace Overhaul.Building
             if (notch != 0)
             {
                 scroll = 0;
-                local = (local * Quaternion.AngleAxis(Step * notch, Axis())).normalized;
+                local = (local * Quaternion.AngleAxis((ZInput.GetKey(OverhaulConfig.BuildPreciseKey.Value) ? Step / 4 : Step) * notch, Axis())).normalized;
             }
             return 0;
         }
@@ -115,8 +115,11 @@ namespace Overhaul.Building
                 if (chosen == selected) return;
                 selected = chosen;
                 Vector3 forward = local * Vector3.forward; forward.y = 0;
-                if (forward.sqrMagnitude > .01f) __instance.m_placeRotation += Mathf.RoundToInt(Quaternion.LookRotation(forward).eulerAngles.y / Step);
-                local = Quaternion.identity; scroll = 0;
+                float yaw = forward.sqrMagnitude > .01f ? Quaternion.LookRotation(forward).eulerAngles.y : 0;
+                // Whole notches go to the game, a finer rest (precise turns) stays as an own turn about the vertical.
+                int notches = Mathf.FloorToInt(yaw / Step + .001f);
+                __instance.m_placeRotation += notches;
+                local = Quaternion.AngleAxis(yaw - notches * Step, Vector3.up); scroll = 0;
             }
         }
 

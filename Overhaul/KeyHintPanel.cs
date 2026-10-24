@@ -26,6 +26,7 @@ namespace Overhaul
         private Sprite keySprite;
         private Image.Type keyType;
         private Sprite[] mouseSprites;
+        private Sprite wheelSprite;
         private readonly Dictionary<string, int> mouseButtons = new Dictionary<string, int>();
         private string primaryLabel, secondaryLabel, signature;
 
@@ -62,6 +63,7 @@ namespace Overhaul
             primaryLabel = LabelOf(hints.m_primaryAttackKB);
             secondaryLabel = LabelOf(hints.m_secondaryAttackKB);
             mouseSprites = new[] { "Mouse1", "Mouse2", "Mouse3", "MouseX" }.Select(MouseSprite).ToArray();
+            wheelSprite = MouseSprite("MouseWheel");
             BuildBox();
         }
 
@@ -70,7 +72,10 @@ namespace Overhaul
         private static Sprite MouseSprite(string name)
         {
             var hud = Auga.Auga.Assets.Hud;
-            return hud ? hud.GetComponentsInChildren<Image>(true).FirstOrDefault(i => i.name == name && i.sprite)?.sprite : null;
+            if (!hud) return null;
+            // Several HUD images bear the name, not all with Auga's icon: the sprite itself is looked for first.
+            var images = hud.GetComponentsInChildren<Image>(true);
+            return images.FirstOrDefault(i => i.sprite && i.sprite.name == name)?.sprite ?? images.FirstOrDefault(i => i.name == name && i.sprite)?.sprite;
         }
 
         private static string LabelOf(GameObject row)
@@ -91,7 +96,7 @@ namespace Overhaul
             // Same translucent black as the selected build piece info (60% opaque).
             go.GetComponent<Image>().color = new Color(0, 0, 0, 0.6f);
             grid = go.GetComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(205, 24); grid.spacing = new Vector2(10, 3);
+            grid.cellSize = new Vector2(235, 24); grid.spacing = new Vector2(10, 3);
             grid.padding = new RectOffset(10, 10, 7, 7);
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 2;
             var fit = go.GetComponent<ContentSizeFitter>();
@@ -118,10 +123,77 @@ namespace Overhaul
                         rows.Add(row);
                     }
             }
+            BuildingRows(rows);
             var key = Signature(rows);
             if (key == signature) return;
             signature = key;
             Render(rows);
+        }
+
+        // Building on the keyboard: snapping is switched with its key, the piece copy is on the middle mouse button
+        // (Building.CopyPieceShortcut) and the ghost
+        // turns about its three axes, finer with the precise key (Building.BuildRotation).
+        private void BuildingRows(List<Row> rows)
+        {
+            if (!hints.m_buildHints || !hints.m_buildHints.activeInHierarchy || ZInput.IsGamepadActive() || Localization.instance == null) return;
+            string copy = Clean(Localization.instance.Localize("$hud_copypiece")), rotate = Clean(Localization.instance.Localize("$hud_rotate")),
+                snapping = Clean(Localization.instance.Localize("$hud_altplace"));
+            for (int i = 0; i < rows.Count; i++)
+            {
+                // Snapping is switched with a key press (Building.SnapToggle), no longer held with Shift.
+                if (rows[i].Label == snapping)
+                {
+                    rows[i].Keys.Clear();
+                    rows[i].Keys.Add(new Token { Text = KeyName(Utility.OverhaulConfig.BuildSnapToggleKey.Value), Key = true });
+                }
+                if (rows[i].Label == copy)
+                {
+                    rows[i].Keys.Clear();
+                    rows[i].Keys.Add(mouseSprites[2] ? new Token { Sprite = mouseSprites[2] } : new Token { Text = ZInput.KeyCodeToDisplayName(KeyCode.Mouse2), Key = true });
+                }
+            }
+            // The game's turn row becomes three, one per axis down the left column, each with its precise turn beside it.
+            int at = rows.FindIndex(r => r.Label == rotate);
+            if (at < 0) return;
+            // Auga's wheel icon, the game's one if Auga has none.
+            var wheel = wheelSprite ? new Token { Sprite = wheelSprite } : rows[at].Keys.LastOrDefault(t => t.Sprite);
+            rows.RemoveAt(at);
+            if (rows.Count % 2 == 1) rows.Add(new Row());
+            var precise = Utility.OverhaulConfig.BuildPreciseKey.Value;
+            foreach (var axis in new[] { ("y", KeyCode.None), ("x", Utility.OverhaulConfig.BuildPitchKey.Value), ("z", Utility.OverhaulConfig.BuildRollKey.Value) })
+            {
+                rows.Add(Turn("$overhaul_build_turn_" + axis.Item1, wheel, axis.Item2));
+                rows.Add(Turn("$overhaul_build_fine_" + axis.Item1, wheel, precise, axis.Item2));
+            }
+        }
+
+        private static Row Turn(string label, Token wheel, params KeyCode[] keys)
+        {
+            var row = new Row { Label = Clean(Localization.instance.Localize(label)) };
+            foreach (var key in keys.Where(k => k != KeyCode.None))
+            {
+                row.Keys.Add(new Token { Text = KeyName(key), Key = true });
+                row.Keys.Add(new Token { Text = "+" });
+            }
+            if (wheel != null) row.Keys.Add(wheel);
+            else if (row.Keys.Count > 0) row.Keys.RemoveAt(row.Keys.Count - 1);
+            return row;
+        }
+
+        // Modifiers by their short names (left and right alike), other keys as the game names them.
+        private static string KeyName(KeyCode key)
+        {
+            switch (key)
+            {
+                case KeyCode.LeftAlt: case KeyCode.RightAlt: return Localization.instance.Localize("$overhaul_key_alt");
+                case KeyCode.LeftControl: case KeyCode.RightControl: return Localization.instance.Localize("$overhaul_key_ctrl");
+                case KeyCode.LeftShift: case KeyCode.RightShift: return Localization.instance.Localize("$overhaul_key_shift");
+                default:
+                    // A letter or a digit is its own name.
+                    if (key >= KeyCode.A && key <= KeyCode.Z) return key.ToString();
+                    if (key >= KeyCode.Alpha0 && key <= KeyCode.Alpha9) return ((int)(key - KeyCode.Alpha0)).ToString();
+                    return Clean(ZInput.KeyCodeToDisplayName(key));
+            }
         }
 
         // Some rows show an attack the weapon does not have: check the weapon itself.
