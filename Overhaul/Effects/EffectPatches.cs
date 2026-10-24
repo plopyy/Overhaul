@@ -29,9 +29,9 @@ namespace Overhaul.Effects
         [HarmonyPatch(typeof(SEMan), nameof(SEMan.ModifyEitrRegen))]
         private static class EitrRegen { private static void Postfix(SEMan __instance, ref float eitrMultiplier) => eitrMultiplier *= Mathf.Max(0, 1 + Pct(__instance.m_character, "EitrRegen")); }
 
-        // Flat change of each eitr cost (negative = cheaper), never below 0.
+        // Percent change of each eitr cost (negative = cheaper), never below 0.
         [HarmonyPatch(typeof(Player), nameof(Player.UseEitr))]
-        private static class EitrCost { private static void Prefix(Player __instance, ref float v) { if (v > 0) v = Mathf.Max(0, v + Effects.Get(__instance, "EitrCost")); } }
+        private static class EitrCost { private static void Prefix(Player __instance, ref float v) { if (v > 0) v *= Mathf.Max(0, 1 + Pct(__instance, "EitrCost")); } }
 
         // Food burns slower (or faster): the time each food lost during the update is divided by 1 + bonus.
         [HarmonyPatch(typeof(Player), "UpdateFood")]
