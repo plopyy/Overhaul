@@ -323,6 +323,20 @@ namespace Auga
                     }
                 }
 
+                // Hugin's tab also lists every tip the character has seen: the game only keeps a tip as a known text when it
+                // carries a label, so most of them never reached the list.
+                if (filter != null && filter.Filter.Contains("tutorial") && Tutorial.instance)
+                {
+                    var listed = new HashSet<string>(__instance.m_texts.Select(t => t.m_topic));
+                    foreach (var tip in Tutorial.instance.m_texts)
+                    {
+                        if (!Player.m_localPlayer.HaveSeenTutorial(tip.m_name)) continue;
+                        var topic = Localization.instance.Localize(tip.m_topic);
+                        if (topic.Length == 0 || !listed.Add(topic)) continue;
+                        __instance.m_texts.Add(new TextsDialog.TextInfo(topic, Localization.instance.Localize(tip.m_text)));
+                    }
+                }
+
                 __instance.m_texts.Sort((a, b) => string.Compare(a.m_topic, b.m_topic, StringComparison.CurrentCulture));
                 return false;
             }
