@@ -64,6 +64,7 @@ namespace Auga
         public Sprite RecyclingPanelIcon;
         public GameObject BuildHud;
         public GameObject Construction;
+        public GameObject KeyHints;
         public GameObject LeftWristMountUI;
     }
 
@@ -538,6 +539,7 @@ namespace Auga
             Assets.LeftWristMountUI = assetBundle.LoadAsset<GameObject>("LeftWristMountUI");
             Assets.BuildHud = assetBundle.LoadAsset<GameObject>("BuildHud");
             Assets.Construction = assetBundle.LoadAsset<GameObject>("AugaConstruction");
+            Assets.KeyHints = assetBundle.LoadAsset<GameObject>("OverhaulKeyHints");
         }
 
         private static void ApplyCursor()

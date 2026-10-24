@@ -9,8 +9,8 @@ using UnityEngine.UI;
 
 namespace Overhaul
 {
-    // Redraws the native key hints as a compact two-column box in the bottom-right corner.
-    // Valheim still decides which hints apply; the box only mirrors its active rows.
+    // Redraws the native key hints as a compact two-column box in the bottom-right corner, in Auga's key hint look
+    // (OverhaulKeyHints prefab). Valheim still decides which hints apply; the box only mirrors its active rows.
     internal sealed class KeyHintPanel : MonoBehaviour
     {
         private sealed class Token { internal string Text; internal Sprite Sprite; internal bool Key; }
@@ -21,10 +21,7 @@ namespace Overhaul
         private GameObject[] roots;
         private RectTransform box;
         private GridLayoutGroup grid;
-        private TMP_FontAsset font;
-        private Material shadowed;
-        private Sprite keySprite;
-        private Image.Type keyType;
+        private Transform templates;
         private Sprite[] mouseSprites;
         private Sprite wheelSprite;
         private readonly Dictionary<string, int> mouseButtons = new Dictionary<string, int>();
@@ -57,9 +54,6 @@ namespace Overhaul
                 if (!group) group = root.AddComponent<CanvasGroup>();
                 group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
             }
-            font = roots.SelectMany(r => r.GetComponentsInChildren<TMP_Text>(true)).Select(t => t.font).FirstOrDefault(f => f);
-            var keyBox = roots.SelectMany(r => r.GetComponentsInChildren<Image>(true)).FirstOrDefault(i => i.sprite && i.GetComponentInChildren<TMP_Text>(true));
-            if (keyBox) { keySprite = keyBox.sprite; keyType = keyBox.type; }
             primaryLabel = LabelOf(hints.m_primaryAttackKB);
             secondaryLabel = LabelOf(hints.m_secondaryAttackKB);
             mouseSprites = new[] { "Mouse1", "Mouse2", "Mouse3", "MouseX" }.Select(MouseSprite).ToArray();
@@ -67,7 +61,7 @@ namespace Overhaul
             BuildBox();
         }
 
-        private void OnDestroy() { if (box) Destroy(box.gameObject); if (shadowed) Destroy(shadowed); }
+        private void OnDestroy() { if (box) Destroy(box.gameObject); }
 
         private static Sprite MouseSprite(string name)
         {
@@ -86,21 +80,16 @@ namespace Overhaul
 
         private static string Clean(string text) => Tags.Replace(text, "").Trim();
 
+        // The box is the OverhaulKeyHints prefab (augaassets, OverhaulLab KeyHintPanelAuthoring).
         private void BuildBox()
         {
-            var go = new GameObject("OverhaulKeyHints", typeof(RectTransform), typeof(Image), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+            var prefab = Auga.Auga.Assets.KeyHints;
+            if (!prefab) { Utility.Log.LogError("Key hints: OverhaulKeyHints missing from augaassets"); return; }
+            var go = Instantiate(prefab, hints.transform.parent, false);
+            go.name = prefab.name;
             box = (RectTransform)go.transform;
-            box.SetParent(hints.transform.parent, false);
-            box.anchorMin = box.anchorMax = box.pivot = new Vector2(1, 0);
-            box.anchoredPosition = new Vector2(-24, 24);
-            // Same translucent black as the selected build piece info (60% opaque).
-            go.GetComponent<Image>().color = new Color(0, 0, 0, 0.6f);
             grid = go.GetComponent<GridLayoutGroup>();
-            grid.cellSize = new Vector2(235, 24); grid.spacing = new Vector2(10, 3);
-            grid.padding = new RectOffset(10, 10, 7, 7);
-            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 2;
-            var fit = go.GetComponent<ContentSizeFitter>();
-            fit.horizontalFit = fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            templates = box.Find("Templates");
             go.SetActive(false);
         }
 
@@ -137,12 +126,14 @@ namespace Overhaul
         {
             if (!hints.m_buildHints || !hints.m_buildHints.activeInHierarchy || ZInput.IsGamepadActive() || Localization.instance == null) return;
             string copy = Clean(Localization.instance.Localize("$hud_copypiece")), rotate = Clean(Localization.instance.Localize("$hud_rotate")),
-                snapping = Clean(Localization.instance.Localize("$hud_altplace"));
+                snapping = Clean(Localization.instance.Localize("$hud_altplace")), cycle = Clean(Localization.instance.Localize("$hud_cyclesnap"));
             for (int i = 0; i < rows.Count; i++)
             {
+                if (rows[i].Label == cycle) rows[i].Label = Clean(Localization.instance.Localize("$overhaul_build_cyclesnap"));
                 // Snapping is switched with a key press (Building.SnapToggle), no longer held with Shift.
                 if (rows[i].Label == snapping)
                 {
+                    rows[i].Label = Clean(Localization.instance.Localize("$overhaul_build_snap_toggle"));
                     rows[i].Keys.Clear();
                     rows[i].Keys.Add(new Token { Text = KeyName(Utility.OverhaulConfig.BuildSnapToggleKey.Value), Key = true });
                 }
@@ -165,6 +156,7 @@ namespace Overhaul
                 rows.Add(Turn("$overhaul_build_turn_" + axis.Item1, wheel, axis.Item2));
                 rows.Add(Turn("$overhaul_build_fine_" + axis.Item1, wheel, precise, axis.Item2));
             }
+            rows.Add(Turn("$overhaul_build_reset", null, Utility.OverhaulConfig.BuildResetKey.Value));
         }
 
         private static Row Turn(string label, Token wheel, params KeyCode[] keys)
@@ -188,6 +180,7 @@ namespace Overhaul
                 case KeyCode.LeftAlt: case KeyCode.RightAlt: return Localization.instance.Localize("$overhaul_key_alt");
                 case KeyCode.LeftControl: case KeyCode.RightControl: return Localization.instance.Localize("$overhaul_key_ctrl");
                 case KeyCode.LeftShift: case KeyCode.RightShift: return Localization.instance.Localize("$overhaul_key_shift");
+                case KeyCode.Less: return "<";
                 default:
                     // A letter or a digit is its own name.
                     if (key >= KeyCode.A && key <= KeyCode.Z) return key.ToString();
@@ -283,79 +276,41 @@ namespace Overhaul
             return text.ToString();
         }
 
+        // Each row is copied from the prefab's templates (Auga's key, mouse icon and label).
         private void Render(List<Row> rows)
         {
-            foreach (Transform child in box) Destroy(child.gameObject);
+            foreach (Transform child in box) if (child != templates) Destroy(child.gameObject);
             box.gameObject.SetActive(rows.Count > 0);
             grid.constraintCount = Mathf.Clamp(rows.Count, 1, 2);
             foreach (var row in rows)
             {
-                var line = new GameObject("Hint", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-                line.transform.SetParent(box, false);
-                var layout = line.GetComponent<HorizontalLayoutGroup>();
-                layout.spacing = 3; layout.childAlignment = TextAnchor.MiddleLeft;
-                layout.childControlWidth = layout.childControlHeight = true;
-                layout.childForceExpandWidth = layout.childForceExpandHeight = false;
-                foreach (var token in row.Keys) AddToken(line.transform, token);
-                var label = AddText(line.transform, row.Label, 15, new Color(0.93f, 0.88f, 0.78f));
-                label.overflowMode = TextOverflowModes.Ellipsis;
-                var element = label.GetComponent<LayoutElement>(); element.flexibleWidth = 1; element.minWidth = 0;
-                label.margin = new Vector4(4, 0, 0, 0);
+                var line = Instantiate(Template("Hint"), box).transform;
+                foreach (var token in row.Keys) AddToken(line, token);
+                Instantiate(Template("Label"), line).GetComponent<Text>().text = row.Label;
             }
         }
+
+        private GameObject Template(string name) => templates.Find(name).gameObject;
 
         private void AddToken(Transform parent, Token token)
         {
             if (token.Sprite)
             {
-                var icon = new GameObject("Icon", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-                icon.transform.SetParent(parent, false);
-                var image = icon.GetComponent<Image>(); image.sprite = token.Sprite; image.preserveAspect = true;
-                var size = icon.GetComponent<LayoutElement>(); size.preferredWidth = 17; size.preferredHeight = 21;
+                var icon = Instantiate(Template("Mouse"), parent);
+                icon.GetComponent<Image>().sprite = token.Sprite;
                 if (token.Text != null)
                 {
-                    var number = AddText(icon.transform, token.Text, 11, new Color(1f, 0.85f, 0.45f)); number.fontStyle = FontStyles.Bold;
-                    Destroy(number.GetComponent<LayoutElement>());
-                    var rect = number.rectTransform; rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
-                    number.alignment = TextAlignmentOptions.Center;
+                    var number = icon.transform.Find("Number");
+                    number.gameObject.SetActive(true); number.GetComponent<Text>().text = token.Text;
                 }
                 return;
             }
-            if (!token.Key) { AddText(parent, token.Text, 12, new Color(0.8f, 0.75f, 0.65f)); return; }
-            var key = new GameObject("Key", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-            key.transform.SetParent(parent, false);
-            var back = key.GetComponent<Image>();
-            // The native backdrop sprite is white and tinted per prefab: use our own dark tint.
-            if (keySprite) { back.sprite = keySprite; back.type = keyType; }
-            back.color = new Color(0.16f, 0.13f, 0.1f, 0.95f);
-            var text = AddText(key.transform, token.Text, 14, Color.white);
-            Destroy(text.GetComponent<LayoutElement>());
-            text.alignment = TextAlignmentOptions.Center;
-            var textRect = text.rectTransform; textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one; textRect.offsetMin = textRect.offsetMax = Vector2.zero;
-            var keySize = key.GetComponent<LayoutElement>();
-            keySize.preferredWidth = Mathf.Max(20, text.GetPreferredValues(token.Text).x + 10); keySize.preferredHeight = 20;
-        }
-
-        private TextMeshProUGUI AddText(Transform parent, string value, float size, Color color)
-        {
-            var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
-            go.transform.SetParent(parent, false);
-            var text = go.GetComponent<TextMeshProUGUI>();
-            if (font) text.font = font;
-            text.text = value; text.fontSize = size; text.color = color; text.raycastTarget = false;
-            text.textWrappingMode = TextWrappingModes.NoWrap; text.alignment = TextAlignmentOptions.MidlineLeft;
-            // Readable over bright terrain through the light backdrop; one shared material.
-            if (!shadowed)
-            {
-                shadowed = new Material(text.fontSharedMaterial);
-                shadowed.EnableKeyword(ShaderUtilities.Keyword_Underlay);
-                shadowed.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0, 0, 0, 0.8f));
-                shadowed.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.6f);
-                shadowed.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.6f);
-                shadowed.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.4f);
-            }
-            text.fontSharedMaterial = shadowed;
-            return text;
+            var copy = Instantiate(Template(token.Key ? "Key" : "Plus"), parent);
+            var text = copy.GetComponentInChildren<Text>(true);
+            text.text = token.Text;
+            // A key keeps its whole name when the row is tight: the label gives way.
+            var size = copy.GetComponent<LayoutElement>();
+            if (size && token.Key) size.minWidth = Mathf.Max(size.minWidth, text.preferredWidth + 12);
         }
     }
 }
