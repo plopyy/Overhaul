@@ -92,12 +92,36 @@ namespace Overhaul
             box = (RectTransform)go.transform;
             grid = go.GetComponent<GridLayoutGroup>();
             templates = box.Find("Templates");
+            angles = box.Find("Angles");
+            if (angles) angleTexts = new[] { "X", "Y", "Z" }.Select(n => angles.Find(n)?.GetComponent<Text>()).ToArray();
             go.SetActive(false);
+        }
+
+        private Transform angles;
+        private Text[] angleTexts;
+        private Vector3 shownAngles = new Vector3(float.NaN, 0, 0);
+
+        // The building ghost's orientation over the box, while the gizmo shows it: X and Z between -180 and 180 (tilt and
+        // roll), Y between 0 and 360 (facing).
+        private void UpdateAngles()
+        {
+            if (!angles || angleTexts == null) return;
+            bool shown = Building.BuildRotation.Shown(out var rotation);
+            if (angles.gameObject.activeSelf != shown) angles.gameObject.SetActive(shown);
+            if (!shown) return;
+            var euler = rotation.eulerAngles;
+            var values = new Vector3(Mathf.DeltaAngle(0, euler.x), Mathf.Repeat(euler.y, 360), Mathf.DeltaAngle(0, euler.z));
+            for (int i = 0; i < 3; i++) values[i] = Mathf.Round(values[i] * 1000) / 1000;
+            if (values == shownAngles) return;
+            shownAngles = values;
+            for (int i = 0; i < 3; i++)
+                if (angleTexts[i]) angleTexts[i].text = "XYZ"[i] + " " + values[i].ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + "°";
         }
 
         private void LateUpdate()
         {
             if (!box) return;
+            UpdateAngles();
             var rows = new List<Row>();
             foreach (var root in roots)
             {
