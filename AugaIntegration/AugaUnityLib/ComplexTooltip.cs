@@ -768,8 +768,9 @@ namespace AugaUnity
             var modifiersTooltipString = SE_Stats.GetDamageModifiersTooltipString(item.m_shared.m_damageModifiers).Split(new [] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var damageModifier in modifiersTooltipString)
             {
-                var fullString = damageModifier.Replace("<color=orange>", "").Replace("$inventory_dmgmod: ", "").Replace("</color>", "");
-                TextBoxAddPreprocessedLine(textBox, item, "$inventory_dmgmod", fullString);
+                // "Fire resistance: +50 %": the resistance on the left, its value on the right.
+                var parts = damageModifier.Split(new[] { ": " }, 2, StringSplitOptions.None);
+                TextBoxAddPreprocessedLine(textBox, item, parts[0], parts.Length > 1 ? parts[1] : "");
             }
         }
 
@@ -827,8 +828,9 @@ namespace AugaUnity
             var modifiersTooltipString = SE_Stats.GetDamageModifiersTooltipString(item.m_shared.m_damageModifiers).Split(new [] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var damageModifier in modifiersTooltipString)
             {
-                var fullString = damageModifier.Replace("<color=orange>", "").Replace("$inventory_dmgmod: ", "").Replace("</color>", "");
-                TextBoxAddPreprocessedLine(textBox, item, "$inventory_dmgmod", fullString);
+                // "Fire resistance: +50 %": the resistance on the left, its value on the right.
+                var parts = damageModifier.Split(new[] { ": " }, 2, StringSplitOptions.None);
+                TextBoxAddPreprocessedLine(textBox, item, parts[0], parts.Length > 1 ? parts[1] : "");
             }
         }
 
