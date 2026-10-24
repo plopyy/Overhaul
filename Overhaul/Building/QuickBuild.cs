@@ -91,6 +91,8 @@ namespace Overhaul.Building
                 var ghost = __instance.m_placementGhost;
                 ghost.SetActive(true);
                 ghost.transform.SetPositionAndRotation(anchor, turn);
+                // The game tinted its ghost for the aimed spot (often away from the row): the row's colour instead.
+                Highlight(ghost, valid);
                 Show(__instance, ghost);
             }
         }
@@ -288,7 +290,8 @@ namespace Overhaul.Building
         {
             var piece = player.GetSelectedPiece();
             if (piece == null || !player.m_placementGhost) return;
-            if (!valid || player.m_placementStatus != Player.PlacementStatus.Valid && player.m_placementStatus != Player.PlacementStatus.NoRayHits)
+            // The first piece was checked by the game when the row began, every spot while it grew.
+            if (!valid)
             {
                 player.Message(MessageHud.MessageType.Center, Affordable(player) ? "$msg_invalidplacement" : "$msg_missingrequirement");
                 return;
