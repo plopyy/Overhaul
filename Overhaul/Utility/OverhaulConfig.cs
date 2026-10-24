@@ -53,6 +53,8 @@ namespace Overhaul.Utility
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildPitchKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildRollKey { get; private set; }
+        public static ConfigEntry<UnityEngine.KeyCode> BuildPreciseKey { get; private set; }
+        public static ConfigEntry<UnityEngine.KeyCode> BuildSnapToggleKey { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -66,6 +68,12 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             BuildRollKey = config.Bind("Building", "RollKey", UnityEngine.KeyCode.LeftControl,
                 new ConfigDescription("Held while scrolling, rolls the building ghost left or right (blue Z axis of the gizmo), 22.5 degrees per notch.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            BuildPreciseKey = config.Bind("Building", "PreciseKey", UnityEngine.KeyCode.LeftShift,
+                new ConfigDescription("Held while scrolling (alone or with the pitch or roll key), turns the building ghost 4 times finer: 5.625 degrees per notch instead of 22.5.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            BuildSnapToggleKey = config.Bind("Building", "SnapToggleKey", UnityEngine.KeyCode.X,
+                new ConfigDescription("Pressed while building, switches snapping to other pieces off or back on (in place of holding Shift). The key does nothing else while building.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
