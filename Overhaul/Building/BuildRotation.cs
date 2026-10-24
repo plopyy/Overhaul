@@ -41,6 +41,26 @@ namespace Overhaul.Building
         // The ghost's own turns (after the game's vertical one), for the piece relocation which turns its own ghost.
         internal static Quaternion Local { get => local; set { local = value; scroll = 0; } }
 
+        // A key press; "<" (KeyCode.Less, the ISO key left of W/Z) has no reliable code: found on the keyboard by the
+        // character it shows in the current layout.
+        internal static bool Pressed(KeyCode key)
+        {
+            if (key != KeyCode.Less) return ZInput.GetKeyDown(key);
+            var less = LessKey();
+            return less != null && less.wasPressedThisFrame;
+        }
+
+        internal static UnityEngine.InputSystem.Controls.KeyControl LessKey()
+        {
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard == null) return null;
+            foreach (var control in keyboard.allKeys) if (control != null && control.displayName == "<") return control;
+            return null;
+        }
+
+        // The frame the reset key set the ghost flat, for the relocation's own vertical turn.
+        internal static int ResetFrame { get; private set; } = -1;
+
         // The wheel as the game reads it to turn the ghost: taken for a turn about the ghost's own axis.
         private static float Scroll()
         {
@@ -55,6 +75,12 @@ namespace Overhaul.Building
             float wheel = ZInput.GetMouseScrollWheel();
             var player = Player.m_localPlayer;
             if (!player || !Tiltable(piece)) return wheel;
+            // The reset key sets the ghost flat and facing north again, on all three axes.
+            if (Pressed(OverhaulConfig.BuildResetKey.Value) && !Hud.IsPieceSelectionVisible())
+            {
+                local = Quaternion.identity; scroll = 0; player.m_placeRotation = 0; ResetFrame = Time.frameCount;
+                return 0;
+            }
             scroll += wheel;
             int notch = scroll > player.m_scrollAmountThreshold ? 1 : scroll < -player.m_scrollAmountThreshold ? -1 : 0;
             if (notch != 0)

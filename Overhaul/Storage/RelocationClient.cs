@@ -176,6 +176,7 @@ namespace Overhaul.Storage
             {End();return;}
             if(!takeInput)return;
             float scroll=Building.BuildRotation.Wheel(ghost.GetComponent<Piece>());if(Mathf.Abs(scroll)>.001f)rotation+=scroll>0?1:-1;
+            if(Building.BuildRotation.ResetFrame==Time.frameCount)rotation=0;
             WithNative(()=>player.UpdatePlacementGhost(false));
             bool valid=ghost.activeSelf&&player.m_placementStatus==Player.PlacementStatus.Valid;
             if(valid)valid=Vector3.Distance(player.transform.position,ghost.transform.position)<=PieceRelocation.Reach&&

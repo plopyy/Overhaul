@@ -4,11 +4,11 @@ using UnityEngine.InputSystem;
 
 namespace Overhaul.Building
 {
-    // In building mode Ctrl, Alt and Shift belong to building (turning the ghost about X/Z, finely), and so does the
-    // snapping switch key (X): every game action bound to one of them on the keyboard (crouch, run/dash, sit, auto pickup
-    // toggle, the game's own held snapping…) is switched off at its source, its input action, while the hammer, hoe or
-    // cultivator is out, so no key press reaches it whoever reads it; they are switched back on when leaving building
-    // mode. Building reads these keys directly. Gamepad-only actions are left alone.
+    // In building mode Ctrl, Alt and Shift belong to building (turning the ghost about X/Z, finely), and so do the
+    // snapping switch (X) and rotation reset (<) keys: every game action bound to one of them on the keyboard (crouch,
+    // run/dash, sit, auto pickup toggle, the game's own held snapping…) is switched off at its source, its input
+    // action, while the hammer, hoe or cultivator is out, so no key press reaches it whoever reads it; they are switched
+    // back on when leaving building mode. Building reads these keys directly. Gamepad-only actions are left alone.
     internal static class BuildModifierKeys
     {
         private static readonly string[] Modifiers = { "/leftCtrl", "/rightCtrl", "/ctrl", "/leftAlt", "/rightAlt", "/alt", "/leftShift", "/rightShift", "/shift" };
@@ -22,9 +22,13 @@ namespace Overhaul.Building
                 string path = binding.effectivePath;
                 if (path == null || !path.StartsWith("<Keyboard>")) continue;
                 foreach (var key in Modifiers) if (path.EndsWith(key, System.StringComparison.OrdinalIgnoreCase)) return true;
-                // The switch key by its control name ("<Keyboard>/x" → "/x").
-                string toggle = ZInput.KeyCodeToPath(Utility.OverhaulConfig.BuildSnapToggleKey.Value, false) ?? "";
-                if (toggle.Length > 0 && path.EndsWith("/" + toggle.Substring(toggle.LastIndexOf('/') + 1), System.StringComparison.OrdinalIgnoreCase)) return true;
+                // The snapping switch and rotation reset keys by their control names ("<Keyboard>/x" → "/x").
+                foreach (var reserved in new[] { Utility.OverhaulConfig.BuildSnapToggleKey.Value, Utility.OverhaulConfig.BuildResetKey.Value })
+                {
+                    string control = reserved == UnityEngine.KeyCode.Less ? "/" + (BuildRotation.LessKey()?.name ?? "") : ZInput.KeyCodeToPath(reserved, false) ?? "";
+                    if (control == "/") continue;
+                    if (control.Length > 0 && path.EndsWith("/" + control.Substring(control.LastIndexOf('/') + 1), System.StringComparison.OrdinalIgnoreCase)) return true;
+                }
             }
             return false;
         }
