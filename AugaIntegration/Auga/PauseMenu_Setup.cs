@@ -12,9 +12,11 @@ using Object = UnityEngine.Object;
 namespace Auga
 {
     [HarmonyPatch]
+    // Each patch carries its own UI module: Menu_Start_Patch (the old menu swap) stays off, PausePrefabInstaller replaces it.
     public static class PauseMenu_Setup
     {
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.Update))]
+        [UiModule(UiModule.PauseMenu)]
         public static class TextDialog_Update_Patch
         {
             public static void TextDialogUpdate(TextsDialog instance)
@@ -64,6 +66,7 @@ namespace Auga
         }
 
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.ShowText), new []{typeof(TextsDialog.TextInfo)})]
+        [UiModule(UiModule.PauseMenu)]
         public static class TextDialog_ShowText_Patch
         {
             public static void ShowText(TextsDialog instance, TextsDialog.TextInfo text)
@@ -117,6 +120,7 @@ namespace Auga
         }
 
         [HarmonyPatch(typeof(Menu), nameof(Menu.UpdateNavigation))]
+        [UiModule(UiModule.PauseMenu)]
         public static class Menu_UpdateNavigation_Patch
         {
             public static void UpdateNavigation(Menu instance)
@@ -255,6 +259,7 @@ namespace Auga
 
         // No manual save for a player connected to someone else's world: the server saves it.
         [HarmonyPatch(typeof(Menu), nameof(Menu.Show))]
+        [UiModule(UiModule.PauseMenu)]
         public static class Menu_Show_Patch
         {
             [UsedImplicitly]
@@ -268,6 +273,7 @@ namespace Auga
         }
 
         [HarmonyPatch(typeof(Menu), nameof(Menu.OnClose))]
+        [UiModule(UiModule.PauseMenu)]
         public static class Menu_OnClose_Patch
         {
             [UsedImplicitly]
@@ -282,6 +288,7 @@ namespace Auga
         }
 
         [HarmonyPatch(typeof(TextsDialog))]
+        [UiModule(UiModule.PauseMenu)]
         public static class TextsDialog_Patch
         {
             [HarmonyPrefix]
