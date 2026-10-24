@@ -44,6 +44,7 @@ namespace Auga
         public GameObject ServerListElement;
         public GameObject PasswordDialog;
         public GameObject ConnectingDialog;
+        public GameObject ConnectionFailedDialog;
         public GameObject PanelBase;
         public GameObject ButtonSmall;
         public GameObject ButtonMedium;
@@ -518,6 +519,7 @@ namespace Auga
             Assets.ServerListElement = assetBundle.LoadAsset<GameObject>("ServerListElement");
             Assets.PasswordDialog = assetBundle.LoadAsset<GameObject>("AugaPassword");
             Assets.ConnectingDialog = assetBundle.LoadAsset<GameObject>("AugaConnecting");
+            Assets.ConnectionFailedDialog = assetBundle.LoadAsset<GameObject>("AugaConnectionFailed");
             Assets.PanelBase = assetBundle.LoadAsset<GameObject>("AugaPanelBase");
             Assets.ButtonSmall = assetBundle.LoadAsset<GameObject>("ButtonSmall");
             Assets.ButtonMedium = assetBundle.LoadAsset<GameObject>("ButtonMedium");
