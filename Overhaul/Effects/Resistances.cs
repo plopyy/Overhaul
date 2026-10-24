@@ -75,8 +75,11 @@ namespace Overhaul.Effects
                 if (type == HitData.DamageType.Fire || type == Frost || type == Lightning) total += Effects.Get(player, "ResistMagic");
                 if ((type == HitData.DamageType.Fire && Effects.Get(player, "FireImmunity") >= 1) || (type == Frost && Effects.Get(player, "FrostImmunity") >= 1)) total = 100;
             }
-            foreach (var effect in character.GetSEMan().GetStatusEffects())
-                if (effect is SE_Stats stats) total += Sum(stats.m_mods, type);
+            // A creature prefab (bestiary) has no status effects yet.
+            var seman = character.GetSEMan();
+            if (seman != null)
+                foreach (var effect in seman.GetStatusEffects())
+                    if (effect is SE_Stats stats) total += Sum(stats.m_mods, type);
             return Mathf.Clamp(total, -200, 100);
         }
 
@@ -145,6 +148,45 @@ namespace Overhaul.Effects
                 if (store.opcode == OpCodes.Stloc_3) return new CodeInstruction(OpCodes.Ldloc_3);
                 return new CodeInstruction(store.opcode == OpCodes.Stloc_S ? OpCodes.Ldloc_S : OpCodes.Ldloc, store.operand);
             }
+        }
+
+        // The bestiary: a creature's health with the mod's changes (GetMaxHealthBase is patched), its 3 star dungeon guardian
+        // (level 4 and its health bonus), its resistances under short damage type names.
+        internal static void Initialize()
+        {
+            AugaUnity.BestiaryData.Health = (creature, level) => creature.GetMaxHealthBase() * level;
+            AugaUnity.BestiaryData.GuardianLevel = creature => Dungeons.BossData.TryFor(creature.name, out var entry) && entry.Stars >= 3 ? entry.Stars + 1 : 0;
+            AugaUnity.BestiaryData.GuardianHealth = creature => Dungeons.BossData.TryFor(creature.name, out var entry)
+                ? creature.GetMaxHealthBase() * (entry.Stars + 1) * (1 + entry.HealthBonusPercent / 100f) : 0;
+            AugaUnity.BestiaryData.Resistances = creature =>
+            {
+                var list = new List<KeyValuePair<string, float>>();
+                foreach (var type in Shown) list.Add(new KeyValuePair<string, float>("$overhaul_bestiary_" + type.ToString().ToLowerInvariant(), Get(creature, type)));
+                return list;
+            };
+            AugaUnity.BestiaryData.Behavior = Behavior;
+            AugaUnity.BestiaryData.Origin = creature => Leveling.LevelingConfig.Current.Monsters.TryGetValue(Utils.GetPrefabName(creature.gameObject), out var rule)
+                ? "$biome_" + rule.Biome.ToLowerInvariant() + "  ·  $overhaul_rank_" + rule.Category.ToLowerInvariant() : "";
+        }
+
+        // Its behaviour as MobBehaviors.cfg sets it (the server's values): one line per trait, "Ordinary" when it has none.
+        static IList<AugaUnity.BestiaryTrait> Behavior(Humanoid creature)
+        {
+            var traits = new List<AugaUnity.BestiaryTrait>();
+            void Add(string id, bool smart = false, string suffix = "") => traits.Add(new AugaUnity.BestiaryTrait
+                { Name = "$overhaul_trait_" + id + suffix, Description = "$overhaul_trait_" + id + "_desc", Smart = smart });
+            if (AI.MobBehaviorConfig.Current.TryGetValue(Utils.GetPrefabName(creature.gameObject), out var rule))
+            {
+                if (rule.Intelligence == AI.Intelligence.Smart) Add("smart", true);
+                if (rule.Aggression == AI.Aggression.Aggressive) Add("aggressive");
+                if (rule.Aggression == AI.Aggression.Cunning) Add("cunning");
+                if (rule.Group == AI.GroupBehavior.Pack) Add("pack");
+                if (rule.Group == AI.GroupBehavior.Helper) Add("helper");
+                if (rule.Charge) Add("charge");
+                if (rule.DumbChance > 0) Add("dumb", false, " (" + rule.DumbChance.ToString("0.#") + " %)");
+            }
+            if (traits.Count == 0) Add("none");
+            return traits;
         }
 
         // Item and status effect tooltips: one line per type, "Fire resistance: +50 %".
