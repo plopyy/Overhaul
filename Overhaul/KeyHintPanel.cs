@@ -32,6 +32,8 @@ namespace Overhaul
         {
             private static void Postfix(KeyHints __instance)
             {
+                // A dedicated server has no interface (nor Auga's assets).
+                if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) return;
                 if (!__instance.GetComponent<KeyHintPanel>()) __instance.gameObject.AddComponent<KeyHintPanel>().hints = __instance;
             }
         }

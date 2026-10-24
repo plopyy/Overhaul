@@ -154,6 +154,14 @@ namespace Overhaul.Building
         // Out of building mode the game no longer updates the ghost: the gizmo goes with it.
         internal static void Hide() { if (gizmo && gizmo.activeSelf) gizmo.SetActive(false); }
 
+        // The gizmo elsewhere than on the game's ghost (the quick build row's aimed piece).
+        internal static void ShowAt(Vector3 position, Quaternion rotation)
+        {
+            if (!gizmo && !Create()) return;
+            gizmo.transform.SetPositionAndRotation(position, rotation);
+            if (!gizmo.activeSelf) gizmo.SetActive(true);
+        }
+
         private static void Follow(GameObject current)
         {
             bool shown = current && current.activeInHierarchy && Tiltable(current.GetComponent<Piece>());
