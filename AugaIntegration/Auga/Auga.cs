@@ -39,6 +39,7 @@ namespace Auga
         public GameObject AugaChat;
         public GameObject DamageText;
         public GameObject OverhaulDamageText;
+        public GameObject OverhaulMenuLogo;
         public GameObject EnemyHud;
         public GameObject StoreGui;
         public GameObject WorldListElement;
@@ -515,6 +516,7 @@ namespace Auga
             Assets.AugaChat = assetBundle.LoadAsset<GameObject>("AugaChat");
             Assets.DamageText = assetBundle.LoadAsset<GameObject>("AugaDamageText");
             Assets.OverhaulDamageText = assetBundle.LoadAsset<GameObject>("OverhaulDamageText");
+            Assets.OverhaulMenuLogo = assetBundle.LoadAsset<GameObject>("OverhaulMenuLogo");
             Assets.EnemyHud = assetBundle.LoadAsset<GameObject>("AugaEnemyHud");
             Assets.StoreGui = assetBundle.LoadAsset<GameObject>("AugaStoreScreen");
             Assets.WorldListElement = assetBundle.LoadAsset<GameObject>("WorldListElement");
