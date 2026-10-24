@@ -56,7 +56,7 @@ namespace Overhaul.Effects
         {
             var zdo = Zdo(target); int t = (int)type;
             if (zdo == null || !target.m_nview.IsOwner() || target.IsDead() || baseDamage <= 0) return;
-            if (target.GetDamageModifiers().GetModifier(Types[t]) == HitData.DamageModifier.Immune) return;
+            if (Resistances.Get(target, Types[t]) >= 100) return;
             int stacks = Mathf.Min(MaxStacks, Stacks(target, type) + 1);
             zdo.Set(StackKeys[t], stacks);
             zdo.Set(BaseKeys[t], stacks > 1 ? Mathf.Max(baseDamage, zdo.GetFloat(BaseKeys[t], 0)) : baseDamage);

@@ -173,20 +173,9 @@ namespace Overhaul.Effects
             private static void Prefix(Character __instance, HitData hit)
             {
                 if (hit == null || !Local(__instance) || !__instance.m_nview || !__instance.m_nview.IsOwner() || __instance.IsDead()) return;
+                // The Resist enchantments are added to the other resistances (Resistances).
                 Reflect(__instance, hit);
-                hit.m_damage.m_fire *= Kept(__instance, "ResistFire");
-                hit.m_damage.m_frost *= Kept(__instance, "ResistFrost");
-                hit.m_damage.m_lightning *= Kept(__instance, "ResistLightning");
-                hit.m_damage.m_poison *= Kept(__instance, "ResistPoison");
-                hit.m_damage.m_spirit *= Kept(__instance, "ResistSpirit");
-                hit.m_damage.m_blunt *= Kept(__instance, "ResistBlunt");
-                hit.m_damage.m_slash *= Kept(__instance, "ResistSlash");
-                hit.m_damage.m_pierce *= Kept(__instance, "ResistPierce");
-                float magic = Kept(__instance, "ResistMagic");
-                hit.m_damage.m_fire *= magic; hit.m_damage.m_frost *= magic; hit.m_damage.m_lightning *= magic;
             }
-
-            private static float Kept(Character character, string id) => 1 - Mathf.Clamp01(Pct(character, id));
 
             // A share of the damage goes back to the attacker. The returned hit has no attacker, so it is never reflected again.
             private static void Reflect(Character player, HitData hit)
