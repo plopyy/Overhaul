@@ -244,6 +244,7 @@
 <Compile Include="..\AugaIntegration\Auga\AugaLog_Hooks.cs" />
 <Compile Include="..\AugaIntegration\Auga\Chat_Setup.cs" />
 <Compile Include="..\AugaIntegration\Auga\Connection_Setup.cs" />
+<Compile Include="..\AugaIntegration\Auga\ConnectionFailed_Setup.cs" />
 <Compile Include="..\AugaIntegration\Auga\DamageText_Setup.cs" />
 <Compile Include="..\AugaIntegration\Auga\Extensions.cs" />
 <Compile Include="..\AugaIntegration\Auga\GuiBar_Patch.cs" />
