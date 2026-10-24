@@ -60,11 +60,10 @@ namespace Overhaul.Rarity
                 Width = 128, Height = 128, Rotation = RenderManager.IsometricRotation,
                 DistanceMultiplier = 1.1f, ParticleSimulationTime = -1f
             });
-            // Provisional recipe, until the enchanting itself is made.
             var config = new PieceConfig
             {
                 PieceTable = "Hammer", Category = "Crafting", CraftingStation = "piece_workbench", Icon = icon,
-                Requirements = new[] { ("Stone", 10), ("FineWood", 6), ("BoneFragments", 4), ("SurtlingCore", 1) }
+                Requirements = new[] { ("Stone", 10), ("FineWood", 6), ("BoneFragments", 10), ("SurtlingCore", 2) }
                     .Select(r => new RequirementConfig(r.Item1, r.Item2, 0, true)).ToArray()
             };
             PieceManager.Instance.AddPiece(new CustomPiece(prefab, false, config));
