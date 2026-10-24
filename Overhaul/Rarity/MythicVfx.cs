@@ -27,6 +27,8 @@ namespace Overhaul.Rarity
                 if (!prefab.GetComponent<ZNetView>()) { local[prefab.name] = prefab; continue; }
                 // The spectral weapon builds its look from the item named in its ZDO, on every machine.
                 if (prefab.name == "Mythic_SpectralWeapon" && !prefab.GetComponent<SpectralCopy>()) prefab.AddComponent<SpectralCopy>();
+                // The level up follows its player on every machine.
+                if (prefab.name == "Overhaul_LevelUp" && !prefab.GetComponent<FollowCharacter>()) prefab.AddComponent<FollowCharacter>();
                 if (!PrefabManager.Instance.GetPrefab(prefab.name)) PrefabManager.Instance.AddPrefab(new CustomPrefab(prefab, false));
             }
         }
@@ -59,6 +61,14 @@ namespace Overhaul.Rarity
         // A spectral weapon's hit: a blue burst (Mythic_SpectralHit, Mythic_DaggerHit when small) at point, facing back along dir.
         internal static void SpectralHit(Vector3 point, Vector3 dir, bool small = false) =>
             Spawn(small ? "Mythic_DaggerHit" : "Mythic_SpectralHit", point, dir.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(-dir) : Quaternion.identity);
+
+        // The level up around the local player, seen by every player and following them.
+        internal static void LevelUp(Player player)
+        {
+            var copy = Spawn("Overhaul_LevelUp", player.transform.position, player.transform.rotation);
+            var view = copy ? copy.GetComponent<ZNetView>() : null;
+            if (view && view.IsValid()) view.GetZDO().Set(FollowCharacter.Key, player.GetZDOID());
+        }
 
         // A local (not networked) effect played once at position, removed after life seconds.
         internal static void Play(string name, Vector3 position, float life)
@@ -143,3 +153,19 @@ namespace Overhaul.Rarity
         }
     }
 }
+
+    // An effect staying at the feet of the character named in its ZDO (Overhaul_LevelUp), on every machine.
+    internal sealed class FollowCharacter : MonoBehaviour
+    {
+        internal const string Key = "overhaul_follow";
+        ZNetView view;
+        GameObject target;
+
+        void Awake() => view = GetComponent<ZNetView>();
+
+        void LateUpdate()
+        {
+            if (!target && view && view.IsValid() && ZNetScene.instance) target = ZNetScene.instance.FindInstance(view.GetZDO().GetZDOID(Key));
+            if (target) transform.position = target.transform.position;
+        }
+    }
