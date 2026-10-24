@@ -127,6 +127,11 @@ namespace Overhaul.Dungeons
             if (entries == null) Initialize();
             return entries[DungeonPolicy.PrefabName(prefab)];
         }
+        internal static bool TryFor(string prefab, out Entry entry)
+        {
+            if (entries == null) Initialize();
+            return entries.TryGetValue(DungeonPolicy.PrefabName(prefab), out entry);
+        }
         internal static int StarsFor(string prefab) => For(prefab).Stars;
         internal static float AttackSpeedFor(string prefab)
         {
