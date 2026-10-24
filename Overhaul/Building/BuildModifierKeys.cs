@@ -4,14 +4,13 @@ using UnityEngine.InputSystem;
 
 namespace Overhaul.Building
 {
-    // In building mode Ctrl, Alt and Shift belong to building (turning the ghost about X/Z, placing without snapping):
-    // every game action bound to one of them on the keyboard (crouch, run/dash, auto pickup toggle…) is switched off at
-    // its source, its input action, while the hammer, hoe or cultivator is out, so no key press reaches it whoever
-    // reads it; they are switched back on when leaving building mode. The game's own building action (AltPlace) stays.
-    // Gamepad-only actions are left alone.
+    // In building mode Ctrl, Alt and Shift belong to building (turning the ghost about X/Z, finely), and so does the
+    // snapping switch key (X): every game action bound to one of them on the keyboard (crouch, run/dash, sit, auto pickup
+    // toggle, the game's own held snapping…) is switched off at its source, its input action, while the hammer, hoe or
+    // cultivator is out, so no key press reaches it whoever reads it; they are switched back on when leaving building
+    // mode. Building reads these keys directly. Gamepad-only actions are left alone.
     internal static class BuildModifierKeys
     {
-        private static readonly HashSet<string> Building = new HashSet<string> { "AltPlace" };
         private static readonly string[] Modifiers = { "/leftCtrl", "/rightCtrl", "/ctrl", "/leftAlt", "/rightAlt", "/alt", "/leftShift", "/rightShift", "/shift" };
         private static readonly List<ZInput.ButtonDef> off = new List<ZInput.ButtonDef>();
 
@@ -23,6 +22,9 @@ namespace Overhaul.Building
                 string path = binding.effectivePath;
                 if (path == null || !path.StartsWith("<Keyboard>")) continue;
                 foreach (var key in Modifiers) if (path.EndsWith(key, System.StringComparison.OrdinalIgnoreCase)) return true;
+                // The switch key by its control name ("<Keyboard>/x" → "/x").
+                string toggle = ZInput.KeyCodeToPath(Utility.OverhaulConfig.BuildSnapToggleKey.Value, false) ?? "";
+                if (toggle.Length > 0 && path.EndsWith("/" + toggle.Substring(toggle.LastIndexOf('/') + 1), System.StringComparison.OrdinalIgnoreCase)) return true;
             }
             return false;
         }
@@ -39,7 +41,7 @@ namespace Overhaul.Building
             foreach (var pair in ZInput.instance.m_buttons)
             {
                 var def = pair.Value;
-                if (Building.Contains(pair.Key) || def?.ButtonAction == null || !def.ButtonAction.enabled || !OnModifier(def.ButtonAction)) continue;
+                if (def?.ButtonAction == null || !def.ButtonAction.enabled || !OnModifier(def.ButtonAction)) continue;
                 def.ButtonAction.Disable(); def.ResetState();
                 off.Add(def);
             }
