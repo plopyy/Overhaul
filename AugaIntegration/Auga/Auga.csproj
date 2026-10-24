@@ -149,6 +149,7 @@
     <Compile Include="AugaLog_Hooks.cs" />
     <Compile Include="Chat_Setup.cs" />
     <Compile Include="Connection_Setup.cs" />
+    <Compile Include="ConnectionFailed_Setup.cs" />
     <Compile Include="DamageText_Setup.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="GuiBar_Patch.cs" />

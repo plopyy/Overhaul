@@ -41,10 +41,13 @@ namespace Overhaul.Building
             return Kind.None;
         }
 
-        // The game's place and remove buttons inside UpdatePlacement: not seen by it while a row is held, nor on the press
+        // The game's place and remove buttons inside UpdatePlacement: not seen by it while a row is held, on the press
         // that starts one.
-        private static bool Down(string name) => !holding || name != "Attack" && name != "Remove" ? ZInput.GetButtonDown(name) : false;
-        private static bool Up(string name) => !holding || name != "Attack" && name != "Remove" ? ZInput.GetButtonUp(name) : false;
+        private static bool Down(string name) => !Owned(name) && ZInput.GetButtonDown(name);
+        private static bool Up(string name) => !Owned(name) && ZInput.GetButtonUp(name);
+        // Also on the frame a row ends: its release must not place or remove one more piece.
+        private static bool Owned(string name) => (holding || ended == Time.frameCount) && (name == "Attack" || name == "Remove");
+        private static int ended = -1;
 
         [HarmonyPatch(typeof(Player), "UpdatePlacement")]
         private static class Input
@@ -62,7 +65,9 @@ namespace Overhaul.Building
                 {
                     // A row waiting for its chests is placed once they are leased.
                     if (Storage.BuildStorage.RunBatch(__instance)) return;
-                    if (!takeInput || Hud.InRadial() || Hud.IsPieceSelectionVisible() || !ZInput.GetButtonDown("Attack")) return;
+                    if (!takeInput || Hud.InRadial() || Hud.IsPieceSelectionVisible()) return;
+                    if (ZInput.GetButtonDown("Remove") && BeginDestroy(__instance)) { holding = destroying = true; return; }
+                    if (!ZInput.GetButtonDown("Attack")) return;
                     var piece = __instance.GetSelectedPiece();
                     if (piece == null || piece.m_repairPiece || piece.m_removePiece || __instance.m_placementStatus != Player.PlacementStatus.Valid) return;
                     if (Time.time - __instance.m_lastToolUseTime < __instance.m_placeDelay) return;
@@ -70,6 +75,12 @@ namespace Overhaul.Building
                     if (!__instance.m_noPlacementCost && !__instance.HaveRequirements(piece, Player.RequirementMode.CanBuild)) return;
                     if (!Begin(__instance, piece)) return;
                     holding = true;
+                    return;
+                }
+                if (destroying)
+                {
+                    if (ZInput.GetButtonDown("Attack") || !takeInput) { Stop(); return; }
+                    if (!ZInput.GetButton("Remove")) { DestroyRow(__instance); Stop(); }
                     return;
                 }
                 if (ZInput.GetButtonDown("Remove") || !takeInput) { Stop(); return; }
@@ -88,6 +99,15 @@ namespace Overhaul.Building
                 if (__instance != Player.m_localPlayer) return;
                 if (!holding || !__instance.m_placementGhost) { Handles(__instance, __instance.m_placementGhost); return; }
                 Measure(__instance);
+                if (destroying)
+                {
+                    // Removing: the game's ghost and the gizmo stay out of the way.
+                    __instance.m_placementGhost.SetActive(false);
+                    BuildRotation.Hide();
+                    Mark();
+                    Handles(__instance, __instance.m_placementGhost);
+                    return;
+                }
                 var ghost = __instance.m_placementGhost;
                 ghost.SetActive(true);
                 ghost.transform.SetPositionAndRotation(anchor, turn);
@@ -106,9 +126,84 @@ namespace Overhaul.Building
         {
             private static void Postfix(Player __instance)
             {
-                if (!holding || __instance != Player.m_localPlayer || !__instance.m_placementGhost) return;
+                if (!holding || destroying || __instance != Player.m_localPlayer || !__instance.m_placementGhost) return;
                 Highlight(__instance.m_placementGhost, valid);
             }
+        }
+
+        // Quick removal: holding the remove button on a wall, a pillar/beam or a roof stretches, in the same directions,
+        // over the identical pieces lined up with it (same piece, same turn, one piece size apart); they turn red, and
+        // releasing removes each of them as the game would (refund, ward, station, removable). Left click cancels.
+        private static bool destroying;
+        private static readonly Dictionary<(int, int), Piece> candidates = new Dictionary<(int, int), Piece>();
+        private static HashSet<Piece> marked = new HashSet<Piece>();
+
+        private static bool BeginDestroy(Player player)
+        {
+            if (!GameCamera.instance) return false;
+            var camera = GameCamera.instance.transform;
+            if (!Physics.Raycast(camera.position, camera.forward, out var hit, 50f, player.m_removeRayMask) ||
+                Vector3.Distance(hit.point, player.m_eye.position) >= player.m_maxPlaceDistance) return false;
+            var piece = hit.collider.GetComponentInParent<Piece>();
+            kind = KindOf(piece);
+            if (kind == Kind.None || !piece.IsPlacedByPlayer()) return false;
+            anchor = piece.transform.position; turn = piece.transform.rotation;
+            if (!Axes(kind, piece.gameObject, out axisA, out sizeA, out axisB, out sizeB, out pieceMin, out pieceMax)) return false;
+            // The same pieces, turned the same way, sitting on the row's grid.
+            string name = Utils.GetPrefabName(piece.gameObject);
+            candidates.Clear();
+            foreach (var other in Piece.s_allPieces)
+            {
+                if (!other || Quaternion.Angle(other.transform.rotation, turn) > 1f || Utils.GetPrefabName(other.gameObject) != name) continue;
+                var local = Quaternion.Inverse(turn) * (other.transform.position - anchor);
+                int i = Mathf.RoundToInt(Vector3.Dot(local, axisA) / sizeA), j = axisB == Vector3.zero ? 0 : Mathf.RoundToInt(Vector3.Dot(local, axisB) / sizeB);
+                if (Mathf.Abs(i) > MaxPerAxis || Mathf.Abs(j) > MaxPerAxis || (local - axisA * sizeA * i - axisB * sizeB * j).magnitude > .1f) continue;
+                candidates[(i, j)] = other;
+            }
+            alongLastA = alongLastB = 0;
+            fromA = toA = fromB = toB = 0; valid = true;
+            return true;
+        }
+
+        // The pieces of the row turn red; those it no longer covers get their colour back.
+        private static void Mark()
+        {
+            var now = new HashSet<Piece>();
+            for (int j = fromB; j <= toB; j++)
+                for (int i = fromA; i <= toA; i++)
+                    if (candidates.TryGetValue((i, j), out var piece) && piece) now.Add(piece);
+            foreach (var piece in marked) if (piece && !now.Contains(piece)) Unmark(piece);
+            foreach (var piece in now) Highlight(piece.gameObject, false);
+            marked = now;
+        }
+
+        private static void Unmark(Piece piece)
+        {
+            MaterialMan.instance.ResetValue(piece.gameObject, ShaderProps._Color);
+            MaterialMan.instance.ResetValue(piece.gameObject, ShaderProps._EmissionColor);
+        }
+
+        private static void DestroyRow(Player player)
+        {
+            int removed = 0;
+            foreach (var piece in marked.ToList()) if (piece && Remove(player, piece)) removed++;
+            var tool = player.GetRightItem();
+            if (removed == 0 || tool == null) return;
+            player.FaceLookDirection();
+            player.m_zanim.SetTrigger(tool.m_shared.m_attack.m_attackAnimation);
+        }
+
+        // The game's removal of one piece (Player.RemovePiece), without its own aiming.
+        private static bool Remove(Player player, Piece piece)
+        {
+            if (!piece.m_canBeRemoved || Location.IsInsideNoBuildLocation(piece.transform.position) ||
+                !PrivateArea.CheckAccess(piece.transform.position, 0, false, false) || !player.CheckCanRemovePiece(piece) ||
+                !piece.GetComponent<ZNetView>() || !piece.CanBeRemoved()) return false;
+            piece.GetComponent<IRemoved>()?.OnRemoved();
+            var wear = piece.GetComponent<WearNTear>();
+            if (!wear) return false;
+            wear.Remove(false);
+            return true;
         }
 
         private static bool Begin(Player player, Piece piece)
@@ -195,13 +290,16 @@ namespace Overhaul.Building
                 if (handles[i].activeSelf != used) handles[i].SetActive(used);
                 if (!used) continue;
                 var t = handles[i].transform;
-                t.SetPositionAndRotation(ghost.transform.TransformPoint(shown[i].at), ghost.transform.rotation);
+                // A row (built or removed) is drawn in its own frame, a lone piece on the game's ghost.
+                if (holding) t.SetPositionAndRotation(anchor + turn * shown[i].at, turn);
+                else t.SetPositionAndRotation(ghost.transform.TransformPoint(shown[i].at), ghost.transform.rotation);
                 t.localScale = shown[i].scale;
             }
         }
 
         // While a row grows: a bar beyond its end on each side it grows or can still grow (a wall not stretched up or down
-        // only shows the bar above it, the ground being below), stretching out as the aim moves towards the next piece.
+        // only shows the bar above it, the ground being below), stretching out and growing as the aim moves towards the next
+        // piece.
         private static void RowHandles(List<(Vector3 at, Vector3 scale)> shown)
         {
             var size = pieceMax - pieceMin;
@@ -221,7 +319,9 @@ namespace Overhaul.Building
                     float progress = Mathf.Clamp01((along / step - end) * sign * 2);
                     float depth = .06f + progress * Mathf.Min(.6f, step * .3f);
                     var at = centre + axis * (edge - Vector3.Dot(axis, centre) + sign * (.15f + depth / 2));
-                    shown.Add((at, Vector3.one * .06f + Abs(across) * (length - .06f) + Abs(axis) * (depth - .06f)));
+                    // It also grows along the side (taller beside, wider above or below).
+                    float grown = length * (1 + .6f * progress);
+                    shown.Add((at, Vector3.one * .06f + Abs(across) * (grown - .06f) + Abs(axis) * (depth - .06f)));
                 }
             }
         }
@@ -251,7 +351,7 @@ namespace Overhaul.Building
             int na = Mathf.Clamp(Mathf.RoundToInt(alongA / sizeA), -MaxPerAxis, MaxPerAxis);
             int nb = axisB == Vector3.zero ? 0 : Mathf.Clamp(Mathf.RoundToInt(alongB / sizeB), -MaxPerAxis, MaxPerAxis);
             fromA = Mathf.Min(0, na); toA = Mathf.Max(0, na); fromB = Mathf.Min(0, nb); toB = Mathf.Max(0, nb);
-            valid = Affordable(player) && Cells().All(Allowed);
+            valid = destroying || Affordable(player) && Cells().All(Allowed);
         }
 
         // Distance along the line (origin, direction) to its nearest point to the camera ray.
@@ -363,7 +463,10 @@ namespace Overhaul.Building
 
         private static void Stop()
         {
+            if (holding) ended = Time.frameCount;
             holding = false; kind = Kind.None;
+            foreach (var piece in marked) if (piece) Unmark(piece);
+            marked.Clear(); candidates.Clear(); destroying = false;
             foreach (var copy in copies) if (copy) Object.Destroy(copy);
             copies.Clear();
         }
