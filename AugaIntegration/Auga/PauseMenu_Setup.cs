@@ -79,7 +79,8 @@ namespace Auga
                 foreach (TextsDialog.TextInfo text1 in instance.m_texts)
                     text1.m_selected.SetActive(false);
                 text.m_selected.SetActive(true);
-                if (instance.m_leftScrollRect != null)
+                // A hidden tab (filled while another one shows) has nothing to scroll yet.
+                if (instance.m_leftScrollRect != null && instance.isActiveAndEnabled)
                 {
                     instance.StartCoroutine(instance.FocusOnCurrentLevel(instance.m_leftScrollRect, instance.m_listRoot, text.m_selected.transform as RectTransform));                    
                 }
@@ -323,21 +324,23 @@ namespace Auga
                     }
                 }
 
-                // Hugin's tab also lists every tip the character has seen: the game only keeps a tip as a known text when it
-                // carries a label, so most of them never reached the list.
+                // Hugin's tab lists every tip of the game, a help to read again: the game keeps neither the tips heard nor, for
+                // most of them, a known text. The title is the tip's label without "Hugin : ", else its topic, else its name.
                 if (filter != null && filter.Filter.Contains("tutorial") && Tutorial.instance)
                 {
                     var listed = new HashSet<string>(__instance.m_texts.Select(t => t.m_topic));
                     foreach (var tip in Tutorial.instance.m_texts)
                     {
-                        if (!Player.m_localPlayer.HaveSeenTutorial(tip.m_name)) continue;
-                        var topic = Localization.instance.Localize(tip.m_topic);
-                        if (topic.Length == 0 || !listed.Add(topic)) continue;
-                        __instance.m_texts.Add(new TextsDialog.TextInfo(topic, Localization.instance.Localize(tip.m_text)));
+                        var title = Localization.instance.Localize(tip.m_label);
+                        var separator = title.IndexOf(": ", StringComparison.Ordinal);
+                        if (separator >= 0) title = title.Substring(separator + 2);
+                        if (title.Trim().Length == 0) title = Localization.instance.Localize(tip.m_topic);
+                        if (title.Trim().Length == 0) title = tip.m_name;
+                        var text = Localization.instance.Localize(tip.m_text);
+                        if (text.Trim().Length == 0 || !listed.Add(title)) continue;
+                        __instance.m_texts.Add(new TextsDialog.TextInfo(title, text));
                     }
-                    Debug.Log("[Overhaul] Compendium Hugin: " + __instance.m_texts.Count + " texts, " + Player.m_localPlayer.m_shownTutorials.Count + " tips seen, " + Tutorial.instance.m_texts.Count + " tips in the game");
                 }
-                else if (filter != null && filter.Filter.Contains("tutorial")) Debug.Log("[Overhaul] Compendium Hugin: no tutorial list in this scene");
 
                 __instance.m_texts.Sort((a, b) => string.Compare(a.m_topic, b.m_topic, StringComparison.CurrentCulture));
                 return false;
