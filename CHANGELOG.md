@@ -18,7 +18,7 @@
 ## 2.3.0 (in progress)
 
 ### Added
-- **Hugin’s tips on Overhaul**: the raven lands to tell, once, about levels and stat points, the dash, rarity, the enchanting table, catalysts, chests, moving a build, quick build, turning pieces and dungeons, each at its own moment (first experience, level 2, first weapon, first rare item...), with the keys as set; they join the compendium’s Hugin tab. (2.3.0.298)
+- **Hugin’s tips on Overhaul**: the raven lands to tell, once, about levels and stat points, the dash, rarity, the enchanting table, catalysts, chests, moving a build, quick build, turning pieces and dungeons, each at its own moment (first experience, level 2, first weapon, first rare item...), with the keys as set; they join the compendium’s Hugin tab. In the compendium, a tip can show a short looping clip between its title and its text, staged in game on a flat checker map; first one: quick build. (2.3.0.298, 300)
 - **Level up effect**: gaining a level plays Hovl Studio’s Lvl up effect (RPG VFX Bundle) around you, at 0.7 times its speed (its sound unchanged), following you, seen by every player nearby; also with o_exp. Test command o_levelup plays the message and the effect without changing the level or the experience. (2.3.0.295, 296)
 - **Overhaul logo on the main menu**, right under the game’s Deep North logo. (2.3.0.293)
 - **Damage numbers** in Overhaul’s look: bigger (30, 22 when far instead of 16 and 8), Auga’s Norse bold with a dark outline and a soft shadow, popping up as they appear before rising and fading. One colour per kind of hit, whatever the element: cream normal, yellow weakness, grey resisted or immune, golden and bigger for a critical hit (it shakes and stays longer), red for damage you take (falling), green heals. (2.3.0.290)
