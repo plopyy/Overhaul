@@ -89,6 +89,8 @@ namespace Overhaul.Rarity
         internal readonly Dictionary<string, LootListDef> LootLists = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
         // Gear loot by biome, per rank (Normal, Captain, Elite, Boss, FinalBoss, Chest): chance, quantity and rarity weights.
         internal readonly Dictionary<string, LootListDef> BiomeLoots = new Dictionary<string, LootListDef>(StringComparer.OrdinalIgnoreCase);
+        // Gear of the Biome lists that the biome loot never drops (BiomeLootExceptions); loot lists and enchanting still use it.
+        internal readonly HashSet<string> BiomeLootExceptions = new HashSet<string>(StringComparer.Ordinal);
         internal readonly Dictionary<string, List<string>> MobLoots = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         // Enchanting table: odds per tier (EnchantTier_N, rarity weights in Rarity order), line change cost, tiers added by rank.
         internal readonly SortedDictionary<int, float[]> EnchantTiers = new SortedDictionary<int, float[]>();
@@ -110,7 +112,7 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddCatalystEffects(path);
+            else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddBiomeLootExceptions(path); AddCatalystEffects(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]"); }
@@ -168,6 +170,22 @@ namespace Overhaul.Rarity
             at = at > 1 ? text.LastIndexOf('\n', at - 2) + 1 : text.Length;
             File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
             Utility.Log.LogInfo("RaritySystem.cfg: biome loot sections added");
+        }
+
+        // Files made before the biome loot exceptions get the (empty) section from the defaults, after the last BiomeLoot one.
+        private static void AddBiomeLootExceptions(string path)
+        {
+            string text = File.ReadAllText(path);
+            if (text.Contains("[BiomeLootExceptions]")) return;
+            string defaults = Utility.ConfigSections.Defaults(FileName);
+            int from = defaults.IndexOf("[BiomeLootExceptions]", StringComparison.Ordinal), last = text.LastIndexOf("[BiomeLoot_", StringComparison.Ordinal);
+            if (from < 0 || last < 0) return;
+            // With the comment lines just above it.
+            while (from > 1) { int line = defaults.LastIndexOf('\n', from - 2) + 1; if (!defaults.Substring(line).StartsWith("#") || defaults.Substring(line).StartsWith("# ===")) break; from = line; }
+            string block = defaults.Substring(from, NextBlock(defaults, defaults.IndexOf("[BiomeLootExceptions]", StringComparison.Ordinal)) - from).TrimEnd();
+            int at = NextBlock(text, last);
+            File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
+            Utility.Log.LogInfo("RaritySystem.cfg: biome loot exceptions section added");
         }
 
         // A mythic whose default Value changed: a file still holding the old default list gets the new one (values set by
@@ -343,6 +361,9 @@ namespace Overhaul.Rarity
                             Chance = Float(v, "LootChance", 100)
                         };
                         break;
+                    case "biomelootexceptions":
+                        foreach (string item in List(Get(v, "ItemList", ""))) data.BiomeLootExceptions.Add(item);
+                        break;
                     case "enchanttable":
                         data.RerollCost = List(Get(v, "RerollCost", "")).Select(c => c.Split(':')).Where(p => p.Length == 2)
                             .Select(p => (p[0].Trim(), int.TryParse(p[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0)).Where(c => c.Item2 > 0).ToArray();
@@ -378,6 +399,8 @@ namespace Overhaul.Rarity
                 int drawn = data.Rarities.Count(r => !r.ForCatalysts);
                 if (list.Weights.Length != drawn) Utility.Log.LogWarning("RaritySystem.cfg: loot list " + list.Id + " has " + list.Weights.Length + " rarity weights for " + drawn + " rarities");
             }
+            foreach (string item in data.BiomeLootExceptions)
+                if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in BiomeLootExceptions");
             foreach (var loot in data.BiomeLoots.Values)
             {
                 int drawn = data.Rarities.Count(r => !r.ForCatalysts);
