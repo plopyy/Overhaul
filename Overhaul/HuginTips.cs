@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using UnityEngine;
@@ -37,6 +38,28 @@ namespace Overhaul
                     Key(Utility.OverhaulConfig.BuildPreciseKey.Value), Key(Utility.OverhaulConfig.BuildResetKey.Value), Key(Utility.OverhaulConfig.BuildSnapToggleKey.Value));
                 Add(__instance, Dungeons);
             }
+        }
+
+        // The tips' clips in the compendium (overhaul_huginclips, OverhaulLab HuginClipBundle): each sheet is named
+        // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows the clip of its name (QuickBuild for overhaul_quickbuild).
+        static readonly Dictionary<string, string> ClipOf = new Dictionary<string, string> { [QuickBuild] = "QuickBuild" };
+        static AssetBundle clips;
+
+        internal static void Initialize() => AugaUnity.TipClip.Source = Clip;
+
+        static AugaUnity.TipClip.Clip Clip(string topic)
+        {
+            if (Localization.instance == null) return null;
+            foreach (var entry in ClipOf)
+            {
+                if (Localization.instance.Localize("$" + entry.Key + "_tip_topic") != topic) continue;
+                if (!clips) clips = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_huginclips");
+                var sheet = clips ? clips.LoadAllAssets<Texture2D>().FirstOrDefault(t => t.name.StartsWith("HuginClip_" + entry.Value + "_")) : null;
+                if (!sheet) return null;
+                var layout = sheet.name.Split('_');
+                return new AugaUnity.TipClip.Clip { Sheet = sheet, Columns = int.Parse(layout[2]), Rows = int.Parse(layout[3]), Count = int.Parse(layout[4]) };
+            }
+            return null;
         }
 
         static void Add(Tutorial tutorial, string name, params string[] keys)

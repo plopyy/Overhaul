@@ -76,6 +76,9 @@ namespace Auga
                 
                 instance.m_textAreaTopic.text = Localization.instance.Localize(text.m_topic);
                 instance.m_textArea.text = Localization.instance.Localize(text.m_text);
+                // The tip's clip, if it has one (Hugin's Overhaul tips).
+                var clip = instance.GetComponentInChildren<TipClip>(true);
+                if (clip) clip.Show(text.m_topic);
                 foreach (TextsDialog.TextInfo text1 in instance.m_texts)
                     text1.m_selected.SetActive(false);
                 text.m_selected.SetActive(true);
