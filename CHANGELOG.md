@@ -18,6 +18,8 @@
 ## 2.3.0 (in progress)
 
 ### Added
+- **Level up effect**: gaining a level plays Hovl Studio’s Lvl up effect (RPG VFX Bundle) around you, at 0.7 times its speed (its sound unchanged), following you, seen by every player nearby; also with o_exp. (2.3.0.295)
+- **Overhaul logo on the main menu**, right under the game’s Deep North logo. (2.3.0.293)
 - **Damage numbers** in Overhaul’s look: bigger (30, 22 when far instead of 16 and 8), Auga’s Norse bold with a dark outline and a soft shadow, popping up as they appear before rising and fading. One colour per kind of hit, whatever the element: cream normal, yellow weakness, grey resisted or immune, golden and bigger for a critical hit (it shakes and stays longer), red for damage you take (falling), green heals. (2.3.0.290)
 - **Hold to level**: holding the place button with the hoe’s Level ground keeps levelling as you move, at the tool’s own pace (raising ground and paths still take a click each). (2.3.0.288)
 - Building: the ghost's orientation (X, Y, Z in degrees, in the gizmo's colours) shows in a small strip over the key hints whenever the orientation gizmo shows. (2.3.0.262)
