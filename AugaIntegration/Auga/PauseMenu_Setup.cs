@@ -69,6 +69,15 @@ namespace Auga
         [UiModule(UiModule.PauseMenu)]
         public static class TextDialog_ShowText_Patch
         {
+            static bool InView(ScrollRect scroll, RectTransform entry)
+            {
+                var view = scroll.viewport ? scroll.viewport : (RectTransform)scroll.transform;
+                if (!entry || !entry.gameObject.activeInHierarchy) return false;
+                var corners = new Vector3[4]; entry.GetWorldCorners(corners);
+                var viewCorners = new Vector3[4]; view.GetWorldCorners(viewCorners);
+                return corners[0].y >= viewCorners[0].y - 1 && corners[1].y <= viewCorners[1].y + 1;
+            }
+
             public static void ShowText(TextsDialog instance, TextsDialog.TextInfo text)
             {
                 if (text == null)
@@ -83,7 +92,8 @@ namespace Auga
                     text1.m_selected.SetActive(false);
                 text.m_selected.SetActive(true);
                 // A hidden tab (filled while another one shows) has nothing to scroll yet.
-                if (instance.m_leftScrollRect != null && instance.isActiveAndEnabled)
+                // The list only scrolls to the tip when it is out of view: a click on a visible tip keeps the list where it is.
+                if (instance.m_leftScrollRect != null && instance.isActiveAndEnabled && !InView(instance.m_leftScrollRect, text.m_selected.transform as RectTransform))
                 {
                     instance.StartCoroutine(instance.FocusOnCurrentLevel(instance.m_leftScrollRect, instance.m_listRoot, text.m_selected.transform as RectTransform));                    
                 }
