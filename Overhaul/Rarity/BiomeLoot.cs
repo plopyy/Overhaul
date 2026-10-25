@@ -15,22 +15,31 @@ namespace Overhaul.Rarity
 
         internal static void Creature(string creature, Vector3 center)
         {
-            if (creature == null || !Leveling.LevelingConfig.Current.Monsters.TryGetValue(creature, out var rule)) return;
+            var loot = Rank(creature, out int biome);
+            if (loot == null || UnityEngine.Random.Range(0f, 100f) >= loot.Chance) return;
+            for (int i = 0; i < loot.Quantity; i++)
+            {
+                string item = Pick(RarityConfig.Current.Biomes[biome].Id);
+                if (item != null) ItemRarity.Drop(item, ItemRarity.Roll(loot.Weights), center);
+            }
+        }
+
+        // The BiomeLoot section of the creature's rank (chance, quantity, rarity weights) and the biome it drops from, or null.
+        // MobLoot creatures drop their own set with these odds too.
+        internal static LootListDef Rank(string creature, out int biome)
+        {
+            biome = -1;
+            if (creature == null || !Leveling.LevelingConfig.Current.Monsters.TryGetValue(creature, out var rule)) return null;
             var biomes = RarityConfig.Current.Biomes;
-            int biome = biomes.FindIndex(b => string.Equals(b.Id, rule.Biome, StringComparison.OrdinalIgnoreCase));
-            if (biome < 0) return;
+            biome = biomes.FindIndex(b => string.Equals(b.Id, rule.Biome, StringComparison.OrdinalIgnoreCase));
+            if (biome < 0) return null;
             string rank = rule.Category;
             if (string.Equals(rank, "Boss", StringComparison.OrdinalIgnoreCase))
             {
                 if (biome + 1 < biomes.Count) biome++;
                 else rank = FinalBoss;
             }
-            if (!RarityConfig.Current.BiomeLoots.TryGetValue(rank, out var loot) || UnityEngine.Random.Range(0f, 100f) >= loot.Chance) return;
-            for (int i = 0; i < loot.Quantity; i++)
-            {
-                string item = Pick(biomes[biome].Id);
-                if (item != null) ItemRarity.Drop(item, ItemRarity.Roll(loot.Weights), center);
-            }
+            return RarityConfig.Current.BiomeLoots.TryGetValue(rank, out var loot) ? loot : null;
         }
 
         // One gear item of the biome with a rarity of the Chest section, or null.

@@ -204,19 +204,21 @@ namespace Overhaul.Rarity
             return multiplier == 1f ? value : Mathf.Round(value * multiplier * 10f) / 10f;
         }
 
-        // Creature loot: a creature with MobLoot sections drops only those (each loot list rolls its chance, then drops its
-        // quantity of items picked in its list, each with a rarity rolled from the list's weights); any other one, gear of its
-        // biome by rank (BiomeLoot).
+        // Creature loot: a creature with MobLoot sections drops only those, with the odds of its rank's BiomeLoot section (its
+        // chance, then its quantity of items picked in the loot lists, each with a rarity rolled from its weights); without a
+        // rank, each loot list's own values. Any other creature: gear of its biome by rank (BiomeLoot).
         internal static void CreatureLoot(string creature, Vector3 center)
         {
             var data = RarityConfig.Current;
             if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) { BiomeLoot.Creature(creature, center); return; }
+            var rank = BiomeLoot.Rank(creature, out _);
             foreach (string name in lists)
             {
                 if (!data.LootLists.TryGetValue(name, out var list) || list.Items.Length == 0) continue;
-                if (Random.Range(0f, 100f) >= list.Chance) continue;
-                for (int i = 0; i < list.Quantity; i++)
-                    Drop(list.Items[Random.Range(0, list.Items.Length)], Roll(list.Weights), center);
+                var odds = rank ?? list;
+                if (Random.Range(0f, 100f) >= odds.Chance) continue;
+                for (int i = 0; i < odds.Quantity; i++)
+                    Drop(list.Items[Random.Range(0, list.Items.Length)], Roll(odds.Weights), center);
             }
         }
 
