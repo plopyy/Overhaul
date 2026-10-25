@@ -120,7 +120,8 @@ namespace Overhaul.Rarity
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]");
                 // Prospector now breaks the whole rock; the amber pearl drops precious items.
                 OldMythicValue(path, "Prospector", "[10,12,14,16,18,20,22,25]", "[25,25,25,25,25,25,25,25]");
-                OldSection(path, "[Catalyst_AmberPearl]", "Effect = FirstStrike\nValue = 10"); }
+                OldSection(path, "[Catalyst_AmberPearl]", "Effect = FirstStrike\nValue = 10");
+                OldSection(path, "[Catalyst_HardAntler]", "Effect = ThunderStrike\nCount = 4\nDamage = 10"); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
@@ -368,7 +369,7 @@ namespace Overhaul.Rarity
                         data.Catalysts[id] = ItemRarity.CatalystRarity;
                         var def = new CatalystDef { Id = id, Effect = Get(v, "Effect", null), Dot = Get(v, "Dot", null) };
                         def.Items = List(Get(v, "Items", ""));
-                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max" })
+                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max", "Chop", "Mine" })
                             if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
                         def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
                         if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;

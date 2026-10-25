@@ -186,17 +186,24 @@ namespace Overhaul.Rarity
                 if (moment > elapsed) { yield return new WaitForSeconds(moment - elapsed); elapsed = moment; }
                 if (!owner || owner.IsDead()) yield break;
                 Vector2 offset = UnityEngine.Random.insideUnitCircle * RainRadius;
-                Vector3 above = center + new Vector3(offset.x, 40f, offset.y);
-                if (!Physics.Raycast(above, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) continue;
-                var bolt = UnityEngine.Object.Instantiate(prefab, ground.point, Quaternion.identity).GetComponent<Projectile>();
-                if (!bolt) continue;
-                ThunderStaff.Raining = true;
-                try { bolt.Setup(owner, Vector3.down, 0f, hit.Clone(), null, null); }
-                finally { ThunderStaff.Raining = false; }
-                RainStrike = true;
-                try { bolt.OnHit(ground.collider, ground.point, false, ground.normal); }
-                finally { RainStrike = false; }
+                Bolt(owner, center + new Vector3(offset.x, 0, offset.y), hit);
             }
+        }
+
+        // One bolt of the Lightning Strike staff falling on the ground under point, its area dealing hit's damage (also used by
+        // the hard antler catalyst).
+        internal static void Bolt(Player owner, Vector3 point, HitData hit)
+        {
+            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_projectile") : null;
+            if (!prefab || !Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) return;
+            var bolt = UnityEngine.Object.Instantiate(prefab, ground.point, Quaternion.identity).GetComponent<Projectile>();
+            if (!bolt) return;
+            ThunderStaff.Raining = true;
+            try { bolt.Setup(owner, Vector3.down, 0f, hit.Clone(), null, null); }
+            finally { ThunderStaff.Raining = false; }
+            RainStrike = true;
+            try { bolt.OnHit(ground.collider, ground.point, false, ground.normal); }
+            finally { RainStrike = false; }
         }
 
         // --- DragonFist: every 4th attack of the weapon hurls a dragon of energy straight ahead (MythicVfx Mythic_DragonFist,
