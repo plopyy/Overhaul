@@ -1046,15 +1046,13 @@ namespace Overhaul.Rarity
             else ItemDrop.DropItem(item, 1, owner.transform.position + Vector3.up, Quaternion.identity);
         }
 
-        // --- Prospector: ore veins and rocks hit with the pickaxe drop each of their items twice with Value % chance. The rock
-        // is handled on its owner's machine: the miner's chance is published in their ZDO, and the owner tells the miner
-        // when the ore was doubled, who sees the game's bonus craft effect (its crystal chime) with a golden "+N" and a small
-        // golden burst (MythicVfx Mythic_Prospect) where the pickaxe struck ---
+        // --- Prospector: each pickaxe hit on an ore vein or a rock has Value % chance to break all of it at once, every part
+        // dropping its loot as usual. The rock is handled on its owner's machine: the miner's chance is published in their
+        // ZDO, and the owner tells the miner when it shattered, who sees the game's bonus craft effect (its crystal chime)
+        // and a small golden burst (MythicVfx Mythic_Prospect) where the pickaxe struck ---
 
         private const string ProspectRpc = "Overhaul_Prospect";
         private static readonly int ProspectKey = "overhaul_prospector".GetStableHashCode();
-        private static Player miner;
-        private static Vector3 minePoint;
 
         [HarmonyPatch(typeof(Game), "Start")]
         private static class ProspectRegister { private static void Postfix() => ZRoutedRpc.instance.Register<Vector3, int>(ProspectRpc, (sender, point, count) => Prospected(point, count)); }
@@ -1072,41 +1070,71 @@ namespace Overhaul.Rarity
             }
         }
 
-        [HarmonyPatch]
-        private static class ProspectMining
+        // Set while the rock's own parts are broken, so those hits do not roll again.
+        private static bool shattering;
+
+        // The hit's miner, if a pickaxe hit by a player rolls the shatter on the rock's owner.
+        private static Player Shatters(ZNetView rock, HitData hit)
         {
-            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
-            {
-                yield return AccessTools.Method(typeof(MineRock), "RPC_Hit");
-                yield return AccessTools.Method(typeof(MineRock5), "RPC_Damage");
-            }
-            private static void Prefix(HitData hit)
-            {
-                miner = hit != null && hit.m_skill == Skills.SkillType.Pickaxes ? hit.GetAttacker() as Player : null;
-                if (miner) minePoint = hit.m_point;
-            }
-            private static void Finalizer() => miner = null;
+            if (shattering || hit == null || hit.m_skill != Skills.SkillType.Pickaxes || !rock || !rock.IsOwner()) return null;
+            var player = hit.GetAttacker() as Player;
+            if (!player || !player.m_nview || !player.m_nview.IsValid()) return null;
+            float chance = player == Player.m_localPlayer ? Enchantments.MythicValue(player.GetCurrentWeapon(), "Prospector") : player.m_nview.GetZDO().GetFloat(ProspectKey, 0);
+            return chance > 0 && UnityEngine.Random.value * 100f < chance ? player : null;
         }
 
-        [HarmonyPatch(typeof(DropTable), nameof(DropTable.GetDropList), typeof(int))]
-        private static class ProspectDrops
+        // A hit that breaks any part (pickaxe damage far over any rock's health, any tool tier).
+        private static HitData Breaking(HitData hit)
         {
-            private static void Postfix(List<GameObject> __result)
+            var broken = hit.Clone(); broken.m_damage = new HitData.DamageTypes { m_pickaxe = 1e7f }; broken.m_toolTier = 1000;
+            return broken;
+        }
+
+        [HarmonyPatch(typeof(MineRock5), "RPC_Damage")]
+        private static class ProspectVein
+        {
+            private static void Postfix(MineRock5 __instance, HitData hit)
             {
-                if (!miner || __result == null || __result.Count == 0 || !miner.m_nview || !miner.m_nview.IsValid()) return;
-                float chance = miner == Player.m_localPlayer ? Enchantments.MythicValue(miner.GetCurrentWeapon(), "Prospector") : miner.m_nview.GetZDO().GetFloat(ProspectKey, 0);
-                if (chance <= 0 || UnityEngine.Random.value * 100f >= chance) return;
-                int count = __result.Count;
-                for (int i = 0; i < count; i++) __result.Add(__result[i]);
-                if (miner == Player.m_localPlayer) Prospected(minePoint, count);
-                else ZRoutedRpc.instance.InvokeRoutedRPC(miner.m_nview.GetZDO().GetOwner(), ProspectRpc, minePoint, count);
+                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                shattering = true;
+                try
+                {
+                    var broken = Breaking(hit);
+                    for (int i = 0; i < __instance.m_hitAreas.Count; i++)
+                        if (__instance.m_hitAreas[i].m_health > 0) { broken.m_point = __instance.m_hitAreas[i].m_collider ? __instance.m_hitAreas[i].m_collider.bounds.center : hit.m_point; __instance.DamageArea(i, broken); }
+                }
+                finally { shattering = false; }
+                Shattered(player, hit.m_point);
             }
+        }
+
+        [HarmonyPatch(typeof(MineRock), "RPC_Hit")]
+        private static class ProspectRock
+        {
+            private static void Postfix(MineRock __instance, HitData hit)
+            {
+                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                shattering = true;
+                try
+                {
+                    var broken = Breaking(hit);
+                    for (int i = 0; i < __instance.m_hitAreas.Length; i++)
+                        if (__instance.m_hitAreas[i] && __instance.m_nview.IsValid()) { broken.m_point = __instance.m_hitAreas[i].bounds.center; __instance.RPC_Hit(0, broken, i); }
+                }
+                finally { shattering = false; }
+                Shattered(player, hit.m_point);
+            }
+        }
+
+        private static void Shattered(Player player, Vector3 point)
+        {
+            if (player == Player.m_localPlayer) Prospected(point, 0);
+            else ZRoutedRpc.instance.InvokeRoutedRPC(player.m_nview.GetZDO().GetOwner(), ProspectRpc, point, 0);
         }
 
         private static void Prospected(Vector3 point, int count)
         {
             if (InventoryGui.instance) InventoryGui.instance.m_craftBonusEffect.Create(point, Quaternion.identity);
-            if (DamageText.instance) DamageText.instance.ShowText(DamageText.TextType.Bonus, point + Vector3.up * .5f, "+" + count, true);
             MythicVfx.Play("Mythic_Prospect", point, 2f);
         }
 
