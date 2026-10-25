@@ -118,7 +118,7 @@ namespace Overhaul.Commands
                     args.Context.AddString(drop ? "Overhaul : " + args[1] + " (" + rarity.Id + ") apparu." : "Overhaul : objet inconnu " + args[1] + ".");
                 }));
             new Terminal.ConsoleCommand(Prefix + "reroll",
-                "Test : tire de nouveaux enchantements sur un objet equipe d'au moins la rarete Uncommon : o_reroll [type] (arme en main sinon ; Helmet, Chest, Legs, Cape, Trinket, Shield, Melee, Bow, Staff, Tool) (admin serveur + devcommands).",
+                "Test : tire de nouveaux enchantements sur un objet equipe d'au moins la rarete Magic : o_reroll [type] (arme en main sinon ; Helmet, Chest, Legs, Cape, Trinket, Shield, Melee, Bow, Staff, Tool) (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }

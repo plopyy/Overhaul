@@ -17,6 +17,13 @@ namespace Overhaul.Rarity
         internal const string RarityKey = "overhaul_rarity", EnchantKey = "overhaul_enchants", MythicKey = "overhaul_mythic";
         internal const string EmptyEnchant = "None";
 
+        // Rarities renamed in 2.3.0 (Uncommon dropped, Runic added): items, RaritySystem.cfg and Effects.cfg made before keep
+        // their tier under its new name. Items rolled since carry RarityVersionKey.
+        internal const string RarityVersionKey = "overhaul_rarity_v";
+        internal static readonly Dictionary<string, string> OldRarities = new Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase)
+            { { "Uncommon", "Magic" }, { "Magic", "Rare" }, { "Rare", "Epic" }, { "Epic", "Legendary" }, { "Legendary", "Runic" } };
+        internal static string NewRarity(string id) => id != null && OldRarities.TryGetValue(id, out string renamed) ? renamed : id;
+
         internal static RarityDef Of(ItemDrop.ItemData item)
         {
             if (item == null) return null;
@@ -24,7 +31,7 @@ namespace Overhaul.Rarity
             if (IsCatalyst(item, out string catalyst)) return data.Rarity(catalyst);
             // Only the gear listed in a biome of RaritySystem.cfg has a rarity, at least the first (weakest) one.
             if (Enchantments.Biome(item) < 0) return null;
-            if (item.m_customData != null && item.m_customData.TryGetValue(RarityKey, out string id)) return data.Rarity(id);
+            if (item.m_customData != null && item.m_customData.TryGetValue(RarityKey, out string id)) return data.Rarity(item.m_customData.ContainsKey(RarityVersionKey) ? id : NewRarity(id));
             return data.Rarities.FirstOrDefault();
         }
 
@@ -80,7 +87,7 @@ namespace Overhaul.Rarity
         internal static void Assign(ItemDrop.ItemData item, RarityDef rarity)
         {
             if (item == null || rarity == null) return;
-            item.m_customData[RarityKey] = rarity.Id;
+            item.m_customData[RarityKey] = rarity.Id; item.m_customData[RarityVersionKey] = "2";
             if (rarity.EnchantCount > 0) item.m_customData[EnchantKey] = string.Join(",", Enchantments.Roll(item, rarity));
             else item.m_customData.Remove(EnchantKey);
             string[] mythics = Enchantments.RollMythic(item, rarity);
@@ -91,15 +98,15 @@ namespace Overhaul.Rarity
         internal static string[] Mythics(ItemDrop.ItemData item) =>
             item?.m_customData != null && item.m_customData.TryGetValue(MythicKey, out string value) && value.Length > 0 ? value.Split(',') : new string[0];
 
-        // Test command: new enchantments for an item of a rarity with enchantment lines (Uncommon and above).
+        // Test command: new enchantments for an item of a rarity with enchantment lines (Magic and above).
         internal static string Reroll(ItemDrop.ItemData item)
         {
             var rarity = Of(item);
             string name = Localization.instance.Localize(item.m_shared.m_name);
             if (rarity == null || IsCatalyst(item, out _)) return name + " n'a pas de rarete.";
-            if (rarity.EnchantCount <= 0) return name + " est " + rarity.Id + " : pas de ligne d'enchantement (Uncommon minimum).";
+            if (rarity.EnchantCount <= 0) return name + " est " + rarity.Id + " : pas de ligne d'enchantement (Magic minimum).";
             string[] lines = Enchantments.Roll(item, rarity);
-            item.m_customData[RarityKey] = rarity.Id;
+            item.m_customData[RarityKey] = rarity.Id; item.m_customData[RarityVersionKey] = "2";
             item.m_customData[EnchantKey] = string.Join(",", lines);
             string[] mythics = Enchantments.RollMythic(item, rarity);
             if (mythics.Length > 0) item.m_customData[MythicKey] = string.Join(",", mythics);

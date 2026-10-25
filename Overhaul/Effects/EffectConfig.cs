@@ -44,10 +44,20 @@ namespace Overhaul.Effects
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(EffectConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            try { AddMissingEffects(path); }
+            try { RenameOldRarities(path); AddMissingEffects(path); }
             catch (Exception e) { Utility.Log.LogWarning("Effects.cfg: new effects not added: " + e.Message); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("Effects.cfg unreadable: " + e.Message); }
+        }
+
+        // Files made before the 2.3.0 rarity names: EnchantRarityMin takes the tier's new name (see ItemRarity.OldRarities).
+        private static void RenameOldRarities(string path)
+        {
+            string text = File.ReadAllText(path);
+            if (!text.Contains("EnchantRarityMin = Uncommon")) return;
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(?m)^EnchantRarityMin = (\w+)", m => "EnchantRarityMin = " + Rarity.ItemRarity.NewRarity(m.Groups[1].Value));
+            File.WriteAllText(path, text);
+            Utility.Log.LogInfo("Effects.cfg: EnchantRarityMin renamed to the new rarities");
         }
 
         // An older file gets the effects added since (the DoT bonuses, the immunities...): each missing [Effect_] section of
