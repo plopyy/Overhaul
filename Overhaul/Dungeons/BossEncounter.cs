@@ -119,7 +119,8 @@ namespace Overhaul.Dungeons
             var loot = BossLootData.For(mistlands ? "Mistlands" : mountain ? "Mountain" : swamp ? "Swamp" : "Forest");
             int slots = ValidateLoot(loot);
             chest.GetInventory().RemoveAll();
-            chest.GetInventory().SetHeight(Math.Max(chest.m_height, (slots + chest.m_width - 1) / chest.m_width));
+            // One more slot for the gear item of the dungeon's biome.
+            chest.GetInventory().SetHeight(Math.Max(chest.m_height, (slots + chest.m_width) / chest.m_width));
             foreach (var entry in loot)
             {
                 if (entry.Chance <= 0 || entry.Maximum == 0 || (entry.Chance < 100 && UnityEngine.Random.value * 100 >= entry.Chance)) continue;
@@ -135,6 +136,8 @@ namespace Overhaul.Dungeons
                     remaining -= amount;
                 }
             }
+            var gear = Rarity.BiomeLoot.ChestItem(mistlands ? "Mistlands" : mountain ? "Mountain" : swamp ? "Swamp" : "BlackForest");
+            if (gear != null && !chest.GetInventory().AddItem(gear)) throw new InvalidOperationException("Boss chest inventory overflow");
             chest.Save();
         }
 

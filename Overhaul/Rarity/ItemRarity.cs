@@ -197,10 +197,11 @@ namespace Overhaul.Rarity
             return multiplier == 1f ? value : Mathf.Round(value * multiplier * 10f) / 10f;
         }
 
-        // Creature loot from the MobLoot sections: each loot list rolls its chance, then drops its quantity
-        // of items picked in its list, each with a rarity rolled from the list's weights.
+        // Creature loot: gear of its biome by rank (BiomeLoot), then the MobLoot sections: each loot list rolls its chance,
+        // then drops its quantity of items picked in its list, each with a rarity rolled from the list's weights.
         internal static void CreatureLoot(string creature, Vector3 center)
         {
+            BiomeLoot.Creature(creature, center);
             var data = RarityConfig.Current;
             if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) return;
             foreach (string name in lists)
@@ -214,13 +215,17 @@ namespace Overhaul.Rarity
 
         private const string RagdollCreature = "overhaul_rarity_creature";
 
+        // Dungeon guardians (their loot is in their chest) and tamed creatures drop no rarity loot.
+        private static bool Loots(Character character) =>
+            character && !character.IsTamed() && !Dungeons.BossLevelVisualPatch.IsGuardian(character);
+
         // Creatures without a corpse drop their loot at death.
         [HarmonyPatch(typeof(CharacterDrop), "OnDeath")]
         private static class DeathLoot
         {
             private static void Postfix(CharacterDrop __instance)
             {
-                if (__instance.m_dropsEnabled && __instance.m_character)
+                if (__instance.m_dropsEnabled && Loots(__instance.m_character))
                     CreatureLoot(Utils.GetPrefabName(__instance.gameObject), __instance.m_character.GetCenterPoint());
             }
         }
@@ -232,7 +237,7 @@ namespace Overhaul.Rarity
         {
             private static void Postfix(Ragdoll __instance, CharacterDrop characterDrop)
             {
-                if (characterDrop && __instance.m_dropItems && __instance.m_nview && __instance.m_nview.IsValid())
+                if (characterDrop && Loots(characterDrop.GetComponent<Character>()) && __instance.m_dropItems && __instance.m_nview && __instance.m_nview.IsValid())
                     __instance.m_nview.GetZDO().Set(RagdollCreature, Utils.GetPrefabName(characterDrop.gameObject));
             }
         }
