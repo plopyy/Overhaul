@@ -54,6 +54,18 @@ namespace Overhaul.Commands
                     server.m_rpc.Invoke(ExperienceRequest,target,amount);
                     args.Context.AddString("Overhaul : correction d'EXP envoyee au serveur pour verification admin.");
                 }));
+            // Shows the level up as it plays (message and effect, seen by players nearby) without changing anything.
+            new Terminal.ConsoleCommand(Prefix+"levelup",
+                "Joue le level up (message et effet) sans changer le niveau ni l'EXP : o_levelup.",
+                (Terminal.ConsoleEvent)(args=>
+                {
+                    var player=Player.m_localPlayer;
+                    if(!player){args.Context.AddString("Overhaul : aucun personnage en jeu.");return;}
+                    int level=OverhaulCharacter.Get(player)?.Data.Level??1;
+                    if(MessageHud.instance)MessageHud.instance.ShowBiomeFoundMsg(string.Format(LevelingText.Get("level_up"),level),true);
+                    Rarity.MythicVfx.LevelUp(player);
+                    args.Context.AddString("Overhaul : level up joue (niveau "+level+" inchange).");
+                }));
             new Terminal.ConsoleCommand(Prefix + "testmud",
                 "Traverser les tas de boue des cryptes pour les tests : o_testmud [on|off] (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
