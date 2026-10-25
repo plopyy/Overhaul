@@ -165,7 +165,7 @@ workspace/
   Overhaul/                    # Ce dépôt
   Libs/                        # Références de compilation
   Packages/Overhaul/           # Résultat de compilation
-  Tools/Auga-main/AugaUnity/   # Projet Unity éditable, conservé séparément
+  Tools/OverhaulLab/           # Projet Unity éditable, conservé séparément
 ```
 
 Depuis la racine du dépôt :
