@@ -2840,7 +2840,7 @@
   "overhaul_mythic_homing_desc": "la lance lancée transperce jusqu'à {0} ennemis, puis revient dans votre main",
   "overhaul_mythic_whirlwind_desc": "votre attaque spéciale attire vers vous les créatures touchées et les étourdit {0} s (moitié moins pour les boss)",
   "overhaul_mythic_twinblade_desc": "{0} % de chances par coup de frapper à nouveau avec une épée spectrale (dégâts d'esprit)",
-  "overhaul_mythic_ricochetaxe_desc": "attaque spéciale : lance 3 haches spectrales infligeant {0} % des dégâts de l'attaque en dégâts d'esprit",
+  "overhaul_mythic_ricochetaxe_desc": "attaque spéciale : lance 3 haches spectrales infligeant {0} % des dégâts de l'attaque en dégâts d'esprit ; chacune a 25 % de chances d'abattre d'un coup l'arbre qu'elle touche",
   "overhaul_mythic_reaper_desc": "+40 % de dégâts contre les créatures sous 30 % de vie ; chaque mise à mort stocke une âme (3 au maximum), et votre prochaine attaque lourde les consomme pour {0} % de dégâts en plus par âme",
   "overhaul_mythic_armorbreak_desc": "chaque coup fait subir à la cible {0} % de dégâts en plus par cumul (5 cumuls au maximum, 6 s)",
   "overhaul_mythic_earthquake_desc": "les coups au sol provoquent une réplique infligeant {0} % des dégâts de l'attaque et faisant vaciller les ennemis",

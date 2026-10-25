@@ -2737,7 +2737,7 @@
   "overhaul_mythic_homing_desc": "the thrown spear goes through up to {0} enemies, then comes back to your hand",
   "overhaul_mythic_whirlwind_desc": "your special attack pulls the creatures it hits towards you and stuns them for {0} s (half for bosses)",
   "overhaul_mythic_twinblade_desc": "{0} % chance per hit to strike again with a spectral sword (spirit damage)",
-  "overhaul_mythic_ricochetaxe_desc": "special attack: throws 3 spectral axes dealing {0} % of the attack's damage as spirit damage",
+  "overhaul_mythic_ricochetaxe_desc": "special attack: throws 3 spectral axes dealing {0} % of the attack's damage as spirit damage; each has a 25 % chance to fell a tree it strikes at once",
   "overhaul_mythic_reaper_desc": "+40 % damage on creatures under 30 % health; each kill stores a soul (3 at most), and your next heavy attack spends them for {0} % more damage per soul",
   "overhaul_mythic_armorbreak_desc": "each hit makes the target take {0} % more damage per stack (5 stacks at most, 6 s)",
   "overhaul_mythic_earthquake_desc": "ground hits cause an aftershock dealing {0} % of the attack's damage and staggering enemies",
