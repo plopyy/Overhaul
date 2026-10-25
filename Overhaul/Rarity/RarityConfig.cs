@@ -410,7 +410,7 @@ namespace Overhaul.Rarity
             {
                 foreach (string item in list.Items) if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in loot list " + list.Id);
                 int drawn = data.Rarities.Count(r => !r.ForCatalysts);
-                if (list.Weights.Length != drawn) Utility.Log.LogWarning("RaritySystem.cfg: loot list " + list.Id + " has " + list.Weights.Length + " rarity weights for " + drawn + " rarities");
+                if (list.Weights.Length > 0 && list.Weights.Length != drawn) Utility.Log.LogWarning("RaritySystem.cfg: loot list " + list.Id + " has " + list.Weights.Length + " rarity weights for " + drawn + " rarities");
             }
             foreach (string item in data.BiomeLootExceptions)
                 if (!ObjectDB.instance.GetItemPrefab(item)) Utility.Log.LogWarning("RaritySystem.cfg: unknown item " + item + " in BiomeLootExceptions");
