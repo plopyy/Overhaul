@@ -33,6 +33,7 @@ namespace Overhaul.Rarity
             string text = Localization.instance.Localize("$overhaul_catalyst_effect_" + def.Effect.ToLowerInvariant());
             foreach (var pair in def.Values) text = text.Replace("{" + pair.Key + "}", pair.Value.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture));
             if (def.Dot != null) text = text.Replace("{Dot}", Localization.instance.Localize("$overhaul_dot_" + def.Dot.ToLowerInvariant()));
+            if (def.Items.Length > 0) text = text.Replace("{Items}", string.Join(", ", def.Items.Select(i => ObjectDB.instance && ObjectDB.instance.GetItemPrefab(i) ? Localization.instance.Localize(ObjectDB.instance.GetItemPrefab(i).GetComponent<ItemDrop>().m_itemData.m_shared.m_name) : i)));
             if (def.Bonuses.Length > 0) text = text.Replace("{Bonus}", def.Bonuses[0].Value.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture));
             return text;
         }
@@ -172,6 +173,20 @@ namespace Overhaul.Rarity
                     killFrenzyUntil = Time.time + def.Get("Duration", 10);
                 }
                 else if (def.Effect == "KillExplosion") Explosion(player, position, def.Get("Damage", 20));
+                else if (def.Effect == "PreciousLoot") Precious(def, position);
+            }
+        }
+
+        // The amber pearl: Chance % that the kill drops Min to Max items, each one drawn among Items.
+        static void Precious(CatalystDef def, Vector3 point)
+        {
+            var items = def.Items.Where(i => ObjectDB.instance.GetItemPrefab(i)).ToArray();
+            if (items.Length == 0 || UnityEngine.Random.value * 100f >= def.Get("Chance", 15)) return;
+            int count = UnityEngine.Random.Range((int)def.Get("Min", 1), (int)def.Get("Max", 3) + 1);
+            for (int i = 0; i < count; i++)
+            {
+                var prefab = ObjectDB.instance.GetItemPrefab(items[UnityEngine.Random.Range(0, items.Length)]);
+                UnityEngine.Object.Instantiate(prefab, point + Vector3.up * .5f + UnityEngine.Random.insideUnitSphere * .3f, Quaternion.identity);
             }
         }
 

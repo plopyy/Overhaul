@@ -65,6 +65,7 @@ namespace Overhaul.Rarity
     internal sealed class CatalystDef
     {
         internal string Id, Effect, Dot;
+        internal string[] Items = new string[0];
         internal readonly Dictionary<string, float> Values = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
         internal (string Effect, float Value)[] Bonuses = new (string, float)[0];
         internal float Get(string key, float fallback = 0) => Values.TryGetValue(key, out float value) ? value : fallback;
@@ -116,7 +117,10 @@ namespace Overhaul.Rarity
                 AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddCatalystEffects(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
-                OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]"); }
+                OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]");
+                // Prospector now breaks the whole rock; the amber pearl drops precious items.
+                OldMythicValue(path, "Prospector", "[10,12,14,16,18,20,22,25]", "[25,25,25,25,25,25,25,25]");
+                OldSection(path, "[Catalyst_AmberPearl]", "Effect = FirstStrike\nValue = 10"); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
         }
@@ -199,6 +203,19 @@ namespace Overhaul.Rarity
             int at = NextBlock(text, last);
             File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
             Utility.Log.LogInfo("RaritySystem.cfg: biome loot exceptions section added");
+        }
+
+        // A section still holding its old default body (lines given with \n) gets the defaults' new one; one set by hand stays.
+        private static void OldSection(string path, string header, string before)
+        {
+            string text = File.ReadAllText(path), defaults = Utility.ConfigSections.Defaults(FileName);
+            int at = text.IndexOf(header, StringComparison.Ordinal), from = defaults.IndexOf(header, StringComparison.Ordinal);
+            if (at < 0 || from < 0) return;
+            int stop = NextBlock(text, at);
+            if (text.Substring(at, stop - at).Replace("\r\n", "\n").Trim() != header + "\n" + before) return;
+            string block = defaults.Substring(from, NextBlock(defaults, from) - from).TrimEnd();
+            File.WriteAllText(path, text.Substring(0, at) + block + Environment.NewLine + Environment.NewLine + text.Substring(stop).TrimStart('\r', '\n'));
+            Utility.Log.LogInfo("RaritySystem.cfg: " + header + " updated to its new default");
         }
 
         // A mythic whose default Value changed: a file still holding the old default list gets the new one (values set by
@@ -350,7 +367,8 @@ namespace Overhaul.Rarity
                     case "catalyst":
                         data.Catalysts[id] = ItemRarity.CatalystRarity;
                         var def = new CatalystDef { Id = id, Effect = Get(v, "Effect", null), Dot = Get(v, "Dot", null) };
-                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks" })
+                        def.Items = List(Get(v, "Items", ""));
+                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max" })
                             if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
                         def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
                         if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;
