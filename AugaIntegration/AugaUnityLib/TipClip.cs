@@ -15,16 +15,18 @@ namespace AugaUnity
             public Texture Sheet;
             public int Columns, Rows, Count;
             public float Rate = 15;
+            // The clip played after this one (the tip's first clip comes back after its last).
+            public Clip Next;
         }
 
         public static Func<string, Clip> Source;
 
-        Clip clip;
+        Clip first, clip;
         float started;
 
         public virtual void Show(string topic)
         {
-            clip = Source != null ? Source(topic) : null;
+            first = clip = Source != null ? Source(topic) : null;
             gameObject.SetActive(clip != null && clip.Sheet);
             if (!gameObject.activeSelf) return;
             Picture.texture = clip.Sheet;
@@ -35,7 +37,14 @@ namespace AugaUnity
         protected virtual void Update()
         {
             if (clip == null) return;
-            Frame(Mathf.FloorToInt((Time.unscaledTime - started) * clip.Rate) % clip.Count);
+            int index = Mathf.FloorToInt((Time.unscaledTime - started) * clip.Rate);
+            if (index >= clip.Count)
+            {
+                // A single clip loops on itself; several play one after the other.
+                clip = clip.Next ?? first; started = Time.unscaledTime; index = 0;
+                Picture.texture = clip.Sheet;
+            }
+            Frame(index);
         }
 
         void Frame(int index)

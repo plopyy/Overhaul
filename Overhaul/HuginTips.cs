@@ -41,8 +41,10 @@ namespace Overhaul
         }
 
         // The tips' clips in the compendium (overhaul_huginclips, OverhaulLab HuginClipBundle): each sheet is named
-        // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows the clip of its name (QuickBuild for overhaul_quickbuild).
-        static readonly Dictionary<string, string> ClipOf = new Dictionary<string, string> { [QuickBuild] = "QuickBuild", [Rotation] = "Rotation", [Move] = "Move", [Chests] = "TakeAll", [Rarity] = "Rarity", [Catalysts] = "Catalysts", [EnchantTable] = "EnchantTable", [Stats] = "StatPoints", [Levels] = "Levels" };
+        // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows its clips one after the other, in a loop.
+        static readonly Dictionary<string, string[]> ClipOf = new Dictionary<string, string[]> { [QuickBuild] = new[] { "QuickBuild" }, [Rotation] = new[] { "Rotation" }, [Move] = new[] { "Move" },
+            [Chests] = new[] { "TakeAll" }, [Rarity] = new[] { "Rarity" }, [Catalysts] = new[] { "Catalysts", "EnchantCatalysts" }, [EnchantTable] = new[] { "EnchantTable", "EnchantReroll" },
+            [Stats] = new[] { "StatPoints" }, [Levels] = new[] { "Levels" } };
         static AssetBundle clips;
 
         internal static void Initialize() => AugaUnity.TipClip.Source = Clip;
@@ -54,10 +56,18 @@ namespace Overhaul
             {
                 if (Localization.instance.Localize("$" + entry.Key + "_tip_topic") != topic) continue;
                 if (!clips) clips = Utility.EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_huginclips");
-                var sheet = clips ? clips.LoadAllAssets<Texture2D>().FirstOrDefault(t => t.name.StartsWith("HuginClip_" + entry.Value + "_")) : null;
-                if (!sheet) return null;
-                var layout = sheet.name.Split('_');
-                return new AugaUnity.TipClip.Clip { Sheet = sheet, Columns = int.Parse(layout[2]), Rows = int.Parse(layout[3]), Count = int.Parse(layout[4]) };
+                var sheets = clips ? clips.LoadAllAssets<Texture2D>() : new Texture2D[0];
+                AugaUnity.TipClip.Clip first = null, last = null;
+                foreach (string name in entry.Value)
+                {
+                    var sheet = sheets.FirstOrDefault(t => t.name.StartsWith("HuginClip_" + name + "_"));
+                    if (!sheet) continue;
+                    var layout = sheet.name.Split('_');
+                    var clip = new AugaUnity.TipClip.Clip { Sheet = sheet, Columns = int.Parse(layout[2]), Rows = int.Parse(layout[3]), Count = int.Parse(layout[4]) };
+                    if (last != null) last.Next = clip; else first = clip;
+                    last = clip;
+                }
+                return first;
             }
             return null;
         }
