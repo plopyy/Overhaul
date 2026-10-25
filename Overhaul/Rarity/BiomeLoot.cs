@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // Gear loot by biome: a creature (biome and rank from MonsterCategories.cfg) may drop one item of its biome's list
+    // Gear loot by biome (creatures without MobLoot sections): a creature (biome and rank from MonsterCategories.cfg) may drop one item of its biome's list
     // (Biome sections), with a rarity drawn from its rank's BiomeLoot section only, whatever the biome. A biome boss drops an
     // item of the next biome; the boss of the last biome uses FinalBoss and drops from its own. Dungeon guardians drop no gear:
     // their chest always holds one item of the dungeon's biome (Chest section).
@@ -48,12 +49,15 @@ namespace Overhaul.Rarity
             return item;
         }
 
-        // A random item of the biome's list among those the game knows, the BiomeLootExceptions left out.
+        // A random item of the biome's list among those the game knows, leaving out the BiomeLootExceptions and the gear of the
+        // loot lists that MobLoot creatures drop (a troll set only comes from trolls).
         static string Pick(string biome)
         {
-            var def = RarityConfig.Current.Biomes.FirstOrDefault(b => string.Equals(b.Id, biome, StringComparison.OrdinalIgnoreCase));
+            var data = RarityConfig.Current;
+            var def = data.Biomes.FirstOrDefault(b => string.Equals(b.Id, biome, StringComparison.OrdinalIgnoreCase));
             if (def == null || !ObjectDB.instance) return null;
-            var items = def.Items.Where(i => !RarityConfig.Current.BiomeLootExceptions.Contains(i) && ObjectDB.instance.GetItemPrefab(i)).ToArray();
+            var mobGear = new HashSet<string>(data.MobLoots.Values.SelectMany(l => l).Where(data.LootLists.ContainsKey).SelectMany(l => data.LootLists[l].Items), StringComparer.Ordinal);
+            var items = def.Items.Where(i => !data.BiomeLootExceptions.Contains(i) && !mobGear.Contains(i) && ObjectDB.instance.GetItemPrefab(i)).ToArray();
             return items.Length > 0 ? items[UnityEngine.Random.Range(0, items.Length)] : null;
         }
     }
