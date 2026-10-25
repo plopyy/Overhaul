@@ -2406,7 +2406,7 @@
   "overhaul_catalyst_effect_parryreflect": "A parry sends back {Value} % of the parried damage to the attacker",
   "overhaul_catalyst_effect_coldwalker": "Unaffected by cold and frost, +{Value} % speed in the Mountains and the Deep North",
   "overhaul_catalyst_effect_execute": "+{Value} % damage on a creature under {Threshold} % health",
-  "overhaul_catalyst_effect_preciousloot": "{Chance} % chance that a kill drops {Min} to {Max} precious items ({Items})",
+  "overhaul_catalyst_effect_preciousloot": "{Chance} % chance that a felled tree or a broken rock, ore vein or mud pile drops {Min} to {Max} precious items ({Items})",
   "overhaul_catalyst_effect_lightning": "{Chance} % chance per hit that a bolt falls on the target: {Damage} lightning damage, plus {Chop} chop damage with an axe or {Mine} mining damage with a pickaxe",
   "overhaul_catalyst_effect_killexplosion": "Killing a creature sets off a fire burst of {Damage} damage",
   "overhaul_catalyst_effect_eitrsurge": "Each spell: {Chance} % chance to refill all your eitr",
