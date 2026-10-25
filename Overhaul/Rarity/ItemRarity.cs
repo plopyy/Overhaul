@@ -204,13 +204,13 @@ namespace Overhaul.Rarity
             return multiplier == 1f ? value : Mathf.Round(value * multiplier * 10f) / 10f;
         }
 
-        // Creature loot: gear of its biome by rank (BiomeLoot), then the MobLoot sections: each loot list rolls its chance,
-        // then drops its quantity of items picked in its list, each with a rarity rolled from the list's weights.
+        // Creature loot: a creature with MobLoot sections drops only those (each loot list rolls its chance, then drops its
+        // quantity of items picked in its list, each with a rarity rolled from the list's weights); any other one, gear of its
+        // biome by rank (BiomeLoot).
         internal static void CreatureLoot(string creature, Vector3 center)
         {
-            BiomeLoot.Creature(creature, center);
             var data = RarityConfig.Current;
-            if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) return;
+            if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) { BiomeLoot.Creature(creature, center); return; }
             foreach (string name in lists)
             {
                 if (!data.LootLists.TryGetValue(name, out var list) || list.Items.Length == 0) continue;

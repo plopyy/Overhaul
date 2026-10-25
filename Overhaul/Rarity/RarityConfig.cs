@@ -112,7 +112,8 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddBiomeLootExceptions(path); AddCatalystEffects(path);
+            else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddBiomeLootExceptions(path);
+                AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddCatalystEffects(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]"); }
@@ -170,6 +171,18 @@ namespace Overhaul.Rarity
             at = at > 1 ? text.LastIndexOf('\n', at - 2) + 1 : text.Length;
             File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
             Utility.Log.LogInfo("RaritySystem.cfg: biome loot sections added");
+        }
+
+        // A section of the defaults missing from the file (the Ask set, its Asksvin) goes after the last section of its kind.
+        private static void AddAfterLast(string path, string kind, string header)
+        {
+            string text = File.ReadAllText(path), defaults = Utility.ConfigSections.Defaults(FileName);
+            int from = defaults.IndexOf(header, StringComparison.Ordinal), last = text.LastIndexOf(kind, StringComparison.Ordinal);
+            if (text.Contains(header) || from < 0 || last < 0) return;
+            string block = defaults.Substring(from, NextBlock(defaults, from) - from).TrimEnd();
+            int at = NextBlock(text, last);
+            File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
+            Utility.Log.LogInfo("RaritySystem.cfg: " + header + " added");
         }
 
         // Files made before the biome loot exceptions get the (empty) section from the defaults, after the last BiomeLoot one.
