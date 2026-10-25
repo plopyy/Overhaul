@@ -4,18 +4,20 @@ using UnityEngine.UI;
 
 namespace AugaUnity
 {
-    // A tip's looping clip in the compendium (Hugin tab): a sheet of frames (Columns × Rows, Count of them) shown one after
-    // the other at Rate per second on Picture. Overhaul gives the clip of a tip by its title (Source); no clip hides the area.
+    // A tip's looping clips in the compendium (Hugin tab): a sheet of frames (Columns × Rows, Count of them) shown one after
+    // the other at Rate per second on Picture. Overhaul gives the clips of a tip by its title (Source); no clip hides the area.
+    // A tip with several clips shows one at a time, the Previous and Next arrows (hidden otherwise) going round them.
     public class TipClip : MonoBehaviour
     {
         public RawImage Picture;
+        public GameObject Previous, Next;
 
         public sealed class Clip
         {
             public Texture Sheet;
             public int Columns, Rows, Count;
             public float Rate = 15;
-            // The clip played after this one (the tip's first clip comes back after its last).
+            // The tip's next clip.
             public Clip Next;
         }
 
@@ -26,9 +28,28 @@ namespace AugaUnity
 
         public virtual void Show(string topic)
         {
-            first = clip = Source != null ? Source(topic) : null;
-            gameObject.SetActive(clip != null && clip.Sheet);
+            first = Source != null ? Source(topic) : null;
+            gameObject.SetActive(first != null && first.Sheet);
             if (!gameObject.activeSelf) return;
+            bool several = first.Next != null;
+            Previous.SetActive(several); Next.SetActive(several);
+            Play(first);
+        }
+
+        // Arrow buttons (wired in the prefab).
+        public void ShowNext() { if (clip != null) Play(clip.Next ?? first); }
+        public void ShowPrevious()
+        {
+            if (clip == null) return;
+            // The clip before this one, or the last one when this is the first.
+            var before = first;
+            while (before.Next != null && before.Next != clip) before = before.Next;
+            Play(before);
+        }
+
+        void Play(Clip shown)
+        {
+            clip = shown;
             Picture.texture = clip.Sheet;
             started = Time.unscaledTime;
             Frame(0);
@@ -37,14 +58,7 @@ namespace AugaUnity
         protected virtual void Update()
         {
             if (clip == null) return;
-            int index = Mathf.FloorToInt((Time.unscaledTime - started) * clip.Rate);
-            if (index >= clip.Count)
-            {
-                // A single clip loops on itself; several play one after the other.
-                clip = clip.Next ?? first; started = Time.unscaledTime; index = 0;
-                Picture.texture = clip.Sheet;
-            }
-            Frame(index);
+            Frame(Mathf.FloorToInt((Time.unscaledTime - started) * clip.Rate) % clip.Count);
         }
 
         void Frame(int index)
