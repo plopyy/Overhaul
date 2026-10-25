@@ -103,11 +103,47 @@ namespace Overhaul.Rarity
                             bolt.m_damage.m_lightning = def.Get("Damage", 10); bolt.SetAttacker(player);
                             __instance.Damage(bolt);
                             break;
+                        case "Lightning": Lightning(player, def, hit, __instance, __instance.transform.position); break;
                         case "DotEvery":
                             if (dotAttack && Enum.TryParse(def.Dot, true, out DotType type)) Network.Dot(__instance, type, def.Get("Damage", 4), player.GetZDOID());
                             break;
                     }
                 }
+            }
+        }
+
+        // Hard antler: each weapon hit has Chance % to call a bolt on what was hit (the Lightning Strike staff's strike effect
+        // only, no area): Damage lightning to that target alone, plus Chop chop damage with an axe or Mine pickaxe damage with a
+        // pickaxe (then it also falls on the trees, logs and rocks the tool hits). The bolt's hit carries no skill, so it never
+        // calls another.
+        static void Lightning(Player player, CatalystDef def, HitData hit, IDestructible target, Vector3 point)
+        {
+            if (target == null || hit.m_skill == Skills.SkillType.None || UnityEngine.Random.value * 100f >= def.Get("Chance", 15)) return;
+            var bolt = new HitData { m_point = hit.m_point, m_dir = Vector3.down, m_dodgeable = false, m_blockable = false, m_skill = Skills.SkillType.None, m_toolTier = hit.m_toolTier };
+            bolt.m_damage.m_lightning = def.Get("Damage", 20);
+            if (hit.m_skill == Skills.SkillType.Axes) bolt.m_damage.m_chop = def.Get("Chop", 100);
+            if (hit.m_skill == Skills.SkillType.Pickaxes) bolt.m_damage.m_pickaxe = def.Get("Mine", 100);
+            bolt.SetAttacker(player);
+            var staff = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_projectile") : null;
+            var strike = staff ? staff.GetComponent<Projectile>() : null;
+            if (strike) strike.m_hitEffects.Create(Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids) ? ground.point : point, Quaternion.identity);
+            target.Damage(bolt);
+        }
+
+        [HarmonyPatch]
+        private static class LightningTools
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {
+                foreach (var type in new[] { typeof(TreeBase), typeof(TreeLog), typeof(MineRock), typeof(MineRock5), typeof(Destructible) })
+                    yield return AccessTools.Method(type, "Damage", new[] { typeof(HitData) });
+            }
+            private static void Prefix(Component __instance, HitData hit)
+            {
+                if (hit == null || hit.m_skill != Skills.SkillType.Axes && hit.m_skill != Skills.SkillType.Pickaxes) return;
+                if (!(hit.GetAttacker() is Player player) || !Local(player)) return;
+                var def = Find(player, "Lightning");
+                if (def != null) Lightning(player, def, hit, __instance as IDestructible, hit.m_point);
             }
         }
 
