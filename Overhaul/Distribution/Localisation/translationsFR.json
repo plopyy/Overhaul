@@ -2741,7 +2741,7 @@
   "overhaul_stats_tip_text": "Chaque niveau te donne des <color=yellow>points de stats</color>. Répartis-les dans ta fiche de personnage pour devenir plus fort, plus endurant ou plus habile.",
   "overhaul_dash_tip_topic": "La ruée",
   "overhaul_dash_tip_label": "Hugin : La ruée",
-  "overhaul_dash_tip_text": "Appuie sur {0} pour faire une ruée : un bond rapide qui coûte un peu d'endurance. Parfait pour esquiver un coup ou fondre sur un ennemi. Tu peux revenir au sprint dans Paramètres > Overhaul.",
+  "overhaul_dash_tip_text": "Appuie sur {0} pour faire une ruée : un bond rapide qui coûte un peu d'endurance. Parfait pour esquiver un coup ou fondre sur un ennemi. Juste après un saut, la ruée part vers le haut et remet ta hauteur de chute à zéro. Tu peux revenir au sprint dans Paramètres > Overhaul.",
   "overhaul_rarity_tip_topic": "Raretés",
   "overhaul_rarity_tip_label": "Hugin : Raretés",
   "overhaul_rarity_tip_text": "Cet objet est plus rare que les autres ! Sa couleur et son aura au sol trahissent sa rareté : plus elle est haute, plus il porte de lignes d'enchantement et d'emplacements de catalyseurs.",

@@ -42,7 +42,7 @@ namespace Overhaul
 
         // The tips' clips in the compendium (overhaul_huginclips, OverhaulLab HuginClipBundle): each sheet is named
         // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows the clip of its name (QuickBuild for overhaul_quickbuild).
-        static readonly Dictionary<string, string> ClipOf = new Dictionary<string, string> { [QuickBuild] = "QuickBuild", [Rotation] = "Rotation", [Move] = "Move", [Chests] = "TakeAll", [Rarity] = "Rarity", [Catalysts] = "Catalysts", [EnchantTable] = "EnchantTable" };
+        static readonly Dictionary<string, string> ClipOf = new Dictionary<string, string> { [QuickBuild] = "QuickBuild", [Rotation] = "Rotation", [Move] = "Move", [Chests] = "TakeAll", [Rarity] = "Rarity", [Catalysts] = "Catalysts", [EnchantTable] = "EnchantTable", [Stats] = "StatPoints", [Levels] = "Levels" };
         static AssetBundle clips;
 
         internal static void Initialize() => AugaUnity.TipClip.Source = Clip;
