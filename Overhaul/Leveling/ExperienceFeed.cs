@@ -19,6 +19,7 @@ namespace Overhaul.Leveling
         internal static void Reward(string name,int stars,long amount,int before,int after)
         {
             if(amount<=0)return;
+            HuginTips.Experience(after);
             if(Hud.instance && Player.m_localPlayer)
             {
                 if(!current || current.owner!=Player.m_localPlayer)
