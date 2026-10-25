@@ -752,7 +752,17 @@ namespace Overhaul.Rarity
         // one straight ahead, two curving out 1.5 m on each side in an arc, all three meeting 6 m ahead along the aim
         // (pitch included), where they vanish. Each axe strikes everything it passes through
         // within 1.5 m once (Strike: enemies and world destructibles, with the weapon's impact effect and a spectral hit), for
-        // Value % of the attack's damage (Spectral: physical as spirit, elements kept) ---
+        // Value % of the attack's damage (Spectral: physical as spirit, elements kept); a grown tree struck has RicochetFell % chance
+        // to be felled at once ---
+
+        // Chance in percent that an axe fells a grown tree it strikes at once.
+        private const float RicochetFell = 25f;
+        // A hit that fells any tree (chop damage far over any tree's health, any tool tier).
+        private static HitData Felling(HitData hit)
+        {
+            var felled = hit.Clone(); felled.m_damage = new HitData.DamageTypes { m_chop = 1e7f }; felled.m_toolTier = 1000;
+            return felled;
+        }
 
         private const float RicochetRange = 6f, RicochetSpeed = 20f, RicochetSpin = 2520f, RicochetTrail = .55f, RicochetSpread = 1.5f, RicochetRadius = 1.5f, RicochetScale = 1.6f;
 
@@ -799,7 +809,16 @@ namespace Overhaul.Rarity
                 Vector3 dir = 2 * (1 - t) * (control - start) + 2 * t * (end - control);
                 axe.transform.SetPositionAndRotation(position, Quaternion.LookRotation(dir, up));
                 foreach (var collider in Physics.OverlapSphere(position, RicochetRadius, WaveMask))
-                    if (Strike(owner, collider, position, dir.normalized, hit, impact, struck) is Vector3 point) MythicVfx.SpectralHit(point, dir);
+                {
+                    // A grown tree: RicochetFell % chance that this axe fells it at once, as the Prospector breaks a rock.
+                    var tree = collider.GetComponentInParent<TreeBase>();
+                    bool fell = tree && !struck.Contains(tree) && UnityEngine.Random.value * 100f < RicochetFell;
+                    if (Strike(owner, collider, position, dir.normalized, fell ? Felling(hit) : hit, impact, struck) is Vector3 point)
+                    {
+                        MythicVfx.SpectralHit(point, dir);
+                        if (fell) Prospected(point, 0);
+                    }
+                }
                 yield return null;
             }
             if (axe && ZNetScene.instance) ZNetScene.instance.Destroy(axe);
