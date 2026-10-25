@@ -25,21 +25,18 @@ namespace Overhaul
             bool tree = __instance is TreeBase || __instance is TreeLog ||
                 (__instance is Destructible destructible && destructible.GetDestructibleType() == DestructibleType.Tree);
             // Use the originating attack, including deferred projectiles and explosions,
-            // so switching weapons before impact cannot turn Dundr into a mining spell.
+            // so switching weapons before impact cannot change what a spell does.
             var weapon = AttackDurability.Current?.Weapon;
             bool spell = weapon?.m_shared != null &&
-                (weapon.m_shared.m_skillType == Skills.SkillType.ElementalMagic || weapon.m_shared.m_skillType == Skills.SkillType.BloodMagic) &&
-                weapon.m_shared.m_name != "$item_staff_lightning";
+                (weapon.m_shared.m_skillType == Skills.SkillType.ElementalMagic || weapon.m_shared.m_skillType == Skills.SkillType.BloodMagic);
             bool resourceTarget = tree || __instance is MineRock || __instance is MineRock5 ||
                 (__instance is Destructible resourceObject && !resourceObject.GetComponent<RandomFlyingBird>());
-            float elemental = hit.m_damage.m_fire + hit.m_damage.m_frost + hit.m_damage.m_lightning;
-            if (spell && resourceTarget && elemental > 0f)
+            if (spell && resourceTarget)
             {
+                // Spells leave trees and rocks alone: only the chop and pickaxe damage an effect gives them on purpose (Zeus's
+                // Wrath, explosive projectiles) still reaches them.
                 hit = hit.Clone();
-                // Convert only on harvest targets; preserve combat damage and native tool tier.
-                if (tree) hit.m_damage.m_chop += elemental;
-                else hit.m_damage.m_pickaxe += elemental;
-                hit.m_damage.m_fire = hit.m_damage.m_frost = hit.m_damage.m_lightning = 0f;
+                hit.m_damage = new HitData.DamageTypes { m_chop = hit.m_damage.m_chop, m_pickaxe = hit.m_damage.m_pickaxe };
                 return;
             }
             // Native axes report their special WoodCutting skill when the target is a tree.
