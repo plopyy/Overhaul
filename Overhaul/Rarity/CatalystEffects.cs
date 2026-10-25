@@ -209,13 +209,32 @@ namespace Overhaul.Rarity
                     killFrenzyUntil = Time.time + def.Get("Duration", 10);
                 }
                 else if (def.Effect == "KillExplosion") Explosion(player, position, def.Get("Damage", 20));
-                else if (def.Effect == "PreciousLoot") Precious(def, position);
             }
         }
 
-        // The amber pearl: Chance % that the kill drops Min to Max items, each one drawn among Items.
-        static void Precious(CatalystDef def, Vector3 point)
+        // ------------------------------------------------------------------ amber pearl: precious items from rocks and trees
+        // A grown tree felled, or a rock, ore vein or mud pile broken all the way, by a player wearing it: Chance % to drop
+        // Min to Max items, each one drawn among Items. The rock or tree is handled on its owner's machine: the player's
+        // wearing it is published in their ZDO.
+        static readonly int PreciousKey = "overhaul_precious".GetStableHashCode();
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        private static class PreciousPublish
         {
+            private static void Postfix(Player __instance)
+            {
+                if (!Local(__instance) || !__instance.m_nview || !__instance.m_nview.IsValid()) return;
+                bool wears = Find(__instance, "PreciousLoot") != null; var zdo = __instance.m_nview.GetZDO();
+                if (zdo.GetBool(PreciousKey) != wears) zdo.Set(PreciousKey, wears);
+            }
+        }
+
+        static void Precious(HitData hit, Vector3 point)
+        {
+            if (hit == null || !(hit.GetAttacker() is Player player) || !player.m_nview || !player.m_nview.IsValid()) return;
+            bool wears = Local(player) ? Find(player, "PreciousLoot") != null : player.m_nview.GetZDO().GetBool(PreciousKey);
+            var def = RarityConfig.Current.CatalystEffects.Values.FirstOrDefault(d => d.Effect == "PreciousLoot");
+            if (!wears || def == null) return;
             var items = def.Items.Where(i => ObjectDB.instance.GetItemPrefab(i)).ToArray();
             if (items.Length == 0 || UnityEngine.Random.value * 100f >= def.Get("Chance", 15)) return;
             int count = UnityEngine.Random.Range((int)def.Get("Min", 1), (int)def.Get("Max", 3) + 1);
@@ -223,6 +242,52 @@ namespace Overhaul.Rarity
             {
                 var prefab = ObjectDB.instance.GetItemPrefab(items[UnityEngine.Random.Range(0, items.Length)]);
                 UnityEngine.Object.Instantiate(prefab, point + Vector3.up * .5f + UnityEngine.Random.insideUnitSphere * .3f, Quaternion.identity);
+            }
+        }
+
+        [HarmonyPatch(typeof(TreeBase), "RPC_Damage")]
+        private static class PreciousTree
+        {
+            private static void Prefix(TreeBase __instance, out bool __state) => __state = __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner();
+            private static void Postfix(TreeBase __instance, HitData hit, bool __state)
+            {
+                if (__state && (!__instance.m_nview.IsValid() || __instance.m_nview.GetZDO().GetFloat(ZDOVars.s_health, __instance.m_health) <= 0)) Precious(hit, __instance.transform.position);
+            }
+        }
+
+        [HarmonyPatch(typeof(MineRock5), "RPC_Damage")]
+        private static class PreciousVein
+        {
+            private static void Prefix(MineRock5 __instance, out bool __state) => __state = __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
+            // After the Prospector's shatter, which may finish the rock.
+            [HarmonyPriority(Priority.Low)]
+            private static void Postfix(MineRock5 __instance, HitData hit, bool __state)
+            {
+                if (__state && (!__instance.m_nview.IsValid() || __instance.AllDestroyed())) Precious(hit, hit.m_point);
+            }
+        }
+
+        [HarmonyPatch(typeof(MineRock), "RPC_Hit")]
+        private static class PreciousRock
+        {
+            private static void Prefix(MineRock __instance, out bool __state) => __state = __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
+            [HarmonyPriority(Priority.Low)]
+            private static void Postfix(MineRock __instance, HitData hit, bool __state)
+            {
+                if (__state && (!__instance.m_nview.IsValid() || __instance.AllDestroyed())) Precious(hit, hit.m_point);
+            }
+        }
+
+        // Small rocks and mud piles (plain destructibles named so); bushes, stumps, logs and the rest give nothing.
+        [HarmonyPatch(typeof(Destructible), "RPC_Damage")]
+        private static class PreciousStone
+        {
+            private static void Prefix(Destructible __instance, out bool __state) => __state = !__instance.m_destroyed && __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner();
+            private static void Postfix(Destructible __instance, HitData hit, bool __state)
+            {
+                if (!__state || !__instance.m_destroyed || __instance.GetDestructibleType() == DestructibleType.Tree) return;
+                string name = Utils.GetPrefabName(__instance.gameObject).ToLowerInvariant();
+                if (name.StartsWith("rock") || name.Contains("mudpile")) Precious(hit, __instance.transform.position);
             }
         }
 
