@@ -110,12 +110,33 @@ namespace Overhaul.Rarity
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
-            else { AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddCatalystEffects(path);
+            else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddCatalystEffects(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]"); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
+        }
+
+        // Files made before the 2.3.0 rarity names: each [Rarity_] section takes its tier's new name, translation key and,
+        // when still the old default, colour (see ItemRarity.OldRarities).
+        private static void RenameOldRarities(string path)
+        {
+            string text = File.ReadAllText(path);
+            if (!text.Contains("[Rarity_Uncommon]")) return;
+            // Old section: its old default colour and the new one of its tier.
+            var colours = new Dictionary<string, (string Old, string New)>
+                { { "Uncommon", ("#79f776", "#79f776") }, { "Magic", ("#71a5f6", "#71a5f6") }, { "Rare", ("#fad340", "#c43dff") }, { "Epic", ("#c43dff", "#fad340") }, { "Legendary", ("#fd5c3d", "#ff2a2a") } };
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"\[Rarity_(\w+)\]([^\[]*)", m =>
+            {
+                string old = m.Groups[1].Value, id = ItemRarity.NewRarity(old), body = m.Groups[2].Value;
+                if (id == old) return m.Value;
+                body = System.Text.RegularExpressions.Regex.Replace(body, @"(?m)^Name = overhaul_rarity_\w+", "Name = overhaul_rarity_" + id.ToLowerInvariant());
+                body = System.Text.RegularExpressions.Regex.Replace(body, @"(?mi)^UIColor = " + colours[old].Old + @"[ \t]*(?=\r?$)", "UIColor = " + colours[old].New);
+                return "[Rarity_" + id + "]" + body;
+            });
+            File.WriteAllText(path, text);
+            Utility.Log.LogInfo("RaritySystem.cfg: rarities renamed (Magic, Rare, Epic, Legendary, Runic)");
         }
 
         // Files made before the enchanting table get its sections (and only those) from the defaults.
