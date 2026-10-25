@@ -30,6 +30,8 @@ namespace Overhaul.Leveling
                 string localized=Localization.instance!=null?Localization.instance.Localize(name??""):name??"";
                 current.pending.Enqueue(localized+(stars>0?" ("+new string('*',Mathf.Min(stars,10))+")":"")+": +"+amount+" exp");
             }
+            // The level up effect, once however many levels were gained.
+            if(after>before && Player.m_localPlayer)Rarity.MythicVfx.LevelUp(Player.m_localPlayer);
             if(after>before && MessageHud.instance)
                 for(int level=before+1;level<=after;level++)
                     MessageHud.instance.ShowBiomeFoundMsg(string.Format(LevelingText.Get("level_up"),level),true);

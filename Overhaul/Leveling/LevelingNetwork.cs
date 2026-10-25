@@ -188,6 +188,8 @@ namespace Overhaul.Leveling
                         int before=state.Level;
                         state.Data=packet.Data;state.Ready=true;
                         if(packet.RewardAmount>0)ExperienceFeed.Reward(packet.RewardName,packet.RewardStars,packet.RewardAmount,before,state.Level);
+                        // Levels gained without a kill (o_exp) still show the level up.
+                        else if(state.Level>before && Player.m_localPlayer)Rarity.MythicVfx.LevelUp(Player.m_localPlayer);
                         if(packet.Op=="admin_reset")
                         {
                             state.CombatUntil=0;if(LevelingWindow.Current)LevelingWindow.Current.Close();
