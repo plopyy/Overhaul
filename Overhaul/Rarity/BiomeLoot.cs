@@ -48,12 +48,12 @@ namespace Overhaul.Rarity
             return item;
         }
 
-        // A random item of the biome's list among those the game knows.
+        // A random item of the biome's list among those the game knows, the BiomeLootExceptions left out.
         static string Pick(string biome)
         {
             var def = RarityConfig.Current.Biomes.FirstOrDefault(b => string.Equals(b.Id, biome, StringComparison.OrdinalIgnoreCase));
             if (def == null || !ObjectDB.instance) return null;
-            var items = def.Items.Where(i => ObjectDB.instance.GetItemPrefab(i)).ToArray();
+            var items = def.Items.Where(i => !RarityConfig.Current.BiomeLootExceptions.Contains(i) && ObjectDB.instance.GetItemPrefab(i)).ToArray();
             return items.Length > 0 ? items[UnityEngine.Random.Range(0, items.Length)] : null;
         }
     }
