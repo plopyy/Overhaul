@@ -1078,7 +1078,7 @@ namespace Overhaul.Rarity
         }
 
         // Set while the rock's own parts are broken, so those hits do not roll again.
-        private static bool shattering;
+        internal static bool shattering;
 
         // The hit's miner, if a pickaxe hit by a player rolls the shatter on the rock's owner.
         private static Player Shatters(ZNetView rock, HitData hit)
@@ -1110,6 +1110,25 @@ namespace Overhaul.Rarity
                     for (int i = 0; i < __instance.m_hitAreas.Count; i++)
                         if (__instance.m_hitAreas[i].m_health > 0) { broken.m_point = __instance.m_hitAreas[i].m_collider ? __instance.m_hitAreas[i].m_collider.bounds.center : hit.m_point; __instance.DamageArea(i, broken); }
                 }
+                finally { shattering = false; }
+                Shattered(player, hit.m_point);
+            }
+        }
+
+        // A destructible the pickaxe is made for (tin, obsidian, small rocks...): the axe does nothing to it, the pickaxe does.
+        internal static bool Mineable(Destructible destructible) =>
+            destructible && destructible.GetDestructibleType() != DestructibleType.Tree &&
+            destructible.m_damages.m_chop == HitData.DamageModifier.Immune && destructible.m_damages.m_pickaxe != HitData.DamageModifier.Immune;
+
+        [HarmonyPatch(typeof(Destructible), "RPC_Damage")]
+        private static class ProspectDeposit
+        {
+            private static void Postfix(Destructible __instance, HitData hit)
+            {
+                if (__instance.m_destroyed || !Mineable(__instance)) return;
+                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                shattering = true;
+                try { __instance.RPC_Damage(0, Breaking(hit)); }
                 finally { shattering = false; }
                 Shattered(player, hit.m_point);
             }

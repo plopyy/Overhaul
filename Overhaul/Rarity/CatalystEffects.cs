@@ -258,7 +258,7 @@ namespace Overhaul.Rarity
         [HarmonyPatch(typeof(MineRock5), "RPC_Damage")]
         private static class PreciousVein
         {
-            private static void Prefix(MineRock5 __instance, out bool __state) => __state = __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
+            private static void Prefix(MineRock5 __instance, out bool __state) => __state = !MythicEffects.shattering && __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
             // After the Prospector's shatter, which may finish the rock.
             [HarmonyPriority(Priority.Low)]
             private static void Postfix(MineRock5 __instance, HitData hit, bool __state)
@@ -270,7 +270,7 @@ namespace Overhaul.Rarity
         [HarmonyPatch(typeof(MineRock), "RPC_Hit")]
         private static class PreciousRock
         {
-            private static void Prefix(MineRock __instance, out bool __state) => __state = __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
+            private static void Prefix(MineRock __instance, out bool __state) => __state = !MythicEffects.shattering && __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner() && !__instance.AllDestroyed();
             [HarmonyPriority(Priority.Low)]
             private static void Postfix(MineRock __instance, HitData hit, bool __state)
             {
@@ -278,16 +278,14 @@ namespace Overhaul.Rarity
             }
         }
 
-        // Small rocks and mud piles (plain destructibles named so); bushes, stumps, logs and the rest give nothing.
+        // Deposits the pickaxe is made for (tin, obsidian, small rocks...); bushes, stumps, logs and the rest give nothing.
         [HarmonyPatch(typeof(Destructible), "RPC_Damage")]
         private static class PreciousStone
         {
-            private static void Prefix(Destructible __instance, out bool __state) => __state = !__instance.m_destroyed && __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner();
+            private static void Prefix(Destructible __instance, out bool __state) => __state = !MythicEffects.shattering && !__instance.m_destroyed && __instance.m_nview && __instance.m_nview.IsValid() && __instance.m_nview.IsOwner();
             private static void Postfix(Destructible __instance, HitData hit, bool __state)
             {
-                if (!__state || !__instance.m_destroyed || __instance.GetDestructibleType() == DestructibleType.Tree) return;
-                string name = Utils.GetPrefabName(__instance.gameObject).ToLowerInvariant();
-                if (name.StartsWith("rock") || name.Contains("mudpile")) Precious(hit, __instance.transform.position);
+                if (__state && __instance.m_destroyed && MythicEffects.Mineable(__instance)) Precious(hit, __instance.transform.position);
             }
         }
 
