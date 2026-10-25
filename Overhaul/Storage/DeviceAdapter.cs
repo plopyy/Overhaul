@@ -20,6 +20,8 @@ namespace Overhaul.Storage
         internal virtual bool SingleItems => false;
         // One item per cell in the second inventory too (the enchanting table's catalyst slots).
         internal virtual bool SingleFuel => false;
+        // One item per cell for this item (SingleItems or SingleFuel unless an adapter lets some stack, the table's trophies).
+        internal virtual bool Single(ItemDrop.ItemData item, bool fuel) => fuel ? SingleFuel : SingleItems;
         internal abstract string Title { get; }
         internal abstract string MaterialLabel { get; }
         internal virtual string FuelLabel => "";

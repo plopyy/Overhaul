@@ -226,11 +226,12 @@ namespace Overhaul.Storage
             private static void Postfix(InventoryGrid __instance)
             {
                 var inventory = __instance.GetInventory();
-                if (DeviceInventoryRules.Get(inventory)?.Single == true)
+                var rule = DeviceInventoryRules.Get(inventory);
+                if (rule != null)
                     foreach (var element in __instance.m_elements)
                     {
                         var item = inventory.GetItemAt(element.Position.x, element.Position.y);
-                        if (item != null) element.m_amount.text = item.m_stack.ToString();
+                        if (item != null && rule.SingleFor(item)) element.m_amount.text = item.m_stack.ToString();
                     }
                 var window = __instance.GetComponentInParent<DeviceWindow>();
                 if (!window || !window.panel || __instance == window.activeGrid ||

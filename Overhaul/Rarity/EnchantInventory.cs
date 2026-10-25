@@ -20,6 +20,8 @@ namespace Overhaul.Rarity
         internal override int FuelHeight => 1;
         internal override bool SingleItems => true;
         internal override bool SingleFuel => true;
+        // Trophies stack in their slot: enchanting uses one at a time, so the next try is ready.
+        internal override bool Single(ItemDrop.ItemData item, bool fuel) => fuel || item == null || EnchantOdds.Of(item) == null;
         internal override string Title => Station.m_name;
         internal override string MaterialLabel => "";
 
