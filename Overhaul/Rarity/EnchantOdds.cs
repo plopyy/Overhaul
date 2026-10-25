@@ -7,7 +7,8 @@ namespace Overhaul.Rarity
 {
     // Enchanting odds: a trophy's tier comes from the creature dropping it (MonsterCategories.cfg: biome and rank). A normal
     // creature gives its biome's tier (Biome sections order, Meadows = 1), captains and elites CaptainTiers/EliteTiers more,
-    // bosses BossTiers more, capped at the last EnchantTier section. A trophy several creatures drop takes the best tier.
+    // bosses BossTiers more, capped at the last EnchantTier section. A trophy several creatures drop takes the tier of the one
+    // it is named after (TrophySkeleton: Skeleton, not the Deep North skeleton), else the best of them.
     internal static class EnchantOdds
     {
         internal sealed class Source { internal string Creature, Biome, Rank; internal int Tier; }
@@ -31,12 +32,17 @@ namespace Overhaul.Rarity
                 {
                     var item = drop.m_prefab ? drop.m_prefab.GetComponent<ItemDrop>() : null;
                     if (!item || item.m_itemData.m_shared.m_itemType != ItemDrop.ItemData.ItemType.Trophy) continue;
-                    if (map.TryGetValue(drop.m_prefab.name, out var known) && known.Tier >= tier) continue;
-                    map[drop.m_prefab.name] = new Source { Creature = rule.Key, Biome = rule.Value.Biome, Rank = rule.Value.Category, Tier = tier };
+                    string trophy = drop.m_prefab.name; bool own = Own(trophy, rule.Key);
+                    if (map.TryGetValue(trophy, out var known) && (Own(trophy, known.Creature) ? !own : !own && known.Tier >= tier)) continue;
+                    map[trophy] = new Source { Creature = rule.Key, Biome = rule.Value.Biome, Rank = rule.Value.Category, Tier = tier };
                 }
             }
             return trophies = map;
         }
+
+        // The creature a trophy is named after (TrophySkeleton for Skeleton, TrophyGoblinBrute for GoblinBrute).
+        static bool Own(string trophy, string creature) =>
+            string.Equals(trophy.Replace("_", ""), "Trophy" + creature.Replace("_", ""), StringComparison.OrdinalIgnoreCase);
 
         static int Tier(string biome, string rank)
         {
