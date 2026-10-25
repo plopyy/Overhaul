@@ -43,7 +43,7 @@ namespace Overhaul
         // The tips' clips in the compendium (overhaul_huginclips, OverhaulLab HuginClipBundle): each sheet is named
         // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows its clips one after the other, in a loop.
         static readonly Dictionary<string, string[]> ClipOf = new Dictionary<string, string[]> { [QuickBuild] = new[] { "QuickBuild" }, [Rotation] = new[] { "Rotation" }, [Move] = new[] { "Move" },
-            [Chests] = new[] { "TakeAll" }, [Rarity] = new[] { "Rarity" }, [Catalysts] = new[] { "Catalysts", "EnchantCatalysts" }, [EnchantTable] = new[] { "EnchantTable", "EnchantReroll" },
+            [Chests] = new[] { "TakeAll", "Rename", "Privacy", "Trash" }, [Rarity] = new[] { "Rarity" }, [Catalysts] = new[] { "Catalysts", "EnchantCatalysts" }, [EnchantTable] = new[] { "EnchantTable", "EnchantReroll" },
             [Stats] = new[] { "StatPoints" }, [Levels] = new[] { "Levels" } };
         static AssetBundle clips;
 
