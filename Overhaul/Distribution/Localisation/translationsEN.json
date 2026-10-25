@@ -2638,7 +2638,7 @@
   "overhaul_stats_tip_text": "Every level gives you <color=yellow>stat points</color>. Spend them on your character sheet to grow stronger, tougher or more skilful.",
   "overhaul_dash_tip_topic": "The dash",
   "overhaul_dash_tip_label": "Hugin : The dash",
-  "overhaul_dash_tip_text": "Press {0} to dash: a quick leap that costs a little stamina. Perfect to dodge a blow or close in on a foe. You can switch back to sprinting in Settings > Overhaul.",
+  "overhaul_dash_tip_text": "Press {0} to dash: a quick leap that costs a little stamina. Perfect to dodge a blow or close in on a foe. Right after a jump, the dash goes upward and resets your fall height. You can switch back to sprinting in Settings > Overhaul.",
   "overhaul_rarity_tip_topic": "Rarity",
   "overhaul_rarity_tip_label": "Hugin : Rarity",
   "overhaul_rarity_tip_text": "This item is rarer than most! Its colour and its aura on the ground tell its rarity: the higher it is, the more enchantment lines and catalyst slots it carries.",
