@@ -115,6 +115,7 @@
     <Compile Include="EquipmentSlotHint.cs" /><Compile Include="TooltipRows.cs" /><Compile Include="AddItemIconMaterial.cs" />
     <Compile Include="AlwaysUpper.cs" />
     <Compile Include="IntelligenceFace.cs" />
+    <Compile Include="TipClip.cs" />
     <Compile Include="ItemSlot.cs" />
     <Compile Include="AugaBarberController.cs" />
     <Compile Include="AugaBindingDisplay.cs" />

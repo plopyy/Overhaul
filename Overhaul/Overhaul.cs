@@ -70,6 +70,7 @@ namespace Overhaul
             Utility.ShutdownTrace.Initialize();
             Effects.EffectConfig.Initialize();
             Effects.Resistances.Initialize();
+            HuginTips.Initialize();
             Rarity.RarityConfig.Initialize();
             Rarity.ItemRarity.Initialize();
             Rarity.EnchantTable.Initialize();
