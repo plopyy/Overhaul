@@ -97,6 +97,21 @@ namespace Overhaul.Rarity
         static int Lock(ItemDrop.ItemData item) =>
             item != null && item.m_customData.TryGetValue(LockKey, out string value) && int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index) ? index : -1;
 
+        // A mythic item is never enchanted again (its lines can still be modified and its catalysts changed).
+        static bool Mythic(ItemDrop.ItemData item) => (ItemRarity.Of(item)?.MythicCount ?? 0) > 0;
+
+        // Leaving the table: the item and the trophies on it go back to the player's inventory (on the ground when full).
+        void OnDisable()
+        {
+            var player = Player.m_localPlayer;
+            if (!player || !store || !store.Ready || !store.Owner) return;
+            var items = new[] { table.Item, table.Trophy }.Where(i => i != null).ToArray();
+            if (items.Length == 0) return;
+            store.Change(() => { foreach (var item in items) store.Items.RemoveItem(item); });
+            foreach (var item in items)
+                if (!player.GetInventory().AddItem(item)) ItemDrop.DropItem(item, item.m_stack, player.transform.position + player.transform.forward + Vector3.up, Quaternion.identity);
+        }
+
         void Refresh()
         {
             nextRefresh = Time.unscaledTime + .2f;
@@ -119,7 +134,7 @@ namespace Overhaul.Rarity
                 var chance = Text("EnchantPage/Odds/" + rarities[i].Id.ToLowerInvariant() + "/Chance");
                 if (chance) chance.text = odds == null ? "–" : odds[i].ToString(odds[i] > 0 && odds[i] < 10 ? "0.#" : "0", CultureInfo.CurrentCulture) + " %";
             }
-            if (enchantButton) enchantButton.interactable = owner && EnchantInventory.Gear(item) && source != null;
+            if (enchantButton) enchantButton.interactable = owner && EnchantInventory.Gear(item) && source != null && !Mythic(item);
 
             // Change tab.
             var lines = item != null ? ItemRarity.Enchants(item) : new string[0];
@@ -169,7 +184,7 @@ namespace Overhaul.Rarity
         void Enchant()
         {
             var item = table.Item; var trophy = table.Trophy; var source = EnchantOdds.Of(trophy);
-            if (!store.Owner || !EnchantInventory.Gear(item) || source == null) return;
+            if (!store.Owner || !EnchantInventory.Gear(item) || source == null || Mythic(item)) return;
             var rarity = EnchantOdds.Roll(source.Tier); if (rarity == null) return;
             var player = Player.m_localPlayer;
             store.Change(() =>
