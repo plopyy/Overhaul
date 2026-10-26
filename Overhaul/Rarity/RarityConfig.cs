@@ -121,6 +121,7 @@ namespace Overhaul.Rarity
                 // Prospector now breaks the whole rock; the amber pearl drops precious items.
                 OldMythicValue(path, "Prospector", "[10,12,14,16,18,20,22,25]", "[25,25,25,25,25,25,25,25]");
                 OldSection(path, "[Catalyst_AmberPearl]", "Effect = FirstStrike\nValue = 10");
+                OldLineCounts(path);
                 OldSection(path, "[Catalyst_HardAntler]", "Effect = ThunderStrike\nCount = 4\nDamage = 10"); }
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("RaritySystem.cfg unreadable: " + e.Message); }
@@ -204,6 +205,23 @@ namespace Overhaul.Rarity
             int at = NextBlock(text, last);
             File.WriteAllText(path, text.Substring(0, at).TrimEnd() + Environment.NewLine + Environment.NewLine + block + Environment.NewLine + Environment.NewLine + text.Substring(at).TrimStart('\r', '\n'));
             Utility.Log.LogInfo("RaritySystem.cfg: biome loot exceptions section added");
+        }
+
+        // Files still holding the old default enchantment line counts (Rare 1, Epic 2, Legendary 3, Runic 4) get the new ones
+        // (2, 3, 4, 5); a file where any of them was set by hand is left as it is.
+        private static void OldLineCounts(string path)
+        {
+            string text = File.ReadAllText(path);
+            var counts = new[] { ("Rare", 1, 2), ("Epic", 2, 3), ("Legendary", 3, 4), ("Runic", 4, 5) };
+            var line = new System.Text.RegularExpressions.Regex[counts.Length];
+            for (int i = 0; i < counts.Length; i++)
+            {
+                line[i] = new System.Text.RegularExpressions.Regex(@"(\[Rarity_" + counts[i].Item1 + @"\][^\[]*?EnchantBonusCount\s*=\s*)" + counts[i].Item2 + @"\b");
+                if (!line[i].IsMatch(text)) return;
+            }
+            for (int i = 0; i < counts.Length; i++) text = line[i].Replace(text, "${1}" + counts[i].Item3, 1);
+            File.WriteAllText(path, text);
+            Utility.Log.LogInfo("RaritySystem.cfg: enchantment lines per rarity updated to the new defaults");
         }
 
         // A section still holding its old default body (lines given with \n) gets the defaults' new one; one set by hand stays.
