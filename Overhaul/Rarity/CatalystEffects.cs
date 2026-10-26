@@ -113,16 +113,18 @@ namespace Overhaul.Rarity
         }
 
         // Hard antler: each weapon hit has Chance % to call a bolt on what was hit (the Lightning Strike staff's strike effect
-        // only, no area): Damage lightning to that target alone, plus Chop chop damage with an axe or Mine pickaxe damage with a
-        // pickaxe (then it also falls on the trees, logs and rocks the tool hits). The bolt's hit carries no skill, so it never
-        // calls another.
+        // only, no area): Damage lightning to that target alone, plus Chop chop damage when the catalyst sits in the axe that
+        // hits, or Mine pickaxe damage when it sits in the pickaxe that hits (then it also falls on the trees, logs and rocks
+        // the tool hits). The bolt's hit carries no skill, so it never calls another.
         static void Lightning(Player player, CatalystDef def, HitData hit, IDestructible target, Vector3 point)
         {
             if (target == null || hit.m_skill == Skills.SkillType.None || UnityEngine.Random.value * 100f >= def.Get("Chance", 15)) return;
             var bolt = new HitData { m_point = hit.m_point, m_dir = Vector3.down, m_dodgeable = false, m_blockable = false, m_skill = Skills.SkillType.None, m_toolTier = hit.m_toolTier };
             bolt.m_damage.m_lightning = def.Get("Damage", 20);
-            if (hit.m_skill == Skills.SkillType.Axes) bolt.m_damage.m_chop = def.Get("Chop", 100);
-            if (hit.m_skill == Skills.SkillType.Pickaxes) bolt.m_damage.m_pickaxe = def.Get("Mine", 100);
+            var weapon = player.GetCurrentWeapon();
+            bool carried = weapon != null && ItemRarity.Catalysts(weapon).Contains(def.Id);
+            if (carried && hit.m_skill == Skills.SkillType.Axes && weapon.m_shared.m_skillType == Skills.SkillType.Axes) bolt.m_damage.m_chop = def.Get("Chop", 100);
+            if (carried && hit.m_skill == Skills.SkillType.Pickaxes && weapon.m_shared.m_skillType == Skills.SkillType.Pickaxes) bolt.m_damage.m_pickaxe = def.Get("Mine", 100);
             bolt.SetAttacker(player);
             var staff = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_projectile") : null;
             var strike = staff ? staff.GetComponent<Projectile>() : null;
