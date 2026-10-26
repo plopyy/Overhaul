@@ -58,16 +58,29 @@ namespace Overhaul.Rarity
             return item;
         }
 
-        // A random item of the biome's list among those the game knows, leaving out the BiomeLootExceptions and the gear of the
-        // loot lists that MobLoot creatures drop (a troll set only comes from trolls).
+        // A random item of the biome's list among those the game knows, leaving out the BiomeLootExceptions, the gear of the
+        // loot lists that MobLoot creatures drop (a troll set only comes from trolls) and the gear that is not Lootable.
         static string Pick(string biome)
         {
             var data = RarityConfig.Current;
             var def = data.Biomes.FirstOrDefault(b => string.Equals(b.Id, biome, StringComparison.OrdinalIgnoreCase));
             if (def == null || !ObjectDB.instance) return null;
             var mobGear = new HashSet<string>(data.MobLoots.Values.SelectMany(l => l).Where(data.LootLists.ContainsKey).SelectMany(l => data.LootLists[l].Items), StringComparer.Ordinal);
-            var items = def.Items.Where(i => !data.BiomeLootExceptions.Contains(i) && !mobGear.Contains(i) && ObjectDB.instance.GetItemPrefab(i)).ToArray();
+            var items = def.Items.Where(i => !data.BiomeLootExceptions.Contains(i) && !mobGear.Contains(i) && Lootable(i)).ToArray();
             return items.Length > 0 ? items[UnityEngine.Random.Range(0, items.Length)] : null;
+        }
+
+        static readonly Dictionary<string, bool> lootable = new Dictionary<string, bool>(StringComparer.Ordinal);
+
+        // Gear the game crafts from raw materials: an item without a recipe (the flaming sword, the starting wooden weapons...)
+        // or made from another piece of gear (Nidhögg the Bleeding from Nidhögg, the Slayer's variants...) is never dropped.
+        static bool Lootable(string name)
+        {
+            if (lootable.TryGetValue(name, out bool known)) return known;
+            var prefab = ObjectDB.instance.GetItemPrefab(name); var item = prefab ? prefab.GetComponent<ItemDrop>() : null;
+            var recipe = item ? ObjectDB.instance.m_recipes.FirstOrDefault(r => r && r.m_item && r.m_item.name == name && r.m_enabled) : null;
+            bool ok = recipe != null && !recipe.m_resources.Any(r => r.m_resItem && ItemRarity.Gear(r.m_resItem.m_itemData));
+            return lootable[name] = ok;
         }
     }
 }
