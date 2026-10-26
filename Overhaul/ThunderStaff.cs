@@ -11,7 +11,10 @@ namespace Overhaul
     internal static class ThunderStaff
     {
         private const string ProjectileName = "staff_thunderblood_projectile", LightningName = "staff_thunderblood_aoe";
-        private const float MaxDistance = 100f;
+        // How far from the player the lightning can fall.
+        private const float MaxDistance = 30f;
+        // The line traced from the camera: MaxDistance plus the camera's distance to the player.
+        private static float reach = MaxDistance;
 
         // Set while Zeus's Wrath drops its own bolts, which must hit where they are placed.
         internal static bool Raining;
@@ -39,6 +42,7 @@ namespace Overhaul
                 if (!camera) return;
                 int count = burst != null ? Mathf.Max(1, burst.m_projectiles) : 1, i = index++;
                 Vector3 origin = camera.transform.position, direction = camera.transform.forward;
+                reach = MaxDistance + Vector3.Distance(origin, owner.transform.position);
                 if (Rarity.MythicEffects.Extra(item) > 0) direction = Rarity.MythicEffects.Turn(direction, Rarity.MythicEffects.Angle(i % count, count));
                 else if (i > 0 && burst != null)
                 {
@@ -48,7 +52,7 @@ namespace Overhaul
                 if (!Trace(origin, direction, owner, out RaycastHit hit))
                 {
                     // Nothing within reach: the lightning falls on the ground under the far end of the line.
-                    if (!Physics.Raycast(origin + direction * MaxDistance + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
+                    if (!Physics.Raycast(origin + direction * reach + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
                 }
                 __instance.transform.position = hit.point;
                 __instance.OnHit(hit.collider, hit.point, false, hit.normal);
@@ -59,7 +63,7 @@ namespace Overhaul
             {
                 first = default;
                 float best = float.MaxValue;
-                foreach (var hit in Physics.RaycastAll(start, direction, MaxDistance, Projectile.s_rayMaskSolids, QueryTriggerInteraction.Ignore))
+                foreach (var hit in Physics.RaycastAll(start, direction, reach, Projectile.s_rayMaskSolids, QueryTriggerInteraction.Ignore))
                 {
                     if (hit.distance >= best) continue;
                     var target = Projectile.FindHitObject(hit.collider);
