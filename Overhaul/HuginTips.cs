@@ -44,7 +44,7 @@ namespace Overhaul
         // HuginClip_<Clip>_<columns>_<rows>_<count>; a tip shows its clips one after the other, in a loop.
         static readonly Dictionary<string, string[]> ClipOf = new Dictionary<string, string[]> { [QuickBuild] = new[] { "QuickBuild" }, [Rotation] = new[] { "Rotation" }, [Move] = new[] { "Move" },
             [Chests] = new[] { "TakeAll", "Rename", "Privacy", "Trash" }, [Rarity] = new[] { "Rarity" }, [Catalysts] = new[] { "Catalysts", "EnchantCatalysts" }, [EnchantTable] = new[] { "EnchantTable", "EnchantReroll" },
-            [Stats] = new[] { "StatPoints" }, [Levels] = new[] { "Levels" } };
+            [Stats] = new[] { "StatPoints" }, [Levels] = new[] { "Levels" }, [Dash] = new[] { "Dash" } };
         static AssetBundle clips;
 
         internal static void Initialize() => AugaUnity.TipClip.Source = Clip;
