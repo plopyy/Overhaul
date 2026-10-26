@@ -2412,7 +2412,7 @@
   "overhaul_catalyst_effect_coldwalker": "Insensible au froid et au givre, +{Value} % de vitesse en Montagne et dans le Grand Nord",
   "overhaul_catalyst_effect_execute": "+{Value} % de dégâts sur une créature sous {Threshold} % de vie",
   "overhaul_catalyst_effect_preciousloot": "{Chance} % de chances qu’un arbre abattu ou un rocher, un filon ou un tas de boue brisé lâche {Min} à {Max} objets précieux ({Items})",
-  "overhaul_catalyst_effect_lightning": "{Chance} % de chances par coup qu’un éclair frappe la cible : {Damage} dégâts de foudre. Serti sur une hache : +{Chop} dégâts de coupe. Serti sur une pioche : +{Mine} dégâts de minage.",
+  "overhaul_catalyst_effect_lightning": "{Chance} % de chances par coup qu’un éclair bonus frappe la cible : {Damage} dégâts de foudre. Serti sur une hache : +{Chop} dégâts de coupe. Serti sur une pioche : +{Mine} dégâts de minage.",
   "overhaul_catalyst_effect_killexplosion": "Tuer une créature déclenche une explosion de feu de {Damage} dégâts",
   "overhaul_catalyst_effect_eitrsurge": "Chaque sort : {Chance} % de chances de récupérer tout votre Eitr",
   "overhaul_catalyst_effect_killfrenzy": "Chaque créature tuée : +{Value} % de dégâts pendant {Duration} s (jusqu’à {Stacks} fois)",
