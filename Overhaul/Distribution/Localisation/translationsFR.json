@@ -2418,7 +2418,7 @@
   "overhaul_catalyst_effect_killfrenzy": "Chaque créature tuée : +{Value} % de dégâts pendant {Duration} s (jusqu’à {Stacks} fois)",
   "overhaul_catalyst_effect_highjump": "Sauts {Value} % plus hauts",
   "overhaul_catalyst_effect_lavawalker": "Immunisé au feu, à la lave et à l’eau bouillante",
-  "overhaul_catalyst_effect_dotevery": "Toutes les {Count} attaques, touchées ou non : {Dot} ({Damage} par seconde) ; dégâts de {Dot} +{Bonus} %",
+  "overhaul_catalyst_effect_dotevery": "Toutes les {Count} attaques : {Dot} ({Damage} par seconde) ; {Dot} : +{Bonus} % de dégâts",
   "overhaul_catalyst_laststand_triggered": "Dernier rempart : coup annulé !",
   "overhaul_spirit_circlet": "Diadème d'esprit",
   "overhaul_spirit_circlet_description": "Un diadème imprégné de la lumière d'un esprit. Éclaire les alentours et éclaircit la brume des Terres brumeuses autour de vous.",
