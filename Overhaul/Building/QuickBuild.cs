@@ -412,8 +412,14 @@ namespace Overhaul.Building
         private static bool Checkerboard => kind == Kind.Floor && Utility.OverhaulConfig.BuildCheckerboardFloors.Value &&
             Mathf.Abs(sizeA - sizeB) < .05f && IsWoodFloor(Player.m_localPlayer ? Player.m_localPlayer.GetSelectedPiece() : null);
 
-        // The wood floors (2x2 and 1x1), the pieces the checkerboard option is for.
-        internal static bool IsWoodFloor(Piece piece) => piece && Utils.GetPrefabName(piece.gameObject).StartsWith("wood_floor");
+        // The wood floors, the pieces the checkerboard option is for: wood_floor, wood_floor_1x1, ashwood_floor_2x2,
+        // ashwood_floor_1x1, ashwood_deco_floor.
+        internal static bool IsWoodFloor(Piece piece)
+        {
+            if (!piece) return false;
+            string name = Utils.GetPrefabName(piece.gameObject).ToLowerInvariant();
+            return name.Contains("wood") && name.Contains("floor");
+        }
 
         private static int Count => (toA - fromA + 1) * (toB - fromB + 1);
 
