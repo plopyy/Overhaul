@@ -158,9 +158,18 @@ namespace Overhaul.Building
         {
             if (!GameCamera.instance) return false;
             var camera = GameCamera.instance.transform;
-            if (!Physics.Raycast(camera.position, camera.forward, out var hit, 50f, player.m_removeRayMask) ||
-                Vector3.Distance(hit.point, player.m_eye.position) >= player.m_maxPlaceDistance) return false;
-            var piece = hit.collider.GetComponentInParent<Piece>();
+            // The nearest piece aimed at, through the selected piece's ghost (it sits where the camera aims, often in front of
+            // the piece to remove).
+            Piece piece = null;
+            float nearest = float.MaxValue;
+            var ghost = player.m_placementGhost ? player.m_placementGhost.transform : null;
+            foreach (var hit in Physics.RaycastAll(camera.position, camera.forward, 50f, player.m_removeRayMask))
+            {
+                if (hit.distance >= nearest || ghost && hit.collider.transform.IsChildOf(ghost)) continue;
+                nearest = hit.distance;
+                piece = hit.collider.GetComponentInParent<Piece>();
+                if (Vector3.Distance(hit.point, player.m_eye.position) >= player.m_maxPlaceDistance) piece = null;
+            }
             kind = KindOf(piece);
             if (kind == Kind.None || !piece.IsPlacedByPlayer()) return false;
             anchor = piece.transform.position; turn = piece.transform.rotation;
