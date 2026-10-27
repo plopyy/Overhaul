@@ -48,6 +48,7 @@
 
 ### Fixed
 - Quick build and quick removal now work on floors too (wood, stone, marble…): a floor stretches flat on its own level, sideways, forwards or backwards, or both. (359)
+- Quick build: no more NullReferenceException (WearNTear.Awake) in the log while a row grows; the row's ghosts are now copies for show only. (361)
 - Ashwood stairs snap side by side: their corner snap points sat in the middle of the 1 m wide stair instead of on its edges. (349)
 - No more “OverhaulKeyHints missing” error on a dedicated server: the key hints box is only set up where there is an interface. (2.3.0.258)
 - The **Artisan** passive (leveling) now also lets you remove and repair pieces and dismantle ships without a workbench, not only build. (2.3.0.225)
