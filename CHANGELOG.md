@@ -63,6 +63,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- Upgrading an item at a station no longer wipes its rarity, enchantment lines, mythic enchantment and socketed catalysts: the upgraded item keeps them. (2.3.0.380)
 - Double doors: closing one did not close the other (an open door's leaf had swung out of reach of the search); the other door is now found by its position. (378, 379)
 - The Overhaul logo on the main menu never showed: it was hung on the game's old logo, which is switched off; it now shows under the Deep North logo, centred on it and tilted up so that its end rises just under the bar below “Valheim”, its letters smoothed (no more hammered texture) and brighter. (371, 372, 373, 374)
 - Building options window: its title and texts showed their translation keys ($overhaul_build_options…) instead of the words. (370)
