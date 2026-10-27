@@ -5,10 +5,11 @@ using UnityEngine;
 
 namespace Overhaul.Building
 {
-    // Quick build: holding the place button on a wall, a pillar/beam or a roof stretches it into a row of the same piece,
+    // Quick build: holding the place button on a wall, a floor, a pillar/beam or a roof stretches it into a row of the same piece,
     // one piece size at a time (measured from its snap points), towards where the camera aims:
     //   - walls in their own plane: sideways, up or down, or both (a rectangle);
     //   - pillars and beams end to end, along their length;
+    //   - floors flat on their own level: sideways, forwards or backwards, or both (a rectangle);
     //   - roofs side by side only.
     // The piece is turned before (no turning while stretching). Every copy shows as a ghost; the resources of the whole
     // row are counted while it grows, and the ghosts turn red when they are short or a spot is not allowed (warded, no
@@ -16,7 +17,7 @@ namespace Overhaul.Building
     // Other pieces are placed by the game as usual.
     internal static class QuickBuild
     {
-        private enum Kind { None, Wall, Pillar, Roof }
+        private enum Kind { None, Wall, Floor, Pillar, Roof }
         private const int MaxPerAxis = 30;
         // Seconds the place button is held before a row starts growing.
         private const float HoldDelay = .25f;
@@ -41,6 +42,7 @@ namespace Overhaul.Building
             if (name.Contains("roof")) return Kind.Roof;
             if (name.Contains("pole") || name.Contains("beam") || name.Contains("pillar")) return Kind.Pillar;
             if (name.Contains("wall")) return Kind.Wall;
+            if (name.Contains("floor")) return Kind.Floor;
             return Kind.None;
         }
 
@@ -144,7 +146,7 @@ namespace Overhaul.Building
             }
         }
 
-        // Quick removal: holding the remove button on a wall, a pillar/beam or a roof stretches, in the same directions,
+        // Quick removal: holding the remove button on a wall, a floor, a pillar/beam or a roof stretches, in the same directions,
         // over the identical pieces lined up with it (same piece, same turn, one piece size apart); they turn red, and
         // releasing removes each of them as the game would (refund, ward, station, removable). Left click cancels.
         private static bool destroying;
@@ -261,6 +263,7 @@ namespace Overhaul.Building
             switch (kind)
             {
                 case Kind.Wall: a = Vector3.right; sizeA = size.x; b = Vector3.up; sizeB = size.y; break;
+                case Kind.Floor: a = Vector3.right; sizeA = size.x; b = Vector3.forward; sizeB = size.z; break;
                 case Kind.Roof: a = Vector3.right; sizeA = size.x; break;
                 default:
                     // Along its length, whichever axis that is (upright pole, lying beam).
