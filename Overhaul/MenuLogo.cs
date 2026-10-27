@@ -5,8 +5,8 @@ using UnityEngine.UI;
 
 namespace Overhaul
 {
-    // The Overhaul logo under the game's own on the main menu (OverhaulMenuLogo, OverhaulLab): placed inside the game's logo
-    // image, whose frame its anchors are set in, drawn over it.
+    // The Overhaul logo on the main menu (OverhaulMenuLogo, OverhaulLab), right under the game's "Deep North" logo: placed in
+    // the game's Menu/Logo, which covers the screen, the prefab's anchors being screen fractions; drawn over the rest.
     [HarmonyPatch(typeof(FejdStartup), "Start")]
     internal static class MenuLogo
     {
@@ -14,15 +14,10 @@ namespace Overhaul
         {
             var prefab = Auga.Auga.Assets.OverhaulMenuLogo;
             if (!prefab) return;
-            // The game's current logo: the active image directly under Menu/Logo named like a logo ("Logo DeepNorth1 .0";
-            // the old "LOGO" next to it is switched off, and an Overhaul logo hung on it stayed hidden).
             var root = __instance.transform.Find("Menu/Logo");
-            var logo = root ? root.Cast<Transform>()
-                .Where(t => t.gameObject.activeInHierarchy && t.name.ToLowerInvariant().Contains("logo"))
-                .Select(t => t.GetComponent<Image>()).FirstOrDefault(i => i && i.enabled && i.sprite) : null;
-            if (!logo) { Utility.Log.LogWarning("Menu logo: the game's logo was not found"); return; }
-            if (logo.transform.Find(prefab.name)) return;
-            Object.Instantiate(prefab, logo.transform, false).name = prefab.name;
+            if (!root) { Utility.Log.LogWarning("Menu logo: the game's Menu/Logo was not found"); return; }
+            if (root.Find(prefab.name)) return;
+            Object.Instantiate(prefab, root, false).name = prefab.name;
         }
     }
 }
