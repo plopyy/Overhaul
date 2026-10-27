@@ -2435,6 +2435,7 @@
   "overhaul_build_reset": "Reset rotation",
   "overhaul_build_checkerboard": "Checkerboard floors",
   "overhaul_build_options": "Building options",
+  "overhaul_build_options_none": "No options for this piece",
   "overhaul_build_snap_off": "Snapping off",
   "overhaul_build_snap_on": "Snapping on",
   "overhaul_build_turn_y": "Turn (green)",
