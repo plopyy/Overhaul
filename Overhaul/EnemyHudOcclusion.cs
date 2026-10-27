@@ -1,0 +1,41 @@
+using HarmonyLib;
+using UnityEngine;
+
+namespace Overhaul
+{
+    // A creature's health bar only shows while the creature can be seen: after the game places its bars, the bar of a
+    // creature hidden behind the world (terrain, rocks, trees, buildings) is turned off for this frame. Lines are traced
+    // from the camera to the creature's head and centre: seen if either is clear. Boss bars (top of the screen) and
+    // players' bars are left alone.
+    internal static class EnemyHudOcclusion
+    {
+        private static int mask;
+        // What can hide a creature: the world's solid layers, never characters.
+        private static int Mask => mask != 0 ? mask : mask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain", "vehicle");
+
+        [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.UpdateHuds))]
+        [HarmonyPriority(Priority.Low)]
+        private static class Hide
+        {
+            private static void Postfix(EnemyHud __instance)
+            {
+                var camera = Utils.GetMainCamera();
+                if (!camera || __instance.m_huds == null) return;
+                Vector3 eye = camera.transform.position;
+                foreach (var pair in __instance.m_huds)
+                {
+                    var character = pair.Key; var hud = pair.Value;
+                    if (!character || hud?.m_gui == null || !hud.m_gui.activeSelf || character.IsBoss() || character.IsPlayer()) continue;
+                    if (!Seen(eye, character.GetHeadPoint()) && !Seen(eye, character.GetCenterPoint())) hud.m_gui.SetActive(false);
+                }
+            }
+        }
+
+        // Clear line from the eye to a point, the last half metre left out (the creature's own surroundings).
+        private static bool Seen(Vector3 eye, Vector3 point)
+        {
+            Vector3 to = point - eye; float distance = to.magnitude - .5f;
+            return distance <= 0 || !Physics.Raycast(eye, to / to.magnitude, distance, Mask, QueryTriggerInteraction.Ignore);
+        }
+    }
+}
