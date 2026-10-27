@@ -35,6 +35,7 @@ namespace Overhaul.Leveling
             {
                 Data=Player.m_customData.TryGetValue(SaveKey,out string json)?JsonConvert.DeserializeObject<OverhaulCharacterData>(json):new OverhaulCharacterData();
                 if(Data==null || Data.Version!=1 || Data.TotalExperience<0)throw new InvalidOperationException("Invalid progression version/data");
+                Data.PassiveChangeAfterUtc=0;
                 if(ZNet.instance && ZNet.instance.IsServer()) { Reconcile(); Ready=true; }
             }
             catch(Exception error) { InvalidSave=true; Log.LogError("Progression preserved without overwriting unreadable save: "+error); }

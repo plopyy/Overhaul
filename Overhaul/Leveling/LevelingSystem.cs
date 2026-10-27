@@ -12,6 +12,7 @@ namespace Overhaul.Leveling
         public int Level = 1, AvailableStatPoints;
         public Dictionary<string, int> AllocatedStats = new Dictionary<string, int>();
         public string Passive = "";
+        // Not kept between sessions: reconnecting lets the special passive change at once.
         public long PassiveChangeAfterUtc;
         public OverhaulCharacterData Clone() => JsonConvert.DeserializeObject<OverhaulCharacterData>(JsonConvert.SerializeObject(this));
     }

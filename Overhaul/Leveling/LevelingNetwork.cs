@@ -205,7 +205,7 @@ namespace Overhaul.Leveling
                 if(packet.Op=="hello"){Send(rpc,new Packet{Op="rules",Json=JsonConvert.SerializeObject(LevelingConfig.Current),WeaponSpeeds=Utility.WeaponAttackSpeeds.Format(Utility.WeaponAttackSpeeds.Current),MobBehaviors=AI.MobBehaviorConfig.Format(AI.MobBehaviorConfig.Current)});return;}
                 if(packet.Op=="death"){Reward(packet,peer.m_uid);return;}
                 if(packet.Op=="profile" && !Sessions.ContainsKey(peer.m_uid) && packet.Data!=null)
-                {LevelingSystem.Reconcile(packet.Data);Sessions[peer.m_uid]=new Session{Data=packet.Data};Send(rpc,new Packet{Op="state",Data=packet.Data});return;}
+                {packet.Data.PassiveChangeAfterUtc=0;LevelingSystem.Reconcile(packet.Data);Sessions[peer.m_uid]=new Session{Data=packet.Data};Send(rpc,new Packet{Op="state",Data=packet.Data});return;}
                 if(!Sessions.TryGetValue(peer.m_uid,out Session session))return;
                 if(packet.Op=="profile"){Send(rpc,new Packet{Op="state",Data=session.Data});return;}
                 if(packet.Op=="combat"){session.CombatUntil=Time.time+(float)LevelingConfig.Current.CombatSeconds;return;}
