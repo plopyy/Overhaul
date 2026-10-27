@@ -27,8 +27,26 @@ namespace Overhaul
                     var character = pair.Key; var hud = pair.Value;
                     if (!character || hud?.m_gui == null || !hud.m_gui.activeSelf || character.IsBoss() || character.IsPlayer()) continue;
                     if (!Seen(eye, character.GetHeadPoint()) && !Seen(eye, character.GetCenterPoint())) hud.m_gui.SetActive(false);
+                    else if (Time.time >= nextLog) Probe(eye, character);
                 }
+                if (Time.time >= nextLog) nextLog = Time.time + 2f;
             }
+        }
+
+        // TEMPORARY (bars still shown through rocks in the Mistlands): what the lines to a creature whose bar stays shown
+        // hit first, every 2 s, in the client log.
+        private static float nextLog;
+        private static void Probe(Vector3 eye, Character character)
+        {
+            string Line(Vector3 point)
+            {
+                Vector3 to = point - eye;
+                var hits = Physics.RaycastAll(eye, to.normalized, to.magnitude + 1f, ~0, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                return to.magnitude.ToString("F1") + " m: " + string.Join(", ", System.Linq.Enumerable.Select(System.Linq.Enumerable.Take(hits, 4),
+                    h => h.collider.name + "/" + LayerMask.LayerToName(h.collider.gameObject.layer) + "@" + h.distance.ToString("F1")));
+            }
+            Utility.Log.LogInfo("HUD occlusion " + character.m_name + " head " + Line(character.GetHeadPoint()) + " | centre " + Line(character.GetCenterPoint()));
         }
 
         // Clear line from the eye to a point, the last half metre left out (the creature's own surroundings).
