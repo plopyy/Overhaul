@@ -48,7 +48,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
-- The Overhaul logo on the main menu never showed: it was hung on the game's old logo, which is switched off; it now shows centred right under the Deep North logo, above the menu. (371, 372)
+- The Overhaul logo on the main menu never showed: it was hung on the game's old logo, which is switched off; it now shows centred right under the Deep North logo, above the menu, its letters smoothed (no more hammered texture) and brighter. (371, 372, 373)
 - Building options window: its title and texts showed their translation keys ($overhaul_build_options…) instead of the words. (370)
 - Quick removal works whatever piece is selected: the selected piece's ghost, sitting where the camera aims, was taken for the piece to remove (a pillar selected stopped quick removal on walls). (369)
 - Building: the rotation angles strip over the key hints (X, Y, Z) never showed in game, the key hint rows wiping it out each time they changed; it shows again with the gizmo, and so does the new building options window. (366)
