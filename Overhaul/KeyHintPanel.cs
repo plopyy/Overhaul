@@ -92,6 +92,7 @@ namespace Overhaul
             box = (RectTransform)go.transform;
             grid = go.GetComponent<GridLayoutGroup>();
             templates = box.Find("Templates");
+            top = box.Find("Top");
             angles = box.Find("Top/Angles");
             options = box.Find("Top/Options");
             checkerboard = options ? options.Find("Checkerboard")?.GetComponent<Toggle>() : null;
@@ -104,7 +105,7 @@ namespace Overhaul
             go.SetActive(false);
         }
 
-        private Transform angles, options;
+        private Transform top, angles, options;
         private Toggle checkerboard;
 
         // The building options box over the key hints: only with a piece that has options (the checkerboard: wood
@@ -352,7 +353,8 @@ namespace Overhaul
         // Each row is copied from the prefab's templates (Auga's key, mouse icon and label).
         private void Render(List<Row> rows)
         {
-            foreach (Transform child in box) if (child != templates) Destroy(child.gameObject);
+            // The rows only: the templates and the Top stack (options box, angles strip) stay.
+            foreach (Transform child in box) if (child != templates && child != top) Destroy(child.gameObject);
             box.gameObject.SetActive(rows.Count > 0);
             grid.constraintCount = Mathf.Clamp(rows.Count, 1, 2);
             foreach (var row in rows)
