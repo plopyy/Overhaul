@@ -9,7 +9,8 @@ namespace Overhaul.Building
     // one piece size at a time (measured from its snap points), towards where the camera aims:
     //   - walls in their own plane: sideways, up or down, or both (a rectangle);
     //   - pillars and beams end to end, along their length;
-    //   - floors flat on their own level: sideways, forwards or backwards, or both (a rectangle);
+    //   - floors flat on their own level: sideways, forwards or backwards, or both (a rectangle); wood floors may be laid
+    //     as a checkerboard, every other one turned 90 degrees about its centre (building options box, KeyHintPanel);
     //   - roofs side by side only.
     // The piece is turned before (no turning while stretching). Every copy shows as a ghost; the resources of the whole
     // row are counted while it grows, and the ghosts turn red when they are short or a spot is not allowed (warded, no
@@ -167,10 +168,16 @@ namespace Overhaul.Building
             // The same pieces, turned the same way, sitting on the row's grid.
             string name = Utils.GetPrefabName(piece.gameObject);
             candidates.Clear();
+            // Square floors also by quarter turns (a checkerboard floor), matched by their centres.
+            bool quarters = kind == Kind.Floor && Mathf.Abs(sizeA - sizeB) < .05f;
+            var centre = (pieceMin + pieceMax) / 2;
             foreach (var other in Piece.s_allPieces)
             {
-                if (!other || Quaternion.Angle(other.transform.rotation, turn) > 1f || Utils.GetPrefabName(other.gameObject) != name) continue;
-                var local = Quaternion.Inverse(turn) * (other.transform.position - anchor);
+                if (!other || Utils.GetPrefabName(other.gameObject) != name) continue;
+                var relative = Quaternion.Inverse(turn) * other.transform.rotation;
+                if (Quaternion.Angle(relative, Quaternion.identity) > 1f &&
+                    !(quarters && Quaternion.Angle(relative, Quaternion.Euler(0, Mathf.Round(relative.eulerAngles.y / 90) * 90, 0)) <= 1f)) continue;
+                var local = Quaternion.Inverse(turn) * (other.transform.position + other.transform.rotation * centre - anchor - turn * centre);
                 int i = Mathf.RoundToInt(Vector3.Dot(local, axisA) / sizeA), j = axisB == Vector3.zero ? 0 : Mathf.RoundToInt(Vector3.Dot(local, axisB) / sizeB);
                 if (Mathf.Abs(i) > MaxPerAxis || Mathf.Abs(j) > MaxPerAxis || (local - axisA * sizeA * i - axisB * sizeB * j).magnitude > .1f) continue;
                 candidates[(i, j)] = other;
@@ -383,13 +390,30 @@ namespace Overhaul.Building
             return denominator < 1e-4f ? 0 : (b * e - d) / denominator;
         }
 
-        private static IEnumerable<Vector3> Cells()
+        private static IEnumerable<Vector3> Cells() => Spots().Select(s => s.at);
+
+        // Each piece of the row with its turn: the row's own, or turned 90 degrees about the piece's centre on every
+        // other cell of a checkerboard floor.
+        private static IEnumerable<(Vector3 at, Quaternion turn)> Spots()
         {
             Vector3 a = turn * axisA * sizeA, b = turn * axisB * sizeB;
+            bool checker = Checkerboard;
+            var quarter = turn * Quaternion.Euler(0, 90, 0);
+            var centre = (pieceMin + pieceMax) / 2;
+            var shift = turn * centre - quarter * centre;
             for (int j = fromB; j <= toB; j++)
                 for (int i = fromA; i <= toA; i++)
-                    yield return anchor + a * i + b * j;
+                {
+                    var at = anchor + a * i + b * j;
+                    yield return checker && ((i + j) & 1) != 0 ? (at + shift, quarter) : (at, turn);
+                }
         }
+
+        private static bool Checkerboard => kind == Kind.Floor && Utility.OverhaulConfig.BuildCheckerboardFloors.Value &&
+            Mathf.Abs(sizeA - sizeB) < .05f && IsWoodFloor(Player.m_localPlayer ? Player.m_localPlayer.GetSelectedPiece() : null);
+
+        // The wood floors (2x2 and 1x1), the pieces the checkerboard option is for.
+        internal static bool IsWoodFloor(Piece piece) => piece && Utils.GetPrefabName(piece.gameObject).StartsWith("wood_floor");
 
         private static int Count => (toA - fromA + 1) * (toB - fromB + 1);
 
@@ -423,7 +447,7 @@ namespace Overhaul.Building
         // One ghost per piece of the row past the first (the game's ghost).
         private static void Show(Player player, GameObject ghost)
         {
-            var cells = Cells().Where(p => (p - anchor).sqrMagnitude > .0001f).ToList();
+            var cells = Spots().Where(s => (s.at - anchor).sqrMagnitude > .0001f).ToList();
             while (copies.Count < cells.Count)
             {
                 copies.Add(Copy(ghost));
@@ -433,7 +457,7 @@ namespace Overhaul.Building
                 bool used = i < cells.Count;
                 copies[i].SetActive(used);
                 if (!used) continue;
-                copies[i].transform.SetPositionAndRotation(cells[i], turn);
+                copies[i].transform.SetPositionAndRotation(cells[i].at, cells[i].turn);
                 Highlight(copies[i], valid);
             }
         }
@@ -461,15 +485,14 @@ namespace Overhaul.Building
                 player.Message(MessageHud.MessageType.Center, Affordable(player) ? "$msg_invalidplacement" : "$msg_missingrequirement");
                 return;
             }
-            var cells = Cells().ToList();
-            var rotation = turn;
+            var cells = Spots().ToList();
             // What the inventory lacks comes from the nearby build chests, once they are leased.
-            if (Affordable(player, false)) Place(player, piece, cells, rotation);
-            else if (!Storage.BuildStorage.BeginBatch(player, piece, () => Place(player, piece, cells, rotation)))
+            if (Affordable(player, false)) Place(player, piece, cells);
+            else if (!Storage.BuildStorage.BeginBatch(player, piece, () => Place(player, piece, cells)))
                 player.Message(MessageHud.MessageType.Center, "$msg_missingrequirement");
         }
 
-        private static void Place(Player player, Piece piece, List<Vector3> cells, Quaternion turn)
+        private static void Place(Player player, Piece piece, List<(Vector3 at, Quaternion turn)> cells)
         {
             bool free = player.m_noPlacementCost || ZoneSystem.instance.GetGlobalKey(piece.FreeBuildKey());
             bool first = true;
@@ -478,7 +501,7 @@ namespace Overhaul.Building
                 bool cheated = (player.m_inventory.ItemCheated(piece.m_resources, -1, true) || player.NoCostCheat()) && !PlayerProfile.s_bypassCheatChecks;
                 Game.instance.IncrementPlayerStat(PlayerStatType.Builds, 1f, cheated);
                 Game.instance.GetPlayerProfile().IncrementStatBuildPiecePlaced(piece.m_name, 1f, cheated);
-                player.PlacePiece(piece, cell, turn, first, cheated);
+                player.PlacePiece(piece, cell.at, cell.turn, first, cheated);
                 if (!free) player.ConsumeResources(piece.m_resources, 0, -1, 1);
                 first = false;
             }

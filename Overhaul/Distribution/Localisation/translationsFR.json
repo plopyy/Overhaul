@@ -2536,6 +2536,8 @@
   "overhaul_build_snap_toggle": "Activer/Désactiver snapping",
   "overhaul_build_cyclesnap": "Changer de snap point",
   "overhaul_build_reset": "Réinitialiser la rotation",
+  "overhaul_build_checkerboard": "Sols en damier",
+  "overhaul_build_options": "Options de construction",
   "overhaul_build_snap_off": "Snapping désactivé",
   "overhaul_build_snap_on": "Snapping activé",
   "overhaul_build_turn_y": "Tourner (vert)",
