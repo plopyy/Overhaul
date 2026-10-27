@@ -92,12 +92,35 @@ namespace Overhaul
             box = (RectTransform)go.transform;
             grid = go.GetComponent<GridLayoutGroup>();
             templates = box.Find("Templates");
-            angles = box.Find("Angles");
+            angles = box.Find("Top/Angles");
+            options = box.Find("Top/Options");
+            checkerboard = options ? options.Find("Checkerboard")?.GetComponent<Toggle>() : null;
+            if (checkerboard)
+            {
+                checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
+                checkerboard.onValueChanged.AddListener(on => Utility.OverhaulConfig.BuildCheckerboardFloors.Value = on);
+            }
             if (angles) angleTexts = new[] { "X", "Y", "Z" }.Select(n => angles.Find(n)?.GetComponent<Text>()).ToArray();
             go.SetActive(false);
         }
 
-        private Transform angles;
+        private Transform angles, options;
+        private Toggle checkerboard;
+
+        // The building options box over the key hints: only with a piece that has options (the checkerboard: wood
+        // floors), clickable while the build menu shows the cursor.
+        private void UpdateOptions()
+        {
+            if (!options) return;
+            var player = Player.m_localPlayer;
+            bool shown = checkerboard && player && player.InPlaceMode() && hints.m_buildHints && hints.m_buildHints.activeInHierarchy &&
+                Building.QuickBuild.IsWoodFloor(player.GetSelectedPiece());
+            if (options.gameObject.activeSelf != shown) options.gameObject.SetActive(shown);
+            if (!shown) return;
+            checkerboard.interactable = Hud.IsPieceSelectionVisible();
+            if (checkerboard.isOn != Utility.OverhaulConfig.BuildCheckerboardFloors.Value) checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
+        }
+
         private Text[] angleTexts;
         private Vector3 shownAngles = new Vector3(float.NaN, 0, 0);
 
@@ -122,6 +145,7 @@ namespace Overhaul
         {
             if (!box) return;
             UpdateAngles();
+            UpdateOptions();
             var rows = new List<Row>();
             foreach (var root in roots)
             {
