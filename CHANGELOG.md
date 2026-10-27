@@ -66,6 +66,7 @@
 
 ### Fixed
 - Upgrading an item at a station no longer wipes its rarity, enchantment lines, mythic enchantment and socketed catalysts: the upgraded item keeps them. (2.3.0.380)
+- Special passive change cooldown: 10 real minutes by default (CooldownMinutes of LevelingPassives.cfg), and it is no longer saved: reconnecting or restarting the game lets the passive change at once. (2.3.0.381)
 - Double doors: closing one did not close the other (an open door's leaf had swung out of reach of the search); the other door is now found by its position. (378, 379)
 - The Overhaul logo on the main menu never showed: it was hung on the game's old logo, which is switched off; it now shows under the Deep North logo, centred on it and tilted up so that its end rises just under the bar below “Valheim”, its letters smoothed (no more hammered texture) and brighter. (371, 372, 373, 374)
 - Building options window: its title and texts showed their translation keys ($overhaul_build_options…) instead of the words. (370)
