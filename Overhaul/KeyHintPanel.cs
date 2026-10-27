@@ -96,6 +96,7 @@ namespace Overhaul
             angles = box.Find("Top/Angles");
             options = box.Find("Top/Options");
             checkerboard = options ? options.Find("Checkerboard")?.GetComponent<Toggle>() : null;
+            none = options ? options.Find("None")?.gameObject : null;
             if (checkerboard)
             {
                 checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
@@ -107,17 +108,22 @@ namespace Overhaul
 
         private Transform top, angles, options;
         private Toggle checkerboard;
+        private GameObject none;
 
-        // The building options box over the key hints: only with a piece that has options (the checkerboard: wood
-        // floors), clickable while the build menu shows the cursor.
+        // The building options window over the key hints: shown while the hammer is in hand (build mode), with the options of
+        // the selected piece (the checkerboard: wood floors) or "No options for this piece"; clickable while the build menu
+        // shows the cursor.
         private void UpdateOptions()
         {
             if (!options) return;
             var player = Player.m_localPlayer;
             bool shown = checkerboard && player && player.InPlaceMode() && hints.m_buildHints && hints.m_buildHints.activeInHierarchy &&
-                Building.QuickBuild.IsWoodFloor(player.GetSelectedPiece());
+                player.GetRightItem()?.m_shared.m_name == "$item_hammer";
             if (options.gameObject.activeSelf != shown) options.gameObject.SetActive(shown);
             if (!shown) return;
+            bool floor = Building.QuickBuild.IsWoodFloor(player.GetSelectedPiece());
+            if (checkerboard.gameObject.activeSelf != floor) checkerboard.gameObject.SetActive(floor);
+            if (none && none.activeSelf == floor) none.SetActive(!floor);
             checkerboard.interactable = Hud.IsPieceSelectionVisible();
             if (checkerboard.isOn != Utility.OverhaulConfig.BuildCheckerboardFloors.Value) checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
         }
