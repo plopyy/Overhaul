@@ -18,7 +18,7 @@
 ## 2.3.0 (in progress)
 
 ### Added
-- **Quick repair**: with the hammer's repair selected, hold the place button and every damaged piece aimed at is repaired, one after another as the aim moves (about three repairs a second); undamaged pieces are skipped. (376)
+- **Quick repair**: the hammer's repair mends the piece aimed at and every damaged piece linked to it up to 3 pieces away (pieces touching it, then those touching them...), all in one go, for the cost of one repair; undamaged or unrepairable pieces are skipped. Hold the place button to repeat it as the aim moves (about three times a second). (376, 377)
 - **Double doors**: opening or closing a door also opens or closes the identical door right beside it (same door, side by side in the same wall, facing the same way or mirrored) when it is in the same state; each door checks its own key and ward and swings away from the player. (375)
 - **Building options**: an Auga window above the key hints (bottom right, over the rotation angles) while the hammer is in hand, showing the selected piece's options (or “No options for this piece”); its options are clicked with the build menu open (cursor shown). First option, for wood floors (wood and ashwood, 2x2, 1x1 and decorated): **Checkerboard floors** (off by default, kept in the local config): quick build lays every other floor turned 90°, ghosts included; quick removal also takes floors turned by quarter turns. (364, 365, 368)
 - **Hidden creatures, hidden bars**: a creature's health bar no longer shows through terrain, rocks, trees or buildings; it appears again as soon as the creature can be seen (boss bars unchanged); each creature is checked about once a second, a few per frame, so crowds cost little. (351, 355, 356, 358)
