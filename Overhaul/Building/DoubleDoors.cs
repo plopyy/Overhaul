@@ -31,9 +31,12 @@ namespace Overhaul.Building
             var t = door.transform;
             float width = Width(door), best = float.MaxValue;
             Door found = null;
-            foreach (var collider in Physics.OverlapSphere(t.position, width * 1.25f))
+            // By position, not by colliders: an open door's leaf has swung away from its frame.
+            var near = new System.Collections.Generic.List<Piece>();
+            Piece.GetAllPiecesInRadius(t.position, width * 1.25f, near);
+            foreach (var piece in near)
             {
-                var other = collider.GetComponentInParent<Door>();
+                var other = piece ? piece.GetComponentInChildren<Door>() : null;
                 if (!other || other == door || Utils.GetPrefabName(other.gameObject) != name || !other.m_nview || !other.m_nview.IsValid()) continue;
                 if ((other.m_nview.GetZDO().GetInt(ZDOVars.s_state) == 0) != closed) continue;
                 // The same wall: facing the same way or mirrored, side by side along the door's width, at the same height.
