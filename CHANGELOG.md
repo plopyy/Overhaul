@@ -61,6 +61,7 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
+- Building: the rotation angles strip over the key hints (X, Y, Z) never showed in game, the key hint rows wiping it out each time they changed; it shows again with the gizmo, and so does the new building options window. (366)
 - Quick build and quick removal now work on floors too (wood, stone, marble…): a floor stretches flat on its own level, sideways, forwards or backwards, or both. (359)
 - Quick build: no more NullReferenceException (WearNTear.Awake) in the log while a row grows; the row's ghosts are now copies for show only. (361)
 - Ashwood stairs snap side by side: their corner snap points sat in the middle of the 1 m wide stair instead of on its edges. (349)
