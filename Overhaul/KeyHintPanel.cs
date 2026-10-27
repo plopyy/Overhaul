@@ -97,6 +97,8 @@ namespace Overhaul
             options = box.Find("Top/Options");
             checkerboard = options ? options.Find("Checkerboard")?.GetComponent<Toggle>() : null;
             none = options ? options.Find("None")?.gameObject : null;
+            // Its texts are translation keys ($overhaul_build_options...).
+            if (options && Localization.instance != null) Localization.instance.Localize(options);
             if (checkerboard)
             {
                 checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
