@@ -26,7 +26,7 @@ namespace Overhaul
                 {
                     var character = pair.Key; var hud = pair.Value;
                     if (!character || hud?.m_gui == null || !hud.m_gui.activeSelf || character.IsBoss() || character.IsPlayer()) continue;
-                    if (!Seen(eye, character.GetHeadPoint()) && !Seen(eye, character.GetCenterPoint())) hud.m_gui.SetActive(false);
+                    if (!Seen(eye, Head(character)) && !Seen(eye, character.GetCenterPoint())) hud.m_gui.SetActive(false);
                     else if (Time.time >= nextLog) Probe(eye, character);
                 }
                 if (Time.time >= nextLog) nextLog = Time.time + 2f;
@@ -46,8 +46,11 @@ namespace Overhaul
                 return to.magnitude.ToString("F1") + " m: " + string.Join(", ", System.Linq.Enumerable.Select(System.Linq.Enumerable.Take(hits, 4),
                     h => h.collider.name + "/" + LayerMask.LayerToName(h.collider.gameObject.layer) + "@" + h.distance.ToString("F1")));
             }
-            Utility.Log.LogInfo("HUD occlusion " + character.m_name + " head " + Line(character.GetHeadPoint()) + " | centre " + Line(character.GetCenterPoint()));
+            Utility.Log.LogInfo("HUD occlusion " + character.m_name + " head " + Line(Head(character)) + " | centre " + Line(character.GetCenterPoint()));
         }
+
+        // The head, or half a metre above the centre for creatures without a head bone (GetHeadPoint throws for them).
+        private static Vector3 Head(Character character) => character.m_head ? character.GetHeadPoint() : character.GetCenterPoint() + Vector3.up * .5f;
 
         // Clear line from the eye to a point, the last half metre left out (the creature's own surroundings).
         private static bool Seen(Vector3 eye, Vector3 point)
