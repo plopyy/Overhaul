@@ -13,7 +13,7 @@ namespace Overhaul.Leveling
     public sealed class LevelingRules
     {
         public int MaxLevel = 200, PointsPerLevel = 4, PassiveLevel = 20;
-        public double CombatSeconds = 15, PassiveCooldownMinutes = 30, ParticipationSeconds = 60, RewardRange = 80;
+        public double CombatSeconds = 15, PassiveCooldownMinutes = 10, ParticipationSeconds = 60, RewardRange = 80;
         public double CriticalMultiplier = 1.5, VitalityHealth = 10, VitalityRegen = 3;
         public Dictionary<string, double> Biomes = new Dictionary<string, double>();
         public Dictionary<string, double> Categories = new Dictionary<string, double>();
@@ -83,7 +83,7 @@ namespace Overhaul.Leveling
             }
             var passives = Parse(Path.Combine(directory,"LevelingPassives.cfg"));
             rules.PassiveLevel=(int)Value(passives,"Selection.RequiredLevel",20,1,10000);
-            rules.PassiveCooldownMinutes=Value(passives,"Selection.CooldownMinutes",30,0,10080);
+            rules.PassiveCooldownMinutes=Value(passives,"Selection.CooldownMinutes",10,0,10080);
             rules.VitalityHealth=Value(passives,"Vitality.Health",10,0,1000);
             rules.VitalityRegen=Value(passives,"Vitality.RegenPerSecond",3,0,100);
             return rules;
