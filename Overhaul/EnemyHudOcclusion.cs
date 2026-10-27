@@ -11,7 +11,7 @@ namespace Overhaul
     // the frames), at most Budget checks a frame, and the last answer is kept in between.
     internal static class EnemyHudOcclusion
     {
-        private const float Interval = .25f;
+        private const float Interval = 1f;
         private const int Budget = 8;
         private static int mask;
         // What can hide a creature: the world's solid layers, never characters.
