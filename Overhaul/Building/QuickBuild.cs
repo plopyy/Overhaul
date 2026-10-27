@@ -49,7 +49,25 @@ namespace Overhaul.Building
 
         // The game's place and remove buttons inside UpdatePlacement: not seen by it while a row is held, on the press
         // that starts one.
-        private static bool Down(string name) => !Owned(name) && (ZInput.GetButtonDown(name) || name == "Attack" && LevelingHeld());
+        private static bool Down(string name) => !Owned(name) && (ZInput.GetButtonDown(name) || name == "Attack" && (LevelingHeld() || RepairHeld()));
+
+        // Quick repair: with the hammer's repair selected, holding the place button repairs whatever damaged piece is aimed at,
+        // one repair every RepairInterval seconds (the game's repair keeps no time of its own); an undamaged piece is skipped, so
+        // the "does not need repair" message is not repeated.
+        private const float RepairInterval = .3f;
+        private static float lastRepair;
+        private static bool RepairHeld()
+        {
+            var player = Player.m_localPlayer;
+            if (!player || !ZInput.GetButton("Attack") || ZInput.GetButtonDown("Attack") || Hud.InRadial() || Hud.IsPieceSelectionVisible()) return false;
+            var piece = player.GetSelectedPiece();
+            if (!piece || !piece.m_repairPiece || Time.time - lastRepair < RepairInterval) return false;
+            var aimed = player.GetHoveringPiece();
+            var wear = aimed ? aimed.GetComponent<WearNTear>() : null;
+            if (!wear || wear.GetHealthPercentage() >= 1f) return false;
+            lastRepair = Time.time;
+            return true;
+        }
 
         // The hoe's level ground keeps levelling while the place button is held, at the tool's own pace (raising and
         // paths still take a click each).
