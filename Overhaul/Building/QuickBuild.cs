@@ -51,9 +51,9 @@ namespace Overhaul.Building
         // that starts one.
         private static bool Down(string name) => !Owned(name) && (ZInput.GetButtonDown(name) || name == "Attack" && (LevelingHeld() || RepairHeld()));
 
-        // Quick repair: with the hammer's repair selected, holding the place button repairs whatever damaged piece is aimed at,
-        // one repair every RepairInterval seconds (the game's repair keeps no time of its own); an undamaged piece is skipped, so
-        // the "does not need repair" message is not repeated.
+        // Quick repair: with the hammer's repair selected, holding the place button repairs the area aimed at (QuickRepair), at
+        // most every RepairInterval seconds (the game's repair keeps no time of its own) and only while some piece of it can be
+        // repaired, so the "does not need repair" message is not repeated.
         private const float RepairInterval = .3f;
         private static float lastRepair;
         private static bool RepairHeld()
@@ -62,9 +62,7 @@ namespace Overhaul.Building
             if (!player || !ZInput.GetButton("Attack") || ZInput.GetButtonDown("Attack") || Hud.InRadial() || Hud.IsPieceSelectionVisible()) return false;
             var piece = player.GetSelectedPiece();
             if (!piece || !piece.m_repairPiece || Time.time - lastRepair < RepairInterval) return false;
-            var aimed = player.GetHoveringPiece();
-            var wear = aimed ? aimed.GetComponent<WearNTear>() : null;
-            if (!wear || wear.GetHealthPercentage() >= 1f) return false;
+            if (!QuickRepair.Ready(player)) return false;
             lastRepair = Time.time;
             return true;
         }
