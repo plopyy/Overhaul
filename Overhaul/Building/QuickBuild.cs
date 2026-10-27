@@ -426,8 +426,7 @@ namespace Overhaul.Building
             var cells = Cells().Where(p => (p - anchor).sqrMagnitude > .0001f).ToList();
             while (copies.Count < cells.Count)
             {
-                bool init = ZNetView.m_forceDisableInit; ZNetView.m_forceDisableInit = true;
-                try { copies.Add(Object.Instantiate(ghost)); } finally { ZNetView.m_forceDisableInit = init; }
+                copies.Add(Copy(ghost));
             }
             for (int i = 0; i < copies.Count; i++)
             {
@@ -438,6 +437,19 @@ namespace Overhaul.Building
                 Highlight(copies[i], valid);
             }
         }
+
+        // A copy of the game's ghost for show only: made under an inactive parent so none of its scripts wakes (the
+        // ghost's network view is gone, WearNTear.Awake would throw on it), its scripts removed, then let out.
+        private static GameObject Copy(GameObject ghost)
+        {
+            if (!holder) { holder = new GameObject("Overhaul_QuickBuildCopies"); holder.SetActive(false); Object.DontDestroyOnLoad(holder); }
+            var copy = Object.Instantiate(ghost, holder.transform);
+            // Last first: a script another one requires goes after it.
+            foreach (var script in copy.GetComponentsInChildren<MonoBehaviour>(true).Reverse()) Object.DestroyImmediate(script);
+            copy.transform.SetParent(null);
+            return copy;
+        }
+        private static GameObject holder;
 
         private static void Finish(Player player)
         {
