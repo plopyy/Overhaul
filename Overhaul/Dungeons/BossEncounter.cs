@@ -69,8 +69,8 @@ namespace Overhaul.Dungeons
             chest.m_defaultItems = new DropTable();
             chest.m_autoDestroyEmpty = false;
             chest.m_checkGuardStone = false;
-            // Keep the existing width so saved item positions remain valid.
-            chest.m_width = 4; chest.m_height = 6;
+            // Wide like the game's chests; the loot fills the top rows, so items saved at width 4 stay in place.
+            chest.m_width = 6; chest.m_height = 4;
             PrefabManager.Instance.AddPrefab(prefab);
         }
 

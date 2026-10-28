@@ -166,7 +166,17 @@ namespace Overhaul.Storage
         private void Refresh()
         {
             if (!panel || !store || !store.Owner) return;
-            if (fuelGrid) fuelGrid.UpdateInventory(store.Fuel, null, gui.m_dragItem);
+            if (fuelGrid)
+            {
+                fuelGrid.UpdateInventory(store.Fuel, null, gui.m_dragItem);
+                // The fuel cells (the enchanting table's catalysts) show Auga's full item tooltip, as in the inventory.
+                foreach (var element in fuelGrid.m_elements)
+                {
+                    var item = element.m_used ? store.Fuel.GetItemAt(element.Position.x, element.Position.y) : null;
+                    if (item != null) Auga.API.Tooltip_MakeItemTooltip(element.gameObject, item);
+                    else if (element.gameObject.GetComponent<AugaUnity.ItemTooltip>() is AugaUnity.ItemTooltip tooltip) tooltip.Item = null;
+                }
+            }
             if (armorAnchors == null) return;
             for (int i = 0; i < Math.Min(armorAnchors.Length, materialGrid.m_elements.Count); i++)
             {
