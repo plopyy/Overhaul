@@ -132,6 +132,7 @@
     <Compile Include="Dungeons\DungeonRuntime.cs" />
     <Compile Include="Dungeons\DungeonResetSafety.cs" />
     <Compile Include="Dungeons\DungeonVisits.cs" />
+    <Compile Include="Dungeons\DungeonAlterations.cs" />
     <Compile Include="Dungeons\DungeonReconnect.cs" />
     <Compile Include="Dungeons\DungeonDeathGrave.cs" />
     <Compile Include="Dungeons\DungeonPatches.cs" />
