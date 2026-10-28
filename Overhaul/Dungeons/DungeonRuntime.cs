@@ -42,7 +42,7 @@ namespace Overhaul.Dungeons
         private sealed class Preparation
         {
             internal ZDOID Id;
-            internal ZoneSystem.ZoneLocation Location;
+            internal ZoneSystem.ZoneLocation Location, Next;
             internal float Deadline;
             internal bool Recovery;
             internal bool Manual;
@@ -359,10 +359,12 @@ namespace Overhaul.Dungeons
             }
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
             if (!ZoneSystem.instance.IsZoneGenerated(zone)) { Report(proxy, location.m_prefab.Name, "secteur non genere"); return; }
-            preparation = new Preparation { Id = proxy.m_uid, Location = location, Recovery = recovery, Manual = manual, Deadline = Time.realtimeSinceStartup + 60f };
+            var next = recovery ? location : NextVersion(location);
+            preparation = new Preparation { Id = proxy.m_uid, Location = location, Next = next, Recovery = recovery, Manual = manual, Deadline = Time.realtimeSinceStartup + 60f };
             queued.Add(proxy.m_uid);
             // Keep our own reference, independent of the native streaming cache lifetime.
             location.m_prefab.LoadAsync();
+            if (next != location) next.m_prefab.LoadAsync();
             Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + proxy.m_uid + " : chargement des assets et du terrain (maximum 60 s)");
             AdvancePreparation(Time.realtimeSinceStartup);
         }
@@ -374,6 +376,7 @@ namespace Overhaul.Dungeons
             if (work == null) return;
             queued.Remove(work.Id);
             work.Location.m_prefab.Release();
+            if (work.Next != work.Location) work.Next.m_prefab.Release();
         }
 
         private static void AdvancePreparation(float realtime)
@@ -389,7 +392,7 @@ namespace Overhaul.Dungeons
                 EndPreparation();
                 return;
             }
-            if (!work.Location.m_prefab.IsLoaded) return;
+            if (!work.Location.m_prefab.IsLoaded || !work.Next.m_prefab.IsLoaded) return;
             if (!work.Recovery && (!selected.Contains(name) || (!work.Manual && proxy.GetLong(VisitStartedKey, 0) == 0)))
             { EndPreparation(); return; }
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
@@ -403,7 +406,7 @@ namespace Overhaul.Dungeons
                     byte[] journal = proxy.GetByteArray(JournalKey, null);
                     if (journal != null && journal.Length != 0) FinishCommit(proxy, journal);
                 }
-                else Reset(proxy, work.Location);
+                else Reset(proxy, work.Location, work.Next);
             }
             finally { EndPreparation(); }
         }
@@ -424,7 +427,29 @@ namespace Overhaul.Dungeons
             Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : reset reporte (" + reason + ")");
         }
 
-        private static void Reset(ZDO proxy, ZoneSystem.ZoneLocation location)
+        // A dvergr tower comes back as any of the tower versions; other locations as themselves.
+        private static ZoneSystem.ZoneLocation NextVersion(ZoneSystem.ZoneLocation location)
+        {
+            if (!DungeonPolicy.Towers.Contains(location.m_prefab.Name)) return location;
+            var versions = ZoneSystem.instance.m_locations.Where(l => l != null && l.m_enable && l.m_prefab.IsValid && DungeonPolicy.Towers.Contains(l.m_prefab.Name)).ToList();
+            return versions.Count == 0 ? location : versions[UnityEngine.Random.Range(0, versions.Count)];
+        }
+
+        // The proxy and the world's location list point to the new version (its non-networked parts load from it).
+        private static void SwitchVersion(ZDO proxy, ZoneSystem.ZoneLocation next)
+        {
+            proxy.Set(ZDOVars.s_location, next.Hash);
+            Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
+            ZoneSystem.LocationInstance instance;
+            if (ZoneSystem.instance.m_locationInstances.TryGetValue(zone, out instance))
+            {
+                instance.m_location = next;
+                ZoneSystem.instance.m_locationInstances[zone] = instance;
+            }
+            Log.LogInfo("Dungeon " + proxy.m_uid + " : nouvelle version " + next.m_prefab.Name);
+        }
+
+        private static void Reset(ZDO proxy, ZoneSystem.ZoneLocation location, ZoneSystem.ZoneLocation next)
         {
             // A manual command grants one attempt, not a persistent bypass of the visit deadline.
             // Consume it before any occupied/migration/placement failure can return.
@@ -442,7 +467,8 @@ namespace Overhaul.Dungeons
             {
                 GameObject prefab = location.m_prefab.Asset;
                 Location locationComponent = prefab.GetComponent<Location>();
-                float exterior = Math.Max(40, locationComponent.m_exteriorRadius + 16);
+                Location nextComponent = next.m_prefab.Asset.GetComponent<Location>();
+                float exterior = Math.Max(40, Math.Max(locationComponent.m_exteriorRadius, nextComponent ? nextComponent.m_exteriorRadius : 0) + 16);
                 DungeonGenerator[] generators = prefab.GetComponentsInChildren<DungeonGenerator>(true);
                 foreach (DungeonGenerator generator in generators)
                 {
@@ -497,11 +523,11 @@ namespace Overhaul.Dungeons
                 }
                 int newSeed = DungeonPolicy.NextSeed(proxy.GetInt(SeedKey, proxy.GetInt(ZDOVars.s_seed, 0)), Seeds.Next(int.MinValue + 1, int.MaxValue));
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : preparation du nouveau plan, seed " + newSeed);
-                try { staged = Stage(proxy, location, previous, false, newSeed); }
+                try { staged = Stage(proxy, next, previous, false, newSeed); }
                 catch (LaneMismatch e)
                 {
                     Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : " + e.Message);
-                    staged = Stage(proxy, location, previous, false, newSeed);
+                    staged = Stage(proxy, next, previous, false, newSeed);
                 }
                 ValidateNew(staged, previous.Count);
                 volumes.AddRange(staged.Volumes);
@@ -538,6 +564,7 @@ namespace Overhaul.Dungeons
                     zdo.Set(EpochKey, proxy.GetInt(EpochKey, 0));
                 }
                 byte[] journal = WriteResetJournal(old, staged.Objects, newSeed, staged.Epoch, DateTime.UtcNow.Ticks, occupied, moves);
+                if (next != location) SwitchVersion(proxy, next);
                 proxy.Set(JournalKey, journal); // Commit point: after this, never discard the replacement.
                 committed = true;
                 if (!FinishCommit(proxy, journal)) return;

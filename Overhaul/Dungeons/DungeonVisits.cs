@@ -90,6 +90,9 @@ namespace Overhaul.Dungeons
                         if (proxy == null || proxy.GetLong(VisitStartedKey, 0) != 0) continue;
                         byte[] journal = proxy.GetByteArray(JournalKey, null);
                         if (journal != null && journal.Length != 0) continue;
+                        // Towers wait for an alteration instead (DungeonAlterations).
+                        var site = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
+                        if (site != null && DungeonPolicy.Towers.Contains(site.m_prefab.Name)) continue;
                         try
                         {
                             List<Bounds> volumes = GetVisitBounds(proxy);

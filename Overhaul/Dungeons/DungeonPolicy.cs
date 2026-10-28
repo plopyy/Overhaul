@@ -7,8 +7,14 @@ namespace Overhaul.Dungeons
     internal static class DungeonPolicy
     {
         internal const string DefaultResetLocations = "Crypt2,Crypt3,Crypt4,SunkenCrypt4,MountainCave02,Mistlands_DvergrTownEntrance1,Mistlands_DvergrTownEntrance2,Hildir_crypt,Hildir_cave,Hildir_plainsfortress,MorkBorg,TheHole01,HalfBurried_ForestCrypt,GoblinCamp2,GoblinCamp2_1,FortressRuins,NorthVillage,TrollCave02,BearCave,MorgenHole1,MorgenHole2,MorgenHole3,TheDarkestHole,DN_Bossroom,CharredFortress," + MistlandsSurface;
-        // Dvergr excavation camps, dvergr towers (whole and ruined) and the petrified giants (their bone deposits), added in 2.3.0.
-        internal const string MistlandsSurface = "Mistlands_Excavation1,Mistlands_Excavation2,Mistlands_Excavation3,Mistlands_GuardTower1_new,Mistlands_GuardTower2_new,Mistlands_GuardTower3_new,Mistlands_GuardTower1_ruined_new,Mistlands_GuardTower1_ruined_new2,Mistlands_GuardTower3_ruined_new,Mistlands_Giant1,Mistlands_Giant2";
+        // Dvergr excavation camps, dvergr towers (whole and ruined), the petrified giants (their bone deposits), the dvergr harbour and lighthouse, added in 2.3.0.
+        internal const string MistlandsSurface = "Mistlands_Excavation1,Mistlands_Excavation2,Mistlands_Excavation3,Mistlands_GuardTower1_new,Mistlands_GuardTower2_new,Mistlands_GuardTower3_new,Mistlands_GuardTower1_ruined_new,Mistlands_GuardTower1_ruined_new2,Mistlands_GuardTower3_ruined_new,Mistlands_Giant1,Mistlands_Giant2,Mistlands_Harbour1,Mistlands_Lighthouse1_new";
+        // Dvergr towers outside dungeons: reset after an alteration (chest changed, piece hit), into any of these versions.
+        internal static readonly HashSet<string> Towers = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Mistlands_GuardTower1_new", "Mistlands_GuardTower2_new", "Mistlands_GuardTower3_new",
+            "Mistlands_GuardTower1_ruined_new", "Mistlands_GuardTower1_ruined_new2", "Mistlands_GuardTower3_ruined_new"
+        };
         internal static readonly HashSet<string> Supported = new HashSet<string>(DefaultResetLocations.Split(','), StringComparer.Ordinal);
         internal static readonly HashSet<string> ScaledGenerators = new HashSet<string>(StringComparer.Ordinal)
         {
