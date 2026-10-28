@@ -1,3 +1,4 @@
+using System.Linq;
 using BepInEx.Configuration;
 using Jotunn;
 using Jotunn.Managers;
@@ -95,6 +96,19 @@ namespace Overhaul.Utility
             ResetLocations = config.Bind("Dungeon", "ResetLocations", Dungeons.DungeonPolicy.DefaultResetLocations,
                 new ConfigDescription("Comma-separated supported location prefab IDs eligible for reset. Remove an ID to exclude it. Infested Citadel and Meadows villages/farm are always excluded. Unknown IDs are ignored.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            // Locations supported since the file was written join its list once; an ID removed afterwards stays removed.
+            var offered = config.Bind("Dungeon", "ResetLocationsOffered", "",
+                new ConfigDescription("Internal: location IDs already added to ResetLocations. Do not edit.", null,
+                    new ConfigurationManagerAttributes { IsAdminOnly = true, Browsable = false }));
+            var known = new System.Collections.Generic.HashSet<string>(offered.Value.Length > 0 ? offered.Value.Split(',') : Dungeons.DungeonPolicy.DefaultResetLocations.Replace("," + Dungeons.DungeonPolicy.MistlandsSurface, "").Split(','));
+            var added = Dungeons.DungeonPolicy.Supported.Where(id => !known.Contains(id)).ToList();
+            if (added.Count > 0)
+            {
+                var list = ResetLocations.Value.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
+                list.AddRange(added.Where(id => !list.Contains(id)));
+                ResetLocations.Value = string.Join(",", list);
+            }
+            if (offered.Value != Dungeons.DungeonPolicy.DefaultResetLocations) offered.Value = Dungeons.DungeonPolicy.DefaultResetLocations;
             StackSize100 = config.Bind("Items", "StackSize100", true,
                 new ConfigDescription("Raise every stackable item below 100 to stacks of 100. Set false to keep the vanilla stack sizes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
