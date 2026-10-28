@@ -52,6 +52,8 @@
 ### Fixed
 - Upgrading an item at a station no longer wipes its rarity, enchantment lines, mythic enchantment and socketed catalysts: the upgraded item keeps them. (2.3.0.380)
 - Special passive change cooldown: 10 real minutes by default (CooldownMinutes of LevelingPassives.cfg), and it is no longer saved: reconnecting or restarting the game lets the passive change at once. (2.3.0.381)
+- Enchanting table, Catalysts tab: the tooltip of a socketed catalyst shows its rarity and what it does, like in the inventory. (2.3.0.383)
+- Valheim 1.0.21: the character selection showed placeholder cards (12345, [menu_deaths]...) because the game changed how it reads a character's stats; the cards show each character's deaths, builds and crafts again. Overhaul is now built against Valheim 1.0.21, which also fixes an error when filling the oven. (2.3.0.383)
 - Double doors: closing one did not close the other (an open door's leaf had swung out of reach of the search); the other door is now found by its position. (378, 379)
 - The Overhaul logo on the main menu never showed: it was hung on the game's old logo, which is switched off; it now shows under the Deep North logo, centred on it and tilted up so that its end rises just under the bar below “Valheim”, its letters smoothed (no more hammered texture) and brighter. (371, 372, 373, 374)
 - Building options window: its title and texts showed their translation keys ($overhaul_build_options…) instead of the words. (370)

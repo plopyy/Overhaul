@@ -113,16 +113,8 @@ namespace AugaUnity
             Update();
         }
 
-        // With achievements on, the game's GetStat asks the server options window for the world's difficulty; on the
-        // character screen that window may be missing or not set up yet (its modifiers empty) and GetStat throws.
-        // The stats of the default difficulty then.
-        internal static float Stat(PlayerProfile profile, PlayerStatType stat)
-        {
-            if (ServerOptionsGUI.m_instance)
-                try { return profile.GetStat(stat); }
-                catch (System.Exception) { }
-            return profile.m_playerStats[0][stat];
-        }
+        // The stats of any difficulty, as the game reads them itself (Valheim 1.0.21).
+        internal static float Stat(PlayerProfile profile, PlayerStatType stat) => profile.GetStat(stat, DifficultyRequirement.Any);
 
         public void Setup(PlayerProfile profile, int index, RenderTexture renderTexture)
         {
