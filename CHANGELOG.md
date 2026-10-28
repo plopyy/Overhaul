@@ -10,6 +10,7 @@
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
 ### Fixed
+- Items dropped by tamed creatures (at death or when their corpse vanishes) no longer disappear from the ground after 30 minutes. (2.4.0.244)
 - Grimoire stand: it could show the pack’s own wood instead of the game’s wood wall planks; its wood is now the wood wall’s material itself, set in the stand’s model. (2.4.0.132)
 - Lightning spell and Zeus’s Wrath bolts: they dealt the Lightning Strike staff’s fixed impact damage (80 lightning, 400 at the very centre) whatever the staff; they now deal the spell’s damage (its share of the staff’s magic power) and apply its stun chance.
 
