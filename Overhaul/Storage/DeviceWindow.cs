@@ -75,8 +75,8 @@ namespace Overhaul.Storage
             Text(panel.transform, "Title", store.Adapter.Title);
             Text(panel.transform, "MaterialLabel", store.Adapter.MaterialLabel);
             Text(panel.transform, "FuelLabel", store.Adapter.FuelLabel);
-            foreach (var text in panel.transform.Find("Close").GetComponentsInChildren<TMP_Text>(true)) text.text = Localization.instance.Localize("$menu_close");
-            panel.transform.Find("Close").GetComponent<Button>().onClick.AddListener(gui.CloseContainer);
+            foreach (var text in CloseButton.GetComponentsInChildren<TMP_Text>(true)) text.text = Localization.instance.Localize("$menu_close");
+            CloseButton.GetComponent<Button>().onClick.AddListener(gui.CloseContainer);
             AddActions();
             materialGrid = panel.GetComponentsInChildren<InventoryGrid>(true).FirstOrDefault(g => g.name == "MaterialInventory");
             if (store.Adapter is ArmorInventory) PrepareArmor();
@@ -95,9 +95,11 @@ namespace Overhaul.Storage
             if (store.Adapter is Rarity.EnchantInventory) panel.AddComponent<Rarity.EnchantPanel>().Init(store, fuelGrid);
             Refresh();
         }
+        // The simple window keeps its buttons in a row of its vertical layout.
+        private Transform CloseButton => panel.transform.Find("Close") ?? panel.transform.Find("Buttons/Close");
         private void AddActions()
         {
-            var close = panel.transform.Find("Close").GetComponent<Button>();
+            var close = CloseButton.GetComponent<Button>();
             var buttons = new List<Button>();
             // The enchanting table keeps its single Close button.
             if (!(store.Adapter is Rarity.EnchantInventory))
