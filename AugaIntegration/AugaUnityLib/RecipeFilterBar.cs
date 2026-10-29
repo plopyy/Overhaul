@@ -87,11 +87,18 @@ namespace AugaUnity
 
             _present.Clear();
             var icons = new Dictionary<RecipeCategory, Sprite>();
+            var chestIcon = false;
             foreach (var recipe in recipes)
             {
                 var category = Categorize(recipe);
                 _present.Add(category);
-                if (!icons.ContainsKey(category)) icons[category] = recipe.m_item.m_itemData.GetIcon();
+                // The armour button shows a chest piece when the station makes one, not the first cape.
+                var chest = category == RecipeCategory.Armor && recipe.m_item.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Chest;
+                if (!icons.ContainsKey(category) || (chest && !chestIcon))
+                {
+                    icons[category] = recipe.m_item.m_itemData.GetIcon();
+                    chestIcon |= chest;
+                }
             }
 
             if (stationChanged || !_present.Contains(Selected)) Selected = RecipeCategory.All;
