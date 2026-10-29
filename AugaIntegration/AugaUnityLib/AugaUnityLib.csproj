@@ -185,6 +185,7 @@
     <Compile Include="RecipeFilterBar.cs" />
     <Compile Include="StationRecipes.cs" />
     <Compile Include="GridRowsLayout.cs" />
+    <Compile Include="SplitAmountControls.cs" />
     <Compile Include="SelectedCharacterInfo.cs" />
     <Compile Include="ShowIfSelected.cs" />
     <Compile Include="SkillsPanelController.cs" />

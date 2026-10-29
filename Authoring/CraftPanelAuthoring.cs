@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 // Crafting panel rework (TabContent_Crafting prefab):
 // - recipe list content no taller than its viewport, so a short list has nothing to scroll;
-// - minus / amount / plus row above the craft button (item info shortened to make room);
+// - min / minus / amount / plus / max row above the craft button (item info shortened to make room);
 // - name search field above the recipe list (copy of the construction window's search);
 // - column of diamond filter buttons straddling the panel's left border.
 // Idempotent: rerunning rebuilds the generated objects.
@@ -52,7 +52,7 @@ public static class CraftPanelAuthoring
             // Leftover amount field of the old MultiCraft mod compatibility, replaced by the selector.
             column.Find("BottomBar/AAA").gameObject.SetActive(false);
             ShortenItemInfo(column, crafting);
-            panel.Quantity = BuildQuantity(column, template);
+            panel.Quantity = BuildQuantity(column);
             panel.Filters = BuildFilters(crafting.transform, template, tabColors);
             panel.Filters.Search = BuildSearch(crafting.transform);
 
@@ -158,7 +158,7 @@ public static class CraftPanelAuthoring
         }
     }
 
-    static CraftQuantity BuildQuantity(Transform column, GameObject template)
+    static CraftQuantity BuildQuantity(Transform column)
     {
         var old = column.Find("CraftQuantity");
         if (old) Object.DestroyImmediate(old.gameObject);
@@ -191,48 +191,12 @@ public static class CraftPanelAuthoring
 
         var quantity = row.AddComponent<CraftQuantity>();
         quantity.AmountText = amount;
-        quantity.MinusButton = StepButton(rt, template, "Minus", "−", -62, sourceText);
-        quantity.PlusButton = StepButton(rt, template, "Plus", "+", 62, sourceText);
+        var sound = column.Find("BottomBar/CraftButton").GetComponent<ButtonSfx>();
+        quantity.MinButton = AugaDiamondButton.Create(rt, "Min", AugaDiamondButton.Min, new Vector2(-102, 0), sound);
+        quantity.MinusButton = AugaDiamondButton.Create(rt, "Minus", AugaDiamondButton.Minus, new Vector2(-66, 0), sound);
+        quantity.PlusButton = AugaDiamondButton.Create(rt, "Plus", AugaDiamondButton.Plus, new Vector2(66, 0), sound);
+        quantity.MaxButton = AugaDiamondButton.Create(rt, "Max", AugaDiamondButton.Max, new Vector2(102, 0), sound);
         return quantity;
-    }
-
-    static Button StepButton(Transform parent, GameObject template, string name, string label, float x, TMP_Text font)
-    {
-        var go = Object.Instantiate(template, parent, false);
-        go.name = name;
-        Object.DestroyImmediate(go.GetComponent<TabButton>());
-        Object.DestroyImmediate(go.GetComponent<UITooltip>());
-        Object.DestroyImmediate(go.GetComponent<LayoutElement>());
-        Object.DestroyImmediate(go.transform.Find("Icon").gameObject);
-        var rt = (RectTransform)go.transform;
-        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(34, 34);
-        rt.anchoredPosition = new Vector2(x, 0);
-
-        var text = Object.Instantiate(font.gameObject, go.transform, false).GetComponent<TMP_Text>();
-        text.name = "Label";
-        var textRt = text.rectTransform;
-        textRt.anchorMin = Vector2.zero;
-        textRt.anchorMax = Vector2.one;
-        textRt.sizeDelta = Vector2.zero;
-        textRt.anchoredPosition = new Vector2(0, 1);
-        text.alignment = TextAlignmentOptions.Center;
-        text.enableAutoSizing = false;
-        text.fontSize = 26;
-        text.text = label;
-        text.raycastTarget = false;
-
-        var button = go.GetComponent<Button>();
-        button.transition = Selectable.Transition.ColorTint;
-        button.targetGraphic = go.GetComponent<Image>();
-        var colors = button.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1f, 0.92f, 0.75f);
-        colors.pressedColor = new Color(0.8f, 0.72f, 0.55f);
-        colors.selectedColor = Color.white;
-        colors.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.6f);
-        button.colors = colors;
-        return button;
     }
 
     static RecipeFilterBar BuildFilters(Transform crafting, GameObject template, TabButton tabColors)
