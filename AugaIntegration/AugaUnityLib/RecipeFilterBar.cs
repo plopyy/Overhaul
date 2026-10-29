@@ -20,7 +20,6 @@ namespace AugaUnity
     // matches both the selected category and the searched text.
     public class RecipeFilterBar : MonoBehaviour
     {
-        [Serializable]
         public class Entry
         {
             public RecipeCategory Category;
@@ -29,7 +28,15 @@ namespace AugaUnity
             public bool UseItemIcon;
         }
 
-        public List<Entry> Buttons = new List<Entry>();
+        // Plain parallel lists: a list of a custom [Serializable] class came back empty in game
+        // (the bundle's components live in an assembly loaded at runtime).
+        public List<TabButton> Buttons = new List<TabButton>();
+        public List<RecipeCategory> Categories = new List<RecipeCategory>();
+        public List<RecipeCategory> ItemIconCategories = new List<RecipeCategory>();
+
+        private List<Entry> _entries;
+        public List<Entry> Entries => _entries ?? (_entries = Buttons.Select((button, i) => new Entry
+            { Button = button, Category = Categories[i], UseItemIcon = ItemIconCategories.Contains(Categories[i]) }).ToList());
         // Window backgrounds that get a diamond notch behind each visible button.
         public List<AugaPanelNotches> Notches = new List<AugaPanelNotches>();
         public float NotchMargin = 4;
@@ -47,7 +54,7 @@ namespace AugaUnity
 
         public void Awake()
         {
-            foreach (var entry in Buttons)
+            foreach (var entry in Entries)
             {
                 var category = entry.Category;
                 entry.Button.Button.onClick.AddListener(() => Select(category));
@@ -94,7 +101,7 @@ namespace AugaUnity
                 _query = "";
             }
 
-            foreach (var entry in Buttons)
+            foreach (var entry in Entries)
             {
                 var show = entry.Category == RecipeCategory.All || _present.Contains(entry.Category);
                 entry.Button.gameObject.SetActive(show);
@@ -113,7 +120,7 @@ namespace AugaUnity
         {
             if (!isActiveAndEnabled) return;
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)transform);
-            var visible = Buttons.Where(entry => entry.Button.gameObject.activeSelf).Select(entry => (RectTransform)entry.Button.transform).ToList();
+            var visible = Entries.Where(entry => entry.Button.gameObject.activeSelf).Select(entry => (RectTransform)entry.Button.transform).ToList();
             foreach (var notches in Notches)
             {
                 if (!notches) continue;
@@ -152,7 +159,7 @@ namespace AugaUnity
 
         private void UpdateButtons()
         {
-            foreach (var entry in Buttons)
+            foreach (var entry in Entries)
                 entry.Button.SetSelected(entry.Category == Selected);
         }
 

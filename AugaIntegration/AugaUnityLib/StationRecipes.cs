@@ -35,7 +35,8 @@ namespace AugaUnity
                 if (!required || required.m_name != station.m_name) continue;
                 var shared = recipe.m_item.m_itemData.m_shared;
                 offer.Upgrades |= shared.m_maxQuality > 1;
-                offer.Repairs |= shared.m_canBeReparied;
+                // Overhaul's universal repair marks every item repairable: only worn gear counts.
+                offer.Repairs |= shared.m_canBeReparied && shared.m_useDurability;
             }
             Cache[station.m_name] = offer;
             return offer;
