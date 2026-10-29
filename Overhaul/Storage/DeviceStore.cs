@@ -167,9 +167,11 @@ namespace Overhaul.Storage
         internal bool Open(Humanoid user, bool hold)
         {
             if (hold || !Container || !Load()) return false;
+            if (Adapter.TakeFinished(user)) return true;
             return Container.Interact(user, false, false);
         }
-        internal string Hover() => Localization.instance.Localize(Adapter.Title + "\n[<color=yellow><b>$KEY_Use</b></color>] $piece_container_open") + DeviceActions.Hint(this);
+        internal string Hover() => Localization.instance.Localize(Adapter.Title + "\n[<color=yellow><b>$KEY_Use</b></color>] " +
+            (Adapter.HasFinished ? "$overhaul_take_cooked" : "$piece_container_open")) + DeviceActions.Hint(this);
         internal void DropAll()
         {
             if (!Ready || !Owner || Dropping) return;
