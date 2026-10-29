@@ -26,9 +26,6 @@ namespace Overhaul.Storage
         internal override void Publish()
         {
             base.Publish();
-            // Cooked dishes wait in the oven and burn if left too long (twice the cooking time).
-            Cooker.m_canOvercookItems = true;
-            if (!Cooker.m_overCookedItem) Cooker.m_overCookedItem = ObjectDB.instance?.GetItemPrefab("Coal")?.GetComponent<ItemDrop>();
             if (!Store.Data.GetBool(LayoutKey, false)) Migrate();
             for (int cell = 0; cell < Slots.Length; cell++)
             {
@@ -131,22 +128,6 @@ namespace Overhaul.Storage
             if (dishes == 0) return false;
             for (int i = 0; i < dishes && Cooker.HaveDoneItem(); i++) Cooker.OnInteract(user);
             return true;
-        }
-    }
-
-    // Native cooking stops once nothing raw is left unless the station burns fuel while empty;
-    // a finished dish left in the oven keeps it going, so it can still burn.
-    [HarmonyLib.HarmonyPatch(typeof(CookingStation), "HaveUncookedItem")]
-    internal static class OvenKeepsCooking
-    {
-        private static void Postfix(CookingStation __instance, ref bool __result)
-        {
-            if (__result || Utils.GetPrefabName(__instance.gameObject) != "piece_oven") return;
-            for (int i = 0; i < __instance.m_slots.Length; i++)
-            {
-                __instance.GetSlot(i, out var name, out _, out var status, out _);
-                if (name.Length > 0 && status == CookingStation.Status.Done) { __result = true; return; }
-            }
         }
     }
 }
