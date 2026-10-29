@@ -12,7 +12,7 @@ namespace AugaUnity
         All, Swords, Axes, Clubs, Spears, Polearms, Knives, Fists, Bows, Crossbows, Staffs, Shields,
         Helmets, Chests, Legs, Capes, Accessories, Tools, Ammo, Health, Stamina, Eitr, Balanced, Misc,
         // Head, chest, legs and cape pieces share one button (the four above are no longer used).
-        Armor
+        Armor, Bait
     }
 
     // Diamond buttons along the left edge of the crafting panel plus a name search above the list.
@@ -178,7 +178,8 @@ namespace AugaUnity
                 case ItemDrop.ItemData.ItemType.Utility:
                 case ItemDrop.ItemData.ItemType.Trinket: return RecipeCategory.Accessories;
                 case ItemDrop.ItemData.ItemType.Ammo:
-                case ItemDrop.ItemData.ItemType.AmmoNonEquipable: return RecipeCategory.Ammo;
+                case ItemDrop.ItemData.ItemType.AmmoNonEquipable:
+                    return recipe.m_item.name.StartsWith("FishingBait") ? RecipeCategory.Bait : RecipeCategory.Ammo;
                 case ItemDrop.ItemData.ItemType.Tool:
                 case ItemDrop.ItemData.ItemType.Torch: return RecipeCategory.Tools;
                 case ItemDrop.ItemData.ItemType.OneHandedWeapon:
@@ -189,8 +190,10 @@ namespace AugaUnity
                 case ItemDrop.ItemData.ItemType.Attach_Atgeir:
                     return Weapon(shared.m_skillType);
             }
-            // Uncooked dishes (preparation table) are sorted by the food they bake into.
-            var food = shared.m_food > 0 || shared.m_foodStamina > 0 || shared.m_foodEitr > 0 ? item : ComplexTooltip.GetOvenFood(item);
+            // Uncooked dishes (preparation table) are sorted by the food they bake into, even when the
+            // raw dish can be eaten too.
+            var food = ComplexTooltip.GetOvenFood(item);
+            if (food == null && !GrillInput(shared.m_name) && (shared.m_food > 0 || shared.m_foodStamina > 0 || shared.m_foodEitr > 0)) food = item;
             return food != null ? Food(food.m_shared) : RecipeCategory.Misc;
         }
 
@@ -216,15 +219,25 @@ namespace AugaUnity
             }
         }
 
-        // Highest stat wins; a tie between the two highest stats is "balanced".
+        // Raw ingredients meant for the cooking rack (raw fish, meat...) are not dishes: misc.
+        private static bool GrillInput(string name)
+        {
+            var rack = ZNetScene.instance ? ZNetScene.instance.GetPrefab("piece_cookingstation") : null;
+            var station = rack ? rack.GetComponent<CookingStation>() : null;
+            if (!station) return false;
+            foreach (var conversion in station.m_conversion)
+                if (conversion.m_from && conversion.m_from.m_itemData.m_shared.m_name == name) return true;
+            return false;
+        }
+
+        // Eitr dishes have eitr above both other stats; otherwise the higher of health and stamina
+        // wins, equal health and stamina being "balanced" (eitr ignored).
         private static RecipeCategory Food(ItemDrop.ItemData.SharedData food)
         {
             float health = food.m_food, stamina = food.m_foodStamina, eitr = food.m_foodEitr;
-            var top = Mathf.Max(health, Mathf.Max(stamina, eitr));
-            var ties = (health == top ? 1 : 0) + (stamina == top ? 1 : 0) + (eitr == top ? 1 : 0);
-            if (ties > 1) return RecipeCategory.Balanced;
-            if (health == top) return RecipeCategory.Health;
-            return stamina == top ? RecipeCategory.Stamina : RecipeCategory.Eitr;
+            if (eitr > health && eitr > stamina) return RecipeCategory.Eitr;
+            if (health == stamina) return RecipeCategory.Balanced;
+            return health > stamina ? RecipeCategory.Health : RecipeCategory.Stamina;
         }
     }
 }
