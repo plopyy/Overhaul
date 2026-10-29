@@ -167,9 +167,7 @@ namespace Auga
                 if (!p) return;
                 try { p.FilterRecipes(recipes); }
                 catch (System.Exception e) { Debug.LogError("[Auga] Recipe filter failed: " + e); }
-                if (p.Filters) Debug.Log($"[Auga] Recipe filter: shown={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Where(p.Filters.Buttons, b => b.Button.gameObject.activeSelf), b => b.Category + (b.Button.Icon.sprite ? "" : "(no icon)")))} kept={recipes.Count}");
-                foreach (var r in recipes)
-                    if (r.m_item && r.m_item.m_itemData.m_shared.m_canBeReparied) Debug.Log("[Auga] Repairable recipe here: " + r.name);
+                if (p.Filters) Debug.Log($"[Auga] Recipe filter: shown={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Where(p.Filters.Entries, b => b.Button.gameObject.activeSelf), b => b.Category + (b.Button.Icon.sprite ? "" : "(no icon)")))} kept={recipes.Count}");
             }
         }
         static bool SearchFocused()
