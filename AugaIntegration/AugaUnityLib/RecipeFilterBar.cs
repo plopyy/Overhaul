@@ -197,6 +197,8 @@ namespace AugaUnity
                 case ItemDrop.ItemData.ItemType.Attach_Atgeir:
                     // Tankards and the drinking horn are weapons that only drink.
                     if (shared.m_attack != null && shared.m_attack.m_attackAnimation == "emote_drink") return RecipeCategory.Misc;
+                    // Bows, crossbows and the grappling hook (a bow-type item without a skill).
+                    if (shared.m_itemType == ItemDrop.ItemData.ItemType.Bow) return RecipeCategory.Bows;
                     return Weapon(shared.m_skillType);
             }
             // Uncooked dishes (preparation table) are sorted by the food they bake into, even when the
@@ -214,11 +216,11 @@ namespace AugaUnity
                 case Skills.SkillType.Axes: return RecipeCategory.Axes;
                 case Skills.SkillType.Clubs: return RecipeCategory.Clubs;
                 case Skills.SkillType.Spears: return RecipeCategory.Spears;
-                case Skills.SkillType.Polearms: return RecipeCategory.Polearms;
+                case Skills.SkillType.Polearms: return RecipeCategory.Spears;
                 case Skills.SkillType.Knives: return RecipeCategory.Knives;
-                case Skills.SkillType.Unarmed: return RecipeCategory.Fists;
+                case Skills.SkillType.Unarmed: return RecipeCategory.Knives;
                 case Skills.SkillType.Bows: return RecipeCategory.Bows;
-                case Skills.SkillType.Crossbows: return RecipeCategory.Crossbows;
+                case Skills.SkillType.Crossbows: return RecipeCategory.Bows;
                 case Skills.SkillType.ElementalMagic:
                 case Skills.SkillType.BloodMagic: return RecipeCategory.Staffs;
                 case Skills.SkillType.Pickaxes:
