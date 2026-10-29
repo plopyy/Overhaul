@@ -7,6 +7,8 @@ namespace Overhaul.Storage
     internal sealed class OvenInventory : CookingInventory
     {
         private static readonly int LayoutKey = "overhaul_oven_slots_v2".GetStableHashCode();
+        // Per physical slot: its finished dish has already used up its raw unit.
+        private static readonly int[] DoneKeys = Enumerable.Range(0, 8).Select(i => ("overhaul_oven_done_" + i).GetStableHashCode()).ToArray();
         internal readonly int[] Slots;
         internal OvenInventory(CookingStation source) : base(source)
         {
@@ -24,12 +26,15 @@ namespace Overhaul.Storage
         internal override void Publish()
         {
             base.Publish();
+            // Cooked dishes wait in the oven and burn if left too long (twice the cooking time).
+            Cooker.m_canOvercookItems = true;
+            if (!Cooker.m_overCookedItem) Cooker.m_overCookedItem = ObjectDB.instance?.GetItemPrefab("Coal")?.GetComponent<ItemDrop>();
             if (!Store.Data.GetBool(LayoutKey, false)) Migrate();
             for (int cell = 0; cell < Slots.Length; cell++)
             {
                 var item = Cell(cell);
                 Cooker.GetSlot(Slots[cell], out var name, out _, out var status, out _);
-                if (status != CookingStation.Status.NotDone) continue; // finished: Advance ejects it
+                if (status != CookingStation.Status.NotDone) continue; // finished: waits to be taken
                 string wanted = Raw(item) ? item.m_dropPrefab.name : "";
                 // Same dish already cooking: keep its progress (more of it added, reload, owner change).
                 if (name == wanted) continue;
@@ -86,16 +91,21 @@ namespace Overhaul.Storage
                         for (int i = 0; i < item.m_stack; i++) Cooker.SpawnItem(item.m_dropPrefab.name, Slots[cell], front, item.m_cheated);
                         Store.Items.m_inventory.Remove(item); item = null;
                     }
-                    Cooker.GetSlot(Slots[cell], out var name, out _, out var status, out var cheated);
+                    Cooker.GetSlot(Slots[cell], out var name, out _, out var status, out _);
+                    var doneKey = DoneKeys[Slots[cell]];
                     if (name.Length > 0 && status != CookingStation.Status.NotDone)
                     {
-                        // Ejected like other production machines: native output, protected on the ground.
-                        Cooker.SpawnItem(name, Slots[cell], front, cheated);
-                        if (item != null) { Store.Items.RemoveItem(item, 1); item = Cell(cell); }
-                        Set(cell, "", false);
+                        // The dish stays in the oven until a player takes it (use key), burning if left.
+                        // Its raw unit leaves the cell once, so it cannot be taken back out of the window.
+                        if (!Store.Data.GetBool(doneKey))
+                        {
+                            if (Raw(item)) Store.Items.RemoveItem(item, 1);
+                            Store.Data.Set(doneKey, true);
+                        }
+                        continue;
                     }
-                    // The next dish of the stack starts cooking.
-                    Cooker.GetSlot(Slots[cell], out name, out _, out _, out _);
+                    if (Store.Data.GetBool(doneKey)) Store.Data.Set(doneKey, false);
+                    // The next dish of the stack starts cooking once the slot is empty.
                     if (name.Length == 0 && Raw(item))
                     {
                         Set(cell, item.m_dropPrefab.name, item.m_cheated);
@@ -103,6 +113,40 @@ namespace Overhaul.Storage
                     }
                 }
             });
+        }
+        internal override bool HasFinished => Enumerable.Range(0, Cooker.m_slots.Length).Any(i =>
+        {
+            Cooker.GetSlot(i, out var name, out _, out var status, out _);
+            return name.Length > 0 && status != CookingStation.Status.NotDone;
+        });
+        // Takes every finished dish (cooked or burnt) through the native interaction, once per dish:
+        // the owner spawns it at the player, with the native cooking skill, bonus yield and stats.
+        internal override bool TakeFinished(Humanoid user)
+        {
+            int dishes = Enumerable.Range(0, Cooker.m_slots.Length).Count(i =>
+            {
+                Cooker.GetSlot(i, out var name, out _, out var status, out _);
+                return name.Length > 0 && status != CookingStation.Status.NotDone;
+            });
+            if (dishes == 0) return false;
+            for (int i = 0; i < dishes && Cooker.HaveDoneItem(); i++) Cooker.OnInteract(user);
+            return true;
+        }
+    }
+
+    // Native cooking stops once nothing raw is left unless the station burns fuel while empty;
+    // a finished dish left in the oven keeps it going, so it can still burn.
+    [HarmonyLib.HarmonyPatch(typeof(CookingStation), "HaveUncookedItem")]
+    internal static class OvenKeepsCooking
+    {
+        private static void Postfix(CookingStation __instance, ref bool __result)
+        {
+            if (__result || Utils.GetPrefabName(__instance.gameObject) != "piece_oven") return;
+            for (int i = 0; i < __instance.m_slots.Length; i++)
+            {
+                __instance.GetSlot(i, out var name, out _, out var status, out _);
+                if (name.Length > 0 && status == CookingStation.Status.Done) { __result = true; return; }
+            }
         }
     }
 }

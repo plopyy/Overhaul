@@ -30,6 +30,9 @@ namespace Overhaul.Storage
         internal virtual void Publish() { }
         internal virtual void Tick() { }
         internal virtual void BeforeDestroyed() { }
+        // A finished product waiting in the device is taken with the use key instead of opening the window.
+        internal virtual bool TakeFinished(Humanoid user) => false;
+        internal virtual bool HasFinished => false;
         internal static string Word(string key) => Leveling.LevelingText.Get("overhaul_device_" + key);
         internal static string Name(ItemDrop item) => item ? item.m_itemData.m_shared.m_name : "";
         internal static DeviceAdapter Create(Component c)
