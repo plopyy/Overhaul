@@ -22,6 +22,10 @@ namespace AugaUnity
         public TMP_Text WorkbenchTabTitlePrefab;
         public CraftingRequirementsPanel GenericWorkbenchTabRequirementsPrefab;
         public TabButton TabButtonBasePrefab;
+        // Workbench background with the notch for the repair button, and the same panel without it
+        // for stations that have no repair button (preparation table, cauldron...).
+        public GameObject NotchedBackground;
+        public GameObject PlainBackground;
 
         private int _rememberTabIndex = -1;
         private InventoryGui _inventoryGui;
@@ -104,6 +108,13 @@ namespace AugaUnity
                 var tabController = GetComponent<AugaTabController>();
                 _rememberTabIndex = tabController.SelectedIndex;
             }
+        }
+
+        public void SetRepairNotch(bool notched)
+        {
+            if (!NotchedBackground || !PlainBackground || NotchedBackground.activeSelf == notched) return;
+            NotchedBackground.SetActive(notched);
+            PlainBackground.SetActive(!notched);
         }
 
         public bool HasPlayerPanelTab(string tabID)

@@ -41,8 +41,10 @@ namespace AugaUnity
         public Transform CraftProgressPanel;
         public Image CraftProgressBar;
         public GameObject ResultsPanelPrefab;
+        public CraftQuantity Quantity;
+        public RecipeFilterBar Filters;
 
-        [Header("MultiCraft Objects")] 
+        [Header("MultiCraft Objects")]
         public GameObject Multicraft;
         public Button PlusButton;
         public Button MinusButton;
@@ -67,6 +69,9 @@ namespace AugaUnity
         private CraftingRequirementsPanel _currentPanel;
         private Action<bool> _onShowCustomVariantDialog;
         private bool _multiCraftEnabled; private bool _initialized;
+        private Recipe _quantityRecipe;
+        private float _nextMaxRefresh;
+        private const int MaxCraftAmount = 999;
 
         private void Awake()
         {
@@ -84,6 +89,117 @@ namespace AugaUnity
             TabController.OnTabChanged += OnTabChanged;
             ActivatePanel(CraftingRequirementsPanel);
             CustomVariantButton.onClick.AddListener(OnCustomVariantButtonClicked);
+            if (Filters) Filters.Changed += OnFilterChanged;
+        }
+
+        private void OnFilterChanged()
+        {
+            var inventoryGui = InventoryGui.instance;
+            if (!inventoryGui || !Player.m_localPlayer) return;
+            inventoryGui.UpdateCraftingPanel();
+            ScrollRecipesToTop();
+        }
+
+        public void ScrollRecipesToTop()
+        {
+            RecipeList.anchoredPosition = new Vector2(RecipeList.anchoredPosition.x, 0);
+            RecipeListScrollbar.value = 1;
+        }
+
+        // Filters the station's recipe list in place (before the native list is built) and hides
+        // the upgrade tab where the station has nothing to upgrade.
+        public void FilterRecipes(List<Recipe> recipes)
+        {
+            var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
+            UpdateUpgradeTab(station);
+            if (!Filters) return;
+            if (Filters.Prepare(station, recipes)) ScrollRecipesToTop();
+            recipes.RemoveAll(recipe => !Filters.Accepts(recipe));
+        }
+
+        private void UpdateUpgradeTab(CraftingStation station)
+        {
+            if (TabController.TabButtons.Count < 2) return;
+            var show = StationRecipes.OffersUpgrades(station);
+            var tab = TabController.TabButtons[1];
+            if (tab.gameObject.activeSelf != show) tab.gameObject.SetActive(show);
+            if (!show && TabController.SelectedIndex == 1) TabController.SelectTab(0);
+        }
+
+        // Feeds the chosen quantity to the native multi-craft fields before the game reads them.
+        public void ApplyQuantity(InventoryGui inventoryGui)
+        {
+            if (!Quantity) return;
+            // The amount of a running craft is read again when it completes.
+            if (InventorySelection.Timer(inventoryGui) >= 0)
+            {
+                Quantity.gameObject.SetActive(false);
+                return;
+            }
+
+            var player = Player.m_localPlayer;
+            var recipe = inventoryGui.m_selectedRecipe.Recipe;
+            var station = player ? player.GetCurrentCraftingStation() : null;
+            var usable = player && recipe && inventoryGui.m_selectedRecipe.ItemData == null && !(station && station.m_upgrader);
+            Quantity.gameObject.SetActive(usable);
+            if (!usable) return;
+
+            if (recipe != _quantityRecipe)
+            {
+                _quantityRecipe = recipe;
+                _nextMaxRefresh = 0;
+                Quantity.ResetAmount();
+            }
+            if (Time.unscaledTime >= _nextMaxRefresh)
+            {
+                _nextMaxRefresh = Time.unscaledTime + 0.25f;
+                Quantity.SetMax(MaxCrafts(player, recipe));
+            }
+            inventoryGui.m_multiCraftAmount = Quantity.Amount;
+            inventoryGui.m_touchMultiCrafting = Quantity.Amount > 1;
+        }
+
+        public bool QuantityActive => Quantity && Quantity.gameObject.activeInHierarchy;
+
+        // Largest amount the resources allow (bag plus nearby chests through the patched counts),
+        // also limited by the room left in the bag for the crafted items.
+        public static int MaxCrafts(Player player, Recipe recipe)
+        {
+            int max;
+            if (player.NoCostCheat() || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost))
+            {
+                max = MaxCraftAmount;
+            }
+            else
+            {
+                if (!player.HaveRequirements(recipe, false, 1, 1)) return 1;
+                int low = 1, high = 2;
+                while (high <= MaxCraftAmount && player.HaveRequirements(recipe, false, 1, high))
+                {
+                    low = high;
+                    high *= 2;
+                }
+                high = Mathf.Min(high, MaxCraftAmount + 1);
+                while (high - low > 1)
+                {
+                    var middle = (low + high) / 2;
+                    if (player.HaveRequirements(recipe, false, 1, middle)) low = middle;
+                    else high = middle;
+                }
+                max = low;
+            }
+
+            var inventory = player.GetInventory();
+            var prefab = recipe.m_item.gameObject;
+            if (inventory.CanAddItem(prefab, recipe.m_amount * max)) return max;
+            int fits = 1, fails = max;
+            while (fails - fits > 1)
+            {
+                var middle = (fits + fails) / 2;
+                if (inventory.CanAddItem(prefab, recipe.m_amount * middle)) fits = middle;
+                else fails = middle;
+            }
+            return fits;
         }
 
         private void OnTabChanged(int previousTabIndex, int currentTabIndex)

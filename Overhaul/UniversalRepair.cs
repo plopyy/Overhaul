@@ -22,4 +22,23 @@ namespace Overhaul
             return false;
         }
     }
+
+    // Universal repair works at any station, but the button only makes sense at stations that make
+    // repairable gear: hide it at the preparation table, cauldron, mead ketill and the like.
+    [HarmonyPatch(typeof(InventoryGui), "UpdateRepair")]
+    internal static class RepairButtonStations
+    {
+        private static void Postfix(InventoryGui __instance)
+        {
+            var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
+            var repairs = !station || AugaUnity.StationRecipes.OffersRepairs(station);
+            // No repair button: the workbench window drops the notch cut out for it.
+            if (station && AugaUnity.WorkbenchPanelController.instance)
+                AugaUnity.WorkbenchPanelController.instance.SetRepairNotch(repairs);
+            if (repairs) return;
+            __instance.m_repairPanel.gameObject.SetActive(false);
+            __instance.m_repairPanelSelection.gameObject.SetActive(false);
+            __instance.m_repairButton.gameObject.SetActive(false);
+        }
+    }
 }
