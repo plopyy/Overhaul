@@ -188,6 +188,8 @@ namespace AugaUnity
                 case ItemDrop.ItemData.ItemType.Bow:
                 case ItemDrop.ItemData.ItemType.Hands:
                 case ItemDrop.ItemData.ItemType.Attach_Atgeir:
+                    // Tankards and the drinking horn are weapons that only drink.
+                    if (shared.m_attack != null && shared.m_attack.m_attackAnimation == "emote_drink") return RecipeCategory.Misc;
                     return Weapon(shared.m_skillType);
             }
             // Uncooked dishes (preparation table) are sorted by the food they bake into, even when the
