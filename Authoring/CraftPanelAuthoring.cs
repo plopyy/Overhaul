@@ -200,6 +200,8 @@ public static class CraftPanelAuthoring
         return quantity;
     }
 
+    const float FilterSize = 52;
+
     static RecipeFilterBar BuildFilters(Transform crafting, GameObject template, TabButton tabColors)
     {
         // Single sprites: the project's default (Multiple) would hold no sprite at all.
@@ -222,8 +224,8 @@ public static class CraftPanelAuthoring
         // below the repair button.
         rt.anchorMin = rt.anchorMax = new Vector2(0, 1);
         rt.pivot = new Vector2(0.5f, 1);
-        rt.anchoredPosition = new Vector2(-14f, -72.25f);
-        rt.sizeDelta = new Vector2(42, 760);
+        rt.anchoredPosition = new Vector2(-18f, -72.25f);
+        rt.sizeDelta = new Vector2(FilterSize, 760);
         var layout = bar.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 2;
         layout.childAlignment = TextAnchor.UpperCenter;
@@ -235,17 +237,16 @@ public static class CraftPanelAuthoring
         {
             var go = Object.Instantiate(template, rt, false);
             go.name = "Filter_" + category;
-            ((RectTransform)go.transform).sizeDelta = new Vector2(42, 42);
+            ((RectTransform)go.transform).sizeDelta = new Vector2(FilterSize, FilterSize);
             var element = go.GetComponent<LayoutElement>();
-            element.preferredWidth = element.preferredHeight = 42;
+            element.preferredWidth = element.preferredHeight = FilterSize;
             // The template is the Character tab: its tooltip title must become the filter name.
             var tooltip = go.GetComponent<UITooltip>();
             tooltip.m_topic = "$overhaul_craft_filter_" + category.ToString().ToLowerInvariant();
             tooltip.m_text = "";
 
             var tab = go.GetComponent<TabButton>();
-            tab.BackgroundColor = tabColors.BackgroundColor;
-            tab.SelectedBackgroundColor = tabColors.SelectedBackgroundColor;
+            DiamondFrame(go, tab);
             tab.IconColor = itemIcon ? new Color(0.7f, 0.7f, 0.7f, 0.85f) : tabColors.IconColor;
             tab.SelectedIconColor = itemIcon ? Color.white : tabColors.SelectedIconColor;
 
@@ -267,7 +268,7 @@ public static class CraftPanelAuthoring
             if (category != RecipeCategory.Balanced)
             {
                 icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
-                icon.sizeDelta = new Vector2(24, 24);
+                icon.sizeDelta = new Vector2(26, 26);
                 icon.anchoredPosition = Vector2.zero;
                 tab.IconColor = new Color(0.75f, 0.75f, 0.75f, 0.9f);
                 tab.SelectedIconColor = Color.white;
@@ -280,6 +281,40 @@ public static class CraftPanelAuthoring
             if (itemIcon) filterBar.ItemIconCategories.Add(category);
         }
         return filterBar;
+    }
+
+    // Same frame as the quantity / split buttons (Auga's diamond button, see AugaDiamondButton): its sprite
+    // has a wide transparent margin, so it sits in a larger child behind the icon; the root keeps its FilterSize
+    // units (layout, notches) as an invisible hit area.
+    static void DiamondFrame(GameObject go, TabButton tab)
+    {
+        const string buttons = "Assets/Sprites/Buttons/";
+        Sprite Load(string name) => AssetDatabase.LoadAssetAtPath<Sprite>(buttons + name + ".png");
+        var root = go.GetComponent<Image>();
+        root.color = new Color(1, 1, 1, 0);
+        var frame = new GameObject("Frame", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        var rt = (RectTransform)frame.transform;
+        rt.SetParent(go.transform, false);
+        rt.SetAsFirstSibling();
+        rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = Vector2.one * FilterSize / 0.6875f; // visible diamond = 68.75% of the sprite
+        var image = frame.GetComponent<Image>();
+        image.sprite = Load("DiamondButtonUp");
+        image.raycastTarget = false;
+        var button = go.GetComponent<Button>();
+        button.targetGraphic = image;
+        button.transition = Selectable.Transition.SpriteSwap;
+        button.spriteState = new SpriteState
+        {
+            highlightedSprite = Load("DiamondButtonOver"),
+            selectedSprite = Load("DiamondButtonOver"),
+            pressedSprite = Load("DiamondButtonDown"),
+            disabledSprite = Load("DiamondButtonDisabled"),
+        };
+        tab.Background = image;
+        tab.BackgroundColor = tab.SelectedBackgroundColor = Color.white;
+        tab.NormalSprite = Load("DiamondButtonUp");
+        tab.SelectedSprite = Load("DiamondButtonOver");
     }
 
     // Balanced food: the three stat icons in a small triangle (stamina on top, health and eitr below).
