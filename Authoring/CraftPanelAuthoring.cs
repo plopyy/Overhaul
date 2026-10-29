@@ -55,6 +55,12 @@ public static class CraftPanelAuthoring
             ShortenItemInfo(column, crafting);
             panel.Quantity = BuildQuantity(column);
             panel.Filters = BuildFilters(crafting.transform, template, tabColors);
+            // The recipe list starts a little further right, clear of the filter diamonds; its right edge
+            // (scrollbar side) stays. The search field is aligned on the list.
+            var listColumn = (RectTransform)crafting.transform.Find("LeftColumn");
+            var listRight = listColumn.anchoredPosition.x + listColumn.sizeDelta.x;
+            listColumn.anchoredPosition = new Vector2(ListLeft, listColumn.anchoredPosition.y);
+            listColumn.sizeDelta = new Vector2(listRight - ListLeft, listColumn.sizeDelta.y);
             panel.Filters.Search = BuildSearch(crafting.transform);
 
             PrefabUtility.SaveAsPrefabAsset(crafting, CraftingPath);
@@ -201,6 +207,7 @@ public static class CraftPanelAuthoring
     }
 
     const float FilterSize = 52;
+    const float ListLeft = 18.28f; // native 8.28
 
     static RecipeFilterBar BuildFilters(Transform crafting, GameObject template, TabButton tabColors)
     {
