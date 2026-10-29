@@ -28,12 +28,10 @@ namespace Overhaul
     [HarmonyPatch(typeof(InventoryGui), "UpdateRepair")]
     internal static class RepairButtonStations
     {
-        private static CraftingStation lastStation;
         private static void Postfix(InventoryGui __instance)
         {
             var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
             var repairs = !station || AugaUnity.StationRecipes.OffersRepairs(station);
-            if (station != lastStation) { lastStation = station; UnityEngine.Debug.Log($"[Overhaul] Repair button: station={(station ? station.m_name : "none")} repairs={repairs}"); }
             // No repair button: the workbench window drops the notch cut out for it.
             if (station && AugaUnity.WorkbenchPanelController.instance)
                 AugaUnity.WorkbenchPanelController.instance.SetRepairNotch(repairs);

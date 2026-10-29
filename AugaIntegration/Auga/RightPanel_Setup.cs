@@ -74,13 +74,6 @@ namespace Auga
                 if (!__state) return;
                 var panel = Panel(__instance);
                 InventoryPanel_Patches.CraftingPanel = panel;
-                // Diagnostic: the filter bar and quantity row did not react in game (2.4.0.250).
-                var bars = __instance.m_crafting.GetComponentsInChildren<RecipeFilterBar>(true);
-                Debug.Log($"[Auga] Crafting panel: filters={(panel.Filters ? panel.Filters.name : "null")} quantity={(panel.Quantity ? panel.Quantity.name : "null")} bars={bars.Length} " +
-                    $"missingScripts={System.Linq.Enumerable.Count(panel.GetComponentsInChildren<Component>(true), c => c == null)}");
-                foreach (var t in panel.GetComponentsInChildren<Transform>(true))
-                    if (t.name == "RecipeFilters" || t.name == "Quantity")
-                        Debug.Log($"[Auga] {t.name}: {string.Join(", ", System.Linq.Enumerable.Select(t.GetComponents<Component>(), c => c == null ? "MISSING" : c.GetType().FullName))}");
                 panel.SetMultiCraftEnabled(Auga.HasMultiCraft);
                 panel.Initialize(__instance);
                 panel.VariantButton.onClick.AddListener(__instance.OnShowVariantSelection);
@@ -159,16 +152,7 @@ namespace Auga
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipeList))]
         internal static class RecipeFilter
         {
-            static void Prefix(InventoryGui __instance, List<Recipe> recipes)
-            {
-                var p = Panel(__instance);
-                var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
-                Debug.Log($"[Auga] Recipe filter: panel={(p ? "ok" : "null")} filters={(p && p.Filters ? "ok" : "null")} station={(station ? station.m_name : "none")} recipes={recipes.Count}");
-                if (!p) return;
-                try { p.FilterRecipes(recipes); }
-                catch (System.Exception e) { Debug.LogError("[Auga] Recipe filter failed: " + e); }
-                if (p.Filters) Debug.Log($"[Auga] Recipe filter: shown={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Where(p.Filters.Entries, b => b.Button.gameObject.activeSelf), b => b.Category + (b.Button.Icon.sprite ? "" : "(no icon)")))} kept={recipes.Count}");
-            }
+            static void Prefix(InventoryGui __instance, List<Recipe> recipes) { var p = Panel(__instance); if (p) p.FilterRecipes(recipes); }
         }
         static bool SearchFocused()
         {
