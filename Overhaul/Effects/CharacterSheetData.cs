@@ -7,7 +7,7 @@ using static HitData.DamageType;
 namespace Overhaul.Effects
 {
     // Lines of the character tab's sheet (AugaUnity.CharacterSheet): the totals the game really applies to the local
-    // player, only those that are not neutral. Effects.cfg effects keep their own name and format; where the game,
+    // player, every line shown (0 when the character has none of it). Effects.cfg effects keep their own name and format; where the game,
     // Overhaul's effects and the level stats act on the same value (regenerations, fall damage, carry weight...), the
     // total is read back from the game's own function, which every one of them patches. Effects carried by an item
     // (its damage, armour, Indestructible...) stay in that item's tooltip: Effects.Get holds the player's totals only.
@@ -28,8 +28,7 @@ namespace Overhaul.Effects
             Effect(offense, player, "AttackSpeed");
             Effect(offense, player, "CastSpeed");
             Percent(offense, Effect(player, "CritChance") + LevelingEffects.Bonus(player, "critical") * 100, NameOf("CritChance", "overhaul_sheet_crit_chance"), true);
-            if (LevelingEffects.Bonus(player, "critical") > 0)
-                Percent(offense, ((float)LevelingConfig.Current.CriticalMultiplier - 1) * 100, L("overhaul_sheet_crit_damage"), true);
+            Percent(offense, ((float)LevelingConfig.Current.CriticalMultiplier - 1) * 100, L("overhaul_sheet_crit_damage"), true);
             Effect(offense, player, "PhysicDmg");
             Effect(offense, player, "MagicPower");
             Effect(offense, player, "MagicDmg");
@@ -115,18 +114,21 @@ namespace Overhaul.Effects
         {
             if (!EffectConfig.Current.Effects.TryGetValue(id, out var def)) return;
             float value = Effects.Get(player, id);
-            if (Mathf.Abs(value) < .05f) return;
-            section.Lines.Add(new CharacterSheet.Line { Label = def.Name, Value = def.Format(value), Sign = (value > 0) == higherIsBetter ? 1 : -1 });
+            // Every line shows, at 0 (or "—" for an inactive on/off effect) when the character has none of it.
+            if (Mathf.Abs(value) < .05f)
+                section.Lines.Add(new CharacterSheet.Line { Label = def.Name, Value = def.IsFlag ? "—" : def.IsPercent ? "0 %" : "0", Sign = 0 });
+            else
+                section.Lines.Add(new CharacterSheet.Line { Label = def.Name, Value = def.IsFlag ? "✓" : def.Format(value), Sign = (value > 0) == higherIsBetter ? 1 : -1 });
         }
 
         static void Percent(CharacterSheet.Section section, float percent, string label, bool higherIsBetter)
         {
-            if (Mathf.Abs(percent) < .05f) return;
+            bool zero = Mathf.Abs(percent) < .05f;
             section.Lines.Add(new CharacterSheet.Line
             {
                 Label = label,
-                Value = (percent > 0 ? "+" : "−") + Mathf.Abs(percent).ToString("0.#") + " %",
-                Sign = (percent > 0) == higherIsBetter ? 1 : -1,
+                Value = zero ? "0 %" : (percent > 0 ? "+" : "−") + Mathf.Abs(percent).ToString("0.#") + " %",
+                Sign = zero ? 0 : (percent > 0) == higherIsBetter ? 1 : -1,
             });
         }
 
@@ -136,8 +138,8 @@ namespace Overhaul.Effects
 
         static void Flat(CharacterSheet.Section section, float value, string label)
         {
-            if (Mathf.Abs(value) < .05f) return;
-            section.Lines.Add(new CharacterSheet.Line { Label = label, Value = (value > 0 ? "+" : "−") + Mathf.Abs(value).ToString("0.#"), Sign = value > 0 ? 1 : -1 });
+            bool zero = Mathf.Abs(value) < .05f;
+            section.Lines.Add(new CharacterSheet.Line { Label = label, Value = zero ? "0" : (value > 0 ? "+" : "−") + Mathf.Abs(value).ToString("0.#"), Sign = zero ? 0 : value > 0 ? 1 : -1 });
         }
 
         delegate void RegenModifier(ref float multiplier);
