@@ -39,7 +39,7 @@ namespace Overhaul.Storage
         {
             DeviceAdapter a = null;
             if (c is Smelter smelter && (smelter.m_maxOre > 0 || smelter.m_maxFuel > 0)) a = new SmelterInventory(smelter);
-            else if (c is CookingStation cooker) a = Utils.GetPrefabName(c.gameObject) == "piece_oven" ? new OvenInventory(cooker) : new CookingInventory(cooker);
+            else if (c is CookingStation cooker) a = CookingSlotsInventory.Handles(cooker) ? new CookingSlotsInventory(cooker) : new CookingInventory(cooker);
             else if (c is Fermenter fermenter) a = new FermenterInventory(fermenter);
             else if (c is Fireplace fire && !fire.m_infiniteFuel && fire.m_fuelItem) a = new FireInventory(fire);
             else if (c is ShieldGenerator shield && shield.m_fuelItems.Count > 0) a = new ShieldInventory(shield);

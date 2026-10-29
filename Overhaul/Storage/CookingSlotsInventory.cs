@@ -4,14 +4,31 @@ using UnityEngine;
 
 namespace Overhaul.Storage
 {
-    internal sealed class OvenInventory : CookingInventory
+    // Oven and meat racks: one inventory cell per physical cooking place (oven 2x2, wooden rack 2,
+    // iron rack 5 in a row). Each cell holds a stack of one raw dish; the first one cooks in its place
+    // and, once cooked, stays there (burning if left) until a player takes it with the use key.
+    internal sealed class CookingSlotsInventory : CookingInventory
     {
+        internal static bool Handles(CookingStation station)
+        {
+            var name = Utils.GetPrefabName(station.gameObject);
+            return name == "piece_oven" || name == "piece_cookingstation" || name == "piece_cookingstation_iron";
+        }
+        private bool Oven => Utils.GetPrefabName(Cooker.gameObject) == "piece_oven";
+        internal override int Width => Oven ? 2 : Cooker.m_slots.Length;
+        internal override int Height => Oven ? 2 : 1;
         private static readonly int LayoutKey = "overhaul_oven_slots_v2".GetStableHashCode();
         // Per physical slot: its finished dish has already used up its raw unit.
         private static readonly int[] DoneKeys = Enumerable.Range(0, 8).Select(i => ("overhaul_oven_done_" + i).GetStableHashCode()).ToArray();
         internal readonly int[] Slots;
-        internal OvenInventory(CookingStation source) : base(source)
+        internal CookingSlotsInventory(CookingStation source) : base(source)
         {
+            if (Utils.GetPrefabName(source.gameObject) != "piece_oven")
+            {
+                // Racks: one row, left to right as seen from the front.
+                Slots = Enumerable.Range(0, source.m_slots.Length).OrderBy(i => Vector3.Dot(source.m_slots[i].position, source.transform.right)).ToArray();
+                return;
+            }
             // View from the oven opening: far row first, then left to right.
             var center = source.m_slots.Aggregate(Vector3.zero, (v, t) => v + t.position) / source.m_slots.Length;
             var front = Vector3.ProjectOnPlane(source.m_addFoodSwitch.transform.position - center, Vector3.up).normalized;
@@ -21,7 +38,7 @@ namespace Overhaul.Storage
                 .Concat(depth.Skip(2).OrderBy(i => Vector3.Dot(source.m_slots[i].position, right))).ToArray();
         }
         // Each cell holds a stack of one raw dish; the first one cooks in its physical slot.
-        private ItemDrop.ItemData Cell(int cell) => Store.Items.GetItemAt(cell % 2, cell / 2);
+        private ItemDrop.ItemData Cell(int cell) => Store.Items.GetItemAt(cell % Width, cell / Width);
         private bool Raw(ItemDrop.ItemData item) => item?.m_dropPrefab && Cooker.m_conversion.Any(c => c.m_from && c.m_from.name == item.m_dropPrefab.name);
         internal override void Publish()
         {
@@ -52,24 +69,24 @@ namespace Overhaul.Storage
             {
                 var item = Store.Working.GetItemAt(Slots[cell], 0);
                 if (item == null) continue;
-                item.m_gridPos = new Vector2i(cell % 2, cell / 2);
+                item.m_gridPos = new Vector2i(cell % Width, cell / Width);
                 Store.Items.m_inventory.Add(item);
             }
             Store.Working.RemoveAll();
             // Keep old waiting stock accessible; never discard an old stack merely
-            // because the oven now has four physical slots instead of a queue.
+            // because the station now has one cell per physical slot instead of a queue.
             foreach (var item in reserve)
             {
                 for (int cell = 0; cell < Slots.Length && item.m_stack > 0; cell++)
                 {
-                    if (Store.Items.GetItemAt(cell % 2, cell / 2) != null) continue;
-                    var unit = item.Clone(); unit.m_stack = 1; unit.m_gridPos = new Vector2i(cell % 2, cell / 2);
+                    if (Store.Items.GetItemAt(cell % Width, cell / Width) != null) continue;
+                    var unit = item.Clone(); unit.m_stack = 1; unit.m_gridPos = new Vector2i(cell % Width, cell / Width);
                     Store.Items.m_inventory.Add(unit); item.m_stack--; Set(cell, unit.m_dropPrefab.name, unit.m_cheated);
                 }
                 if (item.m_stack <= 0) continue;
-                int index = 4;
-                while (Store.Items.GetItemAt(index % 2, index / 2) != null) index++;
-                item.m_gridPos = new Vector2i(index % 2, index / 2); Store.Items.m_inventory.Add(item);
+                int index = Slots.Length;
+                while (Store.Items.GetItemAt(index % Width, index / Width) != null) index++;
+                item.m_gridPos = new Vector2i(index % Width, index / Width); Store.Items.m_inventory.Add(item);
             }
             Store.Data.Set(LayoutKey, true); Store.Save();
         }
@@ -92,7 +109,7 @@ namespace Overhaul.Storage
                     var doneKey = DoneKeys[Slots[cell]];
                     if (name.Length > 0 && status != CookingStation.Status.NotDone)
                     {
-                        // The dish stays in the oven until a player takes it (use key), burning if left.
+                        // The dish stays in place until a player takes it (use key), burning if left.
                         // Its raw unit leaves the cell once, so it cannot be taken back out of the window.
                         if (!Store.Data.GetBool(doneKey))
                         {
