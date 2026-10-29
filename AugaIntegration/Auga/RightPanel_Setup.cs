@@ -164,7 +164,12 @@ namespace Auga
                 var p = Panel(__instance);
                 var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
                 Debug.Log($"[Auga] Recipe filter: panel={(p ? "ok" : "null")} filters={(p && p.Filters ? "ok" : "null")} station={(station ? station.m_name : "none")} recipes={recipes.Count}");
-                if (p) p.FilterRecipes(recipes);
+                if (!p) return;
+                try { p.FilterRecipes(recipes); }
+                catch (System.Exception e) { Debug.LogError("[Auga] Recipe filter failed: " + e); }
+                if (p.Filters) Debug.Log($"[Auga] Recipe filter: shown={string.Join(",", System.Linq.Enumerable.Select(System.Linq.Enumerable.Where(p.Filters.Buttons, b => b.Button.gameObject.activeSelf), b => b.Category + (b.Button.Icon.sprite ? "" : "(no icon)")))} kept={recipes.Count}");
+                foreach (var r in recipes)
+                    if (r.m_item && r.m_item.m_itemData.m_shared.m_canBeReparied) Debug.Log("[Auga] Repairable recipe here: " + r.name);
             }
         }
         static bool SearchFocused()
