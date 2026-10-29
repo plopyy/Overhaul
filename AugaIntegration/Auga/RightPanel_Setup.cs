@@ -74,6 +74,13 @@ namespace Auga
                 if (!__state) return;
                 var panel = Panel(__instance);
                 InventoryPanel_Patches.CraftingPanel = panel;
+                // Diagnostic: the filter bar and quantity row did not react in game (2.4.0.250).
+                var bars = __instance.m_crafting.GetComponentsInChildren<RecipeFilterBar>(true);
+                Debug.Log($"[Auga] Crafting panel: filters={(panel.Filters ? panel.Filters.name : "null")} quantity={(panel.Quantity ? panel.Quantity.name : "null")} bars={bars.Length} " +
+                    $"missingScripts={System.Linq.Enumerable.Count(panel.GetComponentsInChildren<Component>(true), c => c == null)}");
+                foreach (var t in panel.GetComponentsInChildren<Transform>(true))
+                    if (t.name == "RecipeFilters" || t.name == "Quantity")
+                        Debug.Log($"[Auga] {t.name}: {string.Join(", ", System.Linq.Enumerable.Select(t.GetComponents<Component>(), c => c == null ? "MISSING" : c.GetType().FullName))}");
                 panel.SetMultiCraftEnabled(Auga.HasMultiCraft);
                 panel.Initialize(__instance);
                 panel.VariantButton.onClick.AddListener(__instance.OnShowVariantSelection);
@@ -156,6 +163,7 @@ namespace Auga
         }
         static bool SearchFocused()
         {
+            if (SplitAmountControls.Typing) return true;
             var p = Panel(InventoryGui.instance);
             return p && p.Filters && p.Filters.SearchFocused;
         }
@@ -166,7 +174,7 @@ namespace Auga
         {
             static void Postfix(ref bool __result) { __result = __result || SearchFocused(); }
         }
-        // Typing Tab, E or Escape in the search must not close the inventory.
+        // Typing Tab, E or Escape in the search (or the split amount) must not close the inventory.
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Update))]
         internal static class SearchKeepsInventoryOpen
         {

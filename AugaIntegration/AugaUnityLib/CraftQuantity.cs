@@ -4,12 +4,14 @@ using UnityEngine.UI;
 
 namespace AugaUnity
 {
-    // Minus / amount / plus row above the craft button. Amount stays within 1..Max,
+    // Minimum / minus / amount / plus / maximum row above the craft button. Amount stays within 1..Max,
     // where Max is how many crafts the player's resources (bag and nearby chests) allow.
     public class CraftQuantity : MonoBehaviour
     {
+        public Button MinButton;
         public Button MinusButton;
         public Button PlusButton;
+        public Button MaxButton;
         public TMP_Text AmountText;
 
         public int Amount { get; private set; } = 1;
@@ -17,8 +19,10 @@ namespace AugaUnity
 
         public void Awake()
         {
+            MinButton.onClick.AddListener(() => Set(1));
             MinusButton.onClick.AddListener(() => Set(Amount - 1));
             PlusButton.onClick.AddListener(() => Set(Amount + 1));
+            MaxButton.onClick.AddListener(() => Set(Max));
             Refresh();
         }
 
@@ -42,8 +46,8 @@ namespace AugaUnity
         private void Refresh()
         {
             AmountText.text = Amount.ToString();
-            MinusButton.interactable = Amount > 1;
-            PlusButton.interactable = Amount < Max;
+            MinButton.interactable = MinusButton.interactable = Amount > 1;
+            MaxButton.interactable = PlusButton.interactable = Amount < Max;
         }
     }
 }

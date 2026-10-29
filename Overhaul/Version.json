@@ -2,6 +2,11 @@
     "Major":  2,
     "Minor":  4,
     "Patch":  0,
+<<<<<<< HEAD
     "LastSeries":  "2.4.0",
     "Revision":  250
+=======
+    "LastSeries":  "2.3.0",
+    "Revision":  397
+>>>>>>> main
 }
