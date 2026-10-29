@@ -18,20 +18,22 @@ public static class CraftPanelAuthoring
     const string RightPanelPath = "Assets/Prefabs/RightPanel.prefab";
     const float RowShift = 44f;
 
+    // White pictograms drawn by Tools/AugaWork/craft-panel/make_filter_icons.py, the same at every station.
+    const string Icons = "Assets/Sprites/FilterIcons/";
     static readonly (RecipeCategory category, string sprite, bool itemIcon)[] Filters =
     {
-        (RecipeCategory.All, "Assets/Sprites/TabIcons/CraftingPanel.png", false),
-        (RecipeCategory.Swords, null, true), (RecipeCategory.Axes, null, true), (RecipeCategory.Clubs, null, true),
-        (RecipeCategory.Spears, null, true), (RecipeCategory.Polearms, null, true), (RecipeCategory.Knives, null, true),
-        (RecipeCategory.Fists, null, true), (RecipeCategory.Bows, null, true), (RecipeCategory.Crossbows, null, true),
-        (RecipeCategory.Staffs, null, true), (RecipeCategory.Shields, null, true),
-        (RecipeCategory.Armor, null, true), (RecipeCategory.Accessories, null, true),
-        (RecipeCategory.Tools, null, true), (RecipeCategory.Ammo, null, true), (RecipeCategory.Bait, null, true),
+        (RecipeCategory.All, Icons + "FilterAll.png", false),
+        (RecipeCategory.Swords, Icons + "FilterSwords.png", false), (RecipeCategory.Axes, Icons + "FilterAxes.png", false), (RecipeCategory.Clubs, Icons + "FilterClubs.png", false),
+        (RecipeCategory.Spears, Icons + "FilterSpears.png", false), (RecipeCategory.Knives, Icons + "FilterKnives.png", false),
+        (RecipeCategory.Bows, Icons + "FilterBows.png", false),
+        (RecipeCategory.Staffs, Icons + "FilterStaffs.png", false), (RecipeCategory.Shields, Icons + "FilterShields.png", false),
+        (RecipeCategory.Armor, Icons + "FilterArmor.png", false), (RecipeCategory.Accessories, Icons + "FilterAccessories.png", false),
+        (RecipeCategory.Tools, Icons + "FilterTools.png", false), (RecipeCategory.Ammo, Icons + "FilterAmmo.png", false), (RecipeCategory.Bait, Icons + "FilterBait.png", false),
         (RecipeCategory.Health, "Assets/Sprites/PlayerHealth.png", false),
         (RecipeCategory.Stamina, "Assets/Sprites/PlayerStamina.png", false),
         (RecipeCategory.Eitr, "Assets/Sprites/PlayerEitr.png", false),
         (RecipeCategory.Balanced, "Assets/Sprites/PlayerStamina.png", false),
-        (RecipeCategory.Misc, null, true),
+        (RecipeCategory.Misc, Icons + "FilterMisc.png", false),
     };
 
     public static void Run()
@@ -200,6 +202,16 @@ public static class CraftPanelAuthoring
 
     static RecipeFilterBar BuildFilters(Transform crafting, GameObject template, TabButton tabColors)
     {
+        // Single sprites: the project's default (Multiple) would hold no sprite at all.
+        foreach (var (_, sprite, _) in Filters)
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(sprite);
+            if (importer.textureType == TextureImporterType.Sprite && importer.spriteImportMode == SpriteImportMode.Single) continue;
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = SpriteImportMode.Single;
+            importer.mipmapEnabled = false;
+            importer.SaveAndReimport();
+        }
         var old = crafting.Find("RecipeFilters");
         if (old) Object.DestroyImmediate(old.gameObject);
 
@@ -252,7 +264,7 @@ public static class CraftPanelAuthoring
                 tab.Icon.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(sprite);
                 tab.Icon.preserveAspect = true;
             }
-            if (category == RecipeCategory.Health || category == RecipeCategory.Stamina || category == RecipeCategory.Eitr)
+            if (category != RecipeCategory.Balanced)
             {
                 icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 0.5f);
                 icon.sizeDelta = new Vector2(24, 24);
