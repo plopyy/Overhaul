@@ -260,7 +260,9 @@ public static class CraftPanelAuthoring
             if (category == RecipeCategory.Balanced) BalancedIcon(icon, tab);
             tab.SetSelected(category == RecipeCategory.All);
             tab.SetColor();
-            filterBar.Buttons.Add(new RecipeFilterBar.Entry { Category = category, Button = tab, UseItemIcon = itemIcon });
+            filterBar.Buttons.Add(tab);
+            filterBar.Categories.Add(category);
+            if (itemIcon) filterBar.ItemIconCategories.Add(category);
         }
         return filterBar;
     }
