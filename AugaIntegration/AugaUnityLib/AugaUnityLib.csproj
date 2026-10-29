@@ -182,6 +182,7 @@
     <Compile Include="RandomLoadingImage.cs" />
     <Compile Include="RecipeListItem.cs" />
     <Compile Include="CraftQuantity.cs" />
+    <Compile Include="CharacterSheet.cs" />
     <Compile Include="RecipeFilterBar.cs" />
     <Compile Include="StationRecipes.cs" />
     <Compile Include="GridRowsLayout.cs" />
