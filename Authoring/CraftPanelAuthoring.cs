@@ -26,7 +26,7 @@ public static class CraftPanelAuthoring
         (RecipeCategory.Fists, null, true), (RecipeCategory.Bows, null, true), (RecipeCategory.Crossbows, null, true),
         (RecipeCategory.Staffs, null, true), (RecipeCategory.Shields, null, true),
         (RecipeCategory.Armor, null, true), (RecipeCategory.Accessories, null, true),
-        (RecipeCategory.Tools, null, true), (RecipeCategory.Ammo, null, true),
+        (RecipeCategory.Tools, null, true), (RecipeCategory.Ammo, null, true), (RecipeCategory.Bait, null, true),
         (RecipeCategory.Health, "Assets/Sprites/PlayerHealth.png", false),
         (RecipeCategory.Stamina, "Assets/Sprites/PlayerStamina.png", false),
         (RecipeCategory.Eitr, "Assets/Sprites/PlayerEitr.png", false),
@@ -226,7 +226,10 @@ public static class CraftPanelAuthoring
             ((RectTransform)go.transform).sizeDelta = new Vector2(42, 42);
             var element = go.GetComponent<LayoutElement>();
             element.preferredWidth = element.preferredHeight = 42;
-            go.GetComponent<UITooltip>().m_text = "$overhaul_craft_filter_" + category.ToString().ToLowerInvariant();
+            // The template is the Character tab: its tooltip title must become the filter name.
+            var tooltip = go.GetComponent<UITooltip>();
+            tooltip.m_topic = "$overhaul_craft_filter_" + category.ToString().ToLowerInvariant();
+            tooltip.m_text = "";
 
             var tab = go.GetComponent<TabButton>();
             tab.BackgroundColor = tabColors.BackgroundColor;
