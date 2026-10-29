@@ -181,6 +181,9 @@
     <Compile Include="PvpTabButton.cs" />
     <Compile Include="RandomLoadingImage.cs" />
     <Compile Include="RecipeListItem.cs" />
+    <Compile Include="CraftQuantity.cs" />
+    <Compile Include="RecipeFilterBar.cs" />
+    <Compile Include="StationRecipes.cs" />
     <Compile Include="SelectedCharacterInfo.cs" />
     <Compile Include="ShowIfSelected.cs" />
     <Compile Include="SkillsPanelController.cs" />

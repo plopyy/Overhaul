@@ -48,6 +48,8 @@ namespace Overhaul.Magic
             piece.m_name = "$overhaul_grimoirestand"; piece.m_description = "$overhaul_grimoirestand_desc";
             if (icon) piece.m_icon = icon;
             piece.m_category = Piece.PieceCategory.Crafting;
+            // The build menu sorts by usage tags; the cloned table would leave it under Misc.
+            piece.m_usage = Piece.UsageTagFlags.Crafting;
             piece.m_craftingStation = PrefabManager.Instance.GetPrefab("piece_workbench")?.GetComponent<CraftingStation>();
             piece.m_resources = new[] { ("FineWood", 8), ("Bronze", 4), ("SurtlingCore", 1) }
                 .Select(r => new Piece.Requirement { m_resItem = PrefabManager.Instance.GetPrefab(r.Item1).GetComponent<ItemDrop>(), m_amount = r.Item2, m_recover = true }).ToArray();

@@ -47,6 +47,8 @@ namespace Overhaul.Rarity
             // Stone sounds and debris when built, hit and destroyed: the stone wall's.
             var stone = PrefabManager.Instance.GetPrefab("stone_wall_1x1");
             var piece = prefab.GetComponent<Piece>(); var wear = prefab.GetComponent<WearNTear>();
+            // The build menu sorts by usage tags: without one the table only shows under "All".
+            piece.m_usage = Piece.UsageTagFlags.Crafting;
             if (stone)
             {
                 piece.m_placeEffect = stone.GetComponent<Piece>().m_placeEffect;
