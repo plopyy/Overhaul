@@ -159,7 +159,13 @@ namespace Auga
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipeList))]
         internal static class RecipeFilter
         {
-            static void Prefix(InventoryGui __instance, List<Recipe> recipes) { var p = Panel(__instance); if (p) p.FilterRecipes(recipes); }
+            static void Prefix(InventoryGui __instance, List<Recipe> recipes)
+            {
+                var p = Panel(__instance);
+                var station = Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
+                Debug.Log($"[Auga] Recipe filter: panel={(p ? "ok" : "null")} filters={(p && p.Filters ? "ok" : "null")} station={(station ? station.m_name : "none")} recipes={recipes.Count}");
+                if (p) p.FilterRecipes(recipes);
+            }
         }
         static bool SearchFocused()
         {
