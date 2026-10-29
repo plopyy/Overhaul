@@ -14,6 +14,9 @@ namespace AugaUnity
         public Button Button;
         public Image Background;
         public Image Icon;
+        // Optional: background sprites per state (the base sprite under the button's own transitions).
+        public Sprite NormalSprite;
+        public Sprite SelectedSprite;
 
         protected bool _selected;
 
@@ -43,6 +46,7 @@ namespace AugaUnity
         public virtual void SetColor()
         {
             Background.color = _selected ? SelectedBackgroundColor : BackgroundColor;
+            if (NormalSprite && SelectedSprite) Background.sprite = _selected ? SelectedSprite : NormalSprite;
             Icon.color = _selected ? SelectedIconColor : IconColor;
         }
     }
