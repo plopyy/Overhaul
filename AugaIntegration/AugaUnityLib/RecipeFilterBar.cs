@@ -10,7 +10,9 @@ namespace AugaUnity
     public enum RecipeCategory
     {
         All, Swords, Axes, Clubs, Spears, Polearms, Knives, Fists, Bows, Crossbows, Staffs, Shields,
-        Helmets, Chests, Legs, Capes, Accessories, Tools, Ammo, Health, Stamina, Eitr, Balanced, Misc
+        Helmets, Chests, Legs, Capes, Accessories, Tools, Ammo, Health, Stamina, Eitr, Balanced, Misc,
+        // Head, chest, legs and cape pieces share one button (the four above are no longer used).
+        Armor
     }
 
     // Diamond buttons along the left edge of the crafting panel plus a name search above the list.
@@ -162,10 +164,10 @@ namespace AugaUnity
             switch (shared.m_itemType)
             {
                 case ItemDrop.ItemData.ItemType.Shield: return RecipeCategory.Shields;
-                case ItemDrop.ItemData.ItemType.Helmet: return RecipeCategory.Helmets;
-                case ItemDrop.ItemData.ItemType.Chest: return RecipeCategory.Chests;
-                case ItemDrop.ItemData.ItemType.Legs: return RecipeCategory.Legs;
-                case ItemDrop.ItemData.ItemType.Shoulder: return RecipeCategory.Capes;
+                case ItemDrop.ItemData.ItemType.Helmet:
+                case ItemDrop.ItemData.ItemType.Chest:
+                case ItemDrop.ItemData.ItemType.Legs:
+                case ItemDrop.ItemData.ItemType.Shoulder: return RecipeCategory.Armor;
                 case ItemDrop.ItemData.ItemType.Utility:
                 case ItemDrop.ItemData.ItemType.Trinket: return RecipeCategory.Accessories;
                 case ItemDrop.ItemData.ItemType.Ammo:
