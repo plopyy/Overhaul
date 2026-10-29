@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Reflection;
+using System.Reflection.Emit;
 using AugaUnity;
 using HarmonyLib;
 using TMPro;
@@ -113,7 +116,61 @@ namespace Auga
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipe))]
         internal static class RecipeUpdate
         {
+            static void Prefix(InventoryGui __instance) { var p = Panel(__instance); if (p) p.ApplyQuantity(__instance); }
             static void Postfix(InventoryGui __instance) { var p = Panel(__instance); if (p) p.OnUpdateRecipe(__instance); }
+            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code) => MultiCraftKey.Replace(code);
+        }
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnCraftPressed))]
+        internal static class CraftPressed
+        {
+            static void Prefix(InventoryGui __instance) { var p = Panel(__instance); if (p) p.ApplyQuantity(__instance); }
+            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> code) => MultiCraftKey.Replace(code);
+        }
+        // The quantity selector replaces Shift (AltPlace) as the way to craft several at once:
+        // without this, Shift would still force multi-crafting with whatever amount is chosen.
+        internal static class MultiCraftKey
+        {
+            static readonly MethodInfo GetButton = AccessTools.Method(typeof(ZInput), nameof(ZInput.GetButton), new[] { typeof(string) });
+            internal static IEnumerable<CodeInstruction> Replace(IEnumerable<CodeInstruction> code)
+            {
+                CodeInstruction previous = null;
+                foreach (var instruction in code)
+                {
+                    if (previous != null && previous.opcode == OpCodes.Ldstr && (string)previous.operand == "AltPlace" && instruction.Calls(GetButton))
+                        yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(MultiCraftKey), nameof(Pressed))).MoveLabelsFrom(instruction);
+                    else
+                        yield return instruction;
+                    previous = instruction;
+                }
+            }
+            static bool Pressed(string button)
+            {
+                var p = Panel(InventoryGui.instance);
+                return !(p && p.QuantityActive) && ZInput.GetButton(button);
+            }
+        }
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipeList))]
+        internal static class RecipeFilter
+        {
+            static void Prefix(InventoryGui __instance, List<Recipe> recipes) { var p = Panel(__instance); if (p) p.FilterRecipes(recipes); }
+        }
+        static bool SearchFocused()
+        {
+            var p = Panel(InventoryGui.instance);
+            return p && p.Filters && p.Filters.SearchFocused;
+        }
+        // The game blocks player controls, hotkeys and the map while the build search is typed in;
+        // the crafting search reuses that same flag.
+        [HarmonyPatch(typeof(BuildUi), nameof(BuildUi.SearchFieldFocused), MethodType.Getter)]
+        internal static class SearchBlocksInput
+        {
+            static void Postfix(ref bool __result) { __result = __result || SearchFocused(); }
+        }
+        // Typing Tab, E or Escape in the search must not close the inventory.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Update))]
+        internal static class SearchKeepsInventoryOpen
+        {
+            static void Prefix(InventoryGui __instance) { if (SearchFocused()) __instance.m_shownFrames = 0; }
         }
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirementList))]
         internal static class Requirements
