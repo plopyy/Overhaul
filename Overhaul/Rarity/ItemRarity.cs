@@ -325,7 +325,7 @@ namespace Overhaul.Rarity
                 if (!drop) { rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>")); continue; }
                 string title = "  ◆ " + Localization.instance.Localize(drop.m_itemData.m_shared.m_name);
                 rows.Add(new TooltipRow(catalystRarity != null ? catalystRarity.Paint(title) : title));
-                string effect = CatalystEffects.Describe(name);
+                string effect = CatalystEffects.Describe(name, item);
                 if (effect.Length > 0) rows.Add(new TooltipRow("     <color=#c8c0b0>" + effect + "</color>"));
             }
             if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);

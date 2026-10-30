@@ -57,16 +57,25 @@ namespace Overhaul.Rarity
                         if (name.Length > 0 && data.CatalystEffects.TryGetValue(name, out var def) && def.Effect == effect) return def;
             return null;
         }
-        // What a catalyst does, in the player's language: its effect's text with the section's values.
-        internal static string Describe(string prefab)
+        // What a catalyst does, in the player's language, with the section's values: every effect it has with the kind of gear
+        // each one works in, or, with gear given, only the effect for that kind of gear ("" if none).
+        internal static string Describe(string prefab, ItemDrop.ItemData gear = null)
         {
             if (prefab == null || !RarityConfig.Current.CatalystEffects.TryGetValue(prefab, out var def) || string.IsNullOrEmpty(def.Effect)) return "";
-            string text = Localization.instance.Localize("$overhaul_catalyst_effect_" + def.Effect.ToLowerInvariant());
+            string id = def.Effect.ToLowerInvariant();
+            var effects = new List<(string kind, string key)> { (Kind(def.Effect), id) };
+            if (def.Effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
+            if (def.Effect == "LavaWalker") effects.Add((Weapon, id + "_weapon"));
+            if (gear != null) { effects.RemoveAll(e => e.kind != Kind(gear)); return effects.Count == 0 ? "" : Fill(def, effects[0].key); }
+            return string.Join("\n", effects.Select(e => Localization.instance.Localize("$overhaul_catalyst_slot_" + e.kind) + Fill(def, e.key)));
+        }
+        static string Fill(CatalystDef def, string key)
+        {
+            string text = Localization.instance.Localize("$overhaul_catalyst_effect_" + key);
             foreach (var pair in def.Values) text = text.Replace("{" + pair.Key + "}", pair.Value.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture));
             if (def.Dot != null) text = text.Replace("{Dot}", Localization.instance.Localize("$overhaul_dot_" + def.Dot.ToLowerInvariant()));
             if (def.Items.Length > 0) text = text.Replace("{Items}", string.Join(", ", def.Items.Select(i => ObjectDB.instance && ObjectDB.instance.GetItemPrefab(i) ? Localization.instance.Localize(ObjectDB.instance.GetItemPrefab(i).GetComponent<ItemDrop>().m_itemData.m_shared.m_name) : i)));
             if (def.Bonuses.Length > 0) text = text.Replace("{Bonus}", def.Bonuses[0].Value.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture));
-            if (def.Effect != "ColdWalker" && def.Effect != "LavaWalker") text = Localization.instance.Localize("$overhaul_catalyst_slot_" + Kind(def.Effect)) + text;
             return text;
         }
         static CatalystDef Find(Player player, string effect) => Active(player).FirstOrDefault(d => string.Equals(d.Effect, effect, StringComparison.OrdinalIgnoreCase));
