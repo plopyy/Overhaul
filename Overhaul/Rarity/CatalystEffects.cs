@@ -9,7 +9,7 @@ using UnityEngine;
 namespace Overhaul.Rarity
 {
     // Catalyst effects (Catalyst sections of RaritySystem.cfg): every catalyst socketed in the local player's worn gear acts,
-    // each one once whatever the gear and however many pieces carry it. Its Bonus effects join the player's effect totals;
+    // each one once however many pieces carry it, and only in the kind of gear its effect belongs to (Kind). Its Bonus effects join the player's effect totals;
     // its Effect is one of the behaviours below, with the section's fixed values.
     internal static class CatalystEffects
     {
@@ -23,8 +23,39 @@ namespace Overhaul.Rarity
             var data = RarityConfig.Current; var seen = new HashSet<string>();
             foreach (var item in player.GetInventory().GetEquippedItems())
                 foreach (var name in ItemRarity.Catalysts(item))
-                    if (name.Length > 0 && seen.Add(name) && data.CatalystEffects.TryGetValue(name, out var def)) list.Add(def);
+                    if (name.Length > 0 && data.CatalystEffects.TryGetValue(name, out var def) && Kind(item) == Kind(def.Effect) && seen.Add(name)) list.Add(def);
             return list;
+        }
+        internal const string Weapon = "weapon", Armor = "armor", Trinket = "trinket";
+        static string Kind(ItemDrop.ItemData item)
+        {
+            switch (item.m_shared.m_itemType)
+            {
+                case ItemDrop.ItemData.ItemType.Helmet: case ItemDrop.ItemData.ItemType.Chest: case ItemDrop.ItemData.ItemType.Legs:
+                case ItemDrop.ItemData.ItemType.Shoulder: case ItemDrop.ItemData.ItemType.Shield: return Armor;
+                case ItemDrop.ItemData.ItemType.Utility: case ItemDrop.ItemData.ItemType.Trinket: return Trinket;
+                default: return Weapon;
+            }
+        }
+        // The kind of gear each effect works in (the freeze gland and molten core also have the side effects of InKind).
+        static string Kind(string effect)
+        {
+            switch (effect)
+            {
+                case "FireThorns": case "ParryReflect": case "LastStand": case "HighJump": return Armor;
+                case "ColdWalker": case "LavaWalker": return Trinket;
+                default: return Weapon;
+            }
+        }
+        // The catalyst with this effect, socketed in worn gear of that kind.
+        internal static CatalystDef InKind(Player player, string effect, string kind)
+        {
+            var data = RarityConfig.Current;
+            foreach (var item in player.GetInventory().GetEquippedItems())
+                if (Kind(item) == kind)
+                    foreach (var name in ItemRarity.Catalysts(item))
+                        if (name.Length > 0 && data.CatalystEffects.TryGetValue(name, out var def) && def.Effect == effect) return def;
+            return null;
         }
         // What a catalyst does, in the player's language: its effect's text with the section's values.
         internal static string Describe(string prefab)
@@ -35,15 +66,11 @@ namespace Overhaul.Rarity
             if (def.Dot != null) text = text.Replace("{Dot}", Localization.instance.Localize("$overhaul_dot_" + def.Dot.ToLowerInvariant()));
             if (def.Items.Length > 0) text = text.Replace("{Items}", string.Join(", ", def.Items.Select(i => ObjectDB.instance && ObjectDB.instance.GetItemPrefab(i) ? Localization.instance.Localize(ObjectDB.instance.GetItemPrefab(i).GetComponent<ItemDrop>().m_itemData.m_shared.m_name) : i)));
             if (def.Bonuses.Length > 0) text = text.Replace("{Bonus}", def.Bonuses[0].Value.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture));
+            if (def.Effect != "ColdWalker" && def.Effect != "LavaWalker") text = Localization.instance.Localize("$overhaul_catalyst_slot_" + Kind(def.Effect)) + text;
             return text;
         }
         static CatalystDef Find(Player player, string effect) => Active(player).FirstOrDefault(d => string.Equals(d.Effect, effect, StringComparison.OrdinalIgnoreCase));
-        // The catalyst with this effect, socketed in the weapon held.
-        internal static CatalystDef InWeapon(Player player, string effect)
-        {
-            var weapon = player.GetCurrentWeapon();
-            return weapon == null ? null : Active(player).FirstOrDefault(d => d.Effect == effect && ItemRarity.Catalysts(weapon).Contains(d.Id));
-        }
+        internal static CatalystDef InWeapon(Player player, string effect) => InKind(player, effect, Weapon);
         static bool Local(Character c) => c && c == Player.m_localPlayer;
 
         static void Bonuses(Player player, Dictionary<string, float> totals)
@@ -80,6 +107,9 @@ namespace Overhaul.Rarity
             {
                 if (hit == null || Dots.IsDot(hit) || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player || __instance.IsDead()) return;
                 if (hit.GetTotalDamage() <= 0) return;
+                var molten = InWeapon(player, "LavaWalker");
+                if (molten != null && UnityEngine.Random.value * 100f < molten.Get("WeakChance", 25))
+                    Network.FireWeakness(__instance, molten.Get("WeakValue", 10), (int)molten.Get("WeakStacks", 5), molten.Get("WeakDuration", 4));
                 var active = Active(player); if (active.Count == 0) return;
                 float bonus = 0;
                 foreach (var def in active)
@@ -110,11 +140,6 @@ namespace Overhaul.Rarity
                             __instance.Damage(bolt);
                             break;
                         case "Lightning": Lightning(player, def, hit, __instance, __instance.transform.position); break;
-                        case "LavaWalker":
-                            var weapon = player.GetCurrentWeapon();
-                            if (weapon != null && ItemRarity.Catalysts(weapon).Contains(def.Id) && UnityEngine.Random.value * 100f < def.Get("WeakChance", 25))
-                                Network.FireWeakness(__instance, def.Get("WeakValue", 10), (int)def.Get("WeakStacks", 5), def.Get("WeakDuration", 4));
-                            break;
                         case "DotEvery":
                             if (dotAttack && Enum.TryParse(def.Dot, true, out DotType type)) Network.Dot(__instance, type, def.Get("Damage", 4), player.GetZDOID());
                             break;
@@ -169,6 +194,9 @@ namespace Overhaul.Rarity
             private static void Prefix(Character __instance, HitData hit)
             {
                 if (!(__instance is Player player) || !Local(player) || hit == null || Dots.IsDot(hit) || player.IsDead()) return;
+                var nova = InKind(player, "ColdWalker", Armor); var by = hit.GetAttacker();
+                if (nova != null && by && by != player && hit.GetTotalDamage() > 0 && UnityEngine.Random.value * 100f < nova.Get("NovaChance", 15))
+                    FrostNova(player, nova.Get("NovaDamage", 15), nova.Get("NovaRadius", 6));
                 var active = Active(player); if (active.Count == 0) return;
                 var lastStand = active.FirstOrDefault(d => d.Effect == "LastStand");
                 if (lastStand != null && Time.time >= lastStandReady && player.GetHealthPercentage() < lastStand.Get("Threshold", 25) / 100f && hit.GetTotalDamage() > 0)
@@ -185,19 +213,8 @@ namespace Overhaul.Rarity
                     burn.m_damage.m_fire = thorns.Get("Damage", 10); burn.SetAttacker(player);
                     attacker.Damage(burn);
                 }
-                var nova = active.FirstOrDefault(d => d.Effect == "ColdWalker");
-                if (nova != null && attacker && attacker != player && hit.GetTotalDamage() > 0 && InArmor(player, nova) && UnityEngine.Random.value * 100f < nova.Get("NovaChance", 15))
-                    FrostNova(player, nova.Get("NovaDamage", 15), nova.Get("NovaRadius", 6));
             }
         }
-
-        // Socketed in a worn armour piece or shield.
-        static bool InArmor(Player player, CatalystDef def) => player.GetInventory().GetEquippedItems().Any(item =>
-        {
-            var type = item.m_shared.m_itemType;
-            return (type == ItemDrop.ItemData.ItemType.Helmet || type == ItemDrop.ItemData.ItemType.Chest || type == ItemDrop.ItemData.ItemType.Legs
-                || type == ItemDrop.ItemData.ItemType.Shoulder || type == ItemDrop.ItemData.ItemType.Shield) && ItemRarity.Catalysts(item).Contains(def.Id);
-        });
 
         // Freeze gland in armour: a frost burst (Overhaul_FrostNova, seen and heard by everyone) and frost damage to the enemies
         // in a cylinder around the player, twice their height and centred on them.
