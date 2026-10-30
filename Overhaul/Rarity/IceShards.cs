@@ -1,0 +1,114 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using Jotunn.Entities;
+using Jotunn.Managers;
+using UnityEngine;
+
+namespace Overhaul.Rarity
+{
+    // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
+    // forms every ShardEvery s, up to ShardMax, in a half circle over the head. While creatures hunt the local player, one
+    // leaves every ShardDelay s at a random one of them, curving on its way, for ShardDamage frost damage. On leaving, it
+    // splits by the extra projectiles (enchantment lines and leveling chance). A shard lost from the weapon melts.
+    internal static class IceShards
+    {
+        const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
+        const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f;
+        static readonly List<GameObject> held = new List<GameObject>();
+        static float nextShard, nextLaunch;
+
+        internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
+
+        static void Register()
+        {
+            PrefabManager.OnVanillaPrefabsAvailable -= Register;
+            var clone = PrefabManager.Instance.CreateClonedPrefab(Prefab, Source);
+            if (!clone) { Utility.Log.LogError("Ice shard: " + Source + " missing"); return; }
+            Object.DestroyImmediate(clone.GetComponent<Projectile>());
+            foreach (var collider in clone.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(collider);
+            clone.GetComponent<ZNetView>().m_persistent = false;
+            if (!clone.GetComponent<ZSyncTransform>()) clone.AddComponent<ZSyncTransform>();
+            clone.transform.localScale = Vector3.one;
+            PrefabManager.Instance.AddPrefab(new CustomPrefab(clone, false));
+        }
+
+        // Place i of ShardMax in the half circle over the player's head, right shoulder to left shoulder.
+        static Vector3 Place(Player owner, int i, int count)
+        {
+            float a = Mathf.Lerp(15, 165, count > 1 ? i / (count - 1f) : .5f) * Mathf.Deg2Rad;
+            var t = owner.transform;
+            return t.position + Vector3.up * 1.75f - t.forward * .1f + (t.right * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a)) * .7f;
+        }
+
+        static GameObject Spawn(Vector3 position)
+        {
+            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(Prefab) : null;
+            return prefab ? Object.Instantiate(prefab, position, Quaternion.LookRotation(Vector3.up)) : null;
+        }
+        static void Remove(GameObject shard) { if (shard && ZNetScene.instance) ZNetScene.instance.Destroy(shard); }
+
+        static void Clear() { foreach (var shard in held) Remove(shard); held.Clear(); }
+
+        static List<Character> Hunters(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && c.GetBaseAI() is MonsterAI ai
+            && ai.GetTargetCreature() == player && Vector3.Distance(c.transform.position, player.transform.position) <= HuntRange).ToList();
+
+        internal static void Tick()
+        {
+            var player = Player.m_localPlayer;
+            var def = player ? CatalystEffects.InWeapon(player, "ColdWalker") : null;
+            if (def == null || player.IsDead()) { if (held.Count > 0) Clear(); return; }
+            held.RemoveAll(s => !s);
+            int max = (int)def.Get("ShardMax", 5);
+            if (held.Count >= max) nextShard = Time.time + def.Get("ShardEvery", 5);
+            else if (Time.time >= nextShard)
+            {
+                nextShard = Time.time + def.Get("ShardEvery", 5);
+                var shard = Spawn(player.transform.position);
+                if (shard) held.Add(shard);
+            }
+            for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(Vector3.up));
+            if (held.Count == 0 || Time.time < nextLaunch) return;
+            var hunters = Hunters(player); if (hunters.Count == 0) return;
+            nextLaunch = Time.time + def.Get("ShardDelay", .5f);
+            var first = held[held.Count - 1]; held.RemoveAt(held.Count - 1);
+            var target = hunters[Random.Range(0, hunters.Count)];
+            int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+                + (Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
+            for (int i = 0; i < count; i++)
+            {
+                var shard = i == 0 ? first : Spawn(first.transform.position);
+                if (shard) player.StartCoroutine(Fly(player, target, shard, def.Get("ShardDamage", 5)));
+            }
+        }
+
+        // A curve bent a random way, anywhere from the right through up to the left (never down), ending on the creature however it moves.
+        static IEnumerator Fly(Player owner, Character target, GameObject shard, float damage)
+        {
+            Vector3 start = shard.transform.position;
+            float length = Mathf.Max(1, Vector3.Distance(start, target.GetCenterPoint())), time = length / Speed;
+            Vector3 right = Vector3.Cross(Vector3.up, (target.GetCenterPoint() - start).normalized).normalized;
+            float angle = Random.Range(0f, 180f) * Mathf.Deg2Rad;
+            Vector3 lateral = (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax);
+            Vector3 last = start;
+            for (float t = 0; t < time && shard && owner && target && !target.IsDead(); t += Time.deltaTime)
+            {
+                float k = t / time;
+                Vector3 end = target.GetCenterPoint(), control = (start + end) / 2 + lateral * length;
+                Vector3 position = Vector3.Lerp(Vector3.Lerp(start, control, k), Vector3.Lerp(control, end, k), k);
+                if (position != last) shard.transform.SetPositionAndRotation(position, Quaternion.LookRotation(position - last));
+                last = position;
+                yield return null;
+            }
+            if (shard && owner && target && !target.IsDead())
+            {
+                var hit = new HitData { m_point = target.GetCenterPoint(), m_dir = (target.GetCenterPoint() - last).normalized, m_dodgeable = false, m_blockable = false };
+                hit.m_damage.m_frost = damage; hit.SetAttacker(owner);
+                var model = ZNetScene.instance ? ZNetScene.instance.GetPrefab(Source)?.GetComponent<Projectile>() : null;
+                if (model) model.m_hitEffects.Create(hit.m_point, Quaternion.identity);
+                target.Damage(hit);
+            }
+            Remove(shard);
+        }
+    }
+}
