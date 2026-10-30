@@ -300,9 +300,10 @@ namespace Overhaul.Rarity
             var rows = new List<TooltipRow>();
             if (catalyst)
             {
-                // What the catalyst does once socketed.
-                string effect = CatalystEffects.Describe(Enchantments.Prefab(item));
-                if (effect.Length > 0) TooltipRowAligner.Add(tooltip, new List<TooltipRow> { new TooltipRow(rarity.Paint(effect)) });
+                // What the catalyst does once socketed: each effect in its own box.
+                foreach (string effect in CatalystEffects.Describe(Enchantments.Prefab(item)).Split('
+'))
+                    if (effect.Length > 0) TooltipRowAligner.Add(tooltip, new List<TooltipRow> { new TooltipRow(rarity.Paint(effect)) });
                 tint.Texts(tooltip, rarity); return;
             }
             // Enchantment lines in the rarity colour, with their value for the item's biome; an empty line
