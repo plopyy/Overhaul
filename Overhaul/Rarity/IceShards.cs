@@ -11,7 +11,7 @@ namespace Overhaul.Rarity
     // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
     // forms every ShardEvery s, up to ShardMax, in a half circle over the head. While creatures hunt the local player, one
     // leaves every ShardDelay s at a random one of them, curving on its way, for ShardDamage frost damage. On leaving, it
-    // splits by the extra projectiles (enchantment lines and leveling chance). Shards already formed stay when the weapon
+    // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay when the weapon
     // changes; only new ones need it. A creature publishes its target in its ZDO, so hunters are seen whoever owns them.
     internal static class IceShards
     {
@@ -93,7 +93,7 @@ namespace Overhaul.Rarity
             nextLaunch = Time.time + values.Get("ShardDelay", .5f);
             var first = held[held.Count - 1]; held.RemoveAt(held.Count - 1);
             var target = hunters[Random.Range(0, hunters.Count)];
-            int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
+            int count = 1 + MythicEffects.Extra(player.GetCurrentWeapon()) + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
                 + (Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
             for (int i = 0; i < count; i++)
             {
