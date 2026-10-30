@@ -19,6 +19,7 @@ namespace Overhaul.Rarity
         const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard, nextLaunch;
+        static bool equipped;
         // The freeze gland's values, for the shards left once its weapon is put away.
         static CatalystDef values;
         const string TargetKey = "overhaul_hunt_target";
@@ -79,6 +80,9 @@ namespace Overhaul.Rarity
             if (!player || player.IsDead()) { if (held.Count > 0) Clear(); return; }
             held.RemoveAll(s => !s);
             if (def != null) values = def;
+            // The first shard takes its full time once the weapon is in hand.
+            if (def == null) equipped = false;
+            else if (!equipped) { equipped = true; nextShard = Time.time + def.Get("ShardEvery", 5); }
             if (values == null || held.Count == 0 && def == null) return;
             int max = (int)values.Get("ShardMax", 5);
             if (def == null || held.Count >= max) nextShard = Time.time + values.Get("ShardEvery", 5);
@@ -91,7 +95,7 @@ namespace Overhaul.Rarity
             for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(player.transform.forward));
             if (held.Count == 0 || Time.time < nextLaunch) return;
             var hunters = Hunters(player); if (hunters.Count == 0) return;
-            nextLaunch = Time.time + values.Get("ShardDelay", .5f);
+            nextLaunch = Time.time + values.Get("ShardDelay", 1);
             var first = held[held.Count - 1]; held.RemoveAt(held.Count - 1);
             var target = hunters[Random.Range(0, hunters.Count)];
             int count = 1 + MythicEffects.Extra(player.GetCurrentWeapon()) + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
