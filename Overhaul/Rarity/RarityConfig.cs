@@ -387,8 +387,10 @@ namespace Overhaul.Rarity
                         data.Catalysts[id] = ItemRarity.CatalystRarity;
                         var def = new CatalystDef { Id = id, Effect = Get(v, "Effect", null), Dot = Get(v, "Dot", null) };
                         def.Items = List(Get(v, "Items", ""));
-                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max", "Chop", "Mine" })
+                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max", "Chop", "Mine", "NovaChance", "NovaDamage", "NovaRadius" })
                             if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
+                        // Files made before the frost nova (its description shows these).
+                        if (def.Effect == "ColdWalker") foreach (var (key, value) in new[] { ("NovaChance", 15f), ("NovaDamage", 15f), ("NovaRadius", 6f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
                         def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
                         if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;
                         break;

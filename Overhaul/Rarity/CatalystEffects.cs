@@ -174,6 +174,35 @@ namespace Overhaul.Rarity
                     burn.m_damage.m_fire = thorns.Get("Damage", 10); burn.SetAttacker(player);
                     attacker.Damage(burn);
                 }
+                var nova = active.FirstOrDefault(d => d.Effect == "ColdWalker");
+                if (nova != null && attacker && attacker != player && hit.GetTotalDamage() > 0 && InArmor(player, nova) && UnityEngine.Random.value * 100f < nova.Get("NovaChance", 15))
+                    FrostNova(player, nova.Get("NovaDamage", 15), nova.Get("NovaRadius", 6));
+            }
+        }
+
+        // Socketed in a worn armour piece or shield.
+        static bool InArmor(Player player, CatalystDef def) => player.GetInventory().GetEquippedItems().Any(item =>
+        {
+            var type = item.m_shared.m_itemType;
+            return (type == ItemDrop.ItemData.ItemType.Helmet || type == ItemDrop.ItemData.ItemType.Chest || type == ItemDrop.ItemData.ItemType.Legs
+                || type == ItemDrop.ItemData.ItemType.Shoulder || type == ItemDrop.ItemData.ItemType.Shield) && ItemRarity.Catalysts(item).Contains(def.Id);
+        });
+
+        // Freeze gland in armour: a frost burst (Overhaul_FrostNova, seen and heard by everyone) and frost damage to the enemies
+        // in a cylinder around the player, twice their height and centred on them.
+        const float NovaHalfHeight = 1.8f;
+        static void FrostNova(Player player, float damage, float radius)
+        {
+            MythicVfx.Spawn("Overhaul_FrostNova", player.transform.position, Quaternion.identity);
+            Vector3 center = player.transform.position + Vector3.up * NovaHalfHeight / 2;
+            foreach (var c in Character.GetAllCharacters())
+            {
+                if (!c || c == player || c.IsDead() || !BaseAI.IsEnemy(player, c)) continue;
+                Vector3 offset = c.GetCenterPoint() - center;
+                if (Mathf.Abs(offset.y) > NovaHalfHeight || new Vector2(offset.x, offset.z).sqrMagnitude > radius * radius) continue;
+                var hit = new HitData { m_point = c.GetCenterPoint(), m_dir = (c.transform.position - player.transform.position).normalized, m_dodgeable = false, m_blockable = false };
+                hit.m_damage.m_frost = damage; hit.SetAttacker(player);
+                c.Damage(hit);
             }
         }
 
