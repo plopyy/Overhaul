@@ -86,7 +86,7 @@ namespace Overhaul.Rarity
             held.RemoveAll(shard => !shard);
             if (held.Count == 0) return;
             var enemies = Enemies(player); if (enemies.Count == 0) return;
-            float damage = values.Get("ShardDamage", 15);
+            float damage = values.Get("ShardDamage", 10);
             foreach (var first in held)
             {
                 var target = enemies[Random.Range(0, enemies.Count)];
