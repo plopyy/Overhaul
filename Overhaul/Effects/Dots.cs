@@ -70,6 +70,30 @@ namespace Overhaul.Effects
             }
         }
 
+        // Fire weakness (molten core in a weapon): Value % less fire resistance per stack; each new stack restarts its time.
+        static readonly int WeakStacksKey = "overhaul_fireweak_stacks".GetStableHashCode(), WeakEndKey = "overhaul_fireweak_end".GetStableHashCode(), WeakValueKey = "overhaul_fireweak_value".GetStableHashCode();
+        internal static int FireWeakness(Character c)
+        {
+            var zdo = Zdo(c);
+            if (zdo == null) return 0;
+            int stacks = zdo.GetInt(WeakStacksKey, 0);
+            return stacks > 0 && Now < zdo.GetFloat(WeakEndKey, 0) ? stacks : 0;
+        }
+        internal static float FireWeaknessPercent(Character c)
+        {
+            int stacks = FireWeakness(c);
+            return stacks > 0 ? stacks * Zdo(c).GetFloat(WeakValueKey, 0) : 0;
+        }
+        // Only on the target's owner.
+        internal static void ApplyFireWeakness(Character target, float value, int maxStacks, float seconds)
+        {
+            var zdo = Zdo(target);
+            if (zdo == null || !target.m_nview.IsOwner() || target.IsDead()) return;
+            zdo.Set(WeakStacksKey, Mathf.Min(maxStacks, FireWeakness(target) + 1));
+            zdo.Set(WeakValueKey, value);
+            zdo.Set(WeakEndKey, (float)(Now + seconds));
+        }
+
         static readonly Dictionary<(ZDOID, int), double> nextTick = new Dictionary<(ZDOID, int), double>();
         static readonly List<Character> owned = new List<Character>();
         static float nextScan;
@@ -115,9 +139,9 @@ namespace Overhaul.Effects
 
         // The local player's DoTs in their status effect bar: one status per DoT, its stacks as the icon text.
         static readonly Dictionary<int, SE_Dot> shown = new Dictionary<int, SE_Dot>();
-        // Shown under the health bars and in the player's status effects: the five DoTs (with their stacks), then the Root debuff.
-        static readonly string[] Shown = { "Burn", "Frostbite", "Shock", "Poison", "Bleed", "Root" };
-        static int Level(Character c, int t) => t < Names.Length ? Stacks(c, (DotType)t) : Root.Rooted(c) ? 1 : 0;
+        // Shown under the health bars and in the player's status effects: the five DoTs (with their stacks), then the Root and Fire weakness debuffs.
+        static readonly string[] Shown = { "Burn", "Frostbite", "Shock", "Poison", "Bleed", "Root", "FireWeakness" };
+        static int Level(Character c, int t) => t < Names.Length ? Stacks(c, (DotType)t) : Shown[t] == "Root" ? (Root.Rooted(c) ? 1 : 0) : FireWeakness(c);
 
         static void PlayerIcons()
         {
