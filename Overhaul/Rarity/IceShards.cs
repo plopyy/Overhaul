@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using HarmonyLib;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
@@ -10,32 +9,18 @@ namespace Overhaul.Rarity
 {
     // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
     // forms every ShardEvery s, up to ShardMax, in a half circle over the head. Each attack of the local player sends them all at
-    // random creatures hunting them, curving on their way, for ShardDamage frost damage. On leaving, it
+    // random enemies around, curving on their way, for ShardDamage frost damage. On leaving, it
     // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay when the weapon
-    // changes; only new ones need it. A creature publishes its target in its ZDO, so hunters are seen whoever owns them.
+    // changes; only new ones need it.
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
+        const float Speed = 20f, Range = 40f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard;
         static bool equipped;
         // The freeze gland's values, for the shards left once its weapon is put away.
         static CatalystDef values;
-        const string TargetKey = "overhaul_hunt_target";
-
-        [HarmonyPatch(typeof(MonsterAI), "UpdateAI")]
-        private static class PublishTarget
-        {
-            private static void Postfix(MonsterAI __instance)
-            {
-                var view = __instance.m_nview;
-                if (!view || !view.IsValid() || !view.IsOwner()) return;
-                var zdo = view.GetZDO(); var target = __instance.GetTargetCreature();
-                var id = target ? target.GetZDOID() : ZDOID.None;
-                if (zdo.GetZDOID(TargetKey) != id) zdo.Set(TargetKey, id);
-            }
-        }
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
 
@@ -70,8 +55,8 @@ namespace Overhaul.Rarity
 
         static void Clear() { foreach (var shard in held) Remove(shard); held.Clear(); }
 
-        static List<Character> Hunters(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && c.m_nview && c.m_nview.IsValid()
-            && c.m_nview.GetZDO().GetZDOID(TargetKey) == player.GetZDOID() && Vector3.Distance(c.transform.position, player.transform.position) <= HuntRange).ToList();
+        static List<Character> Enemies(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && BaseAI.IsEnemy(player, c)
+            && Vector3.Distance(c.transform.position, player.transform.position) <= Range).ToList();
 
         internal static void Tick()
         {
@@ -95,16 +80,16 @@ namespace Overhaul.Rarity
             for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(player.transform.forward));
         }
 
-        // An attack of the player sends every shard held, each at a random creature hunting them.
+        // An attack of the player sends every shard held, each at a random enemy around.
         internal static void Release(Player player)
         {
             held.RemoveAll(shard => !shard);
             if (held.Count == 0) return;
-            var hunters = Hunters(player); if (hunters.Count == 0) return;
+            var enemies = Enemies(player); if (enemies.Count == 0) return;
             float damage = values.Get("ShardDamage", 15);
             foreach (var first in held)
             {
-                var target = hunters[Random.Range(0, hunters.Count)];
+                var target = enemies[Random.Range(0, enemies.Count)];
                 int count = 1 + MythicEffects.Extra(player.GetCurrentWeapon()) + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
                     + (Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
                 for (int i = 0; i < count; i++)
