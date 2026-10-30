@@ -16,7 +16,7 @@ namespace Overhaul.Rarity
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f;
+        const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard, nextLaunch;
         // The freeze gland's values, for the shards left once its weapon is put away.
@@ -47,7 +47,8 @@ namespace Overhaul.Rarity
             foreach (var collider in clone.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(collider);
             clone.GetComponent<ZNetView>().m_persistent = false;
             if (!clone.GetComponent<ZSyncTransform>()) clone.AddComponent<ZSyncTransform>();
-            clone.transform.localScale = Vector3.one;
+            clone.transform.localScale = Vector3.one * ShardScale;
+            foreach (var ps in clone.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
             PrefabManager.Instance.AddPrefab(new CustomPrefab(clone, false));
         }
 
@@ -87,7 +88,7 @@ namespace Overhaul.Rarity
                 var shard = Spawn(player.transform.position);
                 if (shard) held.Add(shard);
             }
-            for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(Vector3.up));
+            for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(player.transform.forward));
             if (held.Count == 0 || Time.time < nextLaunch) return;
             var hunters = Hunters(player); if (hunters.Count == 0) return;
             nextLaunch = Time.time + values.Get("ShardDelay", .5f);
