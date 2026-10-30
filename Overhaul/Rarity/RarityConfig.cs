@@ -114,7 +114,7 @@ namespace Overhaul.Rarity
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
             else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddBiomeLootExceptions(path);
-                AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddCatalystEffects(path);
+                AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddCatalystEffects(path); AddAccessories(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]");
@@ -192,6 +192,23 @@ namespace Overhaul.Rarity
         }
 
         // Files made before the biome loot exceptions get the (empty) section from the defaults, after the last BiomeLoot one.
+        // Accessories, enchantable like the rest of the gear: one biome each, never dropped by the biome loot.
+        private static readonly (string Biome, string Item)[] Accessories = { ("BlackForest", "BeltStrength"), ("Swamp", "Wishbone"), ("Mistlands", "Demister"), ("Mistlands", "HelmetDverger"), ("Mistlands", "Overhaul_SpiritCirclet") };
+        private static void AddAccessories(string path)
+        {
+            string text = File.ReadAllText(path), before = text;
+            foreach (var (biome, item) in Accessories)
+            {
+                if (System.Text.RegularExpressions.Regex.IsMatch(text, @"(?m)^\s+" + item + @"\s*$")) continue;
+                var list = System.Text.RegularExpressions.Regex.Match(text, @"\[Biome_" + biome + @"\]\s*Items =[ \t]*\r?\n");
+                if (!list.Success) continue;
+                text = text.Insert(list.Index + list.Length, "  " + item + Environment.NewLine);
+                var exceptions = System.Text.RegularExpressions.Regex.Match(text, @"\[BiomeLootExceptions\]\s*ItemList =[ \t]*([^\r\n]*)");
+                if (exceptions.Success) text = text.Insert(exceptions.Index + exceptions.Length, (exceptions.Groups[1].Length > 0 ? ", " : "") + item);
+            }
+            if (text != before) { File.WriteAllText(path, text); Utility.Log.LogInfo("RaritySystem.cfg: accessories added"); }
+        }
+
         private static void AddBiomeLootExceptions(string path)
         {
             string text = File.ReadAllText(path);
