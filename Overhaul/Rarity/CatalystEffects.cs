@@ -96,6 +96,7 @@ namespace Overhaul.Rarity
             private static void Postfix(Humanoid __instance, bool __result)
             {
                 if (!__result || !(__instance is Player player) || !Local(player)) return;
+                IceShards.Release(player);
                 attacks++;
                 var thunder = Find(player, "ThunderStrike"); thunderPending = thunder != null && attacks % Mathf.Max(1, (int)thunder.Get("Count", 4)) == 0;
                 var dot = Find(player, "DotEvery"); dotAttack = dot != null && attacks % Mathf.Max(1, (int)dot.Get("Count", 3)) == 0;
