@@ -88,6 +88,7 @@ namespace Overhaul.Effects
             if (seman != null)
                 foreach (var effect in seman.GetStatusEffects())
                     if (effect is SE_Stats stats) total += Sum(stats.m_mods, type);
+            if (type == HitData.DamageType.Fire) total -= Dots.FireWeaknessPercent(character);
             return Mathf.Clamp(total, -200, 100);
         }
 

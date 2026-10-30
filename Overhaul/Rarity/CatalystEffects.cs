@@ -104,6 +104,11 @@ namespace Overhaul.Rarity
                             __instance.Damage(bolt);
                             break;
                         case "Lightning": Lightning(player, def, hit, __instance, __instance.transform.position); break;
+                        case "LavaWalker":
+                            var weapon = player.GetCurrentWeapon();
+                            if (weapon != null && ItemRarity.Catalysts(weapon).Contains(def.Id) && UnityEngine.Random.value * 100f < def.Get("WeakChance", 25))
+                                Network.FireWeakness(__instance, def.Get("WeakValue", 10), (int)def.Get("WeakStacks", 5), def.Get("WeakDuration", 4));
+                            break;
                         case "DotEvery":
                             if (dotAttack && Enum.TryParse(def.Dot, true, out DotType type)) Network.Dot(__instance, type, def.Get("Damage", 4), player.GetZDOID());
                             break;
@@ -367,7 +372,7 @@ namespace Overhaul.Rarity
         // ------------------------------------------------------------------ network: kills, roots and DoTs reach the right machine
         internal static class Network
         {
-            const string DotRpc = "Overhaul_CatalystDot", RootRpc = "Overhaul_CatalystRoot", KillRpc = "Overhaul_CatalystKill";
+            const string DotRpc = "Overhaul_CatalystDot", RootRpc = "Overhaul_CatalystRoot", KillRpc = "Overhaul_CatalystKill", WeakRpc = "Overhaul_CatalystFireWeakness";
             internal static void Dot(Character target, DotType type, float baseDamage, ZDOID attacker)
             {
                 if (target.m_nview.IsOwner()) Dots.Apply(target, type, baseDamage, attacker);
@@ -378,6 +383,11 @@ namespace Overhaul.Rarity
                 if (target.m_nview.IsOwner()) RootEffect.Apply(target, seconds);
                 else target.m_nview.InvokeRPC(RootRpc, seconds);
             }
+            internal static void FireWeakness(Character target, float value, int maxStacks, float seconds)
+            {
+                if (target.m_nview.IsOwner()) Dots.ApplyFireWeakness(target, value, maxStacks, seconds);
+                else target.m_nview.InvokeRPC(WeakRpc, value, maxStacks, seconds);
+            }
             [HarmonyPatch(typeof(Character), "Awake")]
             private static class Register
             {
@@ -385,6 +395,7 @@ namespace Overhaul.Rarity
                 {
                     var view = __instance.m_nview; if (!view || !view.IsValid()) return;
                     view.Register<int, float, ZDOID>(DotRpc, (sender, type, damage, attacker) => { if (view.IsOwner()) Dots.Apply(__instance, (DotType)type, damage, attacker); });
+                    view.Register<float, int, float>(WeakRpc, (sender, value, maxStacks, seconds) => { if (view.IsOwner()) Dots.ApplyFireWeakness(__instance, value, maxStacks, seconds); });
                     view.Register<float>(RootRpc, (sender, seconds) => { if (view.IsOwner()) RootEffect.Apply(__instance, seconds); });
                     if (__instance is Player) view.Register<Vector3>(KillRpc, (sender, position) => { if (__instance == Player.m_localPlayer) Killed(position); });
                 }
