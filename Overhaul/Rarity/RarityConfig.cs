@@ -404,10 +404,10 @@ namespace Overhaul.Rarity
                         data.Catalysts[id] = ItemRarity.CatalystRarity;
                         var def = new CatalystDef { Id = id, Effect = Get(v, "Effect", null), Dot = Get(v, "Dot", null) };
                         def.Items = List(Get(v, "Items", ""));
-                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max", "Chop", "Mine", "NovaChance", "NovaDamage", "NovaRadius", "WeakChance", "WeakValue", "WeakStacks", "WeakDuration", "ShardEvery", "ShardMax", "ShardDamage", "ShardDelay" })
+                        foreach (var key in new[] { "Value", "Count", "Damage", "Threshold", "Chance", "Duration", "Cooldown", "Stacks", "Min", "Max", "Chop", "Mine", "NovaChance", "NovaDamage", "NovaRadius", "WeakChance", "WeakValue", "WeakStacks", "WeakDuration", "ShardEvery", "ShardMax", "ShardDamage" })
                             if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
                         // Files made before the frost nova (its description shows these).
-                        if (def.Effect == "ColdWalker") foreach (var (key, value) in new[] { ("NovaChance", 15f), ("NovaDamage", 35f), ("NovaRadius", 6f), ("ShardEvery", 3f), ("ShardMax", 5f), ("ShardDamage", 15f), ("ShardDelay", 1f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
+                        if (def.Effect == "ColdWalker") foreach (var (key, value) in new[] { ("NovaChance", 15f), ("NovaDamage", 35f), ("NovaRadius", 6f), ("ShardEvery", 3f), ("ShardMax", 5f), ("ShardDamage", 15f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
                         if (def.Effect == "LavaWalker") foreach (var (key, value) in new[] { ("WeakChance", 25f), ("WeakValue", 10f), ("WeakStacks", 5f), ("WeakDuration", 4f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
                         def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
                         if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;
