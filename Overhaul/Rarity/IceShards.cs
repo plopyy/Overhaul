@@ -82,13 +82,13 @@ namespace Overhaul.Rarity
             if (def != null) values = def;
             // The first shard takes its full time once the weapon is in hand.
             if (def == null) equipped = false;
-            else if (!equipped) { equipped = true; nextShard = Time.time + def.Get("ShardEvery", 5); }
+            else if (!equipped) { equipped = true; nextShard = Time.time + def.Get("ShardEvery", 3); }
             if (values == null || held.Count == 0 && def == null) return;
             int max = (int)values.Get("ShardMax", 5);
-            if (def == null || held.Count >= max) nextShard = Time.time + values.Get("ShardEvery", 5);
+            if (def == null || held.Count >= max) nextShard = Time.time + values.Get("ShardEvery", 3);
             else if (Time.time >= nextShard)
             {
-                nextShard = Time.time + values.Get("ShardEvery", 5);
+                nextShard = Time.time + values.Get("ShardEvery", 3);
                 var shard = Spawn(player.transform.position);
                 if (shard) held.Add(shard);
             }
@@ -103,7 +103,7 @@ namespace Overhaul.Rarity
             for (int i = 0; i < count; i++)
             {
                 var shard = i == 0 ? first : Spawn(first.transform.position);
-                if (shard) player.StartCoroutine(Fly(player, target, shard, values.Get("ShardDamage", 5)));
+                if (shard) player.StartCoroutine(Fly(player, target, shard, values.Get("ShardDamage", 15)));
             }
         }
 
