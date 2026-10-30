@@ -14,7 +14,7 @@ namespace Overhaul.Rarity
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, HuntRange = 40f, Curve = .35f;
+        const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard, nextLaunch;
 
@@ -75,26 +75,26 @@ namespace Overhaul.Rarity
             var target = hunters[Random.Range(0, hunters.Count)];
             int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
                 + (Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
-            float side = Random.value < .5f ? -1 : 1;
             for (int i = 0; i < count; i++)
             {
-                // The first keeps its side, the others fan out from it.
                 var shard = i == 0 ? first : Spawn(first.transform.position);
-                if (shard) player.StartCoroutine(Fly(player, target, shard, def.Get("ShardDamage", 5), side * (1 + i * .6f) * (i % 2 == 0 ? 1 : -1)));
+                if (shard) player.StartCoroutine(Fly(player, target, shard, def.Get("ShardDamage", 5)));
             }
         }
 
-        // A curve bent sideways and upwards, ending on the creature however it moves.
-        static IEnumerator Fly(Player owner, Character target, GameObject shard, float damage, float bend)
+        // A curve bent a random way, anywhere from the right through up to the left (never down), ending on the creature however it moves.
+        static IEnumerator Fly(Player owner, Character target, GameObject shard, float damage)
         {
             Vector3 start = shard.transform.position;
             float length = Mathf.Max(1, Vector3.Distance(start, target.GetCenterPoint())), time = length / Speed;
-            Vector3 lateral = Vector3.Cross(Vector3.up, (target.GetCenterPoint() - start).normalized) * bend + Vector3.up * .4f;
+            Vector3 right = Vector3.Cross(Vector3.up, (target.GetCenterPoint() - start).normalized).normalized;
+            float angle = Random.Range(0f, 180f) * Mathf.Deg2Rad;
+            Vector3 lateral = (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax);
             Vector3 last = start;
             for (float t = 0; t < time && shard && owner && target && !target.IsDead(); t += Time.deltaTime)
             {
                 float k = t / time;
-                Vector3 end = target.GetCenterPoint(), control = (start + end) / 2 + lateral * length * Curve;
+                Vector3 end = target.GetCenterPoint(), control = (start + end) / 2 + lateral * length;
                 Vector3 position = Vector3.Lerp(Vector3.Lerp(start, control, k), Vector3.Lerp(control, end, k), k);
                 if (position != last) shard.transform.SetPositionAndRotation(position, Quaternion.LookRotation(position - last));
                 last = position;
