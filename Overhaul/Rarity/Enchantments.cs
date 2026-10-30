@@ -147,6 +147,8 @@ namespace Overhaul.Rarity
             var data = RarityConfig.Current;
             string[] categories = Categories(item);
             return Effects.EffectConfig.Current.Effects.Values.Where(e => e.Enchantment
+                // Magic power only feeds the Overhaul staffs.
+                && (Magic.StaffModels.Available || !string.Equals(e.Id, "MagicPower", StringComparison.OrdinalIgnoreCase))
                 && (data.Rarity(e.EnchantRarityMin)?.Order ?? int.MaxValue) <= rarity.Order
                 && (e.EnchantItemTypes.Count == 0 || categories.Any(e.EnchantItemTypes.Contains))).ToList();
         }
