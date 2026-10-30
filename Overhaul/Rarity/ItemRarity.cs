@@ -301,8 +301,7 @@ namespace Overhaul.Rarity
             if (catalyst)
             {
                 // What the catalyst does once socketed: each effect in its own box.
-                foreach (string effect in CatalystEffects.Describe(Enchantments.Prefab(item)).Split('
-'))
+                foreach (string effect in CatalystEffects.Describe(Enchantments.Prefab(item)).Split((char)10))
                     if (effect.Length > 0) TooltipRowAligner.Add(tooltip, new List<TooltipRow> { new TooltipRow(rarity.Paint(effect)) });
                 tint.Texts(tooltip, rarity); return;
             }
