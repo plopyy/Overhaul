@@ -44,6 +44,7 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Changed
+- **Accessories**: Megingjord, Wishbone, Wisplight and the circlets have a biome, so they can be enchanted: rarity, enchantment lines and catalyst slots. The biome loot does not drop them; they are added to existing configs.
 - **Catalysts**: each effect now only works in its kind of gear (weapon, armour or shield, trinket), shown in its description.
 - **Freeze gland**: socketed in a weapon, an ice shard forms every 5 s, up to 5, in a half circle over your head; every 0.5 s one curves at a random creature hunting you for 5 frost damage, splitting at launch with your extra projectiles.
 - **Molten core**: socketed in a weapon, each hit has a 25 % chance to put Fire weakness on the target: 10 % less fire resistance per stack, up to 5 stacks, for 4 s restarted by each new stack, shown under its health bar.

@@ -104,7 +104,7 @@ namespace Overhaul.Rarity
                 case ItemDrop.ItemData.ItemType.Chest: return "Chest";
                 case ItemDrop.ItemData.ItemType.Legs: return "Legs";
                 case ItemDrop.ItemData.ItemType.Shoulder: return "Cape";
-                case ItemDrop.ItemData.ItemType.Trinket: return "Trinket";
+                case ItemDrop.ItemData.ItemType.Trinket: case ItemDrop.ItemData.ItemType.Utility: return "Trinket";
                 case ItemDrop.ItemData.ItemType.Tool: return "Tool";
             }
             switch (shared.m_skillType)
