@@ -205,7 +205,7 @@ namespace Overhaul.Rarity
                 if (!(__instance is Player player) || !Local(player) || hit == null || Dots.IsDot(hit) || player.IsDead()) return;
                 var nova = InKind(player, "ColdWalker", Armor); var by = hit.GetAttacker();
                 if (nova != null && by && by != player && hit.GetTotalDamage() > 0 && UnityEngine.Random.value * 100f < nova.Get("NovaChance", 15))
-                    FrostNova(player, nova.Get("NovaDamage", 15), nova.Get("NovaRadius", 6));
+                    FrostNova(player, nova.Get("NovaDamage", 35), nova.Get("NovaRadius", 6));
                 var active = Active(player); if (active.Count == 0) return;
                 var lastStand = active.FirstOrDefault(d => d.Effect == "LastStand");
                 if (lastStand != null && Time.time >= lastStandReady && player.GetHealthPercentage() < lastStand.Get("Threshold", 25) / 100f && hit.GetTotalDamage() > 0)
