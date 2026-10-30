@@ -13,7 +13,7 @@ namespace Overhaul.Rarity
     // its Effect is one of the behaviours below, with the section's fixed values.
     internal static class CatalystEffects
     {
-        internal static void Initialize() => Effects.Effects.Register(Bonuses);
+        internal static void Initialize() { Effects.Effects.Register(Bonuses); IceShards.Initialize(); }
 
         // The catalysts socketed in the player's worn gear, each once.
         internal static List<CatalystDef> Active(Player player)
@@ -38,6 +38,12 @@ namespace Overhaul.Rarity
             return text;
         }
         static CatalystDef Find(Player player, string effect) => Active(player).FirstOrDefault(d => string.Equals(d.Effect, effect, StringComparison.OrdinalIgnoreCase));
+        // The catalyst with this effect, socketed in the weapon held.
+        internal static CatalystDef InWeapon(Player player, string effect)
+        {
+            var weapon = player.GetCurrentWeapon();
+            return weapon == null ? null : Active(player).FirstOrDefault(d => d.Effect == effect && ItemRarity.Catalysts(weapon).Contains(d.Id));
+        }
         static bool Local(Character c) => c && c == Player.m_localPlayer;
 
         static void Bonuses(Player player, Dictionary<string, float> totals)

@@ -2450,7 +2450,7 @@
   "overhaul_catalyst_effect_laststand": "Sous {Threshold} % de vie, le prochain coup subi est annulé (une fois toutes les {Cooldown} s)",
   "overhaul_catalyst_effect_entangle": "{Chance} % de chances d’enraciner la cible {Duration} s (elle ne peut plus se déplacer)",
   "overhaul_catalyst_effect_parryreflect": "Une parade renvoie {Value} % des dégâts parés à l’attaquant",
-  "overhaul_catalyst_effect_coldwalker": "Insensible au froid et au givre, +{Value} % de vitesse en Montagne et dans le Grand Nord. Sur une armure ou un bouclier : {NovaChance} % de chances, quand vous êtes touché, de déclencher une nova de givre infligeant {NovaDamage} dégâts de givre aux ennemis autour de vous",
+  "overhaul_catalyst_effect_coldwalker": "Insensible au froid et au givre, +{Value} % de vitesse en Montagne et dans le Grand Nord. Sur une armure ou un bouclier : {NovaChance} % de chances, quand vous êtes touché, de déclencher une nova de givre infligeant {NovaDamage} dégâts de givre aux ennemis autour de vous. Sur une arme : un éclat de glace se forme toutes les {ShardEvery} s (jusqu’à {ShardMax}) et fonce sur un ennemi qui vous poursuit pour {ShardDamage} dégâts de givre, en se séparant selon vos projectiles supplémentaires",
   "overhaul_catalyst_effect_execute": "+{Value} % de dégâts sur une créature sous {Threshold} % de vie",
   "overhaul_catalyst_effect_preciousloot": "{Chance} % de chances qu’un arbre abattu ou un rocher, un filon ou un tas de boue brisé lâche {Min} à {Max} objets précieux ({Items})",
   "overhaul_catalyst_effect_lightning": "{Chance} % de chances par coup qu’un éclair bonus frappe la cible : {Damage} dégâts de foudre. Serti sur une hache : +{Chop} dégâts de coupe. Serti sur une pioche : +{Mine} dégâts de minage.",
