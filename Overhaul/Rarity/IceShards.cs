@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
@@ -10,13 +11,30 @@ namespace Overhaul.Rarity
     // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
     // forms every ShardEvery s, up to ShardMax, in a half circle over the head. While creatures hunt the local player, one
     // leaves every ShardDelay s at a random one of them, curving on its way, for ShardDamage frost damage. On leaving, it
-    // splits by the extra projectiles (enchantment lines and leveling chance). A shard lost from the weapon melts.
+    // splits by the extra projectiles (enchantment lines and leveling chance). Shards already formed stay when the weapon
+    // changes; only new ones need it. A creature publishes its target in its ZDO, so hunters are seen whoever owns them.
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
         const float Speed = 20f, HuntRange = 40f, CurveMin = .2f, CurveMax = .5f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard, nextLaunch;
+        // The freeze gland's values, for the shards left once its weapon is put away.
+        static CatalystDef values;
+        const string TargetKey = "overhaul_hunt_target";
+
+        [HarmonyPatch(typeof(MonsterAI), "UpdateAI")]
+        private static class PublishTarget
+        {
+            private static void Postfix(MonsterAI __instance)
+            {
+                var view = __instance.m_nview;
+                if (!view || !view.IsValid() || !view.IsOwner()) return;
+                var zdo = view.GetZDO(); var target = __instance.GetTargetCreature();
+                var id = target ? target.GetZDOID() : ZDOID.None;
+                if (zdo.GetZDOID(TargetKey) != id) zdo.Set(TargetKey, id);
+            }
+        }
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
 
@@ -50,27 +68,29 @@ namespace Overhaul.Rarity
 
         static void Clear() { foreach (var shard in held) Remove(shard); held.Clear(); }
 
-        static List<Character> Hunters(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && c.GetBaseAI() is MonsterAI ai
-            && ai.GetTargetCreature() == player && Vector3.Distance(c.transform.position, player.transform.position) <= HuntRange).ToList();
+        static List<Character> Hunters(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && c.m_nview && c.m_nview.IsValid()
+            && c.m_nview.GetZDO().GetZDOID(TargetKey) == player.GetZDOID() && Vector3.Distance(c.transform.position, player.transform.position) <= HuntRange).ToList();
 
         internal static void Tick()
         {
             var player = Player.m_localPlayer;
             var def = player ? CatalystEffects.InWeapon(player, "ColdWalker") : null;
-            if (def == null || player.IsDead()) { if (held.Count > 0) Clear(); return; }
+            if (!player || player.IsDead()) { if (held.Count > 0) Clear(); return; }
             held.RemoveAll(s => !s);
-            int max = (int)def.Get("ShardMax", 5);
-            if (held.Count >= max) nextShard = Time.time + def.Get("ShardEvery", 5);
+            if (def != null) values = def;
+            if (values == null || held.Count == 0 && def == null) return;
+            int max = (int)values.Get("ShardMax", 5);
+            if (def == null || held.Count >= max) nextShard = Time.time + values.Get("ShardEvery", 5);
             else if (Time.time >= nextShard)
             {
-                nextShard = Time.time + def.Get("ShardEvery", 5);
+                nextShard = Time.time + values.Get("ShardEvery", 5);
                 var shard = Spawn(player.transform.position);
                 if (shard) held.Add(shard);
             }
             for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(Vector3.up));
             if (held.Count == 0 || Time.time < nextLaunch) return;
             var hunters = Hunters(player); if (hunters.Count == 0) return;
-            nextLaunch = Time.time + def.Get("ShardDelay", .5f);
+            nextLaunch = Time.time + values.Get("ShardDelay", .5f);
             var first = held[held.Count - 1]; held.RemoveAt(held.Count - 1);
             var target = hunters[Random.Range(0, hunters.Count)];
             int count = 1 + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
@@ -78,7 +98,7 @@ namespace Overhaul.Rarity
             for (int i = 0; i < count; i++)
             {
                 var shard = i == 0 ? first : Spawn(first.transform.position);
-                if (shard) player.StartCoroutine(Fly(player, target, shard, def.Get("ShardDamage", 5)));
+                if (shard) player.StartCoroutine(Fly(player, target, shard, values.Get("ShardDamage", 5)));
             }
         }
 
