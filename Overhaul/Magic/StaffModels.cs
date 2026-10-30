@@ -74,7 +74,9 @@ namespace Overhaul.Magic
         internal static readonly Dictionary<string, Staff> ByPrefab = Staffs.ToDictionary(s => s.Prefab);
 
         static AssetBundle bundle;
-        internal static void Initialize() { PrefabManager.OnVanillaPrefabsAvailable += Register; ItemManager.OnItemsRegistered += Icons; }
+        // The staffs exist in this build (off in 2.3: see Features.Magic).
+        internal static bool Available { get; private set; }
+        internal static void Initialize() { Available = true; PrefabManager.OnVanillaPrefabsAvailable += Register; ItemManager.OnItemsRegistered += Icons; }
         internal static void Shutdown() { PrefabManager.OnVanillaPrefabsAvailable -= Register; ItemManager.OnItemsRegistered -= Icons; }
 
         static void Register()
