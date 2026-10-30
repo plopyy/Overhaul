@@ -69,7 +69,6 @@
 - Creature health bars look like your own health bar, but straight: black frame, red bar over a white slow part (green for tamed creatures), with a tick every 25 % of the bar so every creature's bar keeps the same size; the level stars sit on its top edge. They show for every creature within 50 m (was 15 m), aimed at or not. (2.3.0.141)
 
 ### Fixed
-- **Magic power enchantment**: no longer rolls while the Overhaul staffs are absent (2.3), where it did nothing; items already carrying it lose that line at their next reroll.
 - The grimoire stand and the enchanting table are listed under the hammer's Crafting section (the build menu sorts by usage tags: the stand was under Misc, the table only under All). (2.3.0.391)
 - Upgrading an item at a station no longer wipes its rarity, enchantment lines, mythic enchantment and socketed catalysts: the upgraded item keeps them. (2.3.0.380)
 - Special passive change cooldown: 10 real minutes by default (CooldownMinutes of LevelingPassives.cfg), and it is no longer saved: reconnecting or restarting the game lets the passive change at once. (2.3.0.381)
