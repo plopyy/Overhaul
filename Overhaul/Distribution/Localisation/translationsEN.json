@@ -2445,7 +2445,7 @@
   "overhaul_catalyst_effect_laststand": "Under {Threshold} % health, the next hit taken is cancelled (once every {Cooldown} s)",
   "overhaul_catalyst_effect_entangle": "{Chance} % chance to root the target for {Duration} s (it can no longer move)",
   "overhaul_catalyst_effect_parryreflect": "A parry sends back {Value} % of the parried damage to the attacker",
-  "overhaul_catalyst_effect_coldwalker": "Unaffected by cold and frost, +{Value} % speed in the Mountains and the Deep North. In armour or a shield: {NovaChance} % chance when hit to release a frost nova dealing {NovaDamage} frost damage to enemies around you",
+  "overhaul_catalyst_effect_coldwalker": "Unaffected by cold and frost, +{Value} % speed in the Mountains and the Deep North. In armour or a shield: {NovaChance} % chance when hit to release a frost nova dealing {NovaDamage} frost damage to enemies around you. In a weapon: an ice shard forms every {ShardEvery} s (up to {ShardMax}) and flies at an enemy hunting you for {ShardDamage} frost damage, splitting with your extra projectiles",
   "overhaul_catalyst_effect_execute": "+{Value} % damage on a creature under {Threshold} % health",
   "overhaul_catalyst_effect_preciousloot": "{Chance} % chance that a felled tree or a broken rock, ore vein or mud pile drops {Min} to {Max} precious items ({Items})",
   "overhaul_catalyst_effect_lightning": "{Chance} % chance per hit that a bonus bolt strikes the target: {Damage} lightning damage. Socketed in an axe: +{Chop} chop damage. Socketed in a pickaxe: +{Mine} mining damage.",
