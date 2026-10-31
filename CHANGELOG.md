@@ -3,6 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Freeze gland shards** fly at what the crosshair aims at, whatever is there (a creature is followed, only creatures take damage), with or without enemies around.
 - **Catalyst weapon effects**: Surtling core builds heat and erupts in front of you every 10 hits, Crystal has a clone repeat a hit 1 s later, Ectoplasm leaves a spectre fighting for you 10 s on a kill, Celestial feather plunges you down on a mid-air melee attack with a shockwave growing with the height.
 - **Accessories**: Megingjord, Wishbone, Wisplight and the circlets can be enchanted: rarity, enchantment lines and catalyst slots. The biome loot does not drop them.
 - **Catalysts in all gear**: armour and shields have catalyst slots again, trinkets and accessories can be enchanted and socketed; each catalyst has its own effect per kind of gear. (2.4.0.280)

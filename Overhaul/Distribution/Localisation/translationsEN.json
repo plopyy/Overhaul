@@ -2450,7 +2450,7 @@
   "overhaul_catalyst_effect_parryreflect": "A parry sends back {Value} % of the parried damage to the attacker",
   "overhaul_catalyst_effect_coldwalker": "Unaffected by cold and frost, +{Value} % speed in the Mountains and the Deep North. Incompatible with the Molten core",
   "overhaul_catalyst_effect_coldwalker_armor": "{NovaChance} % chance when hit to release a frost nova dealing {NovaDamage} frost damage to enemies around you",
-  "overhaul_catalyst_effect_coldwalker_weapon": "An ice shard forms every {ShardEvery} s (up to {ShardMax}) and each attack sends them all at random enemies, for {ShardDamage} frost damage, splitting with your extra projectiles",
+  "overhaul_catalyst_effect_coldwalker_weapon": "An ice shard forms every {ShardEvery} s (up to {ShardMax}) and each attack sends them all at what you aim at, for {ShardDamage} frost damage, splitting with your extra projectiles",
   "overhaul_catalyst_effect_lavawalker": "Immune to fire, lava and boiling water. Incompatible with the Freeze gland",
   "overhaul_catalyst_effect_lavawalker_weapon": "{WeakChance} % chance per hit of Fire weakness on the target ({WeakValue} % less fire resistance for {WeakDuration} s, up to {WeakStacks} stacks)",
   "overhaul_catalyst_effect_execute": "+{Value} % damage on a creature under {Threshold} % health",
