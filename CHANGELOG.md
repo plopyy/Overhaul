@@ -15,6 +15,9 @@
 - **Magic power enchantment**: new enchantment for any gear, adding to the magic power of the Overhaul staff in hand.
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
+### Changed
+- Trolls and frost trolls now have an 80 % chance of being dumb.
+
 ### Fixed
 - The frost nova lies flat on the ground instead of standing upright.
 - `o_rarity` sets the item down 2 m ahead, facing the same way, without scatter or bounce; `o_rarity <item> all` lays out one per rarity in a line.
@@ -66,7 +69,6 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Changed
-- Trolls and frost trolls now have an 80 % chance of being dumb.
 - **Catalyst tooltip**: each effect of a catalyst sits in its own box.
 - **Catalysts**: each effect now only works in its kind of gear (weapon, armour or shield, trinket), shown in its description.
 - **Freeze gland**: socketed in a weapon, an ice shard forms every 3 s, up to 5, in a half circle over your head; each attack sends them all, curving, at random enemies for 10 frost damage, splitting at launch with your extra projectiles.
