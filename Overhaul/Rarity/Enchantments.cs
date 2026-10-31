@@ -23,6 +23,7 @@ namespace Overhaul.Rarity
         // prefab: for an ItemDrop prefab's own item data, which has no drop prefab.
         internal static int Biome(ItemDrop.ItemData item, string prefab = null)
         {
+            if (!Features.FullGear && Trinket(item)) return -1;
             prefab = prefab ?? Prefab(item);
             if (prefab == null) return -1;
             if (Biomes.Count == 0)
@@ -32,6 +33,9 @@ namespace Overhaul.Rarity
                         else Utility.Log.LogWarning("RaritySystem.cfg: " + name + " is listed in several biomes, the first one is used");
             return Biomes.TryGetValue(prefab, out int order) ? order : -1;
         }
+
+        internal static bool Trinket(ItemDrop.ItemData item) =>
+            item?.m_shared != null && (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Utility || item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trinket);
 
         // Prefab name of an item: its drop prefab, else (item data of a prefab, crafting preview) the item prefab with the same name.
         internal static string Prefab(ItemDrop.ItemData item)
@@ -228,6 +232,7 @@ namespace Overhaul.Rarity
         internal static IEnumerable<(Effects.EffectDef Effect, float Value)> Of(ItemDrop.ItemData item)
         {
             int biome = -1;
+            if (Biome(item) < 0) yield break;
             foreach (string id in ItemRarity.Enchants(item))
             {
                 if (id == ItemRarity.EmptyEnchant || !Effects.EffectConfig.Current.Effects.TryGetValue(id, out var effect) || !effect.Enchantment) continue;

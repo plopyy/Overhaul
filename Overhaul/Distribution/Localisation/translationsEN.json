@@ -2700,7 +2700,7 @@
   "overhaul_enchanttable_tip_text": "You can now build an <color=yellow>enchanting table</color>. Offer a trophy to give your gear a new rarity: the mightier the creature, the better your odds. There you can also rework an enchantment line and socket your catalysts.",
   "overhaul_catalysts_tip_topic": "Catalysts",
   "overhaul_catalysts_tip_label": "Hugin : Catalysts",
-  "overhaul_catalysts_tip_text": "This is a <color=yellow>catalyst</color>. Socketed in a piece of gear at the enchanting table, it grants you a unique power while you wear it. You can take it out whenever you like.",
+  "overhaul_catalysts_tip_text": "This is a <color=yellow>catalyst</color>. Socketed in a weapon at the enchanting table, it grants you a unique power while you wield it. You can take it out whenever you like.",
   "overhaul_chests_tip_topic": "Chests",
   "overhaul_chests_tip_label": "Hugin : Chests",
   "overhaul_chests_tip_text": "Press {0} to take everything from a chest at once, and Shift + {0} to give it a name. Your nearby chests are also used for crafting and building, without emptying them.",

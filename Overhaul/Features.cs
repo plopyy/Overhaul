@@ -9,5 +9,7 @@ namespace Overhaul
         internal const bool Magic = false;
         // The class window and its key.
         internal const bool Classes = false;
+        // Catalyst slots on armour and shields, rarity and enchantments on trinkets and accessories.
+        internal const bool FullGear = false;
     }
 }

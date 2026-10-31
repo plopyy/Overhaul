@@ -2803,7 +2803,7 @@
   "overhaul_enchanttable_tip_text": "Tu peux désormais bâtir une <color=yellow>table d'enchantement</color>. Sacrifie un trophée pour donner une nouvelle rareté à ton équipement : plus la créature était puissante, meilleures sont tes chances. Tu peux aussi y retravailler une ligne d'enchantement et y sertir tes catalyseurs.",
   "overhaul_catalysts_tip_topic": "Catalyseurs",
   "overhaul_catalysts_tip_label": "Hugin : Catalyseurs",
-  "overhaul_catalysts_tip_text": "Voici un <color=yellow>catalyseur</color>. Serti dans un équipement à la table d'enchantement, il t'accorde un pouvoir unique tant que tu le portes. Tu peux le retirer quand tu veux.",
+  "overhaul_catalysts_tip_text": "Voici un <color=yellow>catalyseur</color>. Serti dans une arme à la table d'enchantement, il t'accorde un pouvoir unique tant que tu la manies. Tu peux le retirer quand tu veux.",
   "overhaul_chests_tip_topic": "Coffres",
   "overhaul_chests_tip_label": "Hugin : Coffres",
   "overhaul_chests_tip_text": "Appuie sur {0} pour tout prendre d'un coup dans un coffre, et sur Maj + {0} pour lui donner un nom. Tes coffres proches servent aussi à fabriquer et à construire, sans les vider.",

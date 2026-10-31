@@ -79,7 +79,7 @@ namespace Overhaul.Rarity
             if (lootable.TryGetValue(name, out bool known)) return known;
             var prefab = ObjectDB.instance.GetItemPrefab(name); var item = prefab ? prefab.GetComponent<ItemDrop>() : null;
             var recipe = item ? ObjectDB.instance.m_recipes.FirstOrDefault(r => r && r.m_item && r.m_item.name == name && r.m_enabled) : null;
-            bool ok = recipe != null && !recipe.m_resources.Any(r => r.m_resItem && ItemRarity.Gear(r.m_resItem.m_itemData));
+            bool ok = recipe != null && (Features.FullGear || !Enchantments.Trinket(item.m_itemData)) && !recipe.m_resources.Any(r => r.m_resItem && ItemRarity.Gear(r.m_resItem.m_itemData));
             return lootable[name] = ok;
         }
     }

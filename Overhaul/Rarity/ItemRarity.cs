@@ -74,7 +74,7 @@ namespace Overhaul.Rarity
         internal static string[] Catalysts(ItemDrop.ItemData item)
         {
             var rarity = Of(item);
-            if (rarity == null || rarity.CatalystSlots <= 0 || IsCatalyst(item, out _)) return new string[0];
+            if (rarity == null || rarity.CatalystSlots <= 0 || IsCatalyst(item, out _) || !CatalystEffects.Socketable(item)) return new string[0];
             var slots = new string[rarity.CatalystSlots];
             string[] saved = item.m_customData != null && item.m_customData.TryGetValue(CatalystKey, out string value) ? value.Split(',') : new string[0];
             for (int i = 0; i < slots.Length; i++) slots[i] = i < saved.Length ? saved[i] : "";
