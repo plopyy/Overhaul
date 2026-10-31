@@ -434,7 +434,7 @@ namespace Overhaul.Building
                 }
         }
 
-        // The building options box's checkerboard choice: off at each launch, never saved.
+        // The building options box's checkerboard choice: off once the hammer leaves the hand, never saved.
         internal static bool CheckerboardOn;
         private static bool Checkerboard => kind == Kind.Floor && CheckerboardOn &&
             Mathf.Abs(sizeA - sizeB) < .05f && IsWoodFloor(Player.m_localPlayer ? Player.m_localPlayer.GetSelectedPiece() : null);
