@@ -10,14 +10,14 @@ namespace Overhaul.Rarity
     // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
     // forms every ShardEvery s, up to ShardMax, in a half circle over the head. Each attack of the local player sends them all at
     // what the crosshair aims at (a fixed point, nothing is followed), curving on their way, for ShardDamage frost damage. On leaving, it
-    // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay when the weapon
+    // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay up to KeepTime s when the weapon
     // changes; only new ones need it.
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, Range = 100f, HitRadius = 1.5f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
+        const float Speed = 20f, Range = 100f, HitRadius = 1.5f, KeepTime = 30f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
-        static float nextShard;
+        static float nextShard, stowed;
         static bool equipped;
         // The freeze gland's values, for the shards left once its weapon is put away.
         static CatalystDef values;
@@ -75,6 +75,9 @@ namespace Overhaul.Rarity
             if (!player || player.IsDead()) { if (held.Count > 0) Clear(); return; }
             held.RemoveAll(s => !s);
             if (def != null) values = def;
+            // Without the weapon, the shards left last KeepTime s.
+            if (def != null) stowed = Time.time;
+            else if (held.Count > 0 && Time.time >= stowed + KeepTime) { Clear(); return; }
             // The first shard takes its full time once the weapon is in hand.
             if (def == null) equipped = false;
             else if (!equipped) { equipped = true; nextShard = Time.time + def.Get("ShardEvery", 3); }
