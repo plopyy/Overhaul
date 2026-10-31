@@ -66,6 +66,7 @@
 - Admin commands for the whole server, every player included: o_weather <weather>|reset sets the weather until the game's next weather change, then the weather goes on as usual (the game's env command does not work on a dedicated server); o_time hh:mm moves the time of day forward to the next hh:mm.
 
 ### Changed
+- Trolls and frost trolls now have an 80 % chance of being dumb.
 - **Catalyst tooltip**: each effect of a catalyst sits in its own box.
 - **Catalysts**: each effect now only works in its kind of gear (weapon, armour or shield, trinket), shown in its description.
 - **Freeze gland**: socketed in a weapon, an ice shard forms every 3 s, up to 5, in a half circle over your head; each attack sends them all, curving, at random enemies for 10 frost damage, splitting at launch with your extra projectiles.
