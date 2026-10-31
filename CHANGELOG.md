@@ -1,5 +1,11 @@
 ﻿﻿# Changelog
 
+## 2.3.1 (in progress)
+
+### Changed
+- **Freeze gland shards** fly up to 100 m at the point the crosshair aims at, with or without enemies around, and never follow anything; they shatter there, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
+- **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
+
 ## 2.3.0 (released)
 
 ### Added

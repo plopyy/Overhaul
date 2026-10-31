@@ -9,15 +9,15 @@ namespace Overhaul.Rarity
 {
     // Freeze gland in the weapon held: an ice shard (the game's ice staff projectile, Overhaul_IceShard, seen by every player)
     // forms every ShardEvery s, up to ShardMax, in a half circle over the head. Each attack of the local player sends them all at
-    // random enemies around, curving on their way, for ShardDamage frost damage. On leaving, it
-    // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay when the weapon
+    // what the crosshair aims at (a fixed point, nothing is followed), curving on their way, for ShardDamage frost damage. On leaving, it
+    // splits by the extra projectiles (enchantment lines, leveling chance and the held weapon's FanVolley). Shards already formed stay up to KeepTime s when the weapon
     // changes; only new ones need it.
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, Range = 40f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
+        const float Speed = 20f, Range = 100f, HitRadius = 1.5f, KeepTime = 30f, MeleeCurve = 3f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
-        static float nextShard;
+        static float nextShard, stowed;
         static bool equipped;
         // The freeze gland's values, for the shards left once its weapon is put away.
         static CatalystDef values;
@@ -55,8 +55,18 @@ namespace Overhaul.Rarity
 
         static void Clear() { foreach (var shard in held) Remove(shard); held.Clear(); }
 
-        static List<Character> Enemies(Player player) => Character.GetAllCharacters().Where(c => c && c != player && !c.IsDead() && BaseAI.IsEnemy(player, c)
-            && Vector3.Distance(c.transform.position, player.transform.position) <= Range).ToList();
+        // The point the crosshair aims at within Range, on whatever is there (the far end of the aim in open air).
+        static Vector3 Aim(Player player)
+        {
+            var camera = Utils.GetMainCamera();
+            if (!camera) return player.GetCenterPoint() + player.transform.forward * Range;
+            var ray = new Ray(camera.transform.position, camera.transform.forward);
+            var hits = Physics.RaycastAll(ray, Range, Projectile.s_rayMaskSolids);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var hit in hits)
+                if (hit.collider.GetComponentInParent<Character>() != player) return hit.point;
+            return ray.GetPoint(Range);
+        }
 
         internal static void Tick()
         {
@@ -65,6 +75,9 @@ namespace Overhaul.Rarity
             if (!player || player.IsDead()) { if (held.Count > 0) Clear(); return; }
             held.RemoveAll(s => !s);
             if (def != null) values = def;
+            // Without the weapon, the shards left last KeepTime s.
+            if (def != null) stowed = Time.time;
+            else if (held.Count > 0 && Time.time >= stowed + KeepTime) { Clear(); return; }
             // The first shard takes its full time once the weapon is in hand.
             if (def == null) equipped = false;
             else if (!equipped) { equipped = true; nextShard = Time.time + def.Get("ShardEvery", 3); }
@@ -80,52 +93,59 @@ namespace Overhaul.Rarity
             for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(player.transform.forward));
         }
 
-        // An attack of the player sends every shard held, each at a random enemy around.
+        // An attack of the player sends every shard held at what is aimed at.
         internal static void Release(Player player)
         {
             held.RemoveAll(shard => !shard);
             if (held.Count == 0) return;
-            var enemies = Enemies(player); if (enemies.Count == 0) return;
+            // A melee attack: the point it should strike in front of the player, on a wider curve.
+            var attack = player.m_currentAttack;
+            bool melee = attack != null && attack.m_attackType != Attack.AttackType.Projectile;
+            Vector3 point = melee ? player.GetCenterPoint() + player.transform.forward * attack.m_attackRange : Aim(player);
             float damage = values.Get("ShardDamage", 10);
             foreach (var first in held)
             {
-                var target = enemies[Random.Range(0, enemies.Count)];
                 int count = 1 + MythicEffects.Extra(player.GetCurrentWeapon()) + Mathf.RoundToInt(Effects.Effects.Get(player, "ProjectileCount"))
                     + (Random.value < Leveling.LevelingEffects.Bonus(player, "projectile") ? 1 : 0);
                 for (int i = 0; i < count; i++)
                 {
                     var shard = i == 0 ? first : Spawn(first.transform.position);
-                    if (shard) player.StartCoroutine(Fly(player, target, shard, damage));
+                    if (shard) player.StartCoroutine(Fly(player, point, shard, damage, melee ? MeleeCurve : 1f));
                 }
             }
             held.Clear();
         }
 
-        // A curve bent a random way, anywhere from the right through up to the left (never down), ending on the creature however it moves.
-        static IEnumerator Fly(Player owner, Character target, GameObject shard, float damage)
+        // A curve bent a random way, anywhere from the right through up to the left (never down), ending on the point aimed at.
+        static IEnumerator Fly(Player owner, Vector3 point, GameObject shard, float damage, float curve)
         {
             Vector3 start = shard.transform.position;
-            float length = Mathf.Max(1, Vector3.Distance(start, target.GetCenterPoint())), time = length / Speed;
-            Vector3 right = Vector3.Cross(Vector3.up, (target.GetCenterPoint() - start).normalized).normalized;
+            float length = Mathf.Max(1, Vector3.Distance(start, point)), time = length / Speed;
+            Vector3 right = Vector3.Cross(Vector3.up, (point - start).normalized).normalized;
             float angle = Random.Range(0f, 180f) * Mathf.Deg2Rad;
-            Vector3 lateral = (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax);
+            Vector3 control = (start + point) / 2 + (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax) * curve * length;
             Vector3 last = start;
-            for (float t = 0; t < time && shard && owner && target && !target.IsDead(); t += Time.deltaTime)
+            for (float t = 0; t < time && shard && owner; t += Time.deltaTime)
             {
                 float k = t / time;
-                Vector3 end = target.GetCenterPoint(), control = (start + end) / 2 + lateral * length;
-                Vector3 position = Vector3.Lerp(Vector3.Lerp(start, control, k), Vector3.Lerp(control, end, k), k);
+                Vector3 position = Vector3.Lerp(Vector3.Lerp(start, control, k), Vector3.Lerp(control, point, k), k);
                 if (position != last) shard.transform.SetPositionAndRotation(position, Quaternion.LookRotation(position - last));
                 last = position;
                 yield return null;
             }
-            if (shard && owner && target && !target.IsDead())
+            if (shard && owner)
             {
-                var hit = new HitData { m_point = target.GetCenterPoint(), m_dir = (target.GetCenterPoint() - last).normalized, m_dodgeable = false, m_blockable = false };
-                hit.m_damage.m_frost = damage; hit.SetAttacker(owner);
                 var model = ZNetScene.instance ? ZNetScene.instance.GetPrefab(Source)?.GetComponent<Projectile>() : null;
-                if (model) model.m_hitEffects.Create(hit.m_point, Quaternion.identity);
-                target.Damage(hit);
+                if (model) model.m_hitEffects.Create(point, Quaternion.identity);
+                // Only what still stands at the point takes the hit.
+                var target = Character.GetAllCharacters().Where(c => c && c != owner && !c.IsDead() && BaseAI.IsEnemy(owner, c) && Vector3.Distance(c.GetCenterPoint(), point) <= HitRadius)
+                    .OrderBy(c => Vector3.Distance(c.GetCenterPoint(), point)).FirstOrDefault();
+                if (target)
+                {
+                    var hit = new HitData { m_point = point, m_dir = (point - last).normalized, m_dodgeable = false, m_blockable = false };
+                    hit.m_damage.m_frost = damage; hit.SetAttacker(owner);
+                    target.Damage(hit);
+                }
             }
             Remove(shard);
         }
