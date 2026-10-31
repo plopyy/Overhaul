@@ -13,7 +13,7 @@ namespace Overhaul.Rarity
     // its Effect is one of the behaviours below, with the section's fixed values.
     internal static class CatalystEffects
     {
-        internal static void Initialize() { Effects.Effects.Register(Bonuses); IceShards.Initialize(); }
+        internal static void Initialize() { Effects.Effects.Register(Bonuses); IceShards.Initialize(); Jotunn.Managers.PrefabManager.OnVanillaPrefabsAvailable += RegisterSpectre; }
 
         // The catalysts socketed in the player's worn gear, each once.
         internal static List<CatalystDef> Active(Player player)
@@ -62,12 +62,17 @@ namespace Overhaul.Rarity
         internal static string Describe(string prefab, ItemDrop.ItemData gear = null)
         {
             if (prefab == null || !RarityConfig.Current.CatalystEffects.TryGetValue(prefab, out var def) || string.IsNullOrEmpty(def.Effect)) return "";
-            string id = def.Effect.ToLowerInvariant();
-            var effects = new List<(string kind, string key)> { (Kind(def.Effect), id) };
-            if (def.Effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
-            if (def.Effect == "LavaWalker") effects.Add((Weapon, id + "_weapon"));
+            var effects = Sides(def.Effect);
             if (gear != null) { effects.RemoveAll(e => e.kind != Kind(gear)); return effects.Count == 0 ? "" : Fill(def, effects[0].key); }
             return string.Join("\n", effects.Select(e => Localization.instance.Localize("$overhaul_catalyst_slot_" + e.kind) + Fill(def, e.key)));
+        }
+        static List<(string kind, string key)> Sides(string effect)
+        {
+            string id = effect.ToLowerInvariant();
+            var effects = new List<(string kind, string key)> { (Kind(effect), id) };
+            if (effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
+            if (effect == "LavaWalker" || effect == "FireThorns" || effect == "ParryReflect" || effect == "LastStand" || effect == "HighJump") effects.Add((Weapon, id + "_weapon"));
+            return effects;
         }
         static string Fill(CatalystDef def, string key)
         {
@@ -97,6 +102,7 @@ namespace Overhaul.Rarity
             {
                 if (!__result || !(__instance is Player player) || !Local(player)) return;
                 IceShards.Release(player);
+                StartSkyFall(player);
                 attacks++;
                 var thunder = Find(player, "ThunderStrike"); thunderPending = thunder != null && attacks % Mathf.Max(1, (int)thunder.Get("Count", 4)) == 0;
                 var dot = Find(player, "DotEvery"); dotAttack = dot != null && attacks % Mathf.Max(1, (int)dot.Get("Count", 3)) == 0;
@@ -115,8 +121,9 @@ namespace Overhaul.Rarity
         {
             private static void Prefix(Character __instance, HitData hit)
             {
-                if (hit == null || Dots.IsDot(hit) || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player || __instance.IsDead()) return;
+                if (echoing || hit == null || Dots.IsDot(hit) || !(hit.GetAttacker() is Player player) || !Local(player) || __instance == player || __instance.IsDead()) return;
                 if (hit.GetTotalDamage() <= 0) return;
+                WeaponHit(player, __instance, hit);
                 var molten = InWeapon(player, "LavaWalker");
                 if (molten != null && UnityEngine.Random.value * 100f < molten.Get("WeakChance", 25))
                     Network.FireWeakness(__instance, molten.Get("WeakValue", 10), (int)molten.Get("WeakStacks", 5), molten.Get("WeakDuration", 4));
@@ -270,6 +277,7 @@ namespace Overhaul.Rarity
         {
             var player = Player.m_localPlayer; if (!player) return;
             MythicEffects.Killed();
+            SoulRip(player, position);
             foreach (var def in Active(player))
             {
                 if (def.Effect == "KillFrenzy")
@@ -400,6 +408,108 @@ namespace Overhaul.Rarity
         private static class LavaWalker
         {
             private static bool Prefix(Character __instance) => !(__instance is Player player && Local(player) && Find(player, "LavaWalker") != null);
+        }
+
+        // ------------------------------------------------------------------ weapon effects of the surtling core, crystal, ectoplasm and celestial feather
+        static int heat;
+        static float echoReady, soulReady;
+        static bool echoing;
+
+        // Unstable blade: each hit heats the weapon, the last one erupts in front of the player and cools it. Crystal echo: a copy repeats
+        // the hit a moment later. Hits without a skill (bursts, bolts) count for neither.
+        static void WeaponHit(Player player, Character target, HitData hit)
+        {
+            if (hit.m_skill == Skills.SkillType.None) return;
+            var blade = InWeapon(player, "FireThorns");
+            if (blade != null && ++heat >= blade.Get("EruptCount", 10))
+            {
+                heat = 0;
+                Explosion(player, player.transform.position + player.transform.forward * 2f + Vector3.up, blade.Get("EruptDamage", 40));
+            }
+            var echo = InWeapon(player, "ParryReflect");
+            if (echo != null && Time.time >= echoReady)
+            {
+                echoReady = Time.time + echo.Get("EchoCooldown", 8);
+                player.StartCoroutine(Echo(player, target, hit.Clone(), Enchantments.Prefab(player.GetCurrentWeapon()), echo.Get("EchoDelay", 1)));
+            }
+        }
+        static System.Collections.IEnumerator Echo(Player owner, Character target, HitData hit, string item, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (!owner || !target || target.IsDead()) yield break;
+            Vector3 side = Vector3.Cross(Vector3.up, target.transform.position - owner.transform.position).normalized;
+            var copy = item != null ? MythicVfx.SpawnSpectral(item, target.GetCenterPoint() + side, Quaternion.LookRotation(-side)) : null;
+            MythicVfx.SpectralHit(target.GetCenterPoint(), -side);
+            echoing = true;
+            try { target.Damage(hit); } finally { echoing = false; }
+            yield return new WaitForSeconds(.4f);
+            if (copy && ZNetScene.instance) ZNetScene.instance.Destroy(copy);
+        }
+
+        // Soul rip: a creature killed leaves a ghost fighting on the player's side (Overhaul_CatalystSpectre, gone on its own).
+        const string Spectre = "Overhaul_CatalystSpectre";
+        static void RegisterSpectre()
+        {
+            Jotunn.Managers.PrefabManager.OnVanillaPrefabsAvailable -= RegisterSpectre;
+            var clone = Jotunn.Managers.PrefabManager.Instance.CreateClonedPrefab(Spectre, "Ghost");
+            if (!clone) { Utility.Log.LogError("Spectre: Ghost missing"); return; }
+            var drops = clone.GetComponent<CharacterDrop>(); if (drops) UnityEngine.Object.DestroyImmediate(drops);
+            var ai = clone.GetComponent<MonsterAI>(); if (ai) ai.m_despawnInDay = false;
+            var timed = clone.AddComponent<CharacterTimedDestruction>();
+            timed.m_triggerOnAwake = true; timed.m_timeoutMin = timed.m_timeoutMax = 10f;
+            Jotunn.Managers.PrefabManager.Instance.AddPrefab(new Jotunn.Entities.CustomPrefab(clone, false));
+        }
+        static void SoulRip(Player player, Vector3 position)
+        {
+            var def = InWeapon(player, "LastStand");
+            if (def == null || Time.time < soulReady) return;
+            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(Spectre) : null; if (!prefab) return;
+            soulReady = Time.time + def.Get("SoulCooldown", 30);
+            var spectre = UnityEngine.Object.Instantiate(prefab, position, Quaternion.identity).GetComponent<Character>();
+            spectre.SetTamed(true);
+            var timed = spectre.GetComponent<CharacterTimedDestruction>();
+            timed.CancelInvoke(); timed.Trigger(def.Get("SoulDuration", 10));
+        }
+
+        // Sky fall: a melee attack in mid-air plunges the player down; the landing sends a shockwave growing with the height fallen, without fall damage.
+        const float PlungeSpeed = 25f, PlungeLimit = 5f;
+        static CatalystDef plunge;
+        static float plungeFrom, plungeEnd;
+        static void StartSkyFall(Player player)
+        {
+            if (plunge != null || player.IsOnGround() || player.InWater() || player.m_currentAttack == null || player.m_currentAttack.m_attackType == Attack.AttackType.Projectile) return;
+            plunge = InWeapon(player, "HighJump");
+            plungeFrom = player.transform.position.y; plungeEnd = Time.time + PlungeLimit;
+        }
+        [HarmonyPatch(typeof(Player), "FixedUpdate")]
+        private static class SkyFall
+        {
+            private static void Postfix(Player __instance)
+            {
+                if (plunge == null || !Local(__instance)) return;
+                __instance.m_maxAirAltitude = __instance.transform.position.y;
+                if (!__instance.IsDead() && !__instance.InWater() && !__instance.IsOnGround() && Time.time < plungeEnd)
+                {
+                    __instance.m_body.velocity = Vector3.down * PlungeSpeed;
+                    return;
+                }
+                var def = plunge; plunge = null;
+                if (__instance.IsOnGround() && !__instance.IsDead()) Shockwave(__instance, def, plungeFrom - __instance.transform.position.y);
+            }
+        }
+        static void Shockwave(Player player, CatalystDef def, float height)
+        {
+            float damage = Mathf.Min(def.Get("FallDamage", 20) + Mathf.Max(0, height) * def.Get("FallPerMeter", 5), def.Get("FallMax", 100));
+            float radius = def.Get("FallRadius", 5);
+            Vector3 point = player.transform.position;
+            MythicVfx.Spawn("Mythic_Earthquake", point, Quaternion.identity);
+            foreach (var c in Character.GetAllCharacters())
+            {
+                if (!c || c == player || c.IsDead() || !BaseAI.IsEnemy(player, c) || Vector3.Distance(c.transform.position, point) > radius) continue;
+                var hit = new HitData { m_point = c.GetCenterPoint(), m_dir = (c.transform.position - point).normalized, m_dodgeable = false, m_blockable = false, m_staggerMultiplier = 2f, m_pushForce = 30f };
+                hit.m_damage.m_blunt = damage; hit.SetAttacker(player);
+                c.Damage(hit);
+            }
         }
 
         // ------------------------------------------------------------------ network: kills, roots and DoTs reach the right machine
