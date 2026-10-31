@@ -238,7 +238,7 @@ namespace Overhaul.Rarity
         const float NovaHalfHeight = 1.8f;
         static void FrostNova(Player player, float damage, float radius)
         {
-            MythicVfx.Spawn("Overhaul_FrostNova", player.transform.position, Quaternion.identity);
+            MythicVfx.Spawn("Overhaul_FrostNova", player.transform.position, Quaternion.Euler(-90, 0, 0)); // the pack lays it flat with this rotation
             Vector3 center = player.transform.position + Vector3.up * NovaHalfHeight / 2;
             foreach (var c in Character.GetAllCharacters())
             {
