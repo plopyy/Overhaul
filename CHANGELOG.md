@@ -5,6 +5,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Accessories**: Megingjord, Wishbone, Wisplight and the circlets can be enchanted: rarity, enchantment lines and catalyst slots. The biome loot does not drop them.
 - **Catalysts in all gear**: armour and shields have catalyst slots again, trinkets and accessories can be enchanted and socketed; each catalyst has its own effect per kind of gear. (2.4.0.280)
 - **Grimoire stand**, a new hammer piece (Crafting, at a workbench: 8 fine wood, 4 bronze, 1 surtling core): a candlelit book stand and its tall candle holder in the game’s own wood wall material, wearing, weathering and lighting like any wooden wall (the grain running along their posts), with candles burning with their own flames (no black wicks) and a soft, warm yellow light that flickers. Its grimoire is closed, plays its opening animation as soon as any player comes near (within 4 m) and its closing animation when nobody is left around; every player sees it. As the book opens, the three candles of the tall holder rise about 15 cm off it, one after the other, and float with a gentle up-and-down sway as if stirred by the wind (each at its own rhythm, in a seamless loop) while a player stays near; as the book closes they settle back exactly where they were. Using it opens the grimoire window, which closes if you walk away from the stand. It can be moved with the move key like the other functional pieces. Its build menu icon shows the stand itself. (2.4.0.105)
 - **Eitr from food**, set in the new **Foods.cfg** (sent by the server): every food without eitr of its own now gives 15 % of its health + stamina as eitr (carrot soup: 9, bread: 14), and four new **eitr dishes** at the cauldron lead up to the Mistlands’ eitr dishes (stuffed mushroom: 75 eitr): **Yellow mushroom stew** (Black Forest: yellow mushrooms, mushrooms, thistle; 15 eitr), **Turnip and mushroom soup** (Swamp: turnips, yellow mushrooms, bloodbag; 30 eitr), **Onion infusion** (Mountains: onions, mushrooms, honey; 45 eitr) and **Cloud flatbread** (Plains: barley flour, cloudberries, yellow mushrooms; 60 eitr), each with low health and stamina and an eitr-blue icon.
@@ -63,7 +64,6 @@
 
 ### Changed
 - **Catalyst tooltip**: each effect of a catalyst sits in its own box.
-- **Accessories**: Megingjord, Wishbone, Wisplight and the circlets have a biome, so they can be enchanted: rarity, enchantment lines and catalyst slots. The biome loot does not drop them; they are added to existing configs.
 - **Catalysts**: each effect now only works in its kind of gear (weapon, armour or shield, trinket), shown in its description.
 - **Freeze gland**: socketed in a weapon, an ice shard forms every 3 s, up to 5, in a half circle over your head; each attack sends them all, curving, at random enemies for 10 frost damage, splitting at launch with your extra projectiles.
 - **Molten core**: socketed in a weapon, each hit has a 25 % chance to put Fire weakness on the target: 10 % less fire resistance per stack, up to 5 stacks, for 4 s restarted by each new stack, shown under its health bar.
