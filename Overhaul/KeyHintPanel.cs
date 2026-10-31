@@ -119,6 +119,8 @@ namespace Overhaul
         {
             if (!options) return;
             var player = Player.m_localPlayer;
+            // The checkerboard only lasts while the hammer stays in hand.
+            if (player?.GetRightItem()?.m_shared.m_name != "$item_hammer") Building.QuickBuild.CheckerboardOn = false;
             bool shown = checkerboard && player && player.InPlaceMode() && hints.m_buildHints && hints.m_buildHints.activeInHierarchy &&
                 player.GetRightItem()?.m_shared.m_name == "$item_hammer";
             if (options.gameObject.activeSelf != shown) options.gameObject.SetActive(shown);
