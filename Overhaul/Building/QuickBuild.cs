@@ -434,7 +434,9 @@ namespace Overhaul.Building
                 }
         }
 
-        private static bool Checkerboard => kind == Kind.Floor && Utility.OverhaulConfig.BuildCheckerboardFloors.Value &&
+        // The building options box's checkerboard choice: off at each launch, never saved.
+        internal static bool CheckerboardOn;
+        private static bool Checkerboard => kind == Kind.Floor && CheckerboardOn &&
             Mathf.Abs(sizeA - sizeB) < .05f && IsWoodFloor(Player.m_localPlayer ? Player.m_localPlayer.GetSelectedPiece() : null);
 
         // The wood floors, the pieces the checkerboard option is for: wood_floor, wood_floor_1x1, ashwood_floor_2x2,

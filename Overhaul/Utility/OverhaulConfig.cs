@@ -57,7 +57,6 @@ namespace Overhaul.Utility
         public static ConfigEntry<UnityEngine.KeyCode> BuildPreciseKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildSnapToggleKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildResetKey { get; private set; }
-        public static ConfigEntry<bool> BuildCheckerboardFloors { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -80,9 +79,6 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             BuildResetKey = config.Bind("Building", "ResetKey", UnityEngine.KeyCode.Less,
                 new ConfigDescription("Pressed while building or moving a piece, sets the ghost flat and facing north again (all three axes). The key does nothing else while building. Less is the < key left of W (AZERTY) or Z (QWERTY).",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            BuildCheckerboardFloors = config.Bind("Building", "CheckerboardFloors", false,
-                new ConfigDescription("Quick build of wood floors: every other floor of the row turned 90 degrees, as a checkerboard. Also set in game in the building options box, above the key hints, while a wood or ashwood floor is selected (build menu open).",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
