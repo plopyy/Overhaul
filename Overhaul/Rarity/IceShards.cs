@@ -15,7 +15,7 @@ namespace Overhaul.Rarity
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, Range = 100f, HitRadius = 1.5f, KeepTime = 30f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
+        const float Speed = 20f, Range = 100f, HitRadius = 1.5f, KeepTime = 30f, MeleeCurve = 3f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard, stowed;
         static bool equipped;
@@ -98,7 +98,10 @@ namespace Overhaul.Rarity
         {
             held.RemoveAll(shard => !shard);
             if (held.Count == 0) return;
-            Vector3 point = Aim(player);
+            // A melee attack: the point it should strike in front of the player, on a wider curve.
+            var attack = player.m_currentAttack;
+            bool melee = attack != null && attack.m_attackType != Attack.AttackType.Projectile;
+            Vector3 point = melee ? player.GetCenterPoint() + player.transform.forward * attack.m_attackRange : Aim(player);
             float damage = values.Get("ShardDamage", 10);
             foreach (var first in held)
             {
@@ -107,20 +110,20 @@ namespace Overhaul.Rarity
                 for (int i = 0; i < count; i++)
                 {
                     var shard = i == 0 ? first : Spawn(first.transform.position);
-                    if (shard) player.StartCoroutine(Fly(player, point, shard, damage));
+                    if (shard) player.StartCoroutine(Fly(player, point, shard, damage, melee ? MeleeCurve : 1f));
                 }
             }
             held.Clear();
         }
 
         // A curve bent a random way, anywhere from the right through up to the left (never down), ending on the point aimed at.
-        static IEnumerator Fly(Player owner, Vector3 point, GameObject shard, float damage)
+        static IEnumerator Fly(Player owner, Vector3 point, GameObject shard, float damage, float curve)
         {
             Vector3 start = shard.transform.position;
             float length = Mathf.Max(1, Vector3.Distance(start, point)), time = length / Speed;
             Vector3 right = Vector3.Cross(Vector3.up, (point - start).normalized).normalized;
             float angle = Random.Range(0f, 180f) * Mathf.Deg2Rad;
-            Vector3 control = (start + point) / 2 + (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax) * length;
+            Vector3 control = (start + point) / 2 + (right * Mathf.Cos(angle) + Vector3.up * Mathf.Sin(angle)) * Random.Range(CurveMin, CurveMax) * curve * length;
             Vector3 last = start;
             for (float t = 0; t < time && shard && owner; t += Time.deltaTime)
             {
