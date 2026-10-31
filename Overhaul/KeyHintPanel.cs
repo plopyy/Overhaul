@@ -101,8 +101,8 @@ namespace Overhaul
             if (options && Localization.instance != null) Localization.instance.Localize(options);
             if (checkerboard)
             {
-                checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
-                checkerboard.onValueChanged.AddListener(on => Utility.OverhaulConfig.BuildCheckerboardFloors.Value = on);
+                checkerboard.SetIsOnWithoutNotify(Building.QuickBuild.CheckerboardOn);
+                checkerboard.onValueChanged.AddListener(on => Building.QuickBuild.CheckerboardOn = on);
             }
             if (angles) angleTexts = new[] { "X", "Y", "Z" }.Select(n => angles.Find(n)?.GetComponent<Text>()).ToArray();
             go.SetActive(false);
@@ -127,7 +127,7 @@ namespace Overhaul
             if (checkerboard.gameObject.activeSelf != floor) checkerboard.gameObject.SetActive(floor);
             if (none && none.activeSelf == floor) none.SetActive(!floor);
             checkerboard.interactable = Hud.IsPieceSelectionVisible();
-            if (checkerboard.isOn != Utility.OverhaulConfig.BuildCheckerboardFloors.Value) checkerboard.SetIsOnWithoutNotify(Utility.OverhaulConfig.BuildCheckerboardFloors.Value);
+            if (checkerboard.isOn != Building.QuickBuild.CheckerboardOn) checkerboard.SetIsOnWithoutNotify(Building.QuickBuild.CheckerboardOn);
         }
 
         private Text[] angleTexts;
