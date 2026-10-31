@@ -309,7 +309,17 @@ namespace Overhaul.Rarity
                 int stop = NextBlock(text, at);
                 string current = text.Substring(at, stop - at);
                 bool hasEffect = current.Split('\n').Any(l => l.Trim().StartsWith("Effect", StringComparison.Ordinal) && l.Contains('=') && l.Substring(l.IndexOf('=') + 1).Trim().Length > 0);
-                if (hasEffect) continue;
+                if (hasEffect)
+                {
+                    // Values added to a catalyst since (a new effect of the same catalyst).
+                    var known = current.Split('\n').Where(l => l.Contains('=')).Select(l => l.Substring(0, l.IndexOf('=')).Trim()).ToList();
+                    var missing = block.Split('\n').Skip(1).Where(l => l.Contains('=') && !known.Contains(l.Substring(0, l.IndexOf('=')).Trim())).Select(l => l.TrimEnd()).ToList();
+                    if (missing.Count == 0) continue;
+                    int after = text.IndexOf('\n', at) + 1;
+                    text = text.Substring(0, after) + string.Join(Environment.NewLine, missing) + Environment.NewLine + text.Substring(after);
+                    changed++;
+                    continue;
+                }
                 text = text.Substring(0, at) + block + Environment.NewLine + Environment.NewLine + text.Substring(stop).TrimStart('\r', '\n');
                 changed++;
             }
