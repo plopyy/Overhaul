@@ -297,7 +297,7 @@ namespace Overhaul.Effects
 
         // ------------------------------------------------------------------ health bars
         // Shown for every creature within ShowDistance, aimed at or not, with its DoT icons and stacks under the bar.
-        internal const float ShowDistance = 50f;
+        internal const float ShowDistance = 30f;
         [HarmonyPatch(typeof(EnemyHud), "Awake")]
         private static class Distance { private static void Postfix(EnemyHud __instance) => __instance.m_maxShowDistance = Mathf.Max(__instance.m_maxShowDistance, ShowDistance); }
         [HarmonyPatch(typeof(EnemyHud), "UpdateHuds")]
