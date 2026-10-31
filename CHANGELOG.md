@@ -1,6 +1,11 @@
 ﻿# Changelog
 
-## 2.2.2 (in progress)
+## 2.2.3
+
+### Fixed
+- Valheim 1.0.21: the character selection showed placeholder cards (12345, [menu_deaths]...) because the game changed how it reads a character's stats; the cards show each character's deaths, builds and crafts again. Overhaul is now built against Valheim 1.0.21, which also fixes an error when filling the oven.
+
+## 2.2.2
 
 ### Fixed
 - Character selection screen: the same error still came back for some players with achievements turned back on, when the game's server options window existed but was not set up yet. Their stats now fall back to the default difficulty in every case. (2.2.2.3)
