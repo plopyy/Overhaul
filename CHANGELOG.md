@@ -61,7 +61,6 @@
 
 ### Changed
 - **Catalyst tooltip**: each effect of a catalyst sits in its own box.
-- **Accessories**: Megingjord, Wishbone, Wisplight and the circlets have a biome, so they can be enchanted: rarity, enchantment lines and catalyst slots. The biome loot does not drop them; they are added to existing configs.
 - **Catalysts**: each effect now only works in its kind of gear (weapon, armour or shield, trinket), shown in its description.
 - **Freeze gland**: socketed in a weapon, an ice shard forms every 3 s, up to 5, in a half circle over your head; each attack sends them all, curving, at random enemies for 10 frost damage, splitting at launch with your extra projectiles.
 - **Molten core**: socketed in a weapon, each hit has a 25 % chance to put Fire weakness on the target: 10 % less fire resistance per stack, up to 5 stacks, for 4 s restarted by each new stack, shown under its health bar.
