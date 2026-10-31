@@ -19,7 +19,7 @@
 - Grimoire stand: it could show the pack’s own wood instead of the game’s wood wall planks; its wood is now the wood wall’s material itself, set in the stand’s model. (2.4.0.132)
 - Lightning spell and Zeus’s Wrath bolts: they dealt the Lightning Strike staff’s fixed impact damage (80 lightning, 400 at the very centre) whatever the staff; they now deal the spell’s damage (its share of the staff’s magic power) and apply its stun chance.
 
-## 2.3.0 (in progress)
+## 2.3.0 (released)
 
 ### Added
 - **Character sheet**: the character tab no longer repeats the health, stamina and eitr bars or the food (already on the HUD and the food shortcuts), nor the active effects. It lists the character's cumulated bonuses instead, scrolling when long, in four sections (offense, defense, resources, other): the final values the game applies (health, stamina and eitr maximums with where they come from in a tooltip, armour, regenerations, fall damage, carry weight, movement speed, noise, stealth...), the final resistance to each damage type, every Effects.cfg effect and the level stats. Every line shows, at 0 when the character has none of it; effects carried by an item stay in its tooltip.
