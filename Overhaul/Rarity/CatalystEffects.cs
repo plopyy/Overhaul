@@ -62,14 +62,18 @@ namespace Overhaul.Rarity
         internal static string Describe(string prefab, ItemDrop.ItemData gear = null)
         {
             if (prefab == null || !RarityConfig.Current.CatalystEffects.TryGetValue(prefab, out var def) || string.IsNullOrEmpty(def.Effect)) return "";
-            string id = def.Effect.ToLowerInvariant();
-            var effects = new List<(string kind, string key)> { (Kind(def.Effect), id) };
-            if (def.Effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
-            if (def.Effect == "LavaWalker") effects.Add((Weapon, id + "_weapon"));
+            var effects = Sides(def.Effect);
             if (gear != null) { effects.RemoveAll(e => e.kind != Kind(gear)); return effects.Count == 0 ? "" : Fill(def, effects[0].key); }
             return string.Join("\n", effects.Select(e => Localization.instance.Localize("$overhaul_catalyst_slot_" + e.kind) + Fill(def, e.key)));
         }
-            var effects = Sides(def.Effect);
+        static List<(string kind, string key)> Sides(string effect)
+        {
+            string id = effect.ToLowerInvariant();
+            var effects = new List<(string kind, string key)> { (Kind(effect), id) };
+            if (effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
+            if (effect == "LavaWalker" || effect == "FireThorns" || effect == "ParryReflect" || effect == "LastStand" || effect == "HighJump") effects.Add((Weapon, id + "_weapon"));
+            return effects;
+        }
         static string Fill(CatalystDef def, string key)
         {
             string text = Localization.instance.Localize("$overhaul_catalyst_effect_" + key);
