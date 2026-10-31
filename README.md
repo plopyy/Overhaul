@@ -2,7 +2,19 @@
 
 Overhaul est un mod pour **Valheim** qui réunit progression RPG, interface remaniée, gestion de l'équipement, améliorations du combat et confort de jeu dans un seul plugin : `Overhaul.dll`.
 
-Le projet est en développement, actuellement en série **2.2**. Les fonctionnalités et leur équilibrage sont configurables. Les validations automatisées ne remplacent pas les essais en partie, notamment en multijoueur.
+Le projet est en développement, actuellement en série **2.4** sur `main`. La dernière version publiée est la **2.3.0**. Les fonctionnalités et leur équilibrage sont configurables. Les validations automatisées ne remplacent pas les essais en partie, notamment en multijoueur.
+
+
+## Branches
+
+| Branche | Rôle |
+|---|---|
+| `main` | Développement en cours : série 2.4 (magie et grimoire) |
+| `v2.3` | Correctifs de la version publiée 2.3 |
+| `v2.5` | Système de classes et combat |
+| `rework` | Refonte du multijoueur et de l'autorité serveur (série 3.0) |
+
+Les anciennes versions restent disponibles par leurs tags (`v2.2.3`, `v2.3.0`...).
 
 ## Fonctionnalités principales
 
