@@ -15,7 +15,7 @@ namespace Overhaul.Rarity
     internal static class IceShards
     {
         const string Prefab = "Overhaul_IceShard", Source = "staff_iceshard_projectile";
-        const float Speed = 20f, Range = 100f, AimRadius = 5f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
+        const float Speed = 20f, Range = 100f, CurveMin = .2f, CurveMax = .5f, ShardScale = .4f;
         static readonly List<GameObject> held = new List<GameObject>();
         static float nextShard;
         static bool equipped;
@@ -55,7 +55,7 @@ namespace Overhaul.Rarity
 
         static void Clear() { foreach (var shard in held) Remove(shard); held.Clear(); }
 
-        // What the crosshair aims at within Range: an enemy (the one closest to the point within AimRadius when none is hit), or the point on whatever is there (the far end of the aim in open air).
+        // What the crosshair aims at within Range: an enemy, or the point on whatever is there (the far end of the aim in open air).
         static Vector3 Aim(Player player, out Character enemy)
         {
             enemy = null;
@@ -69,10 +69,8 @@ namespace Overhaul.Rarity
                 var character = hit.collider.GetComponentInParent<Character>();
                 if (character == player) continue;
                 if (character && !character.IsDead() && BaseAI.IsEnemy(player, character)) enemy = character;
-                else enemy = Near(player, hit.point);
                 return hit.point;
             }
-            enemy = Near(player, ray.GetPoint(Range));
             return ray.GetPoint(Range);
         }
 
@@ -97,11 +95,6 @@ namespace Overhaul.Rarity
             }
             for (int i = 0; i < held.Count; i++) held[i].transform.SetPositionAndRotation(Place(player, i, max), Quaternion.LookRotation(player.transform.forward));
         }
-
-        // The enemy closest to the point, within AimRadius.
-        static Character Near(Player player, Vector3 point) => Character.GetAllCharacters()
-            .Where(c => c && c != player && !c.IsDead() && BaseAI.IsEnemy(player, c) && Vector3.Distance(c.GetCenterPoint(), point) <= AimRadius)
-            .OrderBy(c => Vector3.Distance(c.GetCenterPoint(), point)).FirstOrDefault();
 
         // An attack of the player sends every shard held at what is aimed at.
         internal static void Release(Player player)
