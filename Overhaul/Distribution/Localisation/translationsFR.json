@@ -2455,7 +2455,7 @@
   "overhaul_catalyst_effect_parryreflect": "Une parade renvoie {Value} % des dégâts parés à l’attaquant",
   "overhaul_catalyst_effect_coldwalker": "Insensible au froid et au givre, +{Value} % de vitesse en Montagne et dans le Grand Nord. Incompatible avec le Noyau en fusion",
   "overhaul_catalyst_effect_coldwalker_armor": "{NovaChance} % de chances, quand vous êtes touché, de déclencher une nova de givre infligeant {NovaDamage} dégâts de givre aux ennemis autour de vous",
-  "overhaul_catalyst_effect_coldwalker_weapon": "Un éclat de glace se forme toutes les {ShardEvery} s (jusqu’à {ShardMax}) et chaque attaque les envoie tous sur des ennemis aléatoires, pour {ShardDamage} dégâts de givre, en se séparant selon vos projectiles supplémentaires",
+  "overhaul_catalyst_effect_coldwalker_weapon": "Un éclat de glace se forme toutes les {ShardEvery} s (jusqu’à {ShardMax}) et chaque attaque les envoie tous sur ce que vous visez, pour {ShardDamage} dégâts de givre, en se séparant selon vos projectiles supplémentaires",
   "overhaul_catalyst_effect_lavawalker": "Immunisé au feu, à la lave et à l’eau bouillante. Incompatible avec la Glande de gel",
   "overhaul_catalyst_effect_lavawalker_weapon": "{WeakChance} % de chances par coup d’infliger Faiblesse au feu à la cible (-{WeakValue} % de résistance au feu pendant {WeakDuration} s, jusqu’à {WeakStacks} fois)",
   "overhaul_catalyst_effect_execute": "+{Value} % de dégâts sur une créature sous {Threshold} % de vie",
