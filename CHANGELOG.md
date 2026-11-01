@@ -3,7 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
-- **Weapon levels**: weapons gain experience with each hit and shields with each block, up to level 100. Each level adds 0.5 % damage or block power, shown in the tooltip, and from level 10 the item glows stronger every 10 levels.
+- **Weapon levels**: weapons gain experience with each swing or shot and shields with each block, up to level 100. Each level adds 0.5 % damage or block power, shown in the tooltip, and from level 10 the item glows stronger every 10 levels.
 - **Signs on chests**: a sign hooks onto the side of a chest. Aiming at either shows the chest, Use opens it, the rename shortcut changes the sign text instead, and moving the chest takes its signs along. Chests now have snap points to line them up side by side or front to back, and can hold pieces placed on them.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
 - **Freeze gland shards** fly up to 100 m at what the crosshair aims at, whatever is there, with or without enemies around: they never follow anything and shatter on the point aimed at, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
