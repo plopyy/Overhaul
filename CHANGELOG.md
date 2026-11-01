@@ -20,6 +20,7 @@
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
 ### Changed
+- Start game opens on the server list if you last joined a server, on your worlds if you last played solo.
 - Gear tooltips list socketed catalysts by name only, the full effect is on the catalyst itself. Item tooltips no longer show a stamina cost.
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
