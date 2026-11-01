@@ -64,7 +64,8 @@ namespace Overhaul.Rarity
             {
                 if (!part) continue;
                 part.BakeMesh(baked);
-                var matrix = held.worldToLocalMatrix * part.transform.localToWorldMatrix;
+                // BakeMesh already contains the renderer's scale (around 95 on the skeleton): applying it again throws the points far away.
+                var matrix = held.worldToLocalMatrix * Matrix4x4.TRS(part.transform.position, part.transform.rotation, Vector3.one);
                 foreach (var point in baked.vertices) all.Add(matrix.MultiplyPoint3x4(point));
             }
             points = Grid(all);
