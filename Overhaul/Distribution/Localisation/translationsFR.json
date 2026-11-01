@@ -2702,6 +2702,7 @@
   "piece_portal_defaultportal": "Portail par défaut",
   "hud_xportal_title": "Salutations, voyageur !",
   "overhaul_chest_rename": "Renommer le coffre",
+  "overhaul_chest_sign_edit": "Changer le texte de la pancarte",
   "overhaul_chest_take_all": "Tout prendre",
   "overhaul_key_shift": "Maj",
   "overhaul_key_alt": "Alt",

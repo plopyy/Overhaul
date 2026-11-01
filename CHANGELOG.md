@@ -1,8 +1,9 @@
-﻿﻿# Changelog
+﻿# Changelog
 
 ## 2.4.0 (in progress)
 
 ### Added
+- **Signs on chests**: a sign hooks onto the side of a chest. Aiming at either shows the chest, Use opens it, the rename shortcut changes the sign text instead, and moving the chest takes its signs along.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
 - **Freeze gland shards** fly up to 100 m at what the crosshair aims at, whatever is there, with or without enemies around: they never follow anything and shatter on the point aimed at, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
 - **Catalyst weapon effects**: Surtling core builds heat and erupts in front of you every 10 hits, Crystal has a clone repeat a hit 1 s later, Ectoplasm leaves a spectre fighting for you 10 s on a kill, Celestial feather plunges you down on a mid-air melee attack with a shockwave growing with the height.

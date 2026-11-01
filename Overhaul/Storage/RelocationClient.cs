@@ -40,6 +40,8 @@ namespace Overhaul.Storage
             if(!Physics.Raycast(camera.position,camera.forward,out var hit,50,p.m_removeRayMask,QueryTriggerInteraction.Ignore)||
                 Vector3.Distance(p.m_eye.position,hit.point)>PieceRelocation.Reach)return null;
             var piece=hit.collider.GetComponentInParent<Piece>();
+            var chest=ChestSigns.ChestOf(hit.collider.GetComponentInParent<Sign>());
+            if(chest)piece=chest.GetComponent<Piece>();
             return PieceRelocation.Eligible(piece)?piece:null;
         }
         static void Message(string key){if(player)player.Message(MessageHud.MessageType.Center,key);}
@@ -119,6 +121,9 @@ namespace Overhaul.Storage
                 // world physics, production and network state intact between queries.
                 if(Target)foreach(var collider in Target.GetComponentsInChildren<Collider>(true))
                     if(collider.enabled){hidden.Add(collider);collider.enabled=false;}
+                if(Target)foreach(var hooked in ChestSigns.Capture(Target))
+                    foreach(var collider in hooked.Sign.GetComponentsInChildren<Collider>(true))
+                        if(collider.enabled){hidden.Add(collider);collider.enabled=false;}
                 player.m_buildPieces=table;player.m_placementGhost=ghost;player.m_placeRotation=rotation;action();
             }
             finally
