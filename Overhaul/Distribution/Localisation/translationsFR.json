@@ -2702,6 +2702,7 @@
   "piece_portal_defaultportal": "Portail par défaut",
   "hud_xportal_title": "Salutations, voyageur !",
   "overhaul_chest_rename": "Renommer le coffre",
+  "overhaul_catalyst_one_immunity": "Un seul catalyseur d'immunité peut être porté",
   "overhaul_weapon_level": "Niveau {0} / {1}",
   "overhaul_weapon_damage_bonus": "+{0} % dégâts",
   "overhaul_weapon_block_bonus": "+{0} % blocage",
