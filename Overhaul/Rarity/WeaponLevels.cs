@@ -18,6 +18,7 @@ namespace Overhaul.Rarity
         static readonly int[] Totals = BuildTotals();
         static AssetBundle bundle;
         static GameObject barPrefab, glowPrefab;
+        static Material silhouette;
 
         // Total experience needed to reach each level.
         static int[] BuildTotals()
@@ -47,6 +48,15 @@ namespace Overhaul.Rarity
             return level < 2 ? 0 : level * BonusPerLevel;
         }
         static int Tier(ItemDrop.ItemData item) => item == null ? 0 : Level(item) / 10;
+        // Test: puts the weapon in hand at this level.
+        internal static string SetLevel(Player player, int level)
+        {
+            var item = player.GetCurrentWeapon();
+            if (!Levels(item)) item = player.GetCurrentBlocker();
+            if (!Levels(item)) return "Overhaul : aucune arme en main.";
+            item.m_customData[XpKey] = Totals[Mathf.Clamp(level, 1, MaxLevel)].ToString(CultureInfo.InvariantCulture);
+            return "Overhaul : " + item.m_shared.m_name + " niveau " + Level(item);
+        }
 
         static void Gain(Player player, ItemDrop.ItemData item)
         {
@@ -142,6 +152,7 @@ namespace Overhaul.Rarity
             if (!bundle) { Utility.Log.LogError("Weapon levels: overhaul_weaponlevel missing"); return; }
             barPrefab = bundle.LoadAsset<GameObject>("WeaponLevelBar");
             glowPrefab = bundle.LoadAsset<GameObject>("WeaponGlow");
+            silhouette = bundle.LoadAsset<Material>("silhouette");
         }
 
         static void Tooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)
@@ -209,29 +220,7 @@ namespace Overhaul.Rarity
             LoadAssets();
             if (!glowPrefab) return;
             copy = Object.Instantiate(glowPrefab, held.transform, false);
-            float strength = tier / 10f;
-            var bounds = new Bounds(); bool first = true;
-            foreach (var filter in held.GetComponentsInChildren<MeshFilter>())
-            {
-                if (!filter.sharedMesh) continue;
-                var local = filter.sharedMesh.bounds;
-                for (int i = 0; i < 8; i++)
-                {
-                    var corner = held.transform.InverseTransformPoint(filter.transform.TransformPoint(local.center + Vector3.Scale(local.extents, new Vector3((i & 1) * 2 - 1, (i & 2) - 1, (i & 4) / 2 - 1))));
-                    if (first) { bounds = new Bounds(corner, Vector3.zero); first = false; } else bounds.Encapsulate(corner);
-                }
-            }
-            foreach (var system in copy.GetComponentsInChildren<ParticleSystem>(true))
-            {
-                bool sparks = system.gameObject != copy;
-                var shape = system.shape; shape.position = bounds.center; shape.scale = bounds.size;
-                var main = system.main;
-                main.startSize = sparks ? .05f : .12f + .1f * strength;
-                main.startColor = sparks ? new Color(1f, .7f, .25f, .9f) : new Color(1f, .6f, .18f, .05f + .13f * strength);
-                var emission = system.emission;
-                emission.rateOverTime = sparks ? 14 * strength : 20 + 60 * strength;
-                system.Play(true);
-            }
+            copy.AddComponent<WeaponGlow>().Setup(held.transform, tier / 10f, silhouette);
         }
     }
 }
