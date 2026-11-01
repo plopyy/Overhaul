@@ -19,8 +19,11 @@ namespace Overhaul.Rarity
             held = weapon; strength = level;
             clouds = GetComponent<ParticleSystem>();
             sparks = transform.Find("Sparks").GetComponent<ParticleSystem>();
-            points = weapon.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh)
+            var found = weapon.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh)
                 .SelectMany(f => Shape(f.sharedMesh, silhouette).Select(p => weapon.InverseTransformPoint(f.transform.TransformPoint(p))))
+                .Concat(weapon.GetComponentsInChildren<SkinnedMeshRenderer>().Where(s => s.sharedMesh)
+                    .SelectMany(s => Baked(s).Select(p => weapon.InverseTransformPoint(s.transform.TransformPoint(p)))));
+            points = found
                 .GroupBy(p => new Vector3Int(Mathf.RoundToInt(p.x / Cell), Mathf.RoundToInt(p.y / Cell), Mathf.RoundToInt(p.z / Cell)))
                 .Select(g => g.First()).ToArray();
             foreach (var part in GetComponentsInChildren<Transform>(true)) part.gameObject.layer = weapon.gameObject.layer;
@@ -37,6 +40,16 @@ namespace Overhaul.Rarity
                 clouds.Emit(new ParticleSystem.EmitParams { position = points[Random.Range(0, points.Length)], startSize = .12f + .1f * strength, startColor = color, applyShapeToPosition = false }, 1);
             for (; sparksDue >= 1; sparksDue--)
                 sparks.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .05f, startColor = new Color(1f, .7f, .25f, .9f), applyShapeToPosition = false }, 1);
+        }
+        // A skinned model (most dual weapons) is copied in its pose, which works on protected meshes too.
+        static Vector3[] Baked(SkinnedMeshRenderer skinned)
+        {
+            if (Shapes.TryGetValue(skinned.sharedMesh, out var shape)) return shape;
+            var copy = new Mesh();
+            skinned.BakeMesh(copy);
+            shape = copy.vertices;
+            Object.Destroy(copy);
+            return Shapes[skinned.sharedMesh] = shape;
         }
         static Vector3[] Shape(Mesh mesh, Material silhouette)
         {
