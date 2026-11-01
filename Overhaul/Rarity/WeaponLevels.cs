@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // Weapons gain experience with each hit landed, shields with each hit blocked. Each level adds 0.5 % damage or block power;
+    // Weapons gain experience with each swing or shot, shields with each hit blocked. Each level adds 0.5 % damage or block power;
     // from level 10 a glow grows every 10 levels. The experience lives in the item's custom data, so it follows the item.
     internal static class WeaponLevels
     {
@@ -77,15 +77,13 @@ namespace Overhaul.Rarity
                 if (bonus > 0) __result = Mathf.Round(__result * (1 + bonus / 100) * 10) / 10;
             }
         }
-        // Runs on the attacker's machine, melee and projectiles alike. Training dummies give nothing.
-        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
-        private static class Hit
+        // One point per swing or shot started, hit or miss, however many projectiles it fires.
+        [HarmonyPatch(typeof(Attack), nameof(Attack.Start))]
+        private static class Swing
         {
-            private static void Prefix(Character __instance, HitData hit)
+            private static void Postfix(Humanoid character, ItemDrop.ItemData weapon, bool __result)
             {
-                var player = Player.m_localPlayer;
-                if (!player || hit.GetAttacker() != player || __instance == player || __instance.IsPlayer() || __instance.GetComponent<Piece>()) return;
-                Gain(player, player.GetCurrentWeapon());
+                if (__result && character == Player.m_localPlayer) Gain(Player.m_localPlayer, weapon);
             }
         }
         [HarmonyPatch(typeof(Humanoid), "BlockAttack")]
