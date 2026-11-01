@@ -47,6 +47,22 @@ namespace Overhaul.Rarity
                 default: return Weapon;
             }
         }
+        // Immunity catalysts: one per trinket, and one worn trinket with such a catalyst at a time.
+        internal static bool IsImmunity(string prefab) => prefab != null && RarityConfig.Current.CatalystEffects.TryGetValue(prefab, out var def) && (def.Effect == "ColdWalker" || def.Effect == "LavaWalker");
+        internal static bool IsTrinket(ItemDrop.ItemData item) => Kind(item) == Trinket;
+        static bool HasImmunity(ItemDrop.ItemData item) => IsTrinket(item) && ItemRarity.Catalysts(item).Any(IsImmunity);
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.EquipItem))]
+        private static class OneImmunity
+        {
+            private static bool Prefix(Humanoid __instance, ItemDrop.ItemData item, ref bool __result)
+            {
+                if (__instance != Player.m_localPlayer || item == null || !HasImmunity(item)) return true;
+                if (!__instance.GetInventory().GetEquippedItems().Any(worn => worn != item && HasImmunity(worn))) return true;
+                __instance.Message(MessageHud.MessageType.Center, "$overhaul_catalyst_one_immunity");
+                __result = false;
+                return false;
+            }
+        }
         // The catalyst with this effect, socketed in worn gear of that kind.
         internal static CatalystDef InKind(Player player, string effect, string kind)
         {
