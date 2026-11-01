@@ -42,7 +42,7 @@ namespace Overhaul.Rarity
         void Update()
         {
             if (!held) { Destroy(gameObject); return; }
-            if (logAt > 0 && Time.time >= logAt) { logAt = 0; Utility.Log.LogInfo("Weapon glow live: " + clouds.particleCount + " clouds, " + sparks.particleCount + " sparks at " + transform.position + ", weapon at " + held.position + ", material " + GetComponent<ParticleSystemRenderer>().sharedMaterial); }
+            if (logAt > 0 && Time.time >= logAt) { logAt = 0; Utility.Log.LogInfo("Weapon glow live: " + clouds.particleCount + " clouds, " + sparks.particleCount + " sparks at " + transform.position + ", weapon at " + held.position + ", shader " + GetComponent<ParticleSystemRenderer>().sharedMaterial.shader.name + " supported " + GetComponent<ParticleSystemRenderer>().sharedMaterial.shader.isSupported); }
             if (skinned.Length > 0 && Time.time >= nextBake) Bake();
             if (points == null || points.Length == 0) return;
             cloudsDue += Time.deltaTime * Mathf.Min(points.Length * 2, 300);
