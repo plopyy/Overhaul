@@ -16,6 +16,10 @@ namespace Overhaul.Rarity
         SkinnedMeshRenderer[] skinned;
         Vector3[] fixedPoints;
         Mesh baked;
+        // Skinned weapons: clouds on each hand bone, each point on its nearest hand.
+        Transform rightHand, leftHand;
+        ParticleSystem leftClouds;
+        Vector3[] rightPoints = new Vector3[0], leftPoints = new Vector3[0];
 
         internal void Setup(Transform weapon, float level, Material silhouette)
         {
@@ -26,6 +30,8 @@ namespace Overhaul.Rarity
                 .SelectMany(f => Shape(f.sharedMesh, silhouette).Select(p => weapon.InverseTransformPoint(f.transform.TransformPoint(p))));
             skinned = weapon.GetComponentsInChildren<SkinnedMeshRenderer>().Where(s => s.sharedMesh).ToArray();
             fixedPoints = Grid(found);
+            var wearer = weapon.GetComponentInParent<VisEquipment>();
+            if (skinned.Length > 0 && wearer) { rightHand = wearer.m_rightHand; leftHand = wearer.m_leftHand; }
             Bake();
             foreach (var part in GetComponentsInChildren<Transform>(true)) part.gameObject.layer = weapon.gameObject.layer;
             // Apart from the weapon: skinned items hang under the skeleton, whose odd scale would shrink the particles to nothing.
@@ -38,6 +44,8 @@ namespace Overhaul.Rarity
                 if (stick) main.customSimulationSpace = weapon;
                 main.scalingMode = ParticleSystemScalingMode.Local;
             }
+            if (rightHand && leftHand) Hands(clouds, rightHand);
+            if (rightHand && leftHand) { var copy = Instantiate(gameObject); Destroy(copy.GetComponent<WeaponGlow>()); Destroy(copy.transform.Find("Sparks").gameObject); leftClouds = copy.GetComponent<ParticleSystem>(); Hands(leftClouds, leftHand); leftClouds.Play(true); }
             clouds.Play(true);
             logAt = Time.time + 2;
             Utility.Log.LogInfo("Weapon glow on " + weapon.name + ": " + points.Length + " points, strength " + strength + ", silhouette " + (silhouette != null) + ", weapon scale " + weapon.lossyScale);
@@ -49,6 +57,15 @@ namespace Overhaul.Rarity
             if (skinned.Length > 0 && Time.time >= nextBake) Bake();
             if (points == null || points.Length == 0) return;
             cloudsDue += Time.deltaTime * Mathf.Min(points.Length * 2, 300);
+            if (leftClouds)
+            {
+                for (; cloudsDue >= 1; cloudsDue--)
+                {
+                    bool right = Random.value * points.Length < rightPoints.Length;
+                    var list = right ? rightPoints : leftPoints;
+                    if (list.Length > 0) (right ? clouds : leftClouds).Emit(new ParticleSystem.EmitParams { position = list[Random.Range(0, list.Length)], startSize = .12f + .1f * strength, startColor = new Color(1f, .6f, .18f, .03f + .1f * strength), applyShapeToPosition = false }, 1);
+                }
+            }
             sparksDue += Time.deltaTime * 14 * strength;
             var color = new Color(1f, .6f, .18f, .03f + .1f * strength);
             for (; cloudsDue >= 1; cloudsDue--)
@@ -72,9 +89,19 @@ namespace Overhaul.Rarity
                 foreach (var point in baked.vertices) all.Add(matrix.MultiplyPoint3x4(point));
             }
             points = Grid(all);
+            if (!rightHand || !leftHand) return;
+            var world = points.Select(p => held.TransformPoint(p)).ToArray();
+            rightPoints = world.Where(p => (p - rightHand.position).sqrMagnitude <= (p - leftHand.position).sqrMagnitude).Select(rightHand.InverseTransformPoint).ToArray();
+            leftPoints = world.Where(p => (p - rightHand.position).sqrMagnitude > (p - leftHand.position).sqrMagnitude).Select(leftHand.InverseTransformPoint).ToArray();
         }
         static Vector3[] Grid(IEnumerable<Vector3> all) => all.GroupBy(p => new Vector3Int(Mathf.RoundToInt(p.x / Cell), Mathf.RoundToInt(p.y / Cell), Mathf.RoundToInt(p.z / Cell))).Select(g => g.First()).ToArray();
-        void OnDestroy() { if (baked) Destroy(baked); }
+        static void Hands(ParticleSystem system, Transform hand)
+        {
+            var main = system.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.Custom;
+            main.customSimulationSpace = hand;
+        }
+        void OnDestroy() { if (baked) Destroy(baked); if (leftClouds) Destroy(leftClouds.gameObject); }
         static Vector3[] Shape(Mesh mesh, Material silhouette)
         {
             if (Shapes.TryGetValue(mesh, out var shape)) return shape;
