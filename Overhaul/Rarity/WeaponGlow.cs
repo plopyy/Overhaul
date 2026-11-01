@@ -32,7 +32,9 @@ namespace Overhaul.Rarity
             foreach (var system in GetComponentsInChildren<ParticleSystem>(true))
             {
                 var main = system.main;
-                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                // The clouds live in the weapon's space, so they stick to it; the sparks stay free and rise.
+                main.simulationSpace = system == clouds ? ParticleSystemSimulationSpace.Custom : ParticleSystemSimulationSpace.World;
+                if (system == clouds) main.customSimulationSpace = weapon;
                 main.scalingMode = ParticleSystemScalingMode.Local;
             }
             clouds.Play(true);
@@ -49,7 +51,7 @@ namespace Overhaul.Rarity
             sparksDue += Time.deltaTime * 14 * strength;
             var color = new Color(1f, .6f, .18f, .03f + .1f * strength);
             for (; cloudsDue >= 1; cloudsDue--)
-                clouds.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .12f + .1f * strength, startColor = color, applyShapeToPosition = false }, 1);
+                clouds.Emit(new ParticleSystem.EmitParams { position = points[Random.Range(0, points.Length)], startSize = .12f + .1f * strength, startColor = color, applyShapeToPosition = false }, 1);
             for (; sparksDue >= 1; sparksDue--)
                 sparks.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .05f, startColor = new Color(1f, .7f, .25f, .9f), applyShapeToPosition = false }, 1);
         }
