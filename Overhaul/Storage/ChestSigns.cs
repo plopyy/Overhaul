@@ -6,10 +6,11 @@ namespace Overhaul.Storage
 {
     // Signs hook onto the four side faces of a chest. The link is the pose itself: a sign sitting exactly on a
     // hook point belongs to the chest, so nothing is saved and a sign placed before this feature behaves as ever.
-    // Native snap points are not used: tagging them would also snap walls to chests and signs to walls.
+    // Native snap points (corners and side centres) are added too, so chests line up and take pieces on top.
     internal static class ChestSigns
     {
         const float SignHalfDepth = .05f, Reach = .25f;
+        const string SnapName = "_overhaul_snap";
         static readonly Vector3[] Faces = { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
         static readonly Dictionary<int, Bounds> Shapes = new Dictionary<int, Bounds>();
 
@@ -20,8 +21,13 @@ namespace Overhaul.Storage
         {
             int prefab = chest.m_nview.GetZDO().GetPrefab();
             if (Shapes.TryGetValue(prefab, out var shape)) return shape;
+            return Shapes[prefab] = Measure(chest.transform);
+        }
+        static Bounds Measure(Transform root)
+        {
+            var shape = new Bounds();
             bool first = true;
-            foreach (var collider in chest.GetComponentsInChildren<Collider>(true))
+            foreach (var collider in root.GetComponentsInChildren<Collider>(true))
             {
                 Bounds local;
                 if (collider.isTrigger) continue;
@@ -31,12 +37,46 @@ namespace Overhaul.Storage
                 for (int i = 0; i < 8; i++)
                 {
                     var corner = local.center + Vector3.Scale(local.extents, new Vector3((i & 1) * 2 - 1, (i & 2) - 1, (i & 4) / 2 - 1));
-                    corner = chest.transform.InverseTransformPoint(collider.transform.TransformPoint(corner));
+                    corner = root.InverseTransformPoint(collider.transform.TransformPoint(corner));
                     if (first) { shape = new Bounds(corner, Vector3.zero); first = false; }
                     else shape.Encapsulate(corner);
                 }
             }
-            return Shapes[prefab] = shape;
+            return shape;
+        }
+        static void AddSnap(Transform root, Vector3 local)
+        {
+            var point = new GameObject(SnapName);
+            point.tag = "snappoint";
+            point.SetActive(false);
+            point.transform.SetParent(root, false);
+            point.transform.localPosition = local;
+        }
+        static bool ChestPrefab(GameObject prefab) => prefab.GetComponent<Container>() && prefab.GetComponent<Piece>() &&
+            !prefab.GetComponent<DeviceStore>() && !prefab.GetComponent<TroughContainer>() && !prefab.GetComponent<TombStone>() &&
+            !prefab.GetComponent<Ship>() && !prefab.GetComponent<Vagon>();
+        static void Setup(GameObject prefab)
+        {
+            var root = prefab.transform;
+            bool sign = prefab.GetComponent<Sign>();
+            if ((!sign && !ChestPrefab(prefab)) || root.Find(SnapName)) return;
+            var shape = Measure(root);
+            if (sign) { AddSnap(root, new Vector3(0, 0, shape.min.z)); return; }
+            if (prefab.GetComponent<WearNTear>() is WearNTear wear) wear.m_supports = true;
+            foreach (var face in Faces) AddSnap(root, shape.center + Vector3.Scale(face, shape.extents));
+            foreach (float y in new[] { shape.min.y, shape.max.y })
+                foreach (float x in new[] { shape.min.x, shape.max.x })
+                    foreach (float z in new[] { shape.min.z, shape.max.z })
+                        AddSnap(root, new Vector3(x, y, z));
+        }
+        [HarmonyPatch(typeof(ZNetScene), "Awake")]
+        private static class Prefabs
+        {
+            [HarmonyPriority(Priority.Last)]
+            private static void Postfix(ZNetScene __instance)
+            {
+                foreach (var prefab in __instance.m_prefabs) if (prefab) Setup(prefab);
+            }
         }
         static void Pose(Container chest, Vector3 face, out Vector3 position, out Quaternion rotation)
         {
