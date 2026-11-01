@@ -279,6 +279,7 @@ namespace Overhaul.Rarity
         internal static void Initialize()
         {
             ComplexTooltip.OnComplexTooltipGeneratedForItem += Tooltip;
+            WeaponLevels.Initialize();
             // An indestructible item shows an infinite durability.
             ComplexTooltip.AddItemStatPreprocessor((item, label, value) =>
                 label == "$item_durability" && item != null && Enchantments.ItemValue(item, "Indestructible") >= 1 ? new System.Tuple<string, string>(label, "∞") : new System.Tuple<string, string>(label, value));
