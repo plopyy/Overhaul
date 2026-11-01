@@ -85,14 +85,25 @@ namespace Overhaul.Storage
             TextInput.instance.m_visibleFrame = true;
             return true;
         }
+        // Set while the shortcut opens the text of a hooked sign, whose plain interaction opens the chest.
+        internal static Sign EditingSign;
+        internal static void BeginSignText(Sign sign, Container c, Player player)
+        {
+            if (Vector3.Distance(player.transform.position, c.transform.position) > 5f) return;
+            EditingSign = sign;
+            try { if (!sign.Interact(player, false, false)) return; }
+            finally { EditingSign = null; }
+            TextInput.instance.m_visibleFrame = true;
+        }
         // Take-all key from Settings > Mods (printed R by default); Shift + it renames / swaps gear.
         internal static KeyControl Key(Keyboard keyboard) =>
             keyboard != null && ZInput.TryKeyCodeToKey(EquipmentAndQuickSlots.ValConfig.EffectiveTakeAllKey.MainKey, out var key) &&
             key != UnityEngine.InputSystem.Key.None ? keyboard[key] : keyboard?.rKey;
         internal static string KeyLabel => Key(Keyboard.current)?.displayName ?? "R";
-        internal static string Hint() => Localization.instance.Localize(
+        internal static string Hint(Container c) => Localization.instance.Localize(
             "\n[<color=yellow><b>" + KeyLabel + "</b></color>] $overhaul_chest_take_all" +
-            "\n[<color=yellow><b>" + Localization.instance.Localize("$overhaul_key_shift") + " + " + KeyLabel + "</b></color>] $overhaul_chest_rename");
+            "\n[<color=yellow><b>" + Localization.instance.Localize("$overhaul_key_shift") + " + " + KeyLabel + "</b></color>] " +
+            (ChestSigns.SignOn(c) ? "$overhaul_chest_sign_edit" : "$overhaul_chest_rename"));
 
         internal static bool InputAllowed(Player p)
         {
@@ -116,6 +127,7 @@ namespace Overhaul.Storage
             if (!p.TakeInput() || !GameCamera.instance) return null;
             p.FindHoverObject(out var hover, out var creature);
             var target = hover ? hover.GetComponentInParent<Container>() : null;
+            if (!target) target = ChestSigns.ChestOf(hover);
             return Eligible(target) ? target : null;
         }
         internal static bool TakeAll(Container chest, Player player, InventoryGui gui)
@@ -140,7 +152,9 @@ namespace Overhaul.Storage
             if (!chest) return;
             consumedFrame = Time.frameCount;
             if (!Access(chest, p.GetPlayerID())) { p.Message(MessageHud.MessageType.Center, "$msg_cantopen"); return; }
-            if (Keyboard.current.shiftKey.isPressed) BeginRename(chest, p);
+            var sign = ChestSigns.SignOn(chest);
+            if (Keyboard.current.shiftKey.isPressed && sign) BeginSignText(sign, chest, p);
+            else if (Keyboard.current.shiftKey.isPressed) BeginRename(chest, p);
             else TakeAll(chest, p, InventoryGui.IsVisible() ? InventoryGui.instance : null);
         }
         internal static void Title(InventoryGui gui)
@@ -180,7 +194,7 @@ namespace Overhaul.Storage
                 if (player && Access(__instance, player.GetPlayerID()))
                     __result += __instance.GetComponent<TroughContainer>()
                         ? Localization.instance.Localize("\n[<color=yellow><b>" + KeyLabel + "</b></color>] $overhaul_chest_take_all")
-                        : Hint();
+                        : Hint(__instance);
             }
         }
         [HarmonyPatch(typeof(Container), nameof(Container.GetHoverName))]

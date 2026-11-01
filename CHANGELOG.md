@@ -1,10 +1,11 @@
-﻿﻿# Changelog
+﻿# Changelog
 
 ## 2.5.0 (in progress)
 
 ## 2.4.0 (in progress)
 
 ### Added
+- **Signs on chests**: a sign hooks onto the side of a chest. Aiming at either shows the chest, Use opens it, the rename shortcut changes the sign text instead, and moving the chest takes its signs along.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
 - **Freeze gland shards** fly up to 100 m at what the crosshair aims at, whatever is there, with or without enemies around: they never follow anything and shatter on the point aimed at, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
 - **Catalyst weapon effects**: Surtling core builds heat and erupts in front of you every 10 hits, Crystal has a clone repeat a hit 1 s later, Ectoplasm leaves a spectre fighting for you 10 s on a kill, Celestial feather plunges you down on a mid-air melee attack with a shockwave growing with the height.
@@ -17,7 +18,12 @@
 - **Magic power enchantment**: new enchantment for any gear, adding to the magic power of the Overhaul staff in hand.
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
+### Changed
+- Trolls and frost trolls now have an 80 % chance of being dumb.
+
 ### Fixed
+- The frost nova lies flat on the ground instead of standing upright.
+- `o_rarity` sets the item down 2 m ahead, facing the same way, without scatter or bounce; `o_rarity <item> all` lays out one per rarity in a line.
 - Items dropped by tamed creatures (at death or when their corpse vanishes) no longer disappear from the ground after 30 minutes. (2.4.0.244)
 - Grimoire stand: it could show the pack’s own wood instead of the game’s wood wall planks; its wood is now the wood wall’s material itself, set in the stand’s model. (2.4.0.132)
 - Lightning spell and Zeus’s Wrath bolts: they dealt the Lightning Strike staff’s fixed impact damage (80 lightning, 400 at the very centre) whatever the staff; they now deal the spell’s damage (its share of the staff’s magic power) and apply its stun chance.

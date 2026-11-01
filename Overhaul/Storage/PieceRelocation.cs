@@ -66,6 +66,7 @@ namespace Overhaul.Storage
             int mask=LayerMask.GetMask("Default","static_solid","piece","terrain","character","character_net","vehicle");
             Quaternion delta=rotation*Quaternion.Inverse(p.transform.rotation);
             bool supported=false;
+            var hooked=ChestSigns.Capture(p);
             foreach(var shape in p.GetComponentsInChildren<Collider>())
             {
                 if(!shape.enabled||shape.isTrigger)continue;
@@ -77,7 +78,7 @@ namespace Overhaul.Storage
                 float radius=bounds.extents.magnitude+.15f;
                 foreach(var other in Physics.OverlapSphere(center,radius,mask,QueryTriggerInteraction.Ignore))
                 {
-                    if(other.transform.IsChildOf(p.transform))continue;
+                    if(other.transform.IsChildOf(p.transform)||hooked.Any(x=>x.Sign&&other.transform.IsChildOf(x.Sign.transform)))continue;
                     if(Physics.ComputePenetration(shape,at,facing,other,other.transform.position,other.transform.rotation,out var direction,out float depth)&&depth>.15f)return false;
                     // Surface contact in any direction also permits wall and ceiling fixtures.
                     if(!other.GetComponentInParent<Character>()&&!other.attachedRigidbody)
@@ -99,8 +100,10 @@ namespace Overhaul.Storage
                 Vector3.Distance(origin,point)>Reach*2||!Access(p,user,sender,token)||!Destination(p,point,rotation,user))return false;
             // Only transform fields change. The same ZDO and components retain inventories,
             // fuel, queues, progress, attached display items, health and ownership settings.
+            var hooked=ChestSigns.Capture(p);
             data.SetPosition(point);data.SetRotation(rotation);data.Set(RevisionKey,revision+1);
             Apply(p,point,rotation);
+            ChestSigns.Follow(hooked,point,rotation);
             return true;
         }
         internal static void Apply(Piece p,Vector3 point,Quaternion rotation)
@@ -120,7 +123,10 @@ namespace Overhaul.Storage
         }
         internal static void Register(Piece p)
         {
-            if(!p.m_nview||!p.m_nview.IsValid()||!Functional(p))return;
+            if(!p.m_nview||!p.m_nview.IsValid())return;
+            // Signs are not moved on their own, but a hooked one follows its chest on every client.
+            if(p.GetComponent<Sign>()&&!p.GetComponent<RelocatedPieceSync>())p.gameObject.AddComponent<RelocatedPieceSync>().Piece=p;
+            if(!Functional(p))return;
             MoveReservation.Register(p);
             if(!p.GetComponent<RelocatedPieceSync>())p.gameObject.AddComponent<RelocatedPieceSync>().Piece=p;
             p.m_nview.Register<ZPackage>(RequestRpc,(sender,packet)=>

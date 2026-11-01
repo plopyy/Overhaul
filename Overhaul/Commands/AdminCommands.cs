@@ -104,17 +104,27 @@ namespace Overhaul.Commands
                     args.Context.AddString("Overhaul : demande de remise a zero envoyee au serveur.");
                 }));
             new Terminal.ConsoleCommand(Prefix + "rarity",
-                "Test : fait apparaitre un objet d'une rarete donnee devant le joueur : o_rarity <objet> [rarete] (rarete au hasard sinon) (admin serveur + devcommands).",
+                "Test : fait apparaitre un objet d'une rarete donnee devant le joueur : o_rarity <objet> [rarete|all] (rarete au hasard sinon ; all pose une ligne d'une rarete par objet) (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
                 {
                     if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
-                    if (args.Length < 2 || !Player.m_localPlayer) { args.Context.AddString("Usage : o_rarity <objet> [rarete]"); return; }
+                    if (args.Length < 2 || !Player.m_localPlayer) { args.Context.AddString("Usage : o_rarity <objet> [rarete|all]"); return; }
                     // The Catalyst rarity is the catalysts' own: never given to other items.
                     var rarities = Rarity.RarityConfig.Current.Rarities.Where(r => !r.ForCatalysts).ToList();
+                    var player = Player.m_localPlayer.transform;
+                    // Set down without any scatter, all facing the same way: same item, same fall, same landing.
+                    var facing = UnityEngine.Quaternion.Euler(0, player.eulerAngles.y, 0);
+                    var ahead = player.position + player.forward * 2f + UnityEngine.Vector3.up * .5f;
+                    if (args.Length > 2 && args[2].Equals("all", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        for (int i = 0; i < rarities.Count; i++)
+                            if (!Rarity.ItemRarity.Drop(args[1], rarities[i], ahead + player.right * (i - (rarities.Count - 1) / 2f), facing)) { args.Context.AddString("Overhaul : objet inconnu " + args[1] + "."); return; }
+                        args.Context.AddString("Overhaul : " + args[1] + " pose dans " + rarities.Count + " raretes.");
+                        return;
+                    }
                     var rarity = args.Length > 2 ? rarities.FirstOrDefault(r => string.Equals(r.Id, args[2], System.StringComparison.OrdinalIgnoreCase)) : rarities.Count > 0 ? rarities[UnityEngine.Random.Range(0, rarities.Count)] : null;
                     if (rarity == null) { args.Context.AddString("Overhaul : rarete inconnue. Raretes : " + string.Join(", ", rarities.Select(r => r.Id))); return; }
-                    var player = Player.m_localPlayer.transform;
-                    var drop = Rarity.ItemRarity.Drop(args[1], rarity, player.position + player.forward * 2f + UnityEngine.Vector3.up);
+                    var drop = Rarity.ItemRarity.Drop(args[1], rarity, ahead, facing);
                     args.Context.AddString(drop ? "Overhaul : " + args[1] + " (" + rarity.Id + ") apparu." : "Overhaul : objet inconnu " + args[1] + ".");
                 }));
             new Terminal.ConsoleCommand(Prefix + "reroll",

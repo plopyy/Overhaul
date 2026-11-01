@@ -132,12 +132,12 @@ namespace Overhaul.Rarity
             return rarities[Mathf.Min(weights.Length, rarities.Count) - 1];
         }
 
-        // Spawns an item with the given rarity, as a loot drop.
-        internal static ItemDrop Drop(string prefabName, RarityDef rarity, Vector3 position)
+        // Spawns an item with the given rarity, as a loot drop: scattered, or set down exactly when placed is given.
+        internal static ItemDrop Drop(string prefabName, RarityDef rarity, Vector3 position, Quaternion? placed = null)
         {
             GameObject prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(prefabName) : null;
             if (!prefab) { Utility.Log.LogWarning("Rarity loot: unknown item " + prefabName); return null; }
-            GameObject instance = Object.Instantiate(prefab, position + Random.insideUnitSphere * .5f, Quaternion.Euler(0, Random.Range(0, 360), 0));
+            GameObject instance = Object.Instantiate(prefab, placed.HasValue ? position : position + Random.insideUnitSphere * .5f, placed ?? Quaternion.Euler(0, Random.Range(0, 360), 0));
             ItemDrop drop = instance.GetComponent<ItemDrop>();
             if (drop)
             {
@@ -147,7 +147,7 @@ namespace Overhaul.Rarity
                 drop.Save();
             }
             Rigidbody body = instance.GetComponent<Rigidbody>();
-            if (body)
+            if (body && !placed.HasValue)
             {
                 Vector3 push = Random.insideUnitSphere;
                 if (push.y < 0) push.y = -push.y;
