@@ -121,6 +121,9 @@ namespace Overhaul.Rarity
             var box = tooltip.AddTextBox(tooltip.LeftAlignedTextBoxPrefab);
             box.Text.text = "<line-height=0><color=#ffd479>" + string.Format(Text("$overhaul_weapon_level"), level, MaxLevel) + "</color>\n</line-height>" + gain + "\n \n" +
                 (max ? Text("$overhaul_weapon_xp_max") : string.Format(Text("$overhaul_weapon_xp"), (xp - from).ToString("N0"), (to - from).ToString("N0")));
+            // Right under the damage box, not below the enchantments.
+            var first = box.transform.parent.GetComponentInChildren<TooltipTextBox>();
+            if (first && first != box) box.transform.SetSiblingIndex(first.transform.GetSiblingIndex() + 1);
             if (!barPrefab) return;
             var bar = Object.Instantiate(barPrefab, box.transform, false);
             ((RectTransform)bar.transform.Find("fill")).anchorMax = new Vector2(progress, 1);
