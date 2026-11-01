@@ -27,6 +27,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Orange and yellow gems also appear in chests placed inside locations, such as the Ashlands fortresses.
 - Fortress ruins in the Ashlands (FortressRuins) are no longer reset, so they no longer come back inside a base built on them.
 - The frost nova lies flat on the ground instead of standing upright.
 - `o_rarity` sets the item down 2 m ahead, facing the same way, without scatter or bounce; `o_rarity <item> all` lays out one per rarity in a line.
