@@ -27,6 +27,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Fortress ruins in the Ashlands (FortressRuins) are no longer reset, so they no longer come back inside a base built on them.
 - The frost nova lies flat on the ground instead of standing upright.
 - `o_rarity` sets the item down 2 m ahead, facing the same way, without scatter or bounce; `o_rarity <item> all` lays out one per rarity in a line.
 - Items dropped by tamed creatures (at death or when their corpse vanishes) no longer disappear from the ground after 30 minutes. (2.4.0.244)
