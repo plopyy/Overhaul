@@ -23,6 +23,9 @@ namespace Overhaul.Rarity
                 .SelectMany(f => Shape(f.sharedMesh, silhouette).Select(p => weapon.InverseTransformPoint(f.transform.TransformPoint(p))))
                 .GroupBy(p => new Vector3Int(Mathf.RoundToInt(p.x / Cell), Mathf.RoundToInt(p.y / Cell), Mathf.RoundToInt(p.z / Cell)))
                 .Select(g => g.First()).ToArray();
+            foreach (var part in GetComponentsInChildren<Transform>(true)) part.gameObject.layer = weapon.gameObject.layer;
+            clouds.Play(true);
+            Utility.Log.LogInfo("Weapon glow on " + weapon.name + ": " + points.Length + " points, strength " + strength + ", silhouette " + (silhouette != null) + ", shader " + GetComponent<ParticleSystemRenderer>().sharedMaterial?.shader?.name);
         }
         void Update()
         {

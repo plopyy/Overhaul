@@ -216,9 +216,10 @@ namespace Overhaul.Rarity
             shown = held; shownTier = tier;
             if (copy) Object.Destroy(copy);
             copy = null;
+            Utility.Log.LogInfo("Weapon glow refresh: " + (held ? held.name : "nothing") + " tier " + tier);
             if (!held || tier <= 0) return;
             LoadAssets();
-            if (!glowPrefab) return;
+            if (!glowPrefab) { Utility.Log.LogWarning("Weapon glow: prefab missing"); return; }
             copy = Object.Instantiate(glowPrefab, held.transform, false);
             copy.AddComponent<WeaponGlow>().Setup(held.transform, tier / 10f, silhouette);
         }
