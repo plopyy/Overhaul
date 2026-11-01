@@ -11,7 +11,7 @@ namespace Overhaul.Utility
         private static class Solo { private static void Prefix() => PlatformPrefs.SetInt(Key, 0); }
         [HarmonyPatch(typeof(FejdStartup), nameof(FejdStartup.JoinServer))]
         private static class Server { private static void Prefix() => PlatformPrefs.SetInt(Key, 1); }
-        [HarmonyPatch(typeof(FejdStartup), nameof(FejdStartup.OnStartGame))]
+        [HarmonyPatch(typeof(FejdStartup), nameof(FejdStartup.OnCharacterStart))]
         private static class Open
         {
             private static void Postfix(FejdStartup __instance)
