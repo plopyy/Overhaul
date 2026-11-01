@@ -12,7 +12,7 @@ namespace Overhaul.Rarity
         Transform held;
         Vector3[] points;
         ParticleSystem clouds, sparks;
-        float strength, cloudsDue, sparksDue, nextBake;
+        float strength, cloudsDue, sparksDue, nextBake, logAt;
         SkinnedMeshRenderer[] skinned;
         Vector3[] fixedPoints;
         Mesh baked;
@@ -28,19 +28,28 @@ namespace Overhaul.Rarity
             fixedPoints = Grid(found);
             Bake();
             foreach (var part in GetComponentsInChildren<Transform>(true)) part.gameObject.layer = weapon.gameObject.layer;
+            // Apart from the weapon: skinned items hang under the skeleton, whose odd scale would shrink the particles to nothing.
+            foreach (var system in GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = system.main;
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+                main.scalingMode = ParticleSystemScalingMode.Local;
+            }
             clouds.Play(true);
-            Utility.Log.LogInfo("Weapon glow on " + weapon.name + ": " + points.Length + " points, strength " + strength + ", silhouette " + (silhouette != null) + ", shader " + GetComponent<ParticleSystemRenderer>().sharedMaterial?.shader?.name);
+            logAt = Time.time + 2;
+            Utility.Log.LogInfo("Weapon glow on " + weapon.name + ": " + points.Length + " points, strength " + strength + ", silhouette " + (silhouette != null) + ", weapon scale " + weapon.lossyScale);
         }
         void Update()
         {
-            if (!held) return;
+            if (!held) { Destroy(gameObject); return; }
+            if (logAt > 0 && Time.time >= logAt) { logAt = 0; Utility.Log.LogInfo("Weapon glow live: " + clouds.particleCount + " clouds, " + sparks.particleCount + " sparks at " + transform.position + ", weapon at " + held.position + ", material " + GetComponent<ParticleSystemRenderer>().sharedMaterial); }
             if (skinned.Length > 0 && Time.time >= nextBake) Bake();
             if (points == null || points.Length == 0) return;
             cloudsDue += Time.deltaTime * Mathf.Min(points.Length * 2, 300);
             sparksDue += Time.deltaTime * 14 * strength;
             var color = new Color(1f, .6f, .18f, .03f + .1f * strength);
             for (; cloudsDue >= 1; cloudsDue--)
-                clouds.Emit(new ParticleSystem.EmitParams { position = points[Random.Range(0, points.Length)], startSize = .12f + .1f * strength, startColor = color, applyShapeToPosition = false }, 1);
+                clouds.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .12f + .1f * strength, startColor = color, applyShapeToPosition = false }, 1);
             for (; sparksDue >= 1; sparksDue--)
                 sparks.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .05f, startColor = new Color(1f, .7f, .25f, .9f), applyShapeToPosition = false }, 1);
         }

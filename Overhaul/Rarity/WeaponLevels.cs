@@ -220,7 +220,7 @@ namespace Overhaul.Rarity
             if (!held || tier <= 0) return;
             LoadAssets();
             if (!glowPrefab) { Utility.Log.LogWarning("Weapon glow: prefab missing"); return; }
-            copy = Object.Instantiate(glowPrefab, held.transform, false);
+            copy = Object.Instantiate(glowPrefab);
             copy.AddComponent<WeaponGlow>().Setup(held.transform, tier / 10f, silhouette);
         }
     }
