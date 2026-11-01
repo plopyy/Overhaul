@@ -317,7 +317,7 @@ namespace Overhaul.Rarity
                     ? new TooltipRow(rarity.Paint(effect.Name), rarity.Paint(effect.Format(effect.EnchantValue(biome))))
                     : new TooltipRow(rarity.Paint(Localization.instance.Localize("$overhaul_rarity_empty_enchant")), rarity.Paint("+0")));
             }
-            // Catalyst slots: each socketed catalyst with its name (in the Catalyst rarity colour) and what it does, or empty.
+            // Catalyst slots: each socketed catalyst with its name (in the Catalyst rarity colour), or empty; the catalyst's own tooltip tells what it does.
             var socketed = Catalysts(item); var catalystRarity = RarityConfig.Current.Rarity(CatalystRarity);
             if (socketed.Length > 0) rows.Add(new TooltipRow(Localization.instance.Localize("$overhaul_rarity_catalysts") + " (" + socketed.Count(n => n.Length > 0) + "/" + socketed.Length + ")"));
             foreach (string name in socketed)
@@ -326,8 +326,6 @@ namespace Overhaul.Rarity
                 if (!drop) { rows.Add(new TooltipRow("  <color=#808080>◊ " + Localization.instance.Localize("$overhaul_rarity_empty_catalyst") + "</color>")); continue; }
                 string title = "  ◆ " + Localization.instance.Localize(drop.m_itemData.m_shared.m_name);
                 rows.Add(new TooltipRow(catalystRarity != null ? catalystRarity.Paint(title) : title));
-                string effect = CatalystEffects.Describe(name, item);
-                if (effect.Length > 0) rows.Add(new TooltipRow("     <color=#c8c0b0>" + effect + "</color>"));
             }
             if (rows.Count > 0) TooltipRowAligner.Add(tooltip, rows);
             // Mythic enchantments in their own box under the catalysts: a star, the name in bold and the description,
