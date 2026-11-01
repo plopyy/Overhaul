@@ -89,6 +89,19 @@ namespace Overhaul.Rarity
             if (lists > 0) Log.LogInfo("Gems: orange and yellow gems added to " + lists + " drop lists holding the red gem");
         }
 
+        // Chests placed inside a location carry their own copy of the drop list, which the prefab scan never reaches.
+        [HarmonyLib.HarmonyPatch(typeof(Container), "AddDefaultItems")]
+        private static class ChestDrops
+        {
+            private static void Prefix(Container __instance)
+            {
+                if (!ZNetScene.instance) return;
+                var red = ZNetScene.instance.GetPrefab(Source);
+                var gems = Names.Select(n => ZNetScene.instance.GetPrefab(n)).Where(g => g).ToArray();
+                if (red && gems.Length > 0) Add(__instance.m_defaultItems, red, gems);
+            }
+        }
+
         // The fields of a component type holding drop tables, looked up once per type.
         static readonly Dictionary<Type, FieldInfo[]> fields = new Dictionary<Type, FieldInfo[]>();
         static FieldInfo[] DropFields(Type type)
