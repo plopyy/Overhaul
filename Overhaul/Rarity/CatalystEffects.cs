@@ -236,9 +236,10 @@ namespace Overhaul.Rarity
         // Freeze gland in armour: a frost burst (Overhaul_FrostNova, seen and heard by everyone) and frost damage to the enemies
         // in a cylinder around the player, twice their height and centred on them.
         const float NovaHalfHeight = 1.8f;
+        const float NovaVfxHeight = .25f; // between foot and knee
         static void FrostNova(Player player, float damage, float radius)
         {
-            MythicVfx.Spawn("Overhaul_FrostNova", player.transform.position, Quaternion.Euler(-90, 0, 0)); // the pack lays it flat with this rotation
+            MythicVfx.Spawn("Overhaul_FrostNova", player.transform.position + Vector3.up * NovaVfxHeight, Quaternion.Euler(-90, 0, 0)); // the pack lays it flat with this rotation
             Vector3 center = player.transform.position + Vector3.up * NovaHalfHeight / 2;
             foreach (var c in Character.GetAllCharacters())
             {
