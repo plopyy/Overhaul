@@ -5,6 +5,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Server passwords** are remembered per server on your computer, so you connect without typing them again. A refused password is forgotten.
 - **Weapon levels**: weapons gain experience with each swing or shot that lands on a creature or dummy, axes also on trees and pickaxes on what they mine, and shields with each block, up to level 100. Each level adds 0.5 % damage or block power, shown in the tooltip, and from level 10 the item glows stronger every 10 levels.
 - **Signs on chests**: a sign hooks onto the side of a chest. Aiming at either shows the chest, Use opens it, the rename shortcut changes the sign text instead, and moving the chest takes its signs along. Chests now have snap points to line them up side by side or front to back, and can hold pieces placed on them.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
