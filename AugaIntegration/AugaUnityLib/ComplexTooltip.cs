@@ -630,25 +630,18 @@ namespace AugaUnity
 
         private void AddResourceUseTextbox(ItemDrop.ItemData item)
         {
-            if (item.m_shared.m_attack.m_attackStamina <= 0.0 &&
-                item.m_shared.m_attack.m_attackEitr <= 0.0 &&
+            if (item.m_shared.m_attack.m_attackEitr <= 0.0 &&
                 item.m_shared.m_attack.m_attackHealth <= 0.0 &&
-                item.m_shared.m_attack.m_attackHealthPercentage <= 0.0 &&
-                item.m_shared.m_attack.m_drawStaminaDrain <= 0.0)
+                item.m_shared.m_attack.m_attackHealthPercentage <= 0.0)
                 return;
 
             var textBox = AddTextBox(TwoColumnTextBoxPrefab);
-
-            if (item.m_shared.m_attack.m_attackStamina > 0.0)
-                TextBoxAddPreprocessedLine(textBox, item, "$item_staminause", item.m_shared.m_attack.m_attackStamina);
             if (item.m_shared.m_attack.m_attackEitr > 0.0)
                 TextBoxAddPreprocessedLine(textBox, item, "$item_eitruse", DisplayedEitrCost(item,Player.m_localPlayer).ToString("0.##"));
             if (item.m_shared.m_attack.m_attackHealth > 0.0)
                 TextBoxAddPreprocessedLine(textBox, item, "$item_healthuse", item.m_shared.m_attack.m_attackHealth);
             if (item.m_shared.m_attack.m_attackHealthPercentage > 0.0)
                 TextBoxAddPreprocessedLine(textBox, item, "$item_healthuse", item.m_shared.m_attack.m_attackHealthPercentage.ToString("0.0"));
-            if (item.m_shared.m_attack.m_drawStaminaDrain > 0.0)
-                TextBoxAddPreprocessedLine(textBox, item, "$item_staminahold", item.m_shared.m_attack.m_drawStaminaDrain);
         }
 
         public virtual void AddDamageTextbox(ItemDrop.ItemData item, int quality, bool upgrade)
