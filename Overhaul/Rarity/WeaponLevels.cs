@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // Weapons gain experience with each swing or shot, shields with each hit blocked. Each level adds 0.5 % damage or block power;
+    // Weapons gain experience with each swing or shot that lands on a creature or dummy (axes on trees, pickaxes on what they mine too), shields with each hit blocked. Each level adds 0.5 % damage or block power;
     // from level 10 a glow grows every 10 levels. The experience lives in the item's custom data, so it follows the item.
     internal static class WeaponLevels
     {
@@ -77,13 +77,49 @@ namespace Overhaul.Rarity
                 if (bonus > 0) __result = Mathf.Round(__result * (1 + bonus / 100) * 10) / 10;
             }
         }
-        // One point per swing or shot started, hit or miss, however many projectiles it fires.
+        // One point per swing or shot that lands, however many targets or projectiles it has: Attack.Start arms it, the first valid hit uses it.
+        static bool armed;
+        static ItemDrop.ItemData swung;
         [HarmonyPatch(typeof(Attack), nameof(Attack.Start))]
         private static class Swing
         {
             private static void Postfix(Humanoid character, ItemDrop.ItemData weapon, bool __result)
             {
-                if (__result && character == Player.m_localPlayer) Gain(Player.m_localPlayer, weapon);
+                if (__result && character == Player.m_localPlayer) { armed = true; swung = weapon; }
+            }
+        }
+        static void Landed(HitData hit)
+        {
+            var player = Player.m_localPlayer;
+            if (!armed || !player || hit.GetAttacker() != player) return;
+            armed = false;
+            Gain(player, swung);
+        }
+        // Creatures and training dummies, on the attacker's machine.
+        [HarmonyPatch(typeof(Character), nameof(Character.Damage))]
+        private static class Hit
+        {
+            private static void Prefix(Character __instance, HitData hit) { if (!__instance.IsPlayer()) Landed(hit); }
+        }
+        // Axes also train on trees, pickaxes on what they mine.
+        [HarmonyPatch]
+        private static class Harvest
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods()
+            {
+                yield return AccessTools.Method(typeof(TreeBase), nameof(TreeBase.Damage));
+                yield return AccessTools.Method(typeof(TreeLog), nameof(TreeLog.Damage));
+                yield return AccessTools.Method(typeof(MineRock), nameof(MineRock.Damage));
+                yield return AccessTools.Method(typeof(MineRock5), nameof(MineRock5.Damage));
+                yield return AccessTools.Method(typeof(Destructible), nameof(Destructible.Damage));
+            }
+            private static void Prefix(object __instance, HitData hit)
+            {
+                if (swung == null) return;
+                var skill = swung.m_shared.m_skillType;
+                var destructible = __instance as Destructible;
+                bool tree = __instance is TreeBase || __instance is TreeLog || (destructible && destructible.GetDestructibleType() == DestructibleType.Tree);
+                if (tree ? skill == Skills.SkillType.Axes : skill == Skills.SkillType.Pickaxes && hit.m_damage.m_pickaxe > 0) Landed(hit);
             }
         }
         [HarmonyPatch(typeof(Humanoid), "BlockAttack")]
