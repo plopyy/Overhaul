@@ -12,7 +12,10 @@ namespace Overhaul.Rarity
         Transform held;
         Vector3[] points;
         ParticleSystem clouds, sparks;
-        float strength, cloudsDue, sparksDue;
+        float strength, cloudsDue, sparksDue, nextBake;
+        SkinnedMeshRenderer[] skinned;
+        Vector3[] fixedPoints;
+        Mesh baked;
 
         internal void Setup(Transform weapon, float level, Material silhouette)
         {
@@ -20,19 +23,19 @@ namespace Overhaul.Rarity
             clouds = GetComponent<ParticleSystem>();
             sparks = transform.Find("Sparks").GetComponent<ParticleSystem>();
             var found = weapon.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh)
-                .SelectMany(f => Shape(f.sharedMesh, silhouette).Select(p => weapon.InverseTransformPoint(f.transform.TransformPoint(p))))
-                .Concat(weapon.GetComponentsInChildren<SkinnedMeshRenderer>().Where(s => s.sharedMesh)
-                    .SelectMany(s => Baked(s).Select(p => weapon.InverseTransformPoint(s.transform.TransformPoint(p)))));
-            points = found
-                .GroupBy(p => new Vector3Int(Mathf.RoundToInt(p.x / Cell), Mathf.RoundToInt(p.y / Cell), Mathf.RoundToInt(p.z / Cell)))
-                .Select(g => g.First()).ToArray();
+                .SelectMany(f => Shape(f.sharedMesh, silhouette).Select(p => weapon.InverseTransformPoint(f.transform.TransformPoint(p))));
+            skinned = weapon.GetComponentsInChildren<SkinnedMeshRenderer>().Where(s => s.sharedMesh).ToArray();
+            fixedPoints = Grid(found);
+            Bake();
             foreach (var part in GetComponentsInChildren<Transform>(true)) part.gameObject.layer = weapon.gameObject.layer;
             clouds.Play(true);
             Utility.Log.LogInfo("Weapon glow on " + weapon.name + ": " + points.Length + " points, strength " + strength + ", silhouette " + (silhouette != null) + ", shader " + GetComponent<ParticleSystemRenderer>().sharedMaterial?.shader?.name);
         }
         void Update()
         {
-            if (!held || points == null || points.Length == 0) return;
+            if (!held) return;
+            if (skinned.Length > 0 && Time.time >= nextBake) Bake();
+            if (points == null || points.Length == 0) return;
             cloudsDue += Time.deltaTime * Mathf.Min(points.Length * 2, 300);
             sparksDue += Time.deltaTime * 14 * strength;
             var color = new Color(1f, .6f, .18f, .03f + .1f * strength);
@@ -41,16 +44,24 @@ namespace Overhaul.Rarity
             for (; sparksDue >= 1; sparksDue--)
                 sparks.Emit(new ParticleSystem.EmitParams { position = held.TransformPoint(points[Random.Range(0, points.Length)]), startSize = .05f, startColor = new Color(1f, .7f, .25f, .9f), applyShapeToPosition = false }, 1);
         }
-        // A skinned model (most dual weapons) is copied in its pose, which works on protected meshes too.
-        static Vector3[] Baked(SkinnedMeshRenderer skinned)
+        // A skinned model (most dual weapons) follows the hands: its pose is copied ten times a second. Works on protected meshes too.
+        void Bake()
         {
-            if (Shapes.TryGetValue(skinned.sharedMesh, out var shape)) return shape;
-            var copy = new Mesh();
-            skinned.BakeMesh(copy);
-            shape = copy.vertices;
-            Object.Destroy(copy);
-            return Shapes[skinned.sharedMesh] = shape;
+            nextBake = Time.time + .1f;
+            if (skinned.Length == 0) { points = fixedPoints; return; }
+            if (!baked) baked = new Mesh();
+            var all = new List<Vector3>(fixedPoints);
+            foreach (var part in skinned)
+            {
+                if (!part) continue;
+                part.BakeMesh(baked);
+                var matrix = held.worldToLocalMatrix * part.transform.localToWorldMatrix;
+                foreach (var point in baked.vertices) all.Add(matrix.MultiplyPoint3x4(point));
+            }
+            points = Grid(all);
         }
+        static Vector3[] Grid(IEnumerable<Vector3> all) => all.GroupBy(p => new Vector3Int(Mathf.RoundToInt(p.x / Cell), Mathf.RoundToInt(p.y / Cell), Mathf.RoundToInt(p.z / Cell))).Select(g => g.First()).ToArray();
+        void OnDestroy() { if (baked) Destroy(baked); }
         static Vector3[] Shape(Mesh mesh, Material silhouette)
         {
             if (Shapes.TryGetValue(mesh, out var shape)) return shape;
