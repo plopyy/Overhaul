@@ -167,6 +167,14 @@ namespace Overhaul.Commands
                     ServerTime.Request(hours * 60 + minutes);
                     args.Context.AddString("Overhaul : " + hours.ToString("00") + ":" + minutes.ToString("00") + " demande au serveur pour tous les joueurs.");
                 }));
+            new Terminal.ConsoleCommand(Prefix + "weaponlevel",
+                "Met l'arme en main au niveau donne : o_weaponlevel <1-100> (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    if (args.Length != 2 || !int.TryParse(args.Args[1], out int level) || !Player.m_localPlayer) { args.Context.AddString("Usage : o_weaponlevel <1-100>"); return; }
+                    args.Context.AddString(Rarity.WeaponLevels.SetLevel(Player.m_localPlayer, level));
+                }));
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
