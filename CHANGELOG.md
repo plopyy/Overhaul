@@ -27,6 +27,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Mistlands guardian room: the eggs hanging over the arena are gone, so the enlarged guardian walks freely through the room; those over the outer walls stay. Existing mines need a reset (o_resetdungeon). (2.4.0.335)
 - The level up effect stays on the player while running.
 - Orange and yellow gems also appear in chests placed inside locations, such as the Ashlands fortresses.
 - Fortress ruins in the Ashlands (FortressRuins) are no longer reset, so they no longer come back inside a base built on them.
