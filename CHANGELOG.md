@@ -27,6 +27,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Shock no longer staggers on the first lightning hit: the target staggers when its Shock reaches 5 stacks, still at most once every 10 s (60 s for bosses). (2.4.0.336)
 - Mistlands guardian room: the eggs hanging over the arena are gone, so the enlarged guardian walks freely through the room; those over the outer walls stay. Existing mines need a reset (o_resetdungeon). (2.4.0.335)
 - The level up effect stays on the player while running.
 - Orange and yellow gems also appear in chests placed inside locations, such as the Ashlands fortresses.
