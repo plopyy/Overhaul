@@ -27,6 +27,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Ice nova: it always forms on the ground under the caster (it can no longer appear in the air) and cannot be cast more than 5 m above the ground; it hits every enemy whose body reaches 2 m below to 2 m above that ground in the whole 8 m disc (it missed tall creatures and slopes before). (2.4.0.337)
 - Shock no longer staggers on the first lightning hit: the target staggers when its Shock reaches 5 stacks, still at most once every 10 s (60 s for bosses). (2.4.0.336)
 - Mistlands guardian room: the eggs hanging over the arena are gone, so the enlarged guardian walks freely through the room; those over the outer walls stay. Existing mines need a reset (o_resetdungeon). (2.4.0.335)
 - The level up effect stays on the player while running.

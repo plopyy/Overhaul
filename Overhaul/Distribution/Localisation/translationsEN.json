@@ -2876,6 +2876,7 @@
   "overhaul_effect_bleeddamage": "Bleed damage",
   "overhaul_effect_bleeddamage_desc": "Raises the damage of the bleeds you inflict",
   "overhaul_spell_none": "No spell installed for this attack: open the grimoire",
+  "overhaul_spell_noground": "No ground within 5 m: the ice nova is cast on the ground",
   "overhaul_spell_fireball": "Fireball",
   "overhaul_spell_fireball_desc": "Hurls a fireball that explodes on impact and sets the enemies hit on fire.",
   "overhaul_spell_iceshard": "Ice shard",

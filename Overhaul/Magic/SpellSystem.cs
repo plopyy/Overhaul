@@ -194,6 +194,12 @@ namespace Overhaul.Magic
                     if (Time.time >= nextMessage) { nextMessage = Time.time + 2; __instance.Message(MessageHud.MessageType.Center, "$overhaul_spell_none"); }
                     __result = false; return false;
                 }
+                // A nova needs the ground within reach: it is cast on it, never in the air.
+                if (spell.Nova && !IceNova.Ground(__instance.transform.position, out _))
+                {
+                    if (Time.time >= nextMessage) { nextMessage = Time.time + 2; __instance.Message(MessageHud.MessageType.Center, "$overhaul_spell_noground"); }
+                    __result = false; return false;
+                }
                 if (secondaryAttack) staff.m_shared.m_secondaryAttack = attack; else staff.m_shared.m_attack = attack;
                 Casting[__instance] = spell;
                 return true;
@@ -231,8 +237,9 @@ namespace Overhaul.Magic
                 var damage = __instance.m_weapon.GetDamage();
                 damage.Modify(player.GetRandomSkillFactor(__instance.m_weapon.m_shared.m_skillType));
                 StaffMagic.Convert(ref damage, spell.Element, spell.Power);
-                IceNova.Cast(player.transform.position);
-                IceNova.Hit(player, damage, spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
+                if (!IceNova.Ground(player.transform.position, out var ground)) return;
+                IceNova.Cast(ground);
+                IceNova.Hit(player, ground, damage, spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
             }
         }
 

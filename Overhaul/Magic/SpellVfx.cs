@@ -17,7 +17,7 @@ namespace Overhaul.Magic
         // Spell name -> casting it from a player: full = the whole spell (damage and effects), otherwise its visual only.
         internal static readonly Dictionary<string, Action<Player, bool>> Casts = new Dictionary<string, Action<Player, bool>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["icenova"] = (player, full) => { IceNova.Cast(player.transform.position); if (full) IceNova.Test(player); },
+            ["icenova"] = (player, full) => { if (!IceNova.Ground(player.transform.position, out var ground)) return; IceNova.Cast(ground); if (full) IceNova.Test(player, ground); },
         };
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
@@ -89,17 +89,27 @@ namespace Overhaul.Magic
             if (view && view.IsValid()) view.GetZDO().Set(SeedKey, UnityEngine.Random.Range(1, int.MaxValue));
         }
 
-        // The nova's hit on every enemy in a cylinder of its radius, twice their height and centred on the caster: damage
-        // and a status effect (the spell's: the freeze), the same instant for all.
-        const float HalfHeight = 1.8f;
-        internal static void Hit(Player caster, HitData.DamageTypes damage, int statusEffect)
+        // The ground under a point, at most MaxGroundDistance below it (the nova is cast there, never in the air).
+        const float MaxGroundDistance = 5f;
+        internal static bool Ground(Vector3 from, out Vector3 point)
         {
-            Vector3 center = caster.transform.position + Vector3.up * HalfHeight / 2;
+            point = from;
+            if (!Physics.Raycast(from + Vector3.up * 0.5f, Vector3.down, out var hit, MaxGroundDistance + 0.5f, LayerMask.GetMask(GroundLayers), QueryTriggerInteraction.Ignore)) return false;
+            point = hit.point;
+            return true;
+        }
+
+        // The nova's hit on every enemy whose body reaches a cylinder of its radius, from 2 m below to 2 m above the ground it
+        // was cast on: damage and a status effect (the spell's: the freeze), the same instant for all.
+        const float HalfHeight = 2f;
+        internal static void Hit(Player caster, Vector3 ground, HitData.DamageTypes damage, int statusEffect)
+        {
             foreach (var c in Character.GetAllCharacters())
             {
                 if (!c || c == caster || c.IsDead() || !BaseAI.IsEnemy(caster, c)) continue;
-                Vector3 offset = c.GetCenterPoint() - center;
-                if (Mathf.Abs(offset.y) > HalfHeight || new Vector2(offset.x, offset.z).sqrMagnitude > Radius * Radius) continue;
+                Vector3 offset = c.transform.position - ground;
+                float bottom = offset.y, top = offset.y + Mathf.Max(c.GetHeight(), 0.1f);
+                if (top < -HalfHeight || bottom > HalfHeight || new Vector2(offset.x, offset.z).sqrMagnitude > Radius * Radius) continue;
                 var hit = new HitData { m_point = c.GetCenterPoint(), m_dir = (c.transform.position - caster.transform.position).normalized, m_dodgeable = false, m_blockable = false, m_damage = damage, m_statusEffectHash = statusEffect };
                 hit.SetAttacker(caster);
                 c.Damage(hit);
@@ -107,10 +117,10 @@ namespace Overhaul.Magic
         }
 
         // The o_spell test without a staff: the grimoire's ice nova effect (the freeze) with 40 frost damage.
-        internal static void Test(Player caster)
+        internal static void Test(Player caster, Vector3 ground)
         {
             var spell = SpellSystem.Get("icenova");
-            Hit(caster, new HitData.DamageTypes { m_frost = 40f }, spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
+            Hit(caster, ground, new HitData.DamageTypes { m_frost = 40f }, spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
         }
 
         void Awake()

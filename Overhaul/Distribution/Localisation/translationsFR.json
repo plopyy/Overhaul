@@ -2979,6 +2979,7 @@
   "overhaul_effect_bleeddamage": "Dégâts de saignement",
   "overhaul_effect_bleeddamage_desc": "Augmente les dégâts des saignements que vous infligez",
   "overhaul_spell_none": "Aucun sort installé pour cette attaque : ouvrez le grimoire",
+  "overhaul_spell_noground": "Aucun sol à moins de 5 m : la nova de givre se lance au sol",
   "overhaul_spell_fireball": "Boule de feu",
   "overhaul_spell_fireball_desc": "Lance une boule de feu qui explose à l’impact et enflamme les ennemis touchés.",
   "overhaul_spell_iceshard": "Éclat de glace",
