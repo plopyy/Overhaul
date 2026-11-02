@@ -2983,6 +2983,8 @@
   "overhaul_spell_fireball_desc": "Lance une boule de feu qui explose à l’impact et enflamme les ennemis touchés.",
   "overhaul_spell_iceshard": "Éclat de glace",
   "overhaul_spell_iceshard_desc": "Lance un gros éclat de glace qui ralentit de 50 % le déplacement et les attaques des ennemis touchés.",
+  "overhaul_spell_icenova": "Nova de glace",
+  "overhaul_spell_icenova_desc": "Fait jaillir des pics de glace tout autour de vous : les ennemis proches sont gelés sur place, sans pouvoir bouger ni attaquer, jusqu'à 3 s après la fin de la nova.",
   "overhaul_spell_lightning": "Éclair",
   "overhaul_spell_lightning_desc": "Fait tomber la foudre là où vous visez, avec 35 % de chances d’étourdir 2 secondes chaque ennemi touché.",
   "overhaul_grimoire_tier1": "Tier I",

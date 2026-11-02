@@ -17,7 +17,7 @@ namespace Overhaul.Magic
         // Spell name -> casting it from a player: full = the whole spell (damage and effects), otherwise its visual only.
         internal static readonly Dictionary<string, Action<Player, bool>> Casts = new Dictionary<string, Action<Player, bool>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["icenova"] = (player, full) => { IceNova.Cast(player.transform.position); if (full) IceNova.Damage(player); },
+            ["icenova"] = (player, full) => { IceNova.Cast(player.transform.position); if (full) IceNova.Test(player); },
         };
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
@@ -31,6 +31,7 @@ namespace Overhaul.Magic
             foreach (var prefab in bundle.LoadAllAssets<GameObject>())
             {
                 if (prefab.name == "Overhaul_IceNova" && !prefab.GetComponent<IceNova>()) prefab.AddComponent<IceNova>();
+                if (prefab.name.StartsWith("Overhaul_FrozenRock") && !prefab.GetComponent<FrozenBlock>()) prefab.AddComponent<FrozenBlock>();
                 if (!PrefabManager.Instance.GetPrefab(prefab.name)) PrefabManager.Instance.AddPrefab(new CustomPrefab(prefab, false));
             }
         }
@@ -88,10 +89,10 @@ namespace Overhaul.Magic
             if (view && view.IsValid()) view.GetZDO().Set(SeedKey, UnityEngine.Random.Range(1, int.MaxValue));
         }
 
-        // Provisional numbers until the spell gets its Spells.cfg entry: frost damage (the game adds its own frost slow) to
-        // the enemies in a cylinder of the nova's radius, twice their height and centred on the caster.
-        const float FrostDamage = 40f, HalfHeight = 1.8f;
-        internal static void Damage(Player caster)
+        // The nova's hit on every enemy in a cylinder of its radius, twice their height and centred on the caster: damage
+        // and a status effect (the spell's: the freeze), the same instant for all.
+        const float HalfHeight = 1.8f;
+        internal static void Hit(Player caster, HitData.DamageTypes damage, int statusEffect)
         {
             Vector3 center = caster.transform.position + Vector3.up * HalfHeight / 2;
             foreach (var c in Character.GetAllCharacters())
@@ -99,10 +100,17 @@ namespace Overhaul.Magic
                 if (!c || c == caster || c.IsDead() || !BaseAI.IsEnemy(caster, c)) continue;
                 Vector3 offset = c.GetCenterPoint() - center;
                 if (Mathf.Abs(offset.y) > HalfHeight || new Vector2(offset.x, offset.z).sqrMagnitude > Radius * Radius) continue;
-                var hit = new HitData { m_point = c.GetCenterPoint(), m_dir = (c.transform.position - caster.transform.position).normalized, m_dodgeable = false, m_blockable = false };
-                hit.m_damage.m_frost = FrostDamage; hit.SetAttacker(caster);
+                var hit = new HitData { m_point = c.GetCenterPoint(), m_dir = (c.transform.position - caster.transform.position).normalized, m_dodgeable = false, m_blockable = false, m_damage = damage, m_statusEffectHash = statusEffect };
+                hit.SetAttacker(caster);
                 c.Damage(hit);
             }
+        }
+
+        // The o_spell test without a staff: the grimoire's ice nova effect (the freeze) with 40 frost damage.
+        internal static void Test(Player caster)
+        {
+            var spell = SpellSystem.Get("icenova");
+            Hit(caster, new HitData.DamageTypes { m_frost = 40f }, spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
         }
 
         void Awake()
