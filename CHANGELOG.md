@@ -3,6 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Ice nova** (spell effect, first version, not in the grimoire yet): ice crystals burst out of the ground in a disc of 8 m around the caster, bigger towards the edge, under a cold mist, over a frozen patch with ice cracks; after 2 s they shatter into shards sinking into the ground. Seen by every player nearby. Admins with devcommands can test spells with the new **o_spell** command: `o_spell icenova` casts it whole (provisional 40 frost damage to enemies in the disc), `o_spell icenova vfx` shows the effect only. (2.4.0.331)
 - **Server passwords** are remembered per server on your computer, so you connect without typing them again. A refused password is forgotten.
 - **Weapon levels**: weapons gain experience with each swing or shot that lands on a creature or dummy, axes also on trees and pickaxes on what they mine, and shields with each block, up to level 100. Each level adds 0.5 % damage or block power, shown in the tooltip, and from level 10 soft clouds and sparks follow the shape of the item, stronger every 10 levels.
 - **Signs on chests**: a sign hooks onto the side of a chest. Aiming at either shows the chest, Use opens it, the rename shortcut changes the sign text instead, and moving the chest takes its signs along. Chests now have snap points to line them up side by side or front to back, and can hold pieces placed on them.

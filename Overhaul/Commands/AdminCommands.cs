@@ -175,6 +175,19 @@ namespace Overhaul.Commands
                     if (args.Length != 2 || !int.TryParse(args.Args[1], out int level) || !Player.m_localPlayer) { args.Context.AddString("Usage : o_weaponlevel <1-100>"); return; }
                     args.Context.AddString(Rarity.WeaponLevels.SetLevel(Player.m_localPlayer, level));
                 }));
+            new Terminal.ConsoleCommand(Prefix + "spell",
+                "Test : lance un sort depuis le joueur : o_spell <sort> [full|vfx] (full par defaut : sort complet ; vfx : effets visuels seuls, sans degats ni effet) (admin serveur + devcommands).",
+                (Terminal.ConsoleEvent)(args =>
+                {
+                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
+                    string spells = string.Join(", ", Magic.SpellVfx.Casts.Keys);
+                    if (args.Length < 2 || args.Length > 3 || !Player.m_localPlayer) { args.Context.AddString("Usage : o_spell <sort> [full|vfx]. Sorts : " + spells); return; }
+                    if (!Magic.SpellVfx.Casts.TryGetValue(args[1], out var cast)) { args.Context.AddString("Overhaul : sort inconnu. Sorts : " + spells); return; }
+                    string mode = args.Length > 2 ? args[2].ToLowerInvariant() : "full";
+                    if (mode != "full" && mode != "vfx") { args.Context.AddString("Usage : o_spell <sort> [full|vfx]"); return; }
+                    cast(Player.m_localPlayer, mode == "full");
+                    args.Context.AddString("Overhaul : " + args[1] + " lance (" + (mode == "full" ? "sort complet" : "effets visuels seuls") + ").");
+                }), optionsFetcher: () => Magic.SpellVfx.Casts.Keys.ToList());
             new Terminal.ConsoleCommand(Prefix + "checktooltips",
                 "Verifie l'infobulle de tous les objets et liste les textes non traduits (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>
