@@ -62,7 +62,7 @@ namespace Overhaul.Magic
         const float GroundSize = 2f * 512f / 440f; // frost texture: patch radius 440 of 512 px
         const float Gravity = 12f, SinkSpeed = 1.6f;
 
-        static readonly int AlphaId = Shader.PropertyToID("_Alpha"), FlashId = Shader.PropertyToID("_Flash");
+        static readonly int AlphaId = Shader.PropertyToID("_Alpha"), FlashId = Shader.PropertyToID("_Flash"), RevealId = Shader.PropertyToID("_Reveal");
 
         struct Spike { public int Kind; public Vector3 Pos, Rot; public float H, W, Angle, Delay, Break; public bool Broken; }
         struct Puff { public Vector3 Pos; public float R; }
@@ -112,7 +112,8 @@ namespace Overhaul.Magic
             fragments = new[] { "Fragments1", "Fragments2", "Fragments3" }.Select(n => transform.Find(n).GetComponent<ParticleSystem>()).ToArray();
             smoke = transform.Find("Smoke").GetComponent<ParticleSystem>();
             ground = transform.Find("Ground").GetComponent<Renderer>();
-            ground.transform.localScale = new Vector3(0.001f, 0.001f, 1f);
+            // hidden until the seed arrives and the patch is laid on the ground
+            block = new MaterialPropertyBlock(); block.SetFloat(RevealId, 0f); ground.SetPropertyBlock(block);
         }
 
         void Update()
@@ -134,6 +135,7 @@ namespace Overhaul.Magic
             for (int i = 0; i < spikesPs.Length; i++) spikeBuffers[i] = new ParticleSystem.Particle[1024];
             counts = new int[spikesPs.Length];
             spikes = new Spike[Count];
+            BuildGround(UnityEngine.Random.value * 360f);
             for (int i = 0; i < Count; i++)
             {
                 float u = Mathf.Pow(UnityEngine.Random.value, 0.7f), r = 0.15f + u * (Radius - 0.15f), n = r / Radius;
@@ -144,11 +146,10 @@ namespace Overhaul.Magic
                 float lean = (0.15f + n * 0.5f) * UnityEngine.Random.Range(0.8f, 1.2f) * Mathf.Rad2Deg;
                 // lean outwards (around the tangent), then a free spin around the leaning axis
                 var rot = Quaternion.AngleAxis(lean, Vector3.Cross(Vector3.up, dir)) * Quaternion.Euler(0f, UnityEngine.Random.value * 360f, 0f);
-                spikes[i] = new Spike { Kind = kind, Pos = dir * r + Vector3.down * 0.05f * h, Rot = rot.eulerAngles, H = h, W = h * UnityEngine.Random.Range(0.55f, 0.8f),
+                spikes[i] = new Spike { Kind = kind, Pos = dir * r + Vector3.up * (GroundY(transform.TransformPoint(dir * r)) - 0.05f * h), Rot = rot.eulerAngles, H = h, W = h * UnityEngine.Random.Range(0.55f, 0.8f),
                     Angle = a, Delay = n * Wave + UnityEngine.Random.value * 0.04f, Break = Wave + Hold + n * 0.35f + UnityEngine.Random.value * 0.08f };
             }
             LayOutSmoke();
-            ground.transform.localRotation = Quaternion.Euler(90f, UnityEngine.Random.value * 360f, 0f);
             UnityEngine.Random.state = saved;
             time = 0f;
             Step(0f);
@@ -210,9 +211,7 @@ namespace Overhaul.Magic
             foreach (var f in fragments) StepFragments(f, dt);
             smoke.Simulate(dt, true, false, false);
 
-            float fr = Mathf.Min(1f, t / Wave) * Radius * GroundSize;
-            ground.transform.localScale = new Vector3(Mathf.Max(fr, 0.001f), Mathf.Max(fr, 0.001f), 1f);
-            block ??= new MaterialPropertyBlock();
+            block.SetFloat(RevealId, Mathf.Min(1f, t / Wave));
             block.SetFloat(AlphaId, t > hold ? Mathf.Max(0f, 1f - (t - hold - 0.2f) / 0.9f) : 1f);
             // the flash: the frozen patch glows brightly as it spreads, then settles (no real-time light)
             block.SetFloat(FlashId, t < Wave ? 3f : Mathf.Max(0f, 3f * (1f - (t - Wave) / 0.6f)));
@@ -251,15 +250,65 @@ namespace Overhaul.Magic
             }
         }
 
+        // The frozen patch follows the ground: a grid of GridCells x GridCells cells over the texture's square (the patch
+        // and its soft margin), each point dropped onto what lies under it (terrain, rocks, building pieces), turned by
+        // angle degrees. Its heights (relative to the nova's origin) also seat the spikes and stop the fragments.
+        const int GridCells = 40;
+        static readonly string[] GroundLayers = { "Default", "Default_small", "terrain", "static_solid", "piece" };
+        Mesh groundMesh;
+        float[] heights;
+
+        void BuildGround(float angle)
+        {
+            var groundT = ground.transform;
+            groundT.localPosition = Vector3.zero; groundT.localRotation = Quaternion.Euler(0f, angle, 0f); groundT.localScale = Vector3.one;
+            int n = GridCells + 1, mask = LayerMask.GetMask(GroundLayers);
+            float size = Radius * GroundSize, oy = transform.position.y;
+            heights = new float[n * n];
+            var v = new Vector3[n * n]; var uv = new Vector2[n * n];
+            for (int j = 0; j < n; j++)
+                for (int i = 0; i < n; i++)
+                {
+                    float x = (i / (float)GridCells - 0.5f) * size, z = (j / (float)GridCells - 0.5f) * size;
+                    var w = groundT.TransformPoint(new Vector3(x, 0f, z));
+                    float h = Physics.Raycast(w + Vector3.up * 4f, Vector3.down, out var hit, 10f, mask, QueryTriggerInteraction.Ignore) ? hit.point.y - oy : 0f;
+                    heights[j * n + i] = h;
+                    v[j * n + i] = new Vector3(x, h + 0.04f, z); uv[j * n + i] = new Vector2(i / (float)GridCells, j / (float)GridCells);
+                }
+            var tris = new int[GridCells * GridCells * 6];
+            for (int j = 0, k = 0; j < GridCells; j++)
+                for (int i = 0; i < GridCells; i++, k += 6)
+                {
+                    int a = j * n + i;
+                    tris[k] = a; tris[k + 1] = a + n; tris[k + 2] = a + 1; tris[k + 3] = a + 1; tris[k + 4] = a + n; tris[k + 5] = a + n + 1;
+                }
+            groundMesh = new Mesh { name = "IceNovaGround" };
+            groundMesh.vertices = v; groundMesh.uv = uv; groundMesh.triangles = tris;
+            groundMesh.RecalculateNormals(); groundMesh.RecalculateBounds();
+            ground.GetComponent<MeshFilter>().sharedMesh = groundMesh;
+        }
+
+        // Ground height under a world point, relative to the nova's origin (bilinear in the patch grid, 0 outside it).
+        float GroundY(Vector3 world)
+        {
+            var l = ground.transform.InverseTransformPoint(world);
+            float size = Radius * GroundSize, fx = (l.x / size + 0.5f) * GridCells, fz = (l.z / size + 0.5f) * GridCells;
+            if (fx < 0f || fz < 0f || fx >= GridCells || fz >= GridCells) return 0f;
+            int i = (int)fx, j = (int)fz, n = GridCells + 1; float u = fx - i, w = fz - j;
+            return Mathf.Lerp(Mathf.Lerp(heights[j * n + i], heights[j * n + i + 1], u), Mathf.Lerp(heights[(j + 1) * n + i], heights[(j + 1) * n + i + 1], u), w);
+        }
+
+        void OnDestroy() { if (groundMesh) Destroy(groundMesh); }
+
         // Fragments fly under gravity, then sink into the ground once they touch it (y of the nova's origin).
         void StepFragments(ParticleSystem ps, float dt)
         {
             ps.Simulate(dt, true, false, false);
             int c = ps.GetParticles(buffer);
-            float floor = transform.position.y + 0.02f;
             for (int i = 0; i < c; i++)
             {
                 var p = buffer[i];
+                float floor = transform.position.y + GroundY(p.position) + 0.02f;
                 bool sinking = p.position.y < floor && Mathf.Abs(p.velocity.y + SinkSpeed) < 0.01f && p.velocity.x == 0f;
                 if (!sinking)
                 {
