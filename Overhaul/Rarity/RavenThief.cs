@@ -53,7 +53,7 @@ namespace Overhaul.Rarity
 
             float dt = Time.deltaTime;
             Quaternion facing = Quaternion.LookRotation(Flat(player.transform.forward), Vector3.up);
-            Vector3 surface = Vector3.Lerp(shoulder.position, arm.position, .75f) + Vector3.up * .07f;
+            Vector3 surface = Perch();
             Vector3 perch = surface - facing * clawOffset + facing * hipOffset;
             Vector3 approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
             switch (state)
@@ -173,7 +173,7 @@ namespace Overhaul.Rarity
         {
             target = null;
             var facing = Quaternion.LookRotation(Flat(player.transform.forward), Vector3.up);
-            Vector3 surface = Vector3.Lerp(shoulder.position, arm.position, .75f) + Vector3.up * .07f;
+            Vector3 surface = Perch();
             Vector3 perch = surface - facing * clawOffset + facing * hipOffset, approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
             from = at; b = at + Flat(dir) * Vector3.Distance(at, player.transform.position) * .4f + Vector3.up * .4f; c = approach; to = perch; route = null;
             OverGround();
@@ -196,6 +196,8 @@ namespace Overhaul.Rarity
             state = State.Hovering;
         }
 
+        // Where its claws hold: on the top of the upper arm, just past the shoulder.
+        static Vector3 Perch() => arm.position + Vector3.up * .03f;
         static Vector3 Goal(ItemDrop item) => item.transform.position + Vector3.up * ItemHeight;
         // A new curve from a point, leaving along the heading, to a point.
         static void Curve(Vector3 start, Vector3 dir, Vector3 end)
