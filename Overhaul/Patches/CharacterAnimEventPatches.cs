@@ -24,7 +24,7 @@ namespace Overhaul.Patches
             // The weapon rework's rate and the AttackSpeed (CastSpeed for a staff) effect, both on the game's own speed, once.
             var weapon=player.GetCurrentWeapon();
             float effect=Mathf.Max(.1f,1+Effects.Effects.Get(player,Effects.EffectPatches.Magic(weapon)?"CastSpeed":"AttackSpeed")/100f);
-            float speed=state.Native*WeaponAttackSpeeds.Rate(weapon,player.m_currentAttackIsSecondary)*effect*ComboFinisher.SpeedFactor(player);
+            float speed=state.Native*WeaponAttackSpeeds.Rate(weapon,player.m_currentAttackIsSecondary)*effect*ComboFinisher.SpeedFactor(player)*SwordOpener.SpeedFactor(player);
             state.WithoutDodge=speed;DynamicCombat.AdjustDodgeAttackSpeed(player,ref speed);
             state.Scaled=Mathf.Max(.01f,speed);events.m_animator.speed=state.Scaled;state.Applied=true;
         }
