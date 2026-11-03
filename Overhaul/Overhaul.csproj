@@ -42,6 +42,7 @@
     <Compile Include="HarvestDamage.cs" />
     <Compile Include="EnemyHudOcclusion.cs" />
     <Compile Include="UniversalRepair.cs" />
+    <Compile Include="ComboFinisher.cs" />
     <Compile Include="Persistence\*.cs" />
     <EmbeddedResource Include="..\..\..\Libs\overhaul_sqlite3.dll"><LogicalName>Overhaul.sqlite3.win-x64.dll</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Persistence\schema.sql"><LogicalName>Overhaul.Persistence.schema.sql</LogicalName></EmbeddedResource>
