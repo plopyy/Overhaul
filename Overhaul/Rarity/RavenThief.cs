@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Overhaul.Rarity
 {
-    // Amber pearl in a trinket (Pie voleuse): Munin, small, sits on the local player's right shoulder. When an item that fits in the
+    // Amber pearl in a trinket (Pie voleuse): Hugin, small, sits on the local player's right shoulder. When an item that fits in the
     // inventory lies within Radius m of the player, it takes off along the way it faces, curves to the item, picks it up on touching
     // it, goes on to the next one, and once nothing is left comes back from behind to land on the shoulder facing forward.
     // Timings are those validated on the preview (Tools/3D/PlayerFbxWork HuginClips.RavenShoulder). Seen by the local player only.
@@ -178,20 +178,21 @@ namespace Overhaul.Rarity
             return player.GetInventory().CanAddItem(item.m_itemData) && item.m_itemData.GetWeight() + player.GetInventory().GetTotalWeight() <= player.GetMaxCarryWeight();
         }
 
-        // Munin from the game's tutorial ravens, stripped down to its model and clips.
+        // Hugin (the black raven; Munin is the white one) from the game's tutorial ravens, stripped down to its model and clips.
         static bool Build()
         {
-            var source = Jotunn.Managers.PrefabManager.Cache.GetPrefab<GameObject>("Munin");
-            if (!source && Tutorial.instance && Tutorial.instance.m_ravenPrefab)
-                source = Tutorial.instance.m_ravenPrefab.GetComponentsInChildren<Raven>(true).FirstOrDefault(r => r.m_isMunin)?.gameObject;
-            if (!source) { Utility.Log.LogWarning("Pie voleuse: Munin not found"); failedAt = Time.time; return false; }
+            GameObject source = null;
+            if (Tutorial.instance && Tutorial.instance.m_ravenPrefab)
+                source = Tutorial.instance.m_ravenPrefab.GetComponentsInChildren<Raven>(true).FirstOrDefault(r => !r.m_isMunin)?.gameObject;
+            if (!source) source = Jotunn.Managers.PrefabManager.Cache.GetPrefab<Raven>("Hugin")?.gameObject;
+            if (!source) { Utility.Log.LogWarning("Pie voleuse: Hugin not found"); failedAt = Time.time; return false; }
             // Built under an inactive holder so the raven's own scripts never wake.
             var holder = new GameObject("Overhaul_RavenThiefHolder"); holder.SetActive(false);
             raven = Object.Instantiate(source, holder.transform);
             foreach (var behaviour in raven.GetComponentsInChildren<MonoBehaviour>(true)) Object.DestroyImmediate(behaviour);
             foreach (var collider in raven.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(collider);
             foreach (var body in raven.GetComponentsInChildren<Rigidbody>(true)) Object.DestroyImmediate(body);
-            foreach (var t in raven.GetComponentsInChildren<Transform>(true)) if (t.name == "exclamation" || t.name == "Hugin" || t.name.StartsWith("Particle")) t.gameObject.SetActive(false);
+            foreach (var t in raven.GetComponentsInChildren<Transform>(true)) if (t.name == "exclamation" || t.name.StartsWith("Particle")) t.gameObject.SetActive(false);
             raven.name = "Overhaul_RavenThief";
             raven.transform.SetParent(null); Object.Destroy(holder);
             raven.transform.localScale = Vector3.one * Scale;
