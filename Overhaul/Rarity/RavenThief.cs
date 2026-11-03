@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Timings are those validated on the preview (Tools/3D/PlayerFbxWork HuginClips.RavenShoulder). Seen by the local player only.
     internal static class RavenThief
     {
-        const float Scale = .25f, Lift = 1.6f, Land = 1.5f, LoopStart = 3.8f, Period = .6333f, FadeTime = .9f, SpeedMin = 2.8f, SpeedMax = 3.2f,
+        const float Scale = .25f, Lift = 1.6f, Land = 1.5f, LoopStart = 3.8f, Period = .6333f, FadeTime = .9f, SpeedMin = 4.2f, SpeedMax = 4.8f,
             ItemHeight = .35f, Search = .25f, OwnWait = 1f;
         enum State { Perched, TakeOff, Flying, Returning, Landing }
 
@@ -39,7 +39,7 @@ namespace Overhaul.Rarity
             if (raven.activeSelf == hidden) { raven.SetActive(!hidden); if (hidden) { state = State.Perched; target = null; } }
             if (hidden) return;
 
-            float dt = Time.deltaTime, radius = def.Get("Radius", 10);
+            float dt = Time.deltaTime, radius = def.Get("Radius", 30);
             Quaternion facing = Quaternion.LookRotation(Flat(player.transform.forward), Vector3.up);
             Vector3 surface = Vector3.Lerp(shoulder.position, arm.position, .75f) + Vector3.up * .07f;
             Vector3 perch = surface - facing * clawOffset + facing * hipOffset;

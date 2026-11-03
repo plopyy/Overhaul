@@ -418,7 +418,7 @@ namespace Overhaul.Rarity
                             if (v.ContainsKey(key)) def.Values[key] = Float(v, key);
                         // Files made before the frost nova (its description shows these).
                         if (def.Effect == "ColdWalker") foreach (var (key, value) in new[] { ("NovaChance", 15f), ("NovaDamage", 35f), ("NovaRadius", 6f), ("ShardEvery", 3f), ("ShardMax", 5f), ("ShardDamage", 10f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
-                        if (def.Effect == "PreciousLoot" && !def.Values.ContainsKey("Radius")) def.Values["Radius"] = 10;
+                        if (def.Effect == "PreciousLoot" && !def.Values.ContainsKey("Radius")) def.Values["Radius"] = 30;
                         if (def.Effect == "LavaWalker") foreach (var (key, value) in new[] { ("WeakChance", 25f), ("WeakValue", 10f), ("WeakStacks", 5f), ("WeakDuration", 4f) }) if (!def.Values.ContainsKey(key)) def.Values[key] = value;
                         def.Bonuses = List(Get(v, "Bonus", "")).Select(b => b.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), ParseFloat(p[1].Trim()))).ToArray();
                         if (def.Effect != null || def.Bonuses.Length > 0) data.CatalystEffects[id] = def;
