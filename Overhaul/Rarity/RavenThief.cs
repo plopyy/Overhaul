@@ -9,7 +9,7 @@ namespace Overhaul.Rarity
     // Timings are those validated on the preview (Tools/3D/PlayerFbxWork HuginClips.RavenShoulder). Seen by the local player only.
     internal static class RavenThief
     {
-        const float Scale = .25f, Lift = 1.6f, Land = 1.5f, LoopStart = 3.8f, Period = .6333f, FadeTime = .9f, SpeedMin = 12.6f, SpeedMax = 14.4f, Radius = 30f,
+        const float Scale = .25f, Lift = 1.6f, Land = 1.5f, LoopStart = 3.8f, Period = .6333f, FadeTime = .9f, SpeedMin = 12.6f, SpeedMax = 14.4f, Radius = 30f, TakeOffSpeed = 2f,
             ItemHeight = .35f, Search = .25f, OwnWait = 1f;
         enum State { Perched, TakeOff, Flying, Returning, Landing }
 
@@ -51,7 +51,7 @@ namespace Overhaul.Rarity
                     if (Time.time >= nextSearch) { nextSearch = Time.time + Search; target = Find(player, radius, raven.transform.position); if (target) { state = State.TakeOff; clock = 0; } }
                     break;
                 case State.TakeOff:
-                    clock += dt;
+                    clock += dt * TakeOffSpeed;
                     OnShoulder(away, clock, surface, facing);
                     if (clock >= Lift)
                     {
