@@ -52,15 +52,11 @@ namespace Overhaul.Rarity
             if (hidden) return;
 
             float dt = Time.deltaTime;
-            Quaternion facing = Body();
-            Vector3 surface = Perch();
-            Vector3 perch = surface - facing * clawOffset + facing * hipOffset;
-            Vector3 approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
             switch (state)
             {
                 case State.Perched:
                     clock += dt;
-                    OnShoulder(idle, clock % idle.length, surface, facing);
+                    OnShoulder(idle, clock % idle.length);
                     if (planning != null)
                     {
                         if (!planning.Step()) break;
@@ -73,16 +69,16 @@ namespace Overhaul.Rarity
                     nextSearch = Time.time + Search;
                     target = Find(player, raven.transform.position); if (!target) break;
                     // The curve out of the shoulder, or else a path searched from it.
-                    Curve(perch, facing * Vector3.forward, Goal(target));
+                    Curve(hip.position, Flat(raven.transform.forward), Goal(target));
                     if (CurveClear()) { route = null; state = State.TakeOff; clock = 0; }
-                    else { planned = target; planning = new RavenPath(perch, Goal(target), player.transform.position); }
+                    else { planned = target; planning = new RavenPath(hip.position, Goal(target), player.transform.position); }
                     break;
                 case State.TakeOff:
                     clock += dt * TakeOffSpeed;
-                    OnShoulder(away, clock, surface, facing);
+                    OnShoulder(away, clock);
                     if (clock >= Lift)
                     {
-                        flight = clock; heading = facing * Vector3.forward;
+                        flight = clock; heading = Flat(raven.transform.forward); Detach();
                         if (!Valid(player, target)) { Next(player, hip.position, heading); break; }
                         if (route != null) Follow(hip.position, route, target);
                         else { Curve(hip.position, heading, Goal(target)); Begin(State.Flying); }
@@ -119,6 +115,7 @@ namespace Overhaul.Rarity
                     break;
                 case State.Returning:
                     flight += dt;
+                    Seat(out var perch, out var approach);
                     if (route == null) { to = perch; c = approach; OverGround(); }
                     traveled += speed * dt;
                     float r = Param();
@@ -143,13 +140,14 @@ namespace Overhaul.Rarity
                 case State.Gone:
                     clock += dt;
                     if (clock < GoneTime) break;
-                    Show(true); Puff(perch + Vector3.up * .15f);
+                    Seat(out var seat, out _);
+                    Show(true); Puff(seat + Vector3.up * .15f);
                     state = State.Landing; clock = Appear;
-                    OnShoulder(swoop, clock, surface, facing);
+                    OnShoulder(swoop, clock);
                     break;
                 case State.Landing:
                     clock += dt;
-                    OnShoulder(swoop, clock, surface, facing);
+                    OnShoulder(swoop, clock);
                     if (clock >= swoop.length) { state = State.Perched; clock = 0; }
                     break;
             }
@@ -172,9 +170,7 @@ namespace Overhaul.Rarity
         static void Back(Player player, Vector3 at, Vector3 dir)
         {
             target = null;
-            var facing = Body();
-            Vector3 surface = Perch();
-            Vector3 perch = surface - facing * clawOffset + facing * hipOffset, approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
+            Seat(out var perch, out var approach);
             from = at; b = at + Flat(dir) * Vector3.Distance(at, player.transform.position) * .4f + Vector3.up * .4f; c = approach; to = perch; route = null;
             OverGround();
             if (CurveClear()) Return(at, dir);
@@ -289,10 +285,29 @@ namespace Overhaul.Rarity
         static float Beat(float t) => t < LoopStart ? t : LoopStart + (t - LoopStart) % Period;
         static Vector3 Flat(Vector3 v) { v.y = 0; return v.sqrMagnitude > 1e-6f ? v.normalized : Vector3.forward; }
 
-        static void OnShoulder(AnimationClip clip, float time, Vector3 surface, Quaternion facing)
+        // On the shoulder it is a child of the shoulder bone, placed once as it lands: the body carries it from then on.
+        static bool attached;
+        static void OnShoulder(AnimationClip clip, float time)
         {
-            raven.transform.SetPositionAndRotation(surface - facing * clawOffset, facing);
+            if (!attached)
+            {
+                var body = Body();
+                raven.transform.SetPositionAndRotation(Perch() - body * clawOffset, body);
+                raven.transform.SetParent(shoulder, true); attached = true;
+            }
             clip.SampleAnimation(animated, time);
+        }
+        static void Detach()
+        {
+            if (!attached) return;
+            raven.transform.SetParent(null, true); raven.transform.localScale = Vector3.one * Scale; attached = false;
+        }
+        // Where its hip will be once landed, and the point behind the player it comes in from (for the flight back).
+        static void Seat(out Vector3 perch, out Vector3 approach)
+        {
+            var body = Body();
+            perch = Perch() - body * clawOffset + body * hipOffset;
+            approach = perch - body * Vector3.forward * 2.4f + Vector3.up * .5f;
         }
         static void Pose(AnimationClip clip, float time, float tuck)
         {
@@ -302,7 +317,7 @@ namespace Overhaul.Rarity
         // In flight the body follows the way and faces along it; legs tucked as in the swoop, and the switch to the swoop faded.
         static void Fly(AnimationClip clip, float time, float k, float tuck)
         {
-            Pose(clip, time, tuck);
+            Detach(); Pose(clip, time, tuck);
             if (fade > 0 && fadeRot != null)
             {
                 for (int i = 0; i < bones.Length; i++) { bones[i].localRotation = Quaternion.Slerp(bones[i].localRotation, fadeRot[i], fade); if (bones[i] != hip) bones[i].localPosition = Vector3.Lerp(bones[i].localPosition, fadePos[i], fade); }
@@ -315,7 +330,7 @@ namespace Overhaul.Rarity
         // Beating its wings in place while it looks for a way.
         static void Hover(float time)
         {
-            Pose(away, time, 1);
+            Detach(); Pose(away, time, 1);
             raven.transform.rotation = Quaternion.LookRotation(heading, Vector3.up);
             raven.transform.position += hoverAt - hip.position;
         }
@@ -387,14 +402,14 @@ namespace Overhaul.Rarity
             idle.SampleAnimation(animated, 0); clawOffset = claw.position; hipOffset = hip.position;
             renderers = raven.GetComponentsInChildren<Renderer>(true).Where(x => x.enabled).ToArray();
             raven.SetActive(true);
-            state = State.Perched; clock = 0; target = null; fadeRot = null; route = null; planning = null;
+            state = State.Perched; clock = 0; target = null; fadeRot = null; route = null; planning = null; attached = false;
             return true;
         }
 
         static void Remove()
         {
             if (raven) Object.Destroy(raven);
-            raven = null; owner = null; target = null; planning = null; route = null; skipped.Clear();
+            raven = null; owner = null; target = null; planning = null; route = null; attached = false; skipped.Clear();
         }
     }
 
