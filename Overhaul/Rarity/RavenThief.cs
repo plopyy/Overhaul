@@ -197,7 +197,7 @@ namespace Overhaul.Rarity
         }
 
         // Where its claws hold: on the top of the upper arm, just past the shoulder.
-        static Vector3 Perch() => arm.position + Vector3.up * .03f;
+        static Vector3 Perch() => arm.position + Vector3.up * .03f + Flat(owner.transform.forward) * .12f;
         static Vector3 Goal(ItemDrop item) => item.transform.position + Vector3.up * ItemHeight;
         // A new curve from a point, leaving along the heading, to a point.
         static void Curve(Vector3 start, Vector3 dir, Vector3 end)
