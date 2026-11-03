@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Overhaul
 {
-    // Combo finisher (one-handed swords and dual axes): each light attack of a combo that lands on a creature counts; a special attack
+    // Combo finisher (dual axes): each light attack of a combo that lands on a creature counts; a special attack
     // started while the combo goes on plays faster and hits harder by the same amount, the more hits landed the more (Bonus), and knocks
     // the creatures it hits back. The combo is lost after Window s without a landed hit, and spent by the special attack.
     internal static class ComboFinisher
@@ -20,7 +20,7 @@ namespace Overhaul
         static bool Fits(Player player)
         {
             var category = Utility.WeaponAttackSpeeds.Category(player.GetCurrentWeapon());
-            return category == "Swords1H" || category == "DualAxes";
+            return category == "DualAxes";
         }
 
         // The animation speed factor of the attack playing (1 outside a finisher).
