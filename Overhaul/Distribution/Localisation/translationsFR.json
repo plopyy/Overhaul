@@ -2458,6 +2458,7 @@
   "overhaul_catalyst_effect_lavawalker_weapon": "{WeakChance} % de chances par coup d’infliger Faiblesse au feu à la cible (-{WeakValue} % de résistance au feu pendant {WeakDuration} s, jusqu’à {WeakStacks} fois)",
   "overhaul_catalyst_effect_execute": "+{Value} % de dégâts sur une créature sous {Threshold} % de vie",
   "overhaul_catalyst_effect_preciousloot": "{Chance} % de chances qu’un arbre abattu ou un rocher, un filon ou un tas de boue brisé lâche {Min} à {Max} objets précieux ({Items})",
+  "overhaul_catalyst_effect_preciousloot_trinket": "Pie voleuse : un corbeau se pose sur votre épaule et va chercher les objets au sol à moins de {Radius} m qui tiennent dans votre inventaire",
   "overhaul_catalyst_effect_lightning": "{Chance} % de chances par coup qu’un éclair bonus frappe la cible : {Damage} dégâts de foudre. Serti sur une hache : +{Chop} dégâts de coupe. Serti sur une pioche : +{Mine} dégâts de minage.",
   "overhaul_catalyst_effect_killexplosion": "Tuer une créature déclenche une explosion de feu de {Damage} dégâts",
   "overhaul_catalyst_effect_eitrsurge": "Chaque sort : {Chance} % de chances de récupérer tout votre Eitr",

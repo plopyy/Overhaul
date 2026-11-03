@@ -2453,6 +2453,7 @@
   "overhaul_catalyst_effect_lavawalker_weapon": "{WeakChance} % chance per hit of Fire weakness on the target ({WeakValue} % less fire resistance for {WeakDuration} s, up to {WeakStacks} stacks)",
   "overhaul_catalyst_effect_execute": "+{Value} % damage on a creature under {Threshold} % health",
   "overhaul_catalyst_effect_preciousloot": "{Chance} % chance that a felled tree or a broken rock, ore vein or mud pile drops {Min} to {Max} precious items ({Items})",
+  "overhaul_catalyst_effect_preciousloot_trinket": "Thieving magpie: a raven sits on your shoulder and flies to fetch the items lying within {Radius} m that fit in your inventory",
   "overhaul_catalyst_effect_lightning": "{Chance} % chance per hit that a bonus bolt strikes the target: {Damage} lightning damage. Socketed in an axe: +{Chop} chop damage. Socketed in a pickaxe: +{Mine} mining damage.",
   "overhaul_catalyst_effect_killexplosion": "Killing a creature sets off a fire burst of {Damage} damage",
   "overhaul_catalyst_effect_eitrsurge": "Each spell: {Chance} % chance to refill all your eitr",

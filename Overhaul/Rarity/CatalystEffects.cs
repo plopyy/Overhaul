@@ -87,6 +87,7 @@ namespace Overhaul.Rarity
             string id = effect.ToLowerInvariant();
             var effects = new List<(string kind, string key)> { (Kind(effect), id) };
             if (effect == "ColdWalker") { effects.Add((Armor, id + "_armor")); effects.Add((Weapon, id + "_weapon")); }
+            if (effect == "PreciousLoot") effects.Add((Trinket, id + "_trinket"));
             if (effect == "LavaWalker" || effect == "FireThorns" || effect == "ParryReflect" || effect == "LastStand" || effect == "HighJump") effects.Add((Weapon, id + "_weapon"));
             return effects;
         }
