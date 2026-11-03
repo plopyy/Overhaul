@@ -73,6 +73,7 @@ namespace Overhaul
             Rarity.ItemRarity.Initialize();
             Rarity.EnchantTable.Initialize();
             Rarity.MythicVfx.Initialize();
+            Magic.SpellVfx.Initialize();
             Storage.FeedingTrough.Initialize();
             Storage.CharcoalKilnWoods.Initialize();
             Patches.WoodenArrowRecipe.Initialize();
@@ -89,7 +90,7 @@ namespace Overhaul
             XPortal.XPortal.Initialize();
 		}
 
-        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); }
+        public void Update() { XPortal.XPortal.Update(); Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); Rarity.RavenThief.Tick(); }
 
         public void LateUpdate()
         {
@@ -125,6 +126,7 @@ namespace Overhaul
             Magic.GrimoireStand.Shutdown();
             Rarity.EnchantTable.Shutdown();
             Rarity.MythicVfx.Shutdown();
+            Magic.SpellVfx.Shutdown();
             Storage.FeedingTrough.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();

@@ -22,13 +22,15 @@ namespace Overhaul.Magic
         internal sealed class Spell
         {
             public string Id, NameKey, DescriptionKey, Element, Icon, Attack, Projectile;
+            // Projectile (the attack's projectile) or Nova (an ice nova at the caster's feet, the attack only its animation).
+            public bool Nova;
             public Kind Kind;
             public int Tier, Level;
             // Rank of the spell itself (the grimoire's pips): 1 until spells rank up with the class level.
             public int Rank = 1;
-            public float Power, Eitr, ProjectileScale, ProjectileSpeed, ProjectileGravity, SlowPercent, SlowDuration, StunChance, StunDuration;
+            public float Power, Eitr, ProjectileScale, ProjectileSpeed, ProjectileGravity, SlowPercent, SlowDuration, StunChance, StunDuration, FreezeDuration;
             public bool Known => Level <= 0;
-            public bool HasEffect => SlowPercent > 0 && SlowDuration > 0 || StunChance > 0 && StunDuration > 0;
+            public bool HasEffect => SlowPercent > 0 && SlowDuration > 0 || StunChance > 0 && StunDuration > 0 || FreezeDuration > 0;
             public string EffectName => "Overhaul_Spell_" + Id;
         }
         internal sealed class SpellData
@@ -43,18 +45,39 @@ namespace Overhaul.Magic
         internal static SpellData Local, Current = new SpellData();
         internal static event Action Changed;
 
-        internal static Spell Get(string id) => id != null && Current.ById.TryGetValue(id, out var spell) ? spell : null;
+        // The ice shard became the ice nova: staffs that held it cast the nova.
+        internal static Spell Get(string id) => id != null && Current.ById.TryGetValue(id == "iceshard" ? "icenova" : id, out var spell) ? spell : null;
         internal static IEnumerable<Spell> All => Current.Spells;
 
         internal static void Initialize()
         {
             string path = Path.Combine(Path.GetDirectoryName(typeof(SpellSystem).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
+            else MigrateIceNova(path);
             try { Current = Local = Parse(File.ReadAllText(path)); }
             catch (Exception e) { Utility.Log.LogError("Spells.cfg unreadable: " + e.Message); }
             PrefabManager.OnVanillaPrefabsAvailable += Register;
         }
         internal static void Shutdown() => PrefabManager.OnVanillaPrefabsAvailable -= Register;
+
+        // A Spells.cfg from before the ice nova: its ice shard section becomes the default ice nova section (the file is
+        // backed up once next to it), the other spells keep their values.
+        static void MigrateIceNova(string path)
+        {
+            try
+            {
+                string text = File.ReadAllText(path);
+                int start = text.IndexOf("[Spell_IceShard]", StringComparison.OrdinalIgnoreCase);
+                if (start < 0 || text.IndexOf("[Spell_IceNova]", StringComparison.OrdinalIgnoreCase) >= 0) return;
+                int end = text.IndexOf("\n[", start + 1); end = end < 0 ? text.Length : end + 1;
+                string defaults = Utility.ConfigSections.Defaults(FileName);
+                int ds = defaults.IndexOf("[Spell_IceNova]"); int de = defaults.IndexOf("\n[", ds + 1); de = de < 0 ? defaults.Length : de + 1;
+                if (!File.Exists(path + ".icenova.bak")) File.Copy(path, path + ".icenova.bak");
+                File.WriteAllText(path, text.Substring(0, start) + defaults.Substring(ds, de - ds) + text.Substring(end));
+                Utility.Log.LogInfo("Spells.cfg: ice shard replaced by the ice nova (backup Spells.cfg.icenova.bak)");
+            }
+            catch (Exception e) { Utility.Log.LogWarning("Spells.cfg: ice nova update failed: " + e.Message); }
+        }
 
         static void Use(SpellData data) { Current = data; Attacks.Clear(); Changed?.Invoke(); }
 
@@ -88,6 +111,8 @@ namespace Overhaul.Magic
                     SlowDuration = RarityConfig.Float(v, "SlowDuration", 0),
                     StunChance = Mathf.Clamp(RarityConfig.Float(v, "StunChance", 0), 0, 100),
                     StunDuration = RarityConfig.Float(v, "StunDuration", 0),
+                    FreezeDuration = RarityConfig.Float(v, "FreezeDuration", 0),
+                    Nova = string.Equals(RarityConfig.Get(v, "Cast", "Projectile"), "Nova", StringComparison.OrdinalIgnoreCase),
                 };
                 if (spell.Element != "fire" && spell.Element != "ice" && spell.Element != "lightning") { Utility.Log.LogWarning("Spells.cfg: [" + section.Key + "] unknown element, fire used"); spell.Element = "fire"; }
                 data.Spells.Add(spell); data.ById[id] = spell;
@@ -103,7 +128,7 @@ namespace Overhaul.Magic
             PrefabManager.OnVanillaPrefabsAvailable -= Register;
             foreach (var spell in (Local ?? Current).Spells)
             {
-                var source = ProjectileSource(spell);
+                var source = spell.Nova ? null : ProjectileSource(spell);
                 if (source && Mathf.Abs(spell.ProjectileScale - 1) > .001f)
                 {
                     string name = "Overhaul_Spell_" + spell.Id + "_projectile";
@@ -139,6 +164,8 @@ namespace Overhaul.Magic
             if (Projectiles.TryGetValue(spell.Id, out var resized)) attack.m_attackProjectile = resized;
             else if (!string.IsNullOrEmpty(spell.Projectile)) attack.m_attackProjectile = ProjectileSource(spell) ?? attack.m_attackProjectile;
             attack.m_attackEitr = spell.Eitr;
+            // A nova: the staff's cast animation, no projectile; the nova starts at the attack's trigger (NovaCast).
+            if (spell.Nova) { attack.m_attackType = global::Attack.AttackType.None; attack.m_attackProjectile = null; }
             // A projectile that flies straight is aimed straight at the crosshair, not lobbed.
             if (spell.ProjectileGravity == 0) attack.m_launchAngle = 0;
             return Attacks[spell.Id] = attack;
@@ -167,6 +194,12 @@ namespace Overhaul.Magic
                     if (Time.time >= nextMessage) { nextMessage = Time.time + 2; __instance.Message(MessageHud.MessageType.Center, "$overhaul_spell_none"); }
                     __result = false; return false;
                 }
+                // A nova needs the ground within reach: it is cast on it, never in the air.
+                if (spell.Nova && !IceNova.Ground(__instance.transform.position, out _))
+                {
+                    if (Time.time >= nextMessage) { nextMessage = Time.time + 2; __instance.Message(MessageHud.MessageType.Center, "$overhaul_spell_noground"); }
+                    __result = false; return false;
+                }
                 if (secondaryAttack) staff.m_shared.m_secondaryAttack = attack; else staff.m_shared.m_attack = attack;
                 Casting[__instance] = spell;
                 return true;
@@ -191,7 +224,26 @@ namespace Overhaul.Magic
             if (spell.ProjectileGravity >= 0) projectile.m_gravity = spell.ProjectileGravity;
         }
 
-        // ---------------------------------------------------------------- slow and stun
+        // A nova spell starts where the staff's attack triggers, cast by the local player: the spell's share of the magic
+        // power in its element and its status effect on every enemy in the nova (IceNova.Hit).
+        [HarmonyPatch(typeof(global::Attack), "DoNonAttack")]
+        static class NovaCast
+        {
+            static void Postfix(global::Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var spell = player != null && player == Player.m_localPlayer ? CastBy(player) : null;
+                if (spell == null || !spell.Nova) return;
+                var damage = __instance.m_weapon.GetDamage();
+                damage.Modify(player.GetRandomSkillFactor(__instance.m_weapon.m_shared.m_skillType));
+                StaffMagic.Convert(ref damage, spell.Element, spell.Power);
+                if (!IceNova.Ground(player.transform.position, out var ground)) return;
+                IceNova.Cast(ground);
+                IceNova.Hit(player, ground, damage, spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0);
+            }
+        }
+
+        // ---------------------------------------------------------------- slow, stun and freeze
         internal static float AttackSpeed(Character character)
         {
             float speed = 1;
@@ -202,7 +254,7 @@ namespace Overhaul.Magic
         internal static bool Stunned(Character character)
         {
             var seman = character ? character.GetSEMan() : null;
-            if (seman != null) foreach (var se in seman.GetStatusEffects()) if (se is SE_Spell s && s.Stunning) return true;
+            if (seman != null) foreach (var se in seman.GetStatusEffects()) if (se is SE_Spell s && (s.Stunning || s.Freezing)) return true;
             return false;
         }
 
@@ -264,22 +316,40 @@ namespace Overhaul.Magic
     }
 
     // Status effect of a spell's hits, its values read from the spell when it lands: slow for SlowDuration, or, on a
-    // StunChance roll, stun for StunDuration (a failed roll ends it at once).
+    // StunChance roll, stun for StunDuration (a failed roll ends it at once), or freeze for FreezeDuration (Freeze: no
+    // move, no attack, animation stopped, in an ice block; never for creatures FrozenRocks.cfg spares). A new hit restarts
+    // it (the game resets its time) instead of stacking.
     internal sealed class SE_Spell : SE_Stats
     {
         public string Spell;
         internal SpellSystem.Spell Data => SpellSystem.Get(Spell);
-        internal bool Slowing, Stunning;
+        internal bool Slowing, Stunning, Freezing;
+        GameObject block;
 
         public override void Setup(Character character)
         {
             var spell = Data;
             Slowing = spell != null && spell.SlowPercent > 0 && spell.SlowDuration > 0;
             Stunning = spell != null && spell.StunChance > 0 && spell.StunDuration > 0 && UnityEngine.Random.value * 100f < spell.StunChance;
+            int rock = spell != null && spell.FreezeDuration > 0 ? Freeze.Rock(character) : 0;
+            Freezing = rock > 0;
             m_speedModifier = Slowing ? -spell.SlowPercent / 100f : 0;
-            m_ttl = Stunning ? Mathf.Max(spell.StunDuration, Slowing ? spell.SlowDuration : 0) : Slowing ? spell.SlowDuration : .01f;
+            m_ttl = Mathf.Max(Stunning ? spell.StunDuration : 0, Slowing ? spell.SlowDuration : 0, Freezing ? spell.FreezeDuration : 0, .01f);
             base.Setup(character);
             if (Stunning && character) character.Stagger(-character.transform.forward);
+            if (Freezing) { character.m_zanim?.SetSpeed(0f); block = Freeze.Encase(character, rock); }
+        }
+        public override void Stop()
+        {
+            base.Stop();
+            Thaw();
+        }
+        void Thaw()
+        {
+            if (!Freezing) return;
+            Freezing = false;
+            if (m_character) m_character.m_zanim?.SetSpeed(1f);
+            Freeze.Release(block); block = null;
         }
         public override void UpdateStatusEffect(float dt)
         {
@@ -287,6 +357,7 @@ namespace Overhaul.Magic
             var spell = Data;
             if (Stunning && spell != null && m_time >= spell.StunDuration) Stunning = false;
             if (Slowing && spell != null && m_time >= spell.SlowDuration) { Slowing = false; m_speedModifier = 0; }
+            if (Freezing && spell != null && m_time >= spell.FreezeDuration) Thaw();
         }
     }
 }

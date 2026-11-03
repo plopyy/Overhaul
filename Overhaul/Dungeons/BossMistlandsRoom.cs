@@ -69,6 +69,13 @@ namespace Overhaul.Dungeons
                     var p=root.transform.InverseTransformPoint(part.position);
                     if(part.name.StartsWith("dvergrtown_2x2x2")&&p.y>0&&Mathf.Abs(p.x)<20&&Mathf.Abs(p.z)<20)Object.DestroyImmediate(part.gameObject);
                 }
+                // Hanging eggs above the arena block the enlarged guardian; keep only those over the outer walls.
+                var eggs=bay.transform.Find("hangingeggs");
+                if(eggs)foreach(Transform egg in eggs.Cast<Transform>().ToArray())
+                {
+                    var p=root.transform.InverseTransformPoint(egg.position);
+                    if(Mathf.Abs(p.x)<20&&Mathf.Abs(p.z)<20)Object.DestroyImmediate(egg.gameObject);
+                }
                 // All nest attachments move with the raised rear vault, never alone.
                 if(z==16)
                 {
