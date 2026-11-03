@@ -13,8 +13,8 @@ namespace Overhaul.Rarity
     internal static class RavenThief
     {
         const float Scale = .25f, Lift = 1.6f, Land = 1.5f, LoopStart = 3.8f, Period = .6333f, FadeTime = .9f, SpeedMin = 12.6f, SpeedMax = 14.4f, Radius = 30f, TakeOffSpeed = 2f,
-            ItemHeight = .35f, Search = .25f, OwnWait = 1f, SkipTime = 10f, PickRadius = 2f;
-        enum State { Perched, TakeOff, Flying, Hovering, Returning, Landing }
+            ItemHeight = .35f, Search = .25f, OwnWait = 1f, SkipTime = 10f, PickRadius = 2f, GoneTime = .4f, Appear = 1f;
+        enum State { Perched, TakeOff, Flying, Hovering, Returning, Gone, Landing }
 
         static GameObject raven, animated; // the clips are sampled on the Animator's object
         static Transform hip, claw, shoulder, arm;
@@ -37,6 +37,8 @@ namespace Overhaul.Rarity
         static RavenPath planning;
         static ItemDrop planned; // null: the path leads back to the player
         static Vector3 hoverAt;
+        static EffectList poof; // Hugin's own despawn puff
+        static Renderer[] renderers;
 
         internal static void Tick()
         {
@@ -46,7 +48,7 @@ namespace Overhaul.Rarity
             if (owner != player) { Remove(); owner = player; }
             if (!raven && (Time.time < failedAt + 10 || !Build())) return;
             bool hidden = player.IsTeleporting() || player.InCutscene() || player.InBed();
-            if (raven.activeSelf == hidden) { raven.SetActive(!hidden); if (hidden) { state = State.Perched; target = null; planning = null; route = null; } }
+            if (raven.activeSelf == hidden) { raven.SetActive(!hidden); if (hidden) { state = State.Perched; target = null; planning = null; route = null; Show(true); } }
             if (hidden) return;
 
             float dt = Time.deltaTime;
@@ -110,7 +112,7 @@ namespace Overhaul.Rarity
                     {
                         // Back to the player: along the path found up to behind them, else straight (better than staying lost).
                         if (path.Path != null) Follow(hoverAt, path.Path, null);
-                        else Return(hoverAt, heading);
+                        else Vanish(hip.position);
                     }
                     else if (path.Path != null && Valid(player, planned)) Follow(hoverAt, path.Path, planned);
                     else { Skip(planned); Next(player, hoverAt, heading); }
@@ -137,6 +139,13 @@ namespace Overhaul.Rarity
                     if (landing && fadeRot == null) { fadeRot = bones.Select(t => t.localRotation).ToArray(); fadePos = bones.Select(t => t.localPosition).ToArray(); fade = 1; }
                     Fly(landing ? swoop : away, landing ? 1f + Mathf.Max(0, r - .84f) / .16f * (Land - 1f) : Beat(flight), r, landing ? 0 : 1);
                     if (r >= 1) { state = State.Landing; clock = Land; fadeRot = null; }
+                    break;
+                case State.Gone:
+                    clock += dt;
+                    if (clock < GoneTime) break;
+                    Show(true); Puff(perch + Vector3.up * .15f);
+                    state = State.Landing; clock = Appear;
+                    OnShoulder(swoop, clock, surface, facing);
                     break;
                 case State.Landing:
                     clock += dt;
@@ -171,6 +180,15 @@ namespace Overhaul.Rarity
             if (CurveClear()) Return(at, dir);
             else Wait(at, dir, null, approach, player);
         }
+        // No way back to the player: it vanishes in a puff, to reappear in another above the shoulder and land there.
+        static void Vanish(Vector3 at)
+        {
+            Puff(at); Show(false);
+            target = null; route = null; planning = null; fadeRot = null;
+            state = State.Gone; clock = 0;
+        }
+        static void Puff(Vector3 at) { if (poof != null) poof.Create(at, Quaternion.identity); }
+        static void Show(bool visible) { if (renderers != null) foreach (var r in renderers) if (r) r.enabled = visible; }
         static void Wait(Vector3 at, Vector3 dir, ItemDrop item, Vector3 goal, Player player)
         {
             hoverAt = at; heading = Flat(dir); planned = item; route = null;
@@ -338,6 +356,7 @@ namespace Overhaul.Rarity
                 source = Tutorial.instance.m_ravenPrefab.GetComponentsInChildren<Raven>(true).FirstOrDefault(r => !r.m_isMunin)?.gameObject;
             if (!source) source = Jotunn.Managers.PrefabManager.Cache.GetPrefab<Raven>("Hugin")?.gameObject;
             if (!source) { Utility.Log.LogWarning("Pie voleuse: Hugin not found"); failedAt = Time.time; return false; }
+            poof = source.GetComponent<Raven>()?.m_despawnEffect;
             // Built under an inactive holder so the raven's own scripts never wake.
             var holder = new GameObject("Overhaul_RavenThiefHolder"); holder.SetActive(false);
             raven = Object.Instantiate(source, holder.transform);
@@ -361,6 +380,7 @@ namespace Overhaul.Rarity
             swoop.SampleAnimation(animated, .3f); tucked = legs.Select(l => l.localRotation).ToArray();
             raven.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
             idle.SampleAnimation(animated, 0); clawOffset = claw.position; hipOffset = hip.position;
+            renderers = raven.GetComponentsInChildren<Renderer>(true).Where(x => x.enabled).ToArray();
             raven.SetActive(true);
             state = State.Perched; clock = 0; target = null; fadeRot = null; route = null; planning = null;
             return true;
