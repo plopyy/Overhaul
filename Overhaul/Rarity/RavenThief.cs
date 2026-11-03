@@ -83,6 +83,7 @@ namespace Overhaul.Rarity
                 case State.Returning:
                     flight += dt;
                     to = perch; c = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
+                    OverGround();
                     traveled += speed * dt;
                     float r = Param();
                     if (r < .7f && Time.time >= nextSearch)
@@ -120,7 +121,20 @@ namespace Overhaul.Rarity
             Start();
         }
         // Each leg flies at its own speed, the same all along it.
-        static void Start() { traveled = 0; speed = Random.Range(SpeedMin, SpeedMax); }
+        static void Start() { traveled = 0; speed = Random.Range(SpeedMin, SpeedMax); OverGround(); }
+        // The terrain height (pieces and roofs ignored, so it never climbs over a house it flies in).
+        static float Ground(Vector3 p) => ZoneSystem.instance ? ZoneSystem.instance.GetGroundHeight(p) : float.MinValue;
+        // Raises the middle of the curve so it stays ItemHeight above the terrain all along.
+        static void OverGround()
+        {
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float deficit = 0;
+                for (int i = 1; i < 12; i++) { var p = Point(i / 12f); deficit = Mathf.Max(deficit, Ground(p) + ItemHeight - p.y); }
+                if (deficit <= .01f) return;
+                b.y += deficit * 1.4f; c.y += deficit * 1.4f;
+            }
+        }
 
         static Vector3 Point(float k) { float u = 1 - k; return u * u * u * from + 3 * u * u * k * b + 3 * u * k * k * c + k * k * k * to; }
         static Vector3 Tangent(float k) { float u = 1 - k; return 3 * u * u * (b - from) + 6 * u * k * (c - b) + 3 * k * k * (to - c); }
@@ -154,7 +168,8 @@ namespace Overhaul.Rarity
                 fade -= Time.deltaTime / FadeTime;
             }
             raven.transform.rotation = Quaternion.LookRotation(Flat(Tangent(k)), Vector3.up);
-            raven.transform.position += Point(k) - hip.position;
+            var at = Point(k); at.y = Mathf.Max(at.y, Ground(at) + ItemHeight);
+            raven.transform.position += at - hip.position;
         }
 
         // The nearest item to a point that the player would pick up and that fits.
