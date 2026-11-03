@@ -13,7 +13,7 @@ namespace Overhaul.Rarity
             ItemHeight = .35f, Search = .25f, OwnWait = 1f;
         enum State { Perched, TakeOff, Flying, Returning, Landing }
 
-        static GameObject raven;
+        static GameObject raven, animated; // the clips are sampled on the Animator's object
         static Transform hip, claw, shoulder, arm;
         static Transform[] bones, legs;
         static Quaternion[] tucked, fadeRot; static Vector3[] fadePos;
@@ -141,12 +141,12 @@ namespace Overhaul.Rarity
         static void OnShoulder(AnimationClip clip, float time, Vector3 surface, Quaternion facing)
         {
             raven.transform.SetPositionAndRotation(surface - facing * clawOffset, facing);
-            clip.SampleAnimation(raven, time);
+            clip.SampleAnimation(animated, time);
         }
         // In flight the body follows the curve and faces along it; legs tucked as in the swoop, and the switch to the swoop faded.
         static void Fly(AnimationClip clip, float time, float k, float tuck)
         {
-            clip.SampleAnimation(raven, time);
+            clip.SampleAnimation(animated, time);
             for (int i = 0; i < legs.Length; i++) legs[i].localRotation = Quaternion.Slerp(legs[i].localRotation, tucked[i], tuck);
             if (fade > 0 && fadeRot != null)
             {
@@ -196,7 +196,7 @@ namespace Overhaul.Rarity
             raven.name = "Overhaul_RavenThief";
             raven.transform.SetParent(null); Object.Destroy(holder);
             raven.transform.localScale = Vector3.one * Scale;
-            var animator = raven.GetComponentInChildren<Animator>(true); if (animator) animator.enabled = false;
+            var animator = raven.GetComponentInChildren<Animator>(true); if (animator) { animator.enabled = false; animated = animator.gameObject; }
             var clips = animator ? animator.runtimeAnimatorController.animationClips : new AnimationClip[0];
             idle = clips.FirstOrDefault(x => x.name == "HuginIdle"); away = clips.FirstOrDefault(x => x.name == "HuginFlyAway"); swoop = clips.FirstOrDefault(x => x.name == "HuginSwoopIn");
             var all = raven.GetComponentsInChildren<Transform>(true);
@@ -206,9 +206,9 @@ namespace Overhaul.Rarity
             if (!idle || !away || !swoop || !hip || !claw || !shoulder || !arm) { Utility.Log.LogWarning("Pie voleuse: raven model or player shoulder incomplete"); Object.Destroy(raven); raven = null; failedAt = Time.time; return false; }
             bones = all.Where(t => t != raven.transform).ToArray();
             legs = all.Where(t => { for (var q = t; q && q != hip; q = q.parent) if (q.name.StartsWith("Leg1.")) return true; return false; }).ToArray();
-            swoop.SampleAnimation(raven, .3f); tucked = legs.Select(l => l.localRotation).ToArray();
+            swoop.SampleAnimation(animated, .3f); tucked = legs.Select(l => l.localRotation).ToArray();
             raven.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-            idle.SampleAnimation(raven, 0); clawOffset = claw.position; hipOffset = hip.position;
+            idle.SampleAnimation(animated, 0); clawOffset = claw.position; hipOffset = hip.position;
             raven.SetActive(true);
             state = State.Perched; clock = 0; target = null; fadeRot = null;
             return true;
