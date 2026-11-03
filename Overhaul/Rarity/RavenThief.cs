@@ -17,7 +17,7 @@ namespace Overhaul.Rarity
         enum State { Perched, TakeOff, Flying, Hovering, Returning, Gone, Landing }
 
         static GameObject raven, animated; // the clips are sampled on the Animator's object
-        static Transform hip, claw, shoulder, arm;
+        static Transform hip, claw, shoulder, arm, leftArm;
         static Transform[] bones, legs;
         static Quaternion[] tucked, fadeRot; static Vector3[] fadePos;
         static AnimationClip idle, away, swoop;
@@ -52,7 +52,7 @@ namespace Overhaul.Rarity
             if (hidden) return;
 
             float dt = Time.deltaTime;
-            Quaternion facing = Quaternion.LookRotation(Flat(player.transform.forward), Vector3.up);
+            Quaternion facing = Body();
             Vector3 surface = Perch();
             Vector3 perch = surface - facing * clawOffset + facing * hipOffset;
             Vector3 approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
@@ -172,7 +172,7 @@ namespace Overhaul.Rarity
         static void Back(Player player, Vector3 at, Vector3 dir)
         {
             target = null;
-            var facing = Quaternion.LookRotation(Flat(player.transform.forward), Vector3.up);
+            var facing = Body();
             Vector3 surface = Perch();
             Vector3 perch = surface - facing * clawOffset + facing * hipOffset, approach = perch - facing * Vector3.forward * 2.4f + Vector3.up * .5f;
             from = at; b = at + Flat(dir) * Vector3.Distance(at, player.transform.position) * .4f + Vector3.up * .4f; c = approach; to = perch; route = null;
@@ -197,7 +197,9 @@ namespace Overhaul.Rarity
         }
 
         // Where its claws hold: on the top of the upper arm, just past the shoulder.
-        static Vector3 Perch() => arm.position + Vector3.up * .06f + Flat(owner.transform.forward) * .08f + Flat(owner.transform.right) * .04f;
+        static Vector3 Perch() { var body = Body(); return arm.position + Vector3.up * .06f + body * Vector3.forward * .08f + body * Vector3.right * .04f; }
+        // The way the upper body faces: square to the line of the shoulders (the torso turns away from the character's own facing in some stances).
+        static Quaternion Body() { var right = Flat(arm.position - leftArm.position); return Quaternion.LookRotation(Vector3.Cross(right, Vector3.up), Vector3.up); }
         static Vector3 Goal(ItemDrop item) => item.transform.position + Vector3.up * ItemHeight;
         // A new curve from a point, leaving along the heading, to a point.
         static void Curve(Vector3 start, Vector3 dir, Vector3 end)
@@ -376,7 +378,8 @@ namespace Overhaul.Rarity
             hip = all.FirstOrDefault(t => t.name == "Hip"); claw = all.FirstOrDefault(t => t.name == "Mid3.r_end");
             var visual = owner.m_visual ? owner.m_visual.GetComponentsInChildren<Transform>(true) : owner.GetComponentsInChildren<Transform>(true);
             shoulder = visual.FirstOrDefault(t => t.name.EndsWith("RightShoulder")); arm = visual.FirstOrDefault(t => t.name.EndsWith("RightArm"));
-            if (!idle || !away || !swoop || !hip || !claw || !shoulder || !arm) { Utility.Log.LogWarning("Pie voleuse: raven model or player shoulder incomplete"); Object.Destroy(raven); raven = null; failedAt = Time.time; return false; }
+            leftArm = visual.FirstOrDefault(t => t.name.EndsWith("LeftArm"));
+            if (!idle || !away || !swoop || !hip || !claw || !shoulder || !arm || !leftArm) { Utility.Log.LogWarning("Pie voleuse: raven model or player shoulder incomplete"); Object.Destroy(raven); raven = null; failedAt = Time.time; return false; }
             bones = all.Where(t => t != raven.transform).ToArray();
             legs = all.Where(t => { for (var q = t; q && q != hip; q = q.parent) if (q.name.StartsWith("Leg1.")) return true; return false; }).ToArray();
             swoop.SampleAnimation(animated, .3f); tucked = legs.Select(l => l.localRotation).ToArray();
