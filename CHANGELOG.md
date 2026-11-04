@@ -2,10 +2,19 @@
 
 ## 2.3.1 (in progress)
 
+### Added
+- **Server passwords** are remembered per server on your computer, so you connect without typing them again. A refused password is forgotten.
+- Start game opens on the server list if you last joined a server, on your worlds if you last played solo.
+
 ### Fixed
 - **Add server** in the server list opens its address dialog again: the filter field kept the keyboard focus every frame, and the game ignores that button while the filter is focused.
+- Fortress ruins in the Ashlands (FortressRuins) are no longer reset, so they no longer come back inside a base built on them.
+- Mistlands guardian room: the eggs hanging over the arena are gone, so the enlarged guardian walks freely through the room; those over the outer walls stay. Existing mines need a reset (o_resetdungeon).
+- The level up effect stays on the player while running.
 
 ### Changed
+- Shock no longer staggers on the first lightning hit: the target staggers when its Shock reaches 5 stacks, still at most once every 10 s (60 s for bosses).
+- Gear tooltips list socketed catalysts by name only, the full effect is on the catalyst itself.
 - **Freeze gland shards** fly up to 100 m at the point the crosshair aims at, with or without enemies around, and never follow anything; they shatter there, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
 

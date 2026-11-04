@@ -16,7 +16,7 @@ namespace Overhaul.Effects
     //   base × (1 + 0.5 × (stacks − 1)) × (1 + attacker's BurnDamage/FrostbiteDamage/... bonus / 100)
     // A hit's DoT base is a fifth of its raw element damage, rounded down, at least 1. DoT damage never crits, goes through the
     // target's resistances; an immune target never gets the DoT. Side effects, whatever the resistances (normal / boss):
-    //   Burn: +50 % / +20 % chance to take a critical hit. Frostbite: 50 % / 30 % slower. Shock: stunned once every 10 s / 60 s.
+    //   Burn: +50 % / +20 % chance to take a critical hit. Frostbite: 50 % / 30 % slower. Shock: stunned on reaching 5 stacks, once every 10 s / 60 s.
     //   Poison: deals 20 % / 10 % less damage. Bleed: no health regeneration / half.
     // The state lives in the character's ZDO (stacks, base, end time, attacker), so every machine shows the icons under the
     // health bars and the DoT survives a change of owner; the owner ticks it.
@@ -63,7 +63,7 @@ namespace Overhaul.Effects
             zdo.Set(EndKeys[t], (float)(Now + Duration));
             zdo.Set(AttackerKeys[t], attacker);
             if (stacks == 1) nextTick[(target.GetZDOID(), t)] = Now + 1;
-            if (type == DotType.Shock && Now - zdo.GetFloat(StunKey, -9999) >= BossOr(target, 10, 60))
+            if (type == DotType.Shock && stacks >= MaxStacks && Now - zdo.GetFloat(StunKey, -9999) >= BossOr(target, 10, 60))
             {
                 zdo.Set(StunKey, (float)Now);
                 target.Stagger(-target.transform.forward);
