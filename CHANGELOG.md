@@ -2,6 +2,9 @@
 
 ## 2.3.1 (in progress)
 
+### Fixed
+- **Add server** in the server list opens its address dialog again: the filter field kept the keyboard focus every frame, and the game ignores that button while the filter is focused.
+
 ### Changed
 - **Freeze gland shards** fly up to 100 m at the point the crosshair aims at, with or without enemies around, and never follow anything; they shatter there, hitting the creature still standing there. A melee attack sends them, on a wider curve, at the point it should strike in front of you. Shards left after changing weapon vanish after 30 s without an attack.
 - **Checkerboard floors** is no longer a saved setting: it switches off whenever the hammer leaves your hand.
