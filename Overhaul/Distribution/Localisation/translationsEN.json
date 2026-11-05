@@ -2940,5 +2940,6 @@
   "overhaul_craft_filter_balanced": "Balanced food",
   "overhaul_craft_filter_misc": "Miscellaneous",
   "overhaul_craft_search": "Search…",
-  "overhaul_take_cooked": "Take out the dishes"
+  "overhaul_take_cooked": "Take out the dishes",
+  "overhaul_combo_finisher": "Combo finisher lvl {0} (+{1} %)"
 }

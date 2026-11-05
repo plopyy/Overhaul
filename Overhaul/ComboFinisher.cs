@@ -36,6 +36,13 @@ namespace Overhaul
                 bool combo = Fits(player) && Time.time - lastHit <= Window;
                 finisherBonus = combo ? Bonus[Mathf.Min(hits, Bonus.Length - 1)] : 0;
                 finisher = finisherBonus > 0 ? player.m_currentAttack : null;
+                // Feedback: which finisher level started (1 = 2 hits, 2 = 3 hits, 3 = 4 hits and more).
+                if (finisher != null)
+                {
+                    int level = Mathf.Clamp(hits - 1, 1, 3);
+                    player.Message(MessageHud.MessageType.TopLeft, Localization.instance.Localize("$overhaul_combo_finisher", level.ToString(), Mathf.RoundToInt(finisherBonus * 100).ToString()));
+                    Utility.Log.LogInfo($"Combo finisher level {level}: {hits} hits, +{finisherBonus * 100:0}% speed and damage");
+                }
                 hits = 0; counted = null;
             }
         }
