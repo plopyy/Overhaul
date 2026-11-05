@@ -24,7 +24,14 @@ namespace Overhaul
         }
 
         // The animation speed factor of the attack playing (1 outside a finisher).
-        internal static float SpeedFactor(Player player) => player.m_currentAttack != null && player.m_currentAttack == finisher ? 1 + finisherBonus : 1;
+        // TEMPORARY TEST: x3 speed whatever the level, to check in game that the speed reaches the animation.
+        static Attack speedLogged;
+        internal static float SpeedFactor(Player player)
+        {
+            if (player.m_currentAttack == null || player.m_currentAttack != finisher) return 1;
+            if (speedLogged != finisher) { speedLogged = finisher; Utility.Log.LogInfo("Combo finisher speed applied to the animation (test x3)"); }
+            return 3;
+        }
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
         private static class Start
