@@ -53,6 +53,7 @@ namespace Overhaul
         // TEMPORARY DIAGNOSTIC (a player sees no health bars): every 10 s, what the game's bars are doing on this machine,
         // written to the log (bars made, shown, hidden here, the root and canvas, the first bar's place on the screen).
         private static float nextDiagnostic;
+        private static bool canvasesLogged;
         private static void Diagnose(EnemyHud hud, Camera camera)
         {
             if (Time.time < nextDiagnostic) return;
@@ -70,6 +71,25 @@ namespace Overhaul
                         + " scale=" + gui.transform.lossyScale.ToString("F2") + " alpha=" + (gui.GetComponent<CanvasGroup>() ? gui.GetComponent<CanvasGroup>().alpha.ToString("F2") : "-")
                         + " canvas=" + (canvas ? canvas.name + " enabled=" + canvas.enabled + " mode=" + canvas.renderMode + " order=" + canvas.sortingOrder + " scale=" + canvas.scaleFactor.ToString("F2") + " cam=" + (canvas.worldCamera ? canvas.worldCamera.name : "-") : "none")
                         + " rect=" + (rt ? rt.rect.size.ToString("F0") : "-");
+                }
+            }
+            // Once a session, every active canvas (to compare the bars' with those that show, such as the damage numbers'),
+            // and the first shown bar's images.
+            if (!canvasesLogged && shown > 0)
+            {
+                canvasesLogged = true;
+                foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                    if (c.isActiveAndEnabled && c.isRootCanvas)
+                        Utility.Log.LogInfo("EnemyHud diagnostic canvas: " + c.name + " mode=" + c.renderMode + " order=" + c.sortingOrder + " layer=" + c.sortingLayerName + " display=" + c.targetDisplay
+                            + " cam=" + (c.worldCamera ? c.worldCamera.name + " depth=" + c.worldCamera.depth : "-") + " scale=" + c.scaleFactor.ToString("F2") + " go layer=" + LayerMask.LayerToName(c.gameObject.layer));
+                foreach (var pair in hud.m_huds)
+                {
+                    var gui = pair.Value?.m_gui; if (!gui || !gui.activeInHierarchy) continue;
+                    foreach (var g in gui.GetComponentsInChildren<UnityEngine.UI.Graphic>(false))
+                        Utility.Log.LogInfo("EnemyHud diagnostic graphic: " + g.name + " color=" + g.color + " alpha=" + g.canvasRenderer.GetAlpha().ToString("F2") + " culled=" + g.canvasRenderer.cull
+                            + " size=" + g.rectTransform.rect.size.ToString("F0") + " material=" + (g.materialForRendering ? g.materialForRendering.name + "/" + g.materialForRendering.shader.name + " supported=" + g.materialForRendering.shader.isSupported : "none")
+                            + " texture=" + (g.mainTexture ? g.mainTexture.name : "none"));
+                    break;
                 }
             }
             var root = hud.m_hudRoot;
