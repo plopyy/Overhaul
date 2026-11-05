@@ -25,6 +25,7 @@
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
 ### Changed
+- The dual axes' heavy attack plays its own full-body leap again (as in the base game): the walking overlay Overhaul lays on the legs during attacks no longer covers it, as for the dagger leaps. (2.4.0.363)
 - Only one immunity catalyst per trinket, and only one worn trinket with an immunity catalyst.
 - Start game opens on the server list if you last joined a server, on your worlds if you last played solo.
 - Gear tooltips list socketed catalysts by name only, the full effect is on the catalyst itself. Item tooltips no longer show a stamina cost.
