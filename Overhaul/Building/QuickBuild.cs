@@ -298,8 +298,10 @@ namespace Overhaul.Building
                 case Kind.Floor: a = Vector3.right; sizeA = size.x; b = Vector3.forward; sizeB = size.z; break;
                 case Kind.Roof: a = Vector3.right; sizeA = size.x; break;
                 default:
-                    // Along its length, whichever axis that is (upright pole, lying beam).
-                    if (size.y >= size.x && size.y >= size.z) { a = Vector3.up; sizeA = size.y; }
+                    // Along its length, whichever way it runs (upright pole, lying beam, 45 degree beam): from one end snap
+                    // point to the other, the two farthest apart; the box's longest axis when it has no such pair.
+                    if (Ends(ghost, out var from, out var to)) { a = (to - from).normalized; sizeA = (to - from).magnitude; if (Vector3.Dot(a, Longest(Abs(a))) < 0) a = -a; }
+                    else if (size.y >= size.x && size.y >= size.z) { a = Vector3.up; sizeA = size.y; }
                     else if (size.x >= size.z) { a = Vector3.right; sizeA = size.x; }
                     else { a = Vector3.forward; sizeA = size.z; }
                     break;
@@ -308,6 +310,39 @@ namespace Overhaul.Building
             return sizeA >= .1f;
         }
 
+        // A pillar's or beam's two ends (in its own axes), from its snap points: the two farthest apart give a first guess.
+        private static bool Ends(GameObject ghost, out Vector3 from, out Vector3 to)
+        {
+            from = to = Vector3.zero; float best = .01f;
+            snapPoints.Clear(); ghost.GetComponent<Piece>().GetSnapPoints(snapPoints);
+            for (int i = 0; i < snapPoints.Count; i++)
+                for (int j = i + 1; j < snapPoints.Count; j++)
+                {
+                    Vector3 p = ghost.transform.InverseTransformPoint(snapPoints[i].position), q = ghost.transform.InverseTransformPoint(snapPoints[j].position);
+                    if ((q - p).sqrMagnitude > best) { best = (q - p).sqrMagnitude; from = p; to = q; }
+                }
+            if (best <= .01f) return false;
+            // Snap points on the corners of each end (a square pillar): each end is the middle of the points lying near it
+            // along that first guess, so the axis runs along the length and not across a corner-to-corner diagonal.
+            Vector3 guess = (to - from).normalized; float lo = Vector3.Dot(from, guess), hi = Vector3.Dot(to, guess), near = (hi - lo) * .25f;
+            Vector3 sumLo = Vector3.zero, sumHi = Vector3.zero; int nLo = 0, nHi = 0;
+            foreach (var point in snapPoints)
+            {
+                var p = ghost.transform.InverseTransformPoint(point.position); float d = Vector3.Dot(p, guess);
+                if (d <= lo + near) { sumLo += p; nLo++; } else if (d >= hi - near) { sumHi += p; nHi++; }
+            }
+            from = sumLo / nLo; to = sumHi / nHi;
+            return (to - from).sqrMagnitude > .01f;
+        }
+
+        // Half the piece's extent along axis: its length's half along a pillar or beam (which may run askew), else the box's.
+        private static float HalfAlong(Kind pieceKind, Vector3 axis, Vector3 a, float sa, Vector3 min, Vector3 max) =>
+            pieceKind == Kind.Pillar && axis == a ? sa / 2 : Vector3.Dot(Abs(axis), (max - min) / 2);
+
+        // A bar's turn so that it lies along axis even when the axis runs askew (a 45 degree beam): its box is sized on the
+        // nearest straight axis, then turned onto the real one.
+        private static Quaternion Tilt(Vector3 axis) => Quaternion.FromToRotation(Longest(Abs(axis)), Vector3.Dot(axis, Longest(Abs(axis))) < 0 ? -axis : axis);
+
         // A small green bar beyond each side the selected piece can be stretched to, shown until a row is started.
         private static readonly List<GameObject> handles = new List<GameObject>();
         private static GameObject handle;
@@ -315,7 +350,7 @@ namespace Overhaul.Building
         private static void Handles(Player player, GameObject ghost)
         {
             var piece = ghost && !holding && ghost.activeInHierarchy && !Storage.RelocationClient.Active ? player.GetSelectedPiece() : null;
-            var shown = new List<(Vector3 at, Vector3 scale)>();
+            var shown = new List<(Vector3 at, Vector3 scale, Quaternion tilt)>();
             var pieceKind = KindOf(piece);
             if (holding && ghost) RowHandles(shown);
             else if (pieceKind != Kind.None && Axes(pieceKind, ghost, out var a, out float sa, out var b, out float sb, out var min, out var max))
@@ -328,7 +363,7 @@ namespace Overhaul.Building
                     float length = Mathf.Max(.2f, Vector3.Dot(Abs(across), max - min) / 3);
                     var scale = Vector3.one * .06f + Abs(across) * (length - .06f);
                     foreach (int sign in new[] { -1, 1 })
-                        shown.Add((centre + axis * sign * (Vector3.Dot(Abs(axis), half) + .15f), scale));
+                        shown.Add((centre + axis * sign * (HalfAlong(pieceKind, axis, a, sa, min, max) + .15f), scale, Tilt(axis)));
                 }
             }
             if (shown.Count > 0 && !handle) handle = BuildRotation.Asset("Overhaul_QuickBuildHandle");
@@ -340,8 +375,8 @@ namespace Overhaul.Building
                 if (!used) continue;
                 var t = handles[i].transform;
                 // A row (built or removed) is drawn in its own frame, a lone piece on the game's ghost.
-                if (holding) t.SetPositionAndRotation(anchor + turn * shown[i].at, turn);
-                else t.SetPositionAndRotation(ghost.transform.TransformPoint(shown[i].at), ghost.transform.rotation);
+                if (holding) t.SetPositionAndRotation(anchor + turn * shown[i].at, turn * shown[i].tilt);
+                else t.SetPositionAndRotation(ghost.transform.TransformPoint(shown[i].at), ghost.transform.rotation * shown[i].tilt);
                 t.localScale = shown[i].scale;
             }
         }
@@ -349,7 +384,7 @@ namespace Overhaul.Building
         // While a row grows: a bar beyond its end on each side it grows or can still grow (a wall not stretched up or down
         // only shows the bar above it, the ground being below), stretching out and growing as the aim moves towards the next
         // piece.
-        private static void RowHandles(List<(Vector3 at, Vector3 scale)> shown)
+        private static void RowHandles(List<(Vector3 at, Vector3 scale, Quaternion tilt)> shown)
         {
             var size = pieceMax - pieceMin;
             var centre = (pieceMin + pieceMax) / 2 + axisA * ((fromA + toA) / 2f * sizeA) + axisB * ((fromB + toB) / 2f * sizeB);
@@ -363,14 +398,15 @@ namespace Overhaul.Building
                 foreach (int sign in signs)
                 {
                     int end = sign > 0 ? to : from;
-                    float edge = sign > 0 ? Vector3.Dot(axis, pieceMax) + to * step : Vector3.Dot(axis, pieceMin) + from * step;
+                    float mid = Vector3.Dot(axis, (pieceMin + pieceMax) / 2), half = HalfAlong(kind, axis, axisA, sizeA, pieceMin, pieceMax);
+                    float edge = sign > 0 ? mid + half + to * step : mid - half + from * step;
                     // From 0 at the row's end to 1 halfway to the next piece, where it appears.
                     float progress = Mathf.Clamp01((along / step - end) * sign * 2);
                     float depth = .06f + progress * Mathf.Min(.6f, step * .3f);
                     var at = centre + axis * (edge - Vector3.Dot(axis, centre) + sign * (.15f + depth / 2));
                     // It also grows along the side (taller beside, wider above or below).
                     float grown = length * (1 + .6f * progress);
-                    shown.Add((at, Vector3.one * .06f + Abs(across) * (grown - .06f) + Abs(axis) * (depth - .06f)));
+                    shown.Add((at, Vector3.one * .06f + Abs(across) * (grown - .06f) + Longest(Abs(axis)) * (depth - .06f), Tilt(axis)));
                 }
             }
         }

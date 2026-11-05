@@ -32,6 +32,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Quick build and quick removal of pillars and beams follow the beam's own length, from one end to the other, so 45° beams (and any beam turned askew) stretch along themselves; the small green bars beyond their ends lie along the beam too. (2.4.0.366)
 - **Add server** in the server list opens its address dialog again: the filter field kept the keyboard focus every frame, and the game ignores that button while the filter is focused. (2.4.0.357)
 - Ice nova: it always forms on the ground under the caster (it can no longer appear in the air) and cannot be cast more than 5 m above the ground; it hits every enemy whose body reaches 2 m below to 2 m above that ground in the whole 8 m disc (it missed tall creatures and slopes before). (2.4.0.337)
 - Shock no longer staggers on the first lightning hit: the target staggers when its Shock reaches 5 stacks, still at most once every 10 s (60 s for bosses). (2.4.0.336)
