@@ -49,7 +49,7 @@ namespace Overhaul.Rarity
 
         // Gear categories for EnchantItemTypes. AllWeapons and Armor stand for their whole group.
         private static readonly string[] Known = { "Melee", "Bow", "Staff", "Shield", "Helmet", "Chest", "Legs", "Cape", "Trinket", "Tool", "Pickaxe", "Axe",
-            "Sword", "Greatsword", "OneHandedAxe", "Battleaxe", "Mace", "Sledge", "Dagger", "Atgeir", "Spear", "Fists" };
+            "Sword", "Greatsword", "OneHandedAxe", "Battleaxe", "DualAxe", "Mace", "Sledge", "Dagger", "Atgeir", "Spear", "Fists" };
         private static readonly Dictionary<string, string[]> Groups = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             { "AllWeapons", new[] { "Melee", "Bow", "Staff" } },
@@ -79,12 +79,12 @@ namespace Overhaul.Rarity
             if (shared.m_skillType == Skills.SkillType.Axes) list.Add("Axe");
             if (shared.m_skillType == Skills.SkillType.Axes && shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon) list.Add("Tool");
             // Each kind of melee weapon also has a category of its own (for the mythic enchantments, one per kind): one or
-            // two-handed swords, axes (dual axes count as battleaxes) and maces, daggers, atgeirs, spears and fist weapons.
+            // two-handed swords, axes and maces, dual axes, daggers, atgeirs, spears and fist weapons.
             bool twoHanded = shared.m_itemType == ItemDrop.ItemData.ItemType.TwoHandedWeapon;
             switch (shared.m_skillType)
             {
                 case Skills.SkillType.Swords: list.Add(twoHanded ? "Greatsword" : "Sword"); break;
-                case Skills.SkillType.Axes: list.Add(twoHanded ? "Battleaxe" : "OneHandedAxe"); break;
+                case Skills.SkillType.Axes: list.Add(shared.m_attack?.m_attackAnimation == "dualaxes" ? "DualAxe" : twoHanded ? "Battleaxe" : "OneHandedAxe"); break;
                 case Skills.SkillType.Clubs: list.Add(twoHanded ? "Sledge" : "Mace"); break;
                 case Skills.SkillType.Knives: list.Add("Dagger"); break;
                 case Skills.SkillType.Polearms: list.Add("Atgeir"); break;
