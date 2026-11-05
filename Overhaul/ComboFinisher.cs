@@ -26,6 +26,8 @@ namespace Overhaul
         // The animation speed factor of the attack playing (1 outside a finisher).
         // The finisher plays twice as fast whatever its level; the level only sets the damage and knockback bonus.
         const float FinisherSpeed = 2f;
+        // Whether attack is the finisher playing (the dual axes' mythic only fires on it).
+        internal static bool IsFinisher(Attack attack) => attack != null && attack == finisher;
         internal static float SpeedFactor(Player player) => player.m_currentAttack != null && player.m_currentAttack == finisher ? FinisherSpeed : 1;
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]

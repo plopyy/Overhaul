@@ -10,7 +10,7 @@ namespace Overhaul.Rarity
     // Code of the mythic enchantments of RaritySystem.cfg.
     internal static class MythicEffects
     {
-        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing", "Prospector", "SpectralDagger" };
+        private static readonly HashSet<string> Implemented = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "FanVolley", "ZeusWrath", "DragonFist", "WindBlade", "Earthquake", "ArmorBreak", "Reaper", "RicochetAxe", "TwinBlade", "Whirlwind", "Homing", "Prospector", "SpectralDagger", "DualSlash" };
         internal static bool Known(string id) => Implemented.Contains(id);
 
         // --- FanVolley: the weapon fires its Value extra projectiles, every projectile (others bonuses included) spread
@@ -1272,6 +1272,52 @@ namespace Overhaul.Rarity
                 break;
             }
             if (dagger && ZNetScene.instance) ZNetScene.instance.Destroy(dagger);
+        }
+
+        // --- Golden Wings (DualSlash), the dual axes' mythic: the enhanced heavy attack (the combo finisher) sends two gold
+        // slashes (MythicVfx Mythic_DualSlash), one on each side, sweeping from the front to the back as the arms open. Every
+        // enemy (or dummy, rock, tree) within DualSlashReach of the player, ahead and on the sides (up to DualSlashArc degrees
+        // from ahead: the back stays open) is hit once for Value % of the attack's damage, as the sweep reaches it ---
+
+        private const float DualSlashReach = 2.8f, DualSlashArc = 140f, DualSlashSweep = .25f;
+        private static Attack dualSlashed;
+
+        [HarmonyPatch(typeof(Attack), "DoMeleeAttack")]
+        private static class DualSlash
+        {
+            private static void Postfix(Attack __instance)
+            {
+                var player = __instance.m_character as Player;
+                var weapon = __instance.m_weapon;
+                if (!player || player != Player.m_localPlayer || weapon == null || __instance == dualSlashed || !ComboFinisher.IsFinisher(__instance)) return;
+                float value = Enchantments.MythicValue(weapon, "DualSlash");
+                if (value <= 0) return;
+                dualSlashed = __instance;
+                Vector3 forward = Vector3.ProjectOnPlane(player.transform.forward, Vector3.up).normalized;
+                MythicVfx.Spawn("Mythic_DualSlash", player.transform.position, Quaternion.LookRotation(forward));
+                player.StartCoroutine(Wings(player, forward, AttackHit(__instance, player, value), weapon.m_shared.m_hitEffect));
+            }
+        }
+
+        // The sweep: over DualSlashSweep s its edge goes from ahead to DualSlashArc degrees on both sides; whatever lies
+        // within reach and within the angle swept so far is struck, once.
+        private static System.Collections.IEnumerator Wings(Player owner, Vector3 forward, HitData hit, EffectList impact)
+        {
+            var struck = new HashSet<IDestructible>();
+            for (float t = 0; ; t += Time.deltaTime)
+            {
+                if (!owner || owner.IsDead()) yield break;
+                float edge = DualSlashArc * Mathf.Clamp01(t / DualSlashSweep);
+                Vector3 centre = owner.transform.position + Vector3.up;
+                foreach (var collider in Physics.OverlapSphere(centre, DualSlashReach, WaveMask))
+                {
+                    Vector3 away = Contact(collider, centre) - centre; away.y = 0;
+                    if (away.sqrMagnitude > 1e-4f && Vector3.Angle(forward, away) > edge) continue;
+                    Strike(owner, collider, centre, away.sqrMagnitude > 1e-4f ? away.normalized : forward, hit, impact, struck);
+                }
+                if (t >= DualSlashSweep) yield break;
+                yield return null;
+            }
         }
     }
 }

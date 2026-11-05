@@ -3,6 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Golden Wings**, the mythic enchantment of dual axes (new DualAxe category): the combo finisher (the enhanced heavy attack) sends two gold slashes, one on each side, sweeping from the front to the back as the arms open (Eric VFX Studio's Magic Slash turned gold, seen by every player). Every enemy within 2.8 m ahead and on the sides (the back stays open) is hit once for 250 % of the attack's damage. An existing RaritySystem.cfg gets the new section. (2.4.0.365)
 - **DualAxe** gear category for enchantments and mythics (EnchantItemTypes / ItemTypes): dual axes have their own category and no longer count as Battleaxe, so a two-handed axe mythic (Reaper) no longer rolls on them; items already enchanted keep their mythic. (2.4.0.362)
 - **Opening thrust** (one-handed swords): the special attack (the thrust) of a sword that has not attacked for 3 s plays 50 % faster; switching from another weapon does not reset that time, only the sword's own attacks do. If it lands, the next 3 light attacks of that sword within 5 s deal 25 % more damage. (2.4.0.356)
 - **Combo finisher** (dual axes): a special attack started during a combo plays twice as fast and hits harder, by 25 % after 2 light hits landed, 40 % after 3 and 60 % after 4, and knocks back the creatures it hits. The combo is lost 1.5 s after the last landed hit. A message at the top left shows the finisher level (1 to 3) and its damage bonus when it starts. (2.4.0.355, speed x2 whatever the level 2.4.0.361)
