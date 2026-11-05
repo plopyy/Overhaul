@@ -42,11 +42,41 @@ namespace Overhaul
                     }
                     if (sight.Hidden) hud.m_gui.SetActive(false);
                 }
+                Diagnose(__instance, camera);
                 // Creatures gone from the game or from the bars are forgotten.
                 Gone.Clear();
                 foreach (var character in Sights.Keys) if (!character || !__instance.m_huds.ContainsKey(character)) Gone.Add(character);
                 foreach (var character in Gone) Sights.Remove(character);
             }
+        }
+
+        // TEMPORARY DIAGNOSTIC (a player sees no health bars): every 10 s, what the game's bars are doing on this machine,
+        // written to the log (bars made, shown, hidden here, the root and canvas, the first bar's place on the screen).
+        private static float nextDiagnostic;
+        private static void Diagnose(EnemyHud hud, Camera camera)
+        {
+            if (Time.time < nextDiagnostic) return;
+            nextDiagnostic = Time.time + 10f;
+            int shown = 0, hidden = 0; string first = "none";
+            foreach (var pair in hud.m_huds)
+            {
+                var gui = pair.Value?.m_gui;
+                if (gui && gui.activeSelf) shown++;
+                if (pair.Key && Sights.TryGetValue(pair.Key, out var s) && s.Hidden) hidden++;
+                if (first == "none" && gui && pair.Key)
+                {
+                    var rt = gui.transform as RectTransform; var canvas = gui.GetComponentInParent<Canvas>();
+                    first = pair.Key.m_name + " active=" + gui.activeSelf + "/" + gui.activeInHierarchy + " pos=" + gui.transform.position.ToString("F0") + " screen=" + Screen.width + "x" + Screen.height
+                        + " scale=" + gui.transform.lossyScale.ToString("F2") + " alpha=" + (gui.GetComponent<CanvasGroup>() ? gui.GetComponent<CanvasGroup>().alpha.ToString("F2") : "-")
+                        + " canvas=" + (canvas ? canvas.name + " enabled=" + canvas.enabled + " mode=" + canvas.renderMode + " order=" + canvas.sortingOrder + " scale=" + canvas.scaleFactor.ToString("F2") + " cam=" + (canvas.worldCamera ? canvas.worldCamera.name : "-") : "none")
+                        + " rect=" + (rt ? rt.rect.size.ToString("F0") : "-");
+                }
+            }
+            var root = hud.m_hudRoot;
+            Utility.Log.LogInfo("EnemyHud diagnostic: bars " + hud.m_huds.Count + ", shown " + shown + ", hidden behind the world " + hidden
+                + ", root " + (root ? root.name + " active=" + root.activeSelf + "/" + root.activeInHierarchy + " children=" + root.transform.childCount : "missing")
+                + ", base " + (hud.m_baseHud ? hud.m_baseHud.name : "missing") + "/" + (hud.m_baseHudPlayer ? hud.m_baseHudPlayer.name : "missing")
+                + ", range " + hud.m_maxShowDistance + ", camera " + camera.name + ", hud hidden " + Hud.IsUserHidden() + ", first: " + first);
         }
 
         // The head, or half a metre above the centre for creatures without a head bone (GetHeadPoint throws for them).
