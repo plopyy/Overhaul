@@ -12,9 +12,35 @@ namespace Auga
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.Awake))]
         public static class EnemyHud_Awake_Patch
         {
-            public static bool Prefix(EnemyHud __instance)
+            // The game's own EnemyHud object stays where it is, with the canvas the game set up for it (drawn like the rest
+            // of the HUD and the damage numbers); only its bars are Auga's: the prefab's HudRoot (bar templates, icons)
+            // takes the place of the native one, and the prefab's EnemyHud settings (templates, distances) go onto the
+            // native component, whose own Awake then runs as usual.
+            public static void Prefix(EnemyHud __instance)
             {
-                return !SetupHelper.DirectObjectReplace(__instance.transform, Auga.Assets.EnemyHud, "EnemyHud");
+                var prefab = Auga.Assets.EnemyHud;
+                if (__instance.name != "EnemyHud" || !prefab) return;
+                // A copy made inactive so its own EnemyHud never wakes up.
+                var holder = new GameObject("AugaEnemyHudHolder"); holder.SetActive(false);
+                var copy = Object.Instantiate(prefab, holder.transform, false);
+                var source = copy.GetComponent<EnemyHud>();
+                var root = source ? source.m_hudRoot : null;
+                if (root)
+                {
+                    int index = __instance.m_hudRoot ? __instance.m_hudRoot.transform.GetSiblingIndex() : __instance.transform.childCount;
+                    if (__instance.m_hudRoot) Object.DestroyImmediate(__instance.m_hudRoot);
+                    root.transform.SetParent(__instance.transform, false);
+                    root.transform.SetSiblingIndex(index);
+                    // Its settings, those Unity keeps in the prefab (objects, numbers, flags, text).
+                    foreach (var field in typeof(EnemyHud).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+                    {
+                        var type = field.FieldType;
+                        if (field.IsNotSerialized || field.IsInitOnly || !(typeof(Object).IsAssignableFrom(type) || type.IsPrimitive || type.IsEnum || type == typeof(string))) continue;
+                        field.SetValue(__instance, field.GetValue(source));
+                    }
+                }
+                else Auga.LogWarning("AugaEnemyHud has no HudRoot: native health bars kept.");
+                Object.DestroyImmediate(holder);
             }
         }
 

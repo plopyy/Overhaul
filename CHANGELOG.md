@@ -32,6 +32,7 @@
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 
 ### Fixed
+- Creature and player health bars are drawn as part of the game's HUD again: the game's own health bar object and canvas stay in place and only take Auga's bars, instead of being replaced by a separate overlay canvas that some machines (a laptop with an Intel graphics chip) never drew. (2.4.0.369)
 - Temporary diagnostic: every 10 s, the log tells what the creature and player health bars are doing (made, shown, hidden, where on the screen), and once every canvas and the first bar's images, to find why a player sees none. (2.4.0.367, 368)
 - Quick build and quick removal of pillars and beams follow the beam's own length, from one end to the other, so 45° beams (and any beam turned askew) stretch along themselves; the small green bars beyond their ends lie along the beam too. (2.4.0.366)
 - **Add server** in the server list opens its address dialog again: the filter field kept the keyboard focus every frame, and the game ignores that button while the filter is focused. (2.4.0.357)
