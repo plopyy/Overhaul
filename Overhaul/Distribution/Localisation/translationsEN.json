@@ -2941,5 +2941,5 @@
   "overhaul_craft_filter_misc": "Miscellaneous",
   "overhaul_craft_search": "Search…",
   "overhaul_take_cooked": "Take out the dishes",
-  "overhaul_combo_finisher": "Combo finisher lvl {0} (+{1} %)"
+  "overhaul_combo_finisher": "Combo finisher lvl {0} (speed x2, damage +{1} %)"
 }

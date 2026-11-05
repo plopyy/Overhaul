@@ -3044,5 +3044,5 @@
   "overhaul_craft_filter_misc": "Divers",
   "overhaul_craft_search": "Rechercher…",
   "overhaul_take_cooked": "Sortir les plats",
-  "overhaul_combo_finisher": "Coup final niv. {0} (+{1} %)"
+  "overhaul_combo_finisher": "Coup final niv. {0} (vitesse x2, dégâts +{1} %)"
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Overhaul
 {
     // Combo finisher (dual axes): each light attack of a combo that lands on a creature counts; a special attack
-    // started while the combo goes on plays faster and hits harder by the same amount, the more hits landed the more (Bonus), and knocks
+    // started while the combo goes on plays twice as fast and hits harder, the more hits landed the more (Bonus), and knocks
     // the creatures it hits back. The combo is lost after Window s without a landed hit, and spent by the special attack.
     internal static class ComboFinisher
     {
@@ -24,14 +24,9 @@ namespace Overhaul
         }
 
         // The animation speed factor of the attack playing (1 outside a finisher).
-        // TEMPORARY TEST: x3 speed whatever the level, to check in game that the speed reaches the animation.
-        static Attack speedLogged;
-        internal static float SpeedFactor(Player player)
-        {
-            if (player.m_currentAttack == null || player.m_currentAttack != finisher) return 1;
-            if (speedLogged != finisher) { speedLogged = finisher; Utility.Log.LogInfo("Combo finisher speed applied to the animation (test x3)"); }
-            return 3;
-        }
+        // The finisher plays twice as fast whatever its level; the level only sets the damage and knockback bonus.
+        const float FinisherSpeed = 2f;
+        internal static float SpeedFactor(Player player) => player.m_currentAttack != null && player.m_currentAttack == finisher ? FinisherSpeed : 1;
 
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
         private static class Start
@@ -48,7 +43,7 @@ namespace Overhaul
                 {
                     int level = Mathf.Clamp(hits - 1, 1, 3);
                     player.Message(MessageHud.MessageType.TopLeft, Localization.instance.Localize("$overhaul_combo_finisher", level.ToString(), Mathf.RoundToInt(finisherBonus * 100).ToString()));
-                    Utility.Log.LogInfo($"Combo finisher level {level}: {hits} hits, +{finisherBonus * 100:0}% speed and damage");
+                    Utility.Log.LogInfo($"Combo finisher level {level}: {hits} hits, +{finisherBonus * 100:0}% damage");
                 }
                 hits = 0; counted = null;
             }
