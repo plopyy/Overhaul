@@ -458,8 +458,7 @@ namespace Overhaul
             // These native attacks animate the jump through hips and legs even while
             // the gameplay capsule is grounded. A walking overlay cancels that leap.
             return attack!=null&&(attack.m_attackAnimation=="knife_secondary"||
-                attack.m_attackAnimation=="dual_knives_secondary"||
-                attack.m_attackAnimation=="dualaxes_secondary");
+                attack.m_attackAnimation=="dual_knives_secondary");
         }
 
         [HarmonyPatch(typeof(Attack), "Start")]
