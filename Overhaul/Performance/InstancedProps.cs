@@ -15,6 +15,7 @@ namespace Overhaul.Performance
     // The objects stay as they are in the game (colliders, network, interaction); only their renderers are hidden
     // (Renderer.forceRenderingOff, the game's own enabled flags untouched).
     //
+    // Objects with physics (logs left on the ground) are taken while their bodies sleep and given back in the frame they wake.
     // Taken: objects coming into the world (networked ones on creation, locations' visuals once spawned), split per LODGroup
     // (each a copy with its levels) and per renderer outside any LODGroup. Left alone: pieces (merged by PieceBatcher), creatures,
     // items, anything with physics, animation, a ship or cart, things that change look by themselves (pickables, mined rocks,
@@ -38,6 +39,8 @@ namespace Overhaul.Performance
         internal sealed class Copy
         {
             internal Tracker Owner; internal Vector3 Center; internal float Radius, Size;
+            // Physics bodies of the object (logs on the ground): taken only while they sleep, checked every frame.
+            internal Rigidbody[] Bodies;
             internal Part[][] Levels; internal float[] Heights; internal bool Dead;
         }
 
@@ -46,6 +49,12 @@ namespace Overhaul.Performance
         static readonly List<Copy> copies = new List<Copy>();
         static int[] chosen = new int[0];
         static readonly Queue<GameObject> queue = new Queue<GameObject>();
+        // Copies with physics bodies, checked every frame; objects whose bodies are awake, checked twice a second.
+        static readonly List<Copy> physical = new List<Copy>();
+        static readonly List<GameObject> awake = new List<GameObject>();
+        static float nextAwakeCheck;
+
+        static void Watch(GameObject go) { if (!awake.Contains(go)) awake.Add(go); }
         static readonly Plane[] planes = new Plane[6];
         static readonly Matrix4x4[] batch = new Matrix4x4[Batch];
         static int checkIndex;
@@ -77,8 +86,21 @@ namespace Overhaul.Performance
         static bool Refused(GameObject go)
         {
             foreach (var t in refused) if (go.GetComponentInChildren(t, true)) return true;
-            foreach (var body in go.GetComponentsInChildren<Rigidbody>(true)) if (!body.isKinematic) return true;
             return false;
+        }
+
+        // The object's moving physics bodies, or null; false while one of them is awake (the object is then watched and taken
+        // once they all sleep).
+        static bool Asleep(GameObject go, out Rigidbody[] bodies)
+        {
+            bodies = null;
+            var all = go.GetComponentsInChildren<Rigidbody>(true);
+            List<Rigidbody> moving = null;
+            foreach (var body in all) if (!body.isKinematic) (moving ?? (moving = new List<Rigidbody>())).Add(body);
+            if (moving == null) return true;
+            bodies = moving.ToArray();
+            foreach (var body in bodies) if (!body.IsSleeping()) return false;
+            return true;
         }
 
         static readonly List<LODGroup> lodGroups = new List<LODGroup>();
@@ -88,6 +110,7 @@ namespace Overhaul.Performance
         static void Register(GameObject go)
         {
             if (!go || !go.activeInHierarchy || go.GetComponent<Tracker>() || Refused(go)) return;
+            if (!Asleep(go, out var bodies)) { Watch(go); return; }
             Tracker tracker = null;
             lodGroups.Clear(); go.GetComponentsInChildren(false, lodGroups);
             inGroups.Clear();
@@ -115,6 +138,11 @@ namespace Overhaul.Performance
                 var bounds = r.bounds;
                 var copy = new Copy { Center = bounds.center, Radius = bounds.extents.magnitude, Size = 0f, Levels = new[] { parts }, Heights = new[] { 0f } };
                 Add(ref tracker, go, copy);
+            }
+            if (tracker && bodies != null)
+            {
+                foreach (var body in bodies) body.transform.hasChanged = false;
+                foreach (var c in tracker.Copies) { c.Bodies = bodies; physical.Add(c); }
             }
         }
 
@@ -201,8 +229,35 @@ namespace Overhaul.Performance
             {
                 try { Register(queue.Dequeue()); } catch (Exception e) { Log.LogWarning("[Performance] Instanced props: " + e.Message); }
             }
+            CheckPhysical();
             Check();
             Draw();
+        }
+
+        // A body waking up (hit, pushed) gives its copy back in the same frame, and the object is watched until it sleeps again.
+        static void CheckPhysical()
+        {
+            for (int i = physical.Count - 1; i >= 0; i--)
+            {
+                var copy = physical[i];
+                if (copy.Dead || !copy.Owner) { physical.RemoveAt(i); continue; }
+                bool moving = false;
+                foreach (var body in copy.Bodies) if (!body || !body.IsSleeping() || body.transform.hasChanged) { moving = true; break; }
+                if (!moving) continue;
+                var go = copy.Owner.gameObject;
+                Release(copy); copy.Owner.Copies.Remove(copy); physical.RemoveAt(i);
+                if (copy.Owner.Copies.Count == 0) Object.Destroy(copy.Owner);
+                if (go) Watch(go);
+            }
+            if (Time.time < nextAwakeCheck) return;
+            nextAwakeCheck = Time.time + .5f;
+            for (int i = awake.Count - 1; i >= 0; i--)
+            {
+                var go = awake[i];
+                if (!go) { awake.RemoveAt(i); continue; }
+                if (go.GetComponent<Tracker>() || !go.activeInHierarchy) continue;
+                if (Asleep(go, out _)) { awake.RemoveAt(i); queue.Enqueue(go); }
+            }
         }
 
         static void Check()
@@ -285,7 +340,7 @@ namespace Overhaul.Performance
         {
             foreach (var copy in copies) Release(copy);
             foreach (var copy in copies) if (copy.Owner) Object.Destroy(copy.Owner);
-            copies.Clear(); protos.Clear(); protoIndex.Clear(); queue.Clear();
+            copies.Clear(); protos.Clear(); protoIndex.Clear(); queue.Clear(); physical.Clear(); awake.Clear();
             Copies = Drawn = Calls = 0;
         }
     }
