@@ -40,8 +40,8 @@ namespace Overhaul.Performance
             UnityEngine.Object.DontDestroyOnLoad(runner);
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
-            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "status" }.Concat(Options.Select(o => o.Id)).ToList());
+            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|hud|status|<option> on|off]",
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "status" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
         internal static string L(string key, params string[] words) =>
@@ -58,6 +58,11 @@ namespace Overhaul.Performance
                 go.hideFlags = HideFlags.HideAndDontSave;
                 sampler = go.AddComponent<Sampler>();
                 sampler.Begin(first == "ab");
+                return;
+            }
+            if (first == "hud")
+            {
+                PerfHud.Toggle();
                 return;
             }
             if (first == "profile")
