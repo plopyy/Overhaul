@@ -41,6 +41,7 @@
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
 
 ### Fixed
+- Class tree: Change class works before a path is chosen (that bottom row's own button was not wired). (2.4.0.400)
 - Mystic powder no longer sinks into the ground: it has a plain box collider of its size, 0.5 x 0.12 x 0.5 m (the earlier one, measured from an inactive prefab, had no size). (2.4.0.395)
 - Armour no longer comes off into the bag at login on a character with bought inventory rows: the equipment cells now follow the character's rows before the game re-equips the saved gear, so helmet, chest, legs and cape are no longer read as cosmetics. (2.4.0.386)
 - Creature and player health bars are drawn as part of the game's HUD again: the game's own health bar object and canvas stay in place and only take Auga's bars, instead of being replaced by a separate overlay canvas that some machines (a laptop with an Intel graphics chip) never drew. (2.4.0.369)

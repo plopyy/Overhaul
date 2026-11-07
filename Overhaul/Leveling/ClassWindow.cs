@@ -209,6 +209,8 @@ namespace Overhaul.Leveling
             Get<Button>(box, "Cancel").onClick.AddListener(() => { pendingPath = -1; Refresh(); });
             Get<Button>(box, "Confirm").onClick.AddListener(ConfirmPath);
             Get<Button>(win, "Bottom/Change").onClick.AddListener(() => { shownClass = -1; pendingPath = -1; ShowTree(false); });
+            // Before a path is chosen the bottom row is BottomNew, with its own Changer de classe.
+            Get<Button>(win, "BottomNew/Change").onClick.AddListener(() => { shownClass = -1; pendingPath = -1; ShowTree(false); });
             Get<Button>(win, "Bottom/Reset").onClick.AddListener(() => { var pr = Classes?.Active; if (pr == null) return; ClassRules.ResetAll(pr); Changed(); });
         }
         static ClassData ActiveData => ClassSkills.GetClass(Classes?.ActiveClassID);
