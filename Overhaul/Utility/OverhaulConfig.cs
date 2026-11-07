@@ -64,6 +64,10 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfDecorShadows { get; private set; }
         public static ConfigEntry<bool> PerfHiddenParticles { get; private set; }
         public static ConfigEntry<bool> PerfMergePieces { get; private set; }
+        public static ConfigEntry<bool> PerfGrassSpread { get; private set; }
+        public static ConfigEntry<bool> PerfTerrainSpread { get; private set; }
+        public static ConfigEntry<bool> PerfAiSense { get; private set; }
+        public static ConfigEntry<bool> PerfAsyncCollision { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -107,6 +111,18 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfMergePieces = config.Bind("Performance", "MergePieces", true,
                 new ConfigDescription("Building pieces are drawn merged into a few big meshes per 16 m area (one per material), with their usual level of detail. Pieces highlighted, damaged, moved or with effects of their own are drawn alone.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfGrassSpread = config.Bind("Performance", "SpreadGrassRebuilds", true,
+                new ConfigDescription("After a terrain change, grass around the player is rebuilt a little each frame instead of all in one frame.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfTerrainSpread = config.Bind("Performance", "SpreadTerrainRebuilds", true,
+                new ConfigDescription("Terrain tiles waiting for a rebuild are rebuilt within a time budget per frame instead of all in one frame; the tile under the player is always rebuilt at once.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfAiSense = config.Bind("Performance", "QuickCreatureSenses", true,
+                new ConfigDescription("Creatures refuse a target farther than both their hearing and seeing range before any other check (same result, sooner).",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfAsyncCollision = config.Bind("Performance", "AsyncTerrainCollision", true,
+                new ConfigDescription("Terrain collision away from the player is prepared on a worker thread before being handed to the physics engine; the old collision stays meanwhile.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",

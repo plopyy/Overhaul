@@ -24,6 +24,10 @@ namespace Overhaul.Performance
             ("shadows", () => OverhaulConfig.PerfDecorShadows),
             ("particles", () => OverhaulConfig.PerfHiddenParticles),
             ("merge", () => OverhaulConfig.PerfMergePieces),
+            ("grass", () => OverhaulConfig.PerfGrassSpread),
+            ("terrainspread", () => OverhaulConfig.PerfTerrainSpread),
+            ("senses", () => OverhaulConfig.PerfAiSense),
+            ("collision", () => OverhaulConfig.PerfAsyncCollision),
         };
 
         // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
@@ -110,7 +114,7 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { ServerStats.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
+                try { ServerStats.Tick(); StutterFixes.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
                 catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
             }
         }
