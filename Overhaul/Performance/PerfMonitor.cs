@@ -21,6 +21,8 @@ namespace Overhaul.Performance
             ("water", () => OverhaulConfig.PerfWaterMaterials),
             ("floaters", () => OverhaulConfig.PerfFastFloaters),
             ("terrain", () => OverhaulConfig.PerfTerrainCache),
+            ("shadows", () => OverhaulConfig.PerfDecorShadows),
+            ("particles", () => OverhaulConfig.PerfHiddenParticles),
         };
 
         // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
@@ -33,6 +35,10 @@ namespace Overhaul.Performance
 
         internal static void Initialize()
         {
+            var runner = new GameObject("Overhaul performance");
+            UnityEngine.Object.DontDestroyOnLoad(runner);
+            runner.hideFlags = HideFlags.HideAndDontSave;
+            runner.AddComponent<Runner>();
             new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|status|<option> on|off]",
                 (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "status" }.Concat(Options.Select(o => o.Id)).ToList());
         }
@@ -84,6 +90,16 @@ namespace Overhaul.Performance
         {
             Log.LogInfo("[Performance] " + text);
             if (Console.instance) Console.instance.AddString(text);
+        }
+
+        // Per-frame work of the optimisations that follow the scene (and their option) live.
+        private sealed class Runner : MonoBehaviour
+        {
+            private void Update()
+            {
+                try { DecorShadows.Tick(); HiddenParticles.Tick(); }
+                catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
+            }
         }
 
         private struct Result

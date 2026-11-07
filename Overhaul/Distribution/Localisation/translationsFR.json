@@ -2649,7 +2649,7 @@
   "overhaul_move_binding": "Déplacer un objet",
   "overhaul_move_binding_tip": "Choisir la touche pour déplacer une construction et annuler son placement.",
   "overhaul_dash_setting": "Dash (remplace le sprint)",
-  "overhaul_perf_usage": "operf : mesure 10 s | operf ab : 10 s sans les optimisations, puis 10 s avec | operf profile : où part le temps de chaque image | operf status | operf <streaming|water|floaters|terrain> on|off",
+  "overhaul_perf_usage": "operf : mesure 10 s | operf ab : 10 s sans les optimisations, puis 10 s avec | operf profile : où part le temps de chaque image | operf status | operf <streaming|water|floaters|terrain|shadows|particles> on|off",
   "overhaul_perf_profile_start": "Overhaul : analyse pendant $1 s, ne bougez pas la caméra...",
   "overhaul_perf_profile_frame": "Image : $1 ms en moyenne ($2 fps)",
   "overhaul_perf_profile_scripts": "Scripts du jeu, ms par image (inclusif, les 20 plus coûteux) :",

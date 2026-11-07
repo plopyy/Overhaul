@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -156,7 +156,7 @@ namespace Overhaul.Performance
                 var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
                 yield return "Lights : " + lights.Count(l => l.enabled && l.gameObject.activeInHierarchy) + " on (" + lights.Count(l => l.enabled && l.gameObject.activeInHierarchy && l.shadows != LightShadows.None) + " with shadows)";
                 var particles = UnityEngine.Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None);
-                yield return "Particle systems playing : " + particles.Count(p => p.isPlaying);
+                yield return "Particle systems playing : " + particles.Count(p => p.isPlaying) + " (" + HiddenParticles.HiddenCount + " hidden behind walls, not drawn)";
                 var renderers = UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
                 yield return "Renderers : " + renderers.Length + " (" + renderers.Count(r => r.isVisible) + " visible)";
             }

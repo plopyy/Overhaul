@@ -61,6 +61,8 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfWaterMaterials { get; private set; }
         public static ConfigEntry<bool> PerfFastFloaters { get; private set; }
         public static ConfigEntry<bool> PerfTerrainCache { get; private set; }
+        public static ConfigEntry<bool> PerfDecorShadows { get; private set; }
+        public static ConfigEntry<bool> PerfHiddenParticles { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -95,6 +97,12 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfTerrainCache = config.Bind("Performance", "TerrainBuildCache", true,
                 new ConfigDescription("Keep 128 finished terrain tiles instead of 16, and build first a tile the game is waiting for, so terrain is not rebuilt while the game stalls.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfDecorShadows = config.Bind("Performance", "DecorShadows", true,
+                new ConfigDescription("Decoration pieces (build menu Furniture tab: chairs, tables, rugs, banners, torches...) cast no shadow; walls, beams, floors and roofs keep theirs.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfHiddenParticles = config.Bind("Performance", "HiddenParticles", true,
+                new ConfigDescription("Particle effects hidden behind walls, pieces or the ground are not drawn. Far effects in plain sight stay drawn.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
