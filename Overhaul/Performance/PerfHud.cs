@@ -17,7 +17,7 @@ namespace Overhaul.Performance
         float recentTotal, sampleTime, frameTime; int sampleFrames;
         string text = "";
         GUIStyle style, shadow;
-        string labelFps, labelLow, labelCpu, labelRender, labelGpu, labelDraws;
+        string labelFps, labelLow, labelCpu, labelRender, labelGpu, labelDraws, labelPing, labelQuality, labelServer, labelFrame, labelWorst, labelNoAnswer, labelHost;
 
         internal static void Toggle()
         {
@@ -37,6 +37,10 @@ namespace Overhaul.Performance
             labelFps = PerfMonitor.L("overhaul_perf_hud_fps"); labelLow = PerfMonitor.L("overhaul_perf_hud_low");
             labelCpu = PerfMonitor.L("overhaul_perf_hud_cpu"); labelRender = PerfMonitor.L("overhaul_perf_hud_render");
             labelGpu = PerfMonitor.L("overhaul_perf_hud_gpu"); labelDraws = PerfMonitor.L("overhaul_perf_hud_draws");
+            labelPing = PerfMonitor.L("overhaul_perf_hud_ping"); labelQuality = PerfMonitor.L("overhaul_perf_hud_quality");
+            labelServer = PerfMonitor.L("overhaul_perf_hud_server"); labelFrame = PerfMonitor.L("overhaul_perf_hud_frame");
+            labelWorst = PerfMonitor.L("overhaul_perf_hud_worst"); labelNoAnswer = PerfMonitor.L("overhaul_perf_hud_noanswer");
+            labelHost = PerfMonitor.L("overhaul_perf_hud_host");
         }
 
         void OnDestroy()
@@ -59,9 +63,29 @@ namespace Overhaul.Performance
             string colour = fps < 30 ? "#ff5050" : fps < 60 ? "#ffd23c" : "#78ff78";
             text = "<b><color=" + colour + ">" + fps.ToString("0") + " " + labelFps + "</color></b>  (" + labelLow + " " + low.ToString("0") + ")\n"
                  + labelCpu + " " + Ms(main) + "\n" + labelRender + " " + Ms(render) + "\n" + labelGpu + " " + Ms(gpu) + "\n"
-                 + labelDraws + " " + (draws.Valid && draws.Count > 0 ? draws.LastValue.ToString("N0") : "n/a");
+                 + labelDraws + " " + (draws.Valid && draws.Count > 0 ? draws.LastValue.ToString("N0") : "n/a")
+                 + Network();
             sampleTime = frameTime = 0; sampleFrames = 0;
         }
+
+        // Connection and server lines: ping and its spread over the last answers, link quality, then the server's own load.
+        string Network()
+        {
+            var net = ZNet.instance;
+            if (!net) return "";
+            if (net.IsServer())
+                return "\n" + labelServer + " (" + labelHost + ") : " + ServerStats.Fps.ToString("0") + " " + labelFps + " · " + labelCpu + " " + Percent(ServerStats.Cpu);
+            net.GetNetStats(out float local, out float remote, out int ping, out _, out _);
+            string spread = ServerStats.RoundTrip >= 0f ? " (± " + (ServerStats.Spread / 2f).ToString("0") + " ms)" : "";
+            string pingColour = ping > 200 || ServerStats.Spread > 100 ? "#ff5050" : ping > 100 || ServerStats.Spread > 40 ? "#ffd23c" : "#78ff78";
+            string text = "\n<color=" + pingColour + ">" + labelPing + " " + ping + " ms" + spread + "</color> · " + labelQuality + " " + (Mathf.Min(local, remote) * 100f).ToString("0") + " %";
+            if (Time.realtimeSinceStartup - ServerStats.ReceivedAt > 3f) return text + "\n" + labelServer + " : " + labelNoAnswer;
+            string serverColour = ServerStats.ServerFps < 20 ? "#ff5050" : ServerStats.ServerFps < 30 ? "#ffd23c" : "#78ff78";
+            return text + "\n<color=" + serverColour + ">" + labelServer + " : " + ServerStats.ServerFps.ToString("0") + " " + labelFps + "</color> · " + labelFrame + " "
+                + ServerStats.ServerAverageMs.ToString("0.0") + " ms (" + labelWorst + " " + ServerStats.ServerWorstMs.ToString("0") + ") · " + labelCpu + " " + Percent(ServerStats.ServerCpu);
+        }
+
+        static string Percent(float value) => value >= 0f ? value.ToString("0") + " %" : "n/a";
 
         static string Ms(ProfilerRecorder r) => r.Valid && r.Count > 0 ? (r.LastValue / 1e6).ToString("0.0") + " ms" : "n/a";
 
@@ -73,10 +97,10 @@ namespace Overhaul.Performance
                 style.normal.textColor = Color.white;
                 shadow = new GUIStyle(style); shadow.normal.textColor = new Color(0, 0, 0, .85f);
             }
-            float h = style.fontSize * 7f, y = Screen.height * .5f - h * .5f, x = 12f;
+            float h = style.fontSize * 10f, y = Screen.height * .5f - h * .5f, x = 12f;
             string plain = System.Text.RegularExpressions.Regex.Replace(text, "<.*?>", "");
-            GUI.Label(new Rect(x + 1.5f, y + 1.5f, 600, h), plain, shadow);
-            GUI.Label(new Rect(x, y, 600, h), text, style);
+            GUI.Label(new Rect(x + 1.5f, y + 1.5f, 900, h), plain, shadow);
+            GUI.Label(new Rect(x, y, 900, h), text, style);
         }
     }
 }

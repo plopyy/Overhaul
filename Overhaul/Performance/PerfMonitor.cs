@@ -103,7 +103,7 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
+                try { ServerStats.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
                 catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
             }
         }
