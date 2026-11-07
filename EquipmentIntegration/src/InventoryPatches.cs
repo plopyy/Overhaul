@@ -86,7 +86,7 @@ namespace EquipmentAndQuickSlots {
         [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.DropInvalidItems))]
         private static class Humanoid_DropInvalidItems_KeepSlotRegion {
             [HarmonyPriority(Priority.First)]
-            private static void Prefix(Humanoid __instance) {
+            private static void Prefix(Player __instance) {
                 if (__instance != CurrentPlayer)
                     return;
 
@@ -104,7 +104,21 @@ namespace EquipmentAndQuickSlots {
         [HarmonyPatch(typeof(Player), nameof(Player.Load))]
         private static class Player_Load_LayOutSlotsForCharacterRows {
             [HarmonyPriority(Priority.First)]
-            private static void Postfix(Player __instance) {
+            private static void Postfix(Player __instance) => LayOut(__instance);
+
+            // Player.Load re-equips the saved gear (Player.EquipInventoryItems) at its very end,
+            // still inside Load: the cells must already follow this character's rows by then, or
+            // armour saved in its equipment cells is read as sitting in other slots (cosmetic ones
+            // refuse to equip it), gets unequipped and is then moved to the bag.
+            [HarmonyPatch(typeof(Player), nameof(Player.EquipInventoryItems))]
+            private static class BeforeReEquip {
+                [HarmonyPriority(Priority.First)]
+                private static void Prefix(Player __instance) {
+                    LayOut(__instance);
+                }
+            }
+
+            internal static void LayOut(Player __instance) {
                 if (!FejdStartup.instance && !IsValidPlayer(__instance))
                     return;
 
