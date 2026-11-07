@@ -268,8 +268,38 @@ namespace AugaUnity
             VariantDialog.OnClose();
         }
 
+        // The details box is rebuilt on every recipe change; its scroll view keeps whatever position the new
+        // content's layout leaves it at. A different recipe/item/variant scrolls it back to the top instead.
+        private object _detailsRecipe, _detailsItem;
+        private int _detailsVariant, _detailsTopFrames;
+        private ScrollRect _detailsScroll;
+
+        private void ScrollDetailsToTopIfChanged(Recipe recipe, ItemDrop.ItemData item, int variant)
+        {
+            if (ReferenceEquals(recipe, _detailsRecipe) && ReferenceEquals(item, _detailsItem) && variant == _detailsVariant) return;
+            _detailsRecipe = recipe; _detailsItem = item; _detailsVariant = variant;
+            _detailsTopFrames = 3; // Layout groups settle over the next frames.
+            ApplyDetailsTop();
+        }
+
+        private void ApplyDetailsTop()
+        {
+            if (!_detailsScroll && ItemInfo) _detailsScroll = ItemInfo.GetComponentInChildren<ScrollRect>(true) ?? ItemInfo.GetComponentInParent<ScrollRect>();
+            if (!_detailsScroll) return;
+            _detailsScroll.StopMovement();
+            _detailsScroll.verticalNormalizedPosition = 1f;
+        }
+
+        public void LateUpdate()
+        {
+            if (_detailsTopFrames <= 0) return;
+            _detailsTopFrames--;
+            ApplyDetailsTop();
+        }
+
         public void SetRecipe(Recipe recipe, ItemDrop.ItemData item, int variant)
         {
+            ScrollDetailsToTopIfChanged(recipe, item, variant);
             if (recipe == null)
             {
                 ItemInfo.gameObject.SetActive(false);
