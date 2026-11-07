@@ -10,12 +10,15 @@ namespace Overhaul.Performance
     // switch off, and it comes back as soon as one ray gets through. Systems off screen are left to Unity (already culled),
     // close ones (under NearDistance) are always drawn. Only the renderer is touched: the simulation and the game's own
     // Play/Stop keep running, so nothing changes in what they do.
+    // Never hidden: world effects (not part of a piece a player built) that come with a light, such as the green smoke and light of
+    // the Ashlands fortresses: landmarks the player looks for.
     internal static class HiddenParticles
     {
         const float NearDistance = 6f, RescanInterval = 2f;
         const int ChecksPerFrame = 40;
         static readonly List<ParticleSystemRenderer> systems = new List<ParticleSystemRenderer>();
         static readonly HashSet<ParticleSystemRenderer> hidden = new HashSet<ParticleSystemRenderer>();
+        static readonly Dictionary<ParticleSystemRenderer, bool> landmarks = new Dictionary<ParticleSystemRenderer, bool>();
         static int next, mask;
         static float nextScan;
         internal static int HiddenCount => hidden.Count;
@@ -32,6 +35,7 @@ namespace Overhaul.Performance
                 systems.Clear();
                 systems.AddRange(Object.FindObjectsByType<ParticleSystemRenderer>(FindObjectsSortMode.None));
                 hidden.RemoveWhere(r => !r);
+                if (landmarks.Count > 4096) landmarks.Clear();
                 next = 0;
             }
             Vector3 eye = camera.transform.position;
@@ -44,12 +48,25 @@ namespace Overhaul.Performance
                 bool ours = hidden.Contains(renderer);
                 // Turned off by the game, or not shown on screen: nothing to do.
                 if (!ours && (!renderer.enabled || !renderer.gameObject.activeInHierarchy || !renderer.isVisible)) continue;
+                if (Landmark(renderer)) { if (ours) { renderer.enabled = true; hidden.Remove(renderer); } continue; }
                 var bounds = renderer.bounds;
                 bool covered = Vector3.Distance(eye, bounds.center) > NearDistance
                     && Blocked(eye, bounds.center, layers) && Blocked(eye, bounds.center + Vector3.up * bounds.extents.y, layers);
                 if (covered && !ours) { renderer.enabled = false; hidden.Add(renderer); }
                 else if (!covered && ours) { renderer.enabled = true; hidden.Remove(renderer); }
             }
+        }
+
+        // A world effect with a light of its own (not a fire or torch a player built).
+        static bool Landmark(ParticleSystemRenderer renderer)
+        {
+            if (landmarks.TryGetValue(renderer, out bool known)) return known;
+            var root = renderer.transform.root;
+            // World pieces (fortresses, ruins) have no creator; a player's fires and torches do.
+            var piece = renderer.GetComponentInParent<Piece>();
+            bool landmark = (!piece || piece.GetCreator() == 0L) && root.GetComponentInChildren<Light>(true);
+            landmarks[renderer] = landmark;
+            return landmark;
         }
 
         // Something solid between the eye and the point (a little short of it, so the object holding the effect does not count).
