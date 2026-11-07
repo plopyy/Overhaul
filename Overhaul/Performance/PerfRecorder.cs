@@ -31,6 +31,8 @@ namespace Overhaul.Performance
         string folder, stamp;
         float until, second, worst, total; int frames, gcAtSecond, gcAtFrame;
         readonly Dictionary<string, long> secondTicks = new Dictionary<string, long>();
+        readonly Dictionary<string, long> secondAllocs = new Dictionary<string, long>();
+        long secondAlloc;
         readonly float[] recent = new float[120]; int recentCount, recentIndex;
         long memory;
         int spikeCount, secondCount; float worstSpike; float fpsSum, fpsMin = float.MaxValue;
@@ -57,8 +59,8 @@ namespace Overhaul.Performance
             stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", Inv);
             seconds = new StreamWriter(Path.Combine(folder, "record-" + stamp + ".csv"), false, new UTF8Encoding(false));
             spikes = new StreamWriter(Path.Combine(folder, "spikes-" + stamp + ".csv"), false, new UTF8Encoding(false));
-            seconds.WriteLine("time;fps;avg_ms;worst_ms;cpu_main_ms;cpu_render_ms;gpu_ms;draw_calls;shadow_casters;triangles;pieces;merged_pieces;characters;particles;particles_hidden;gc;x;z;biome;top_scripts");
-            spikes.WriteLine("time;frame_ms;median_ms;untimed_ms;alloc_kb;gc;objects_created;zones_spawned;x;z;biome;top_scripts");
+            seconds.WriteLine("time;fps;avg_ms;worst_ms;cpu_main_ms;cpu_render_ms;gpu_ms;draw_calls;shadow_casters;triangles;pieces;merged_pieces;characters;particles;particles_hidden;gc;alloc_kb;x;z;biome;top_scripts;top_allocators_kb");
+            spikes.WriteLine("time;frame_ms;median_ms;untimed_ms;cpu_render_ms;gpu_ms;alloc_kb;gc;objects_created;zones_spawned;x;z;biome;top_scripts;top_allocators_kb");
             main = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Main Thread Frame Time");
             render = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Render Thread Frame Time");
             gpu = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "GPU Frame Time");
@@ -66,6 +68,7 @@ namespace Overhaul.Performance
             shadows = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Shadow Casters Count");
             triangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
             PerfProfile.Install();
+            PerfProfile.MeasureAllocations = true;
             PerfProfile.FrameTicks.Clear();
             gcAtSecond = gcAtFrame = GC.CollectionCount(0);
             memory = GC.GetTotalMemory(false);
@@ -77,12 +80,13 @@ namespace Overhaul.Performance
             float dt = Time.unscaledDeltaTime, ms = dt * 1000f;
             // The groups timed since the last frame belong to this one (close enough to find who made a frame slow).
             foreach (var pair in PerfProfile.FrameTicks) { secondTicks.TryGetValue(pair.Key, out long t); secondTicks[pair.Key] = t + pair.Value; }
+            foreach (var pair in PerfProfile.FrameAllocs) { secondAllocs.TryGetValue(pair.Key, out long a); secondAllocs[pair.Key] = a + pair.Value; }
             int gc = GC.CollectionCount(0);
-            long now = GC.GetTotalMemory(false); long alloc = Math.Max(0, now - memory); memory = now;
+            long now = GC.GetTotalMemory(false); long alloc = Math.Max(0, now - memory); memory = now; secondAlloc += alloc;
             float median = Median();
             if (recentCount >= 30 && ms > SpikeMinMs && ms > median * SpikeFactor) Spike(ms, median, gc != gcAtFrame, alloc);
             gcAtFrame = gc;
-            PerfProfile.FrameTicks.Clear(); PerfProfile.FrameCalls.Clear();
+            PerfProfile.FrameTicks.Clear(); PerfProfile.FrameCalls.Clear(); PerfProfile.FrameAllocs.Clear();
             recent[recentIndex] = ms; recentIndex = (recentIndex + 1) % recent.Length; recentCount = Math.Min(recentCount + 1, recent.Length);
             second += dt; total += dt; frames++; worst = Mathf.Max(worst, ms);
             if (second >= 1f) WriteSecond();
@@ -104,6 +108,9 @@ namespace Overhaul.Performance
             return (p.x, p.z, player.GetCurrentBiome().ToString());
         }
 
+        static string TopKb(Dictionary<string, long> bytes, int count) =>
+            string.Join(" | ", bytes.OrderByDescending(p => p.Value).Take(count).Select(p => p.Key + " " + (p.Value / 1024).ToString(Inv)));
+
         static string Top(Dictionary<string, long> ticks, int count, double toMs) =>
             string.Join(" | ", ticks.OrderByDescending(p => p.Value).Take(count).Select(p => p.Key + " " + (p.Value * toMs).ToString("0.00", Inv)));
 
@@ -120,8 +127,8 @@ namespace Overhaul.Performance
             PerfProfile.FrameCalls.TryGetValue("ZNetScene.CreateObject", out int created);
             PerfProfile.FrameCalls.TryGetValue("ZoneSystem.SpawnZone", out int zones);
             spikes.WriteLine(string.Join(";", DateTime.Now.ToString("HH:mm:ss.fff", Inv), ms.ToString("0.0", Inv), median.ToString("0.0", Inv), Math.Max(0, ms - timed).ToString("0.0", Inv),
-                (alloc / 1024).ToString(Inv), gc ? "1" : "0", created.ToString(Inv), zones.ToString(Inv),
-                x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(PerfProfile.FrameTicks, 8, toMs)));
+                Ns(render), Ns(gpu), (alloc / 1024).ToString(Inv), gc ? "1" : "0", created.ToString(Inv), zones.ToString(Inv),
+                x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(PerfProfile.FrameTicks, 8, toMs), TopKb(PerfProfile.FrameAllocs, 5)));
         }
 
         void WriteSecond()
@@ -137,9 +144,9 @@ namespace Overhaul.Performance
                 DateTime.Now.ToString("HH:mm:ss", Inv), fps.ToString("0.0", Inv), (second / frames * 1000f).ToString("0.00", Inv), worst.ToString("0.0", Inv),
                 Ns(main), Ns(render), Ns(gpu), Count(draws), Count(shadows), Count(triangles),
                 WearNTear.s_allInstances.Count, PieceBatcher.MergedPieces, Character.s_characters.Count, particles, HiddenParticles.HiddenCount, gc - gcAtSecond,
-                x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(secondTicks, 3, toMs)));
+                (secondAlloc / 1024).ToString(Inv), x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(secondTicks, 3, toMs), TopKb(secondAllocs, 5)));
             seconds.Flush(); spikes.Flush();
-            gcAtSecond = gc; secondTicks.Clear();
+            gcAtSecond = gc; secondTicks.Clear(); secondAllocs.Clear(); secondAlloc = 0;
             second = 0f; frames = 0; worst = 0f;
         }
 
@@ -152,6 +159,7 @@ namespace Overhaul.Performance
             {
                 seconds?.Dispose(); spikes?.Dispose();
                 main.Dispose(); render.Dispose(); gpu.Dispose(); draws.Dispose(); shadows.Dispose(); triangles.Dispose();
+                PerfProfile.MeasureAllocations = false;
                 PerfProfile.Uninstall();
                 float minutes = total / 60f;
                 string blame = string.Join(", ", spikeBlame.OrderByDescending(p => p.Value).Take(3).Select(p => p.Key + " x" + p.Value));

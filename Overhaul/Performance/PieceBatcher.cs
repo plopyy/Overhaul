@@ -324,7 +324,12 @@ namespace Overhaul.Performance
                 float size = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
                 group.localReferencePoint = root.transform.InverseTransformPoint(bounds.center);
                 group.size = size;
-                float h0 = Mathf.Clamp(size / (highDistance / lodPieces), .002f, .9f), h1 = Mathf.Clamp(size / (cullDistance / lodPieces), .0005f, h0 * .9f);
+                // The group measures its distance from the cell's centre: the detailed set ends when the far half of the cell reaches
+                // the pieces' own distance (centre distance minus half a cell), so the merged meshes are not more detailed than the
+                // pieces were (they kept up to 3 million more triangles ending at the centre).
+                float k = 1f / (2f * Mathf.Tan(.5f * 65f * Mathf.Deg2Rad));
+                float highAt = highDistance / lodPieces * k, nearest = Mathf.Max(highAt * .5f, highAt - CellSize * .5f);
+                float h0 = Mathf.Clamp(size / (nearest / k), .002f, .9f), h1 = Mathf.Clamp(size / (cullDistance / lodPieces), .0005f, h0 * .9f);
                 group.SetLODs(new[] { new LOD(h0, high.ToArray()), new LOD(h1, low.ToArray()) });
             }
             else foreach (var r in low) r.enabled = false;

@@ -113,18 +113,42 @@ namespace Overhaul.Performance
             if (users == 0 || --users > 0) return;
             harmony?.UnpatchSelf();
             harmony = null;
-            FrameTicks.Clear(); FrameCalls.Clear();
+            FrameTicks.Clear(); FrameCalls.Clear(); FrameAllocs.Clear();
         }
 
-        static void Begin(out long __state) => __state = Stopwatch.GetTimestamp();
+        // Start of a timed call: time and, while recording, the managed memory in use (its growth is what the call allocated).
+        internal struct Mark { internal long Ticks, Memory; }
+        // Set by the background recorder: allocations are measured too.
+        internal static bool MeasureAllocations;
+        internal static readonly Dictionary<string, long> FrameAllocs = new Dictionary<string, long>();
 
-        static void EndScoped(long __state, string profileScope) => Add(profileScope != null && profileScope.StartsWith("MonoUpdaters.") ? profileScope.Substring(13) : profileScope ?? "?", __state);
+        static void Begin(out Mark __state) => __state = new Mark { Ticks = Stopwatch.GetTimestamp(), Memory = MeasureAllocations ? System.GC.GetTotalMemory(false) : 0 };
 
-        static void EndMethod(long __state, MethodBase __originalMethod) => Add(__originalMethod.DeclaringType.Name + "." + __originalMethod.Name, __state);
+        // Labels built once (building them on each call would itself allocate and bring memory collections).
+        static readonly Dictionary<string, string> scopeLabels = new Dictionary<string, string>();
+        static readonly Dictionary<MethodBase, string> methodLabels = new Dictionary<MethodBase, string>();
 
-        static void Add(string label, long start)
+        static void EndScoped(Mark __state, string profileScope)
         {
-            long spent = Stopwatch.GetTimestamp() - start;
+            profileScope = profileScope ?? "?";
+            if (!scopeLabels.TryGetValue(profileScope, out string label)) scopeLabels[profileScope] = label = profileScope.StartsWith("MonoUpdaters.") ? profileScope.Substring(13) : profileScope;
+            Add(label, __state);
+        }
+
+        static void EndMethod(Mark __state, MethodBase __originalMethod)
+        {
+            if (!methodLabels.TryGetValue(__originalMethod, out string label)) methodLabels[__originalMethod] = label = __originalMethod.DeclaringType.Name + "." + __originalMethod.Name;
+            Add(label, __state);
+        }
+
+        static void Add(string label, Mark start)
+        {
+            long spent = Stopwatch.GetTimestamp() - start.Ticks;
+            if (MeasureAllocations)
+            {
+                long grown = System.GC.GetTotalMemory(false) - start.Memory;
+                if (grown > 0) { FrameAllocs.TryGetValue(label, out long a); FrameAllocs[label] = a + grown; }
+            }
             if (sampling)
             {
                 ticks.TryGetValue(label, out long total); ticks[label] = total + spent;
