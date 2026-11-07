@@ -137,7 +137,7 @@ namespace Overhaul.Performance
             foreach (var r in renderers)
             {
                 if (inGroups.Contains(r) || !Parts(new Renderer[] { r }, out var parts)) continue;
-                var bounds = r.bounds;
+                var bounds = WorldBounds(r);
                 var copy = new Copy { Center = bounds.center, Radius = bounds.extents.magnitude, Size = 0f, Levels = new[] { parts }, Heights = new[] { 0f } };
                 Add(ref tracker, go, copy);
             }
@@ -145,12 +145,26 @@ namespace Overhaul.Performance
                 foreach (var c in tracker.Copies) { c.Bodies = bodies; physical.Add(c); }
         }
 
+        // A renderer's world box from its mesh and its transform: Renderer.bounds of an object created this very frame can still be
+        // empty or at the world's origin, which made freshly spawned copies (a location's trees and rocks) culled for good.
+        static Bounds WorldBounds(Renderer r)
+        {
+            var filter = r.GetComponent<MeshFilter>(); var mesh = filter ? filter.sharedMesh : null;
+            var m = r.transform.localToWorldMatrix;
+            if (!mesh) return new Bounds(m.MultiplyPoint3x4(Vector3.zero), Vector3.one);
+            var local = mesh.bounds;
+            var b = new Bounds(m.MultiplyPoint3x4(local.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                b.Encapsulate(m.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+            return b;
+        }
+
         static float MaxScale(Transform t) { var s = t.lossyScale; return Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z)); }
 
         static float Radius(Part[][] levels, Vector3 center)
         {
             float radius = 0f;
-            foreach (var level in levels) foreach (var p in level) { var b = p.Renderer.bounds; radius = Mathf.Max(radius, Vector3.Distance(center, b.center) + b.extents.magnitude); }
+            foreach (var level in levels) foreach (var p in level) { var b = WorldBounds(p.Renderer); radius = Mathf.Max(radius, Vector3.Distance(center, b.center) + b.extents.magnitude); }
             return radius;
         }
 
