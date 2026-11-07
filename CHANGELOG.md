@@ -34,6 +34,7 @@
 - Gear tooltips list socketed catalysts by name only, the full effect is on the catalyst itself. Item tooltips no longer show a stamina cost.
 - Trolls and frost trolls now have an 80 % chance of being dumb.
 - Every item added without a chosen slot (loot, pickup, shortcut moves, take all) now fills inventories and chests from the top.
+- Ask armour set: keeps +10 % pierce, gains the lox set sneak and bow skill bonuses, loses its stamina cost reductions.
 
 ### Fixed
 - Creature and player health bars are drawn as part of the game's HUD again: the game's own health bar object and canvas stay in place and only take Auga's bars, instead of being replaced by a separate overlay canvas that some machines (a laptop with an Intel graphics chip) never drew. (2.4.0.369)
