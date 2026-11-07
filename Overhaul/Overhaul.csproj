@@ -45,6 +45,7 @@
     <Compile Include="ComboFinisher.cs" />
     <Compile Include="SwordOpener.cs" />
     <Compile Include="Persistence\*.cs" />
+    <Compile Include="Performance\*.cs" />
     <EmbeddedResource Include="..\..\..\Libs\overhaul_sqlite3.dll"><LogicalName>Overhaul.sqlite3.win-x64.dll</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Persistence\schema.sql"><LogicalName>Overhaul.Persistence.schema.sql</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Persistence\names.tsv"><LogicalName>Overhaul.Persistence.names.tsv</LogicalName></EmbeddedResource>

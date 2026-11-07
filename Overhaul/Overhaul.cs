@@ -82,6 +82,7 @@ namespace Overhaul
 			StaffShieldVfx.Initialize();
             DoPatching();
             Commands.AdminCommands.Initialize();
+            Performance.PerfMonitor.Initialize();
 			Log.LogInfo("Create Config values");
 			OverhaulConfig.SyncManager();
             if (!UnityEngine.Application.isBatchMode && UnityEngine.SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)

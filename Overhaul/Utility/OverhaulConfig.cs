@@ -57,6 +57,10 @@ namespace Overhaul.Utility
         public static ConfigEntry<UnityEngine.KeyCode> BuildPreciseKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildSnapToggleKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildResetKey { get; private set; }
+        public static ConfigEntry<bool> PerfStreamingSkip { get; private set; }
+        public static ConfigEntry<bool> PerfWaterMaterials { get; private set; }
+        public static ConfigEntry<bool> PerfFastFloaters { get; private set; }
+        public static ConfigEntry<bool> PerfTerrainCache { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -79,6 +83,18 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             BuildResetKey = config.Bind("Building", "ResetKey", UnityEngine.KeyCode.Less,
                 new ConfigDescription("Pressed while building or moving a piece, sets the ghost flat and facing north again (all three axes). The key does nothing else while building. Less is the < key left of W (AZERTY) or Z (QWERTY).",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfStreamingSkip = config.Bind("Performance", "SkipIdleStreaming", true,
+                new ConfigDescription("Skip the 30-per-second check for networked objects to create or remove around you while nothing it looks at has changed (still run twice a second). Same objects as the game. Compare with the operf console command.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfWaterMaterials = config.Bind("Performance", "CacheWaterMaterials", true,
+                new ConfigDescription("Keep each water surface's material instead of asking Unity for it every frame.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfFastFloaters = config.Bind("Performance", "FastFloaters", true,
+                new ConfigDescription("Work out the water height under floating things (boats, items, swimmers) with the water volume's size and the wind read once per frame instead of once per object. Same heights as the game, checked at the start of each session.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfTerrainCache = config.Bind("Performance", "TerrainBuildCache", true,
+                new ConfigDescription("Keep 128 finished terrain tiles instead of 16, and build first a tile the game is waiting for, so terrain is not rebuilt while the game stalls.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
