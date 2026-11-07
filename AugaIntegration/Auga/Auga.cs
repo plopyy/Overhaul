@@ -26,6 +26,7 @@ namespace Auga
         public GameObject TrainingMeter;
         public GameObject ClassPanel;
         public GameObject Grimoire;
+        public GameObject ClassChoice, ClassTree, ClassHud;
         public Texture2D Cursor;
         public GameObject MenuPrefab;
         public GameObject TextViewerPrefab;
@@ -505,6 +506,9 @@ namespace Auga
             Assets.TrainingMeter = assetBundle.LoadAsset<GameObject>("AugaTrainingMeter");
             Assets.ClassPanel = assetBundle.LoadAsset<GameObject>("OverhaulClassPanel");
             Assets.Grimoire = assetBundle.LoadAsset<GameObject>("OverhaulGrimoire");
+            Assets.ClassChoice = assetBundle.LoadAsset<GameObject>("OverhaulClassChoice");
+            Assets.ClassTree = assetBundle.LoadAsset<GameObject>("OverhaulClassTree");
+            Assets.ClassHud = assetBundle.LoadAsset<GameObject>("OverhaulClassHud");
             Assets.MainMenuPrefab = assetBundle.LoadAsset<GameObject>("MainMenu");
             Assets.WorldSelectionPrefab = assetBundle.LoadAsset<GameObject>("AugaWorldSelection");
             Assets.BuildHudElement = assetBundle.LoadAsset<GameObject>("BuildHudElement");

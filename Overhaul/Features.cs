@@ -1,9 +1,9 @@
 namespace Overhaul
 {
-    // System still being built: off on main and v2.4, on in v2.5 (where this file goes away).
+    // Systems still being built (dev line 2.4, our own server only).
     internal static class Features
     {
         // The class window and its key.
-        internal const bool Classes = false;
+        internal const bool Classes = true;
     }
 }

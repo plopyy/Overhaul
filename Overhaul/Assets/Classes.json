@@ -1,3 +1,1400 @@
 {
-  "Skills": []
+ "Classes": [
+  {
+   "ID": "Warrior",
+   "Emblem": "sword",
+   "Color": "#f0c040",
+   "Pickable": true,
+   "NameKey": "$overhaul_class_warrior",
+   "RoleKey": "$overhaul_class_warrior_role",
+   "DescriptionKey": "$overhaul_class_warrior_desc",
+   "Paths": [
+    {
+     "ID": "Hero",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_warrior_hero",
+     "DescriptionKey": "$overhaul_path_warrior_hero_desc",
+     "Gauges": [
+      5,
+      1,
+      3,
+      2,
+      2
+     ]
+    },
+    {
+     "ID": "Veteran",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_warrior_veteran",
+     "DescriptionKey": "$overhaul_path_warrior_veteran_desc",
+     "Gauges": [
+      5,
+      1,
+      5,
+      1,
+      2
+     ]
+    },
+    {
+     "ID": "Warlord",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_warrior_warlord",
+     "DescriptionKey": "$overhaul_path_warrior_warlord_desc",
+     "Gauges": [
+      4,
+      2,
+      3,
+      4,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Mage",
+   "Emblem": "staff",
+   "Color": "#5aa0f0",
+   "Pickable": true,
+   "NameKey": "$overhaul_class_mage",
+   "RoleKey": "$overhaul_class_mage_role",
+   "DescriptionKey": "$overhaul_class_mage_desc",
+   "Paths": [
+    {
+     "ID": "Fire",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_mage_fire",
+     "DescriptionKey": "$overhaul_path_mage_fire_desc",
+     "Gauges": [
+      1,
+      5,
+      1,
+      5,
+      4
+     ]
+    },
+    {
+     "ID": "Frost",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_mage_frost",
+     "DescriptionKey": "$overhaul_path_mage_frost_desc",
+     "Gauges": [
+      1,
+      4,
+      1,
+      4,
+      3
+     ]
+    },
+    {
+     "ID": "Lightning",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_mage_lightning",
+     "DescriptionKey": "$overhaul_path_mage_lightning_desc",
+     "Gauges": [
+      2,
+      5,
+      2,
+      5,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Hunter",
+   "Emblem": "bow",
+   "Color": "#4f9a3e",
+   "Pickable": true,
+   "NameKey": "$overhaul_class_hunter",
+   "RoleKey": "$overhaul_class_hunter_role",
+   "DescriptionKey": "$overhaul_class_hunter_desc",
+   "Paths": [
+    {
+     "ID": "Archer",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_hunter_archer",
+     "DescriptionKey": "$overhaul_path_hunter_archer_desc",
+     "Gauges": [
+      3,
+      5,
+      3,
+      3,
+      4
+     ]
+    },
+    {
+     "ID": "Tracker",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_hunter_tracker",
+     "DescriptionKey": "$overhaul_path_hunter_tracker_desc",
+     "Gauges": [
+      2,
+      5,
+      2,
+      2,
+      3
+     ]
+    },
+    {
+     "ID": "Beast",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_hunter_beast",
+     "DescriptionKey": "$overhaul_path_hunter_beast_desc",
+     "Gauges": [
+      1,
+      4,
+      1,
+      1,
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Viking",
+   "Emblem": "axe",
+   "Color": "#e07a30",
+   "Pickable": true,
+   "NameKey": "$overhaul_class_viking",
+   "RoleKey": "$overhaul_class_viking_role",
+   "DescriptionKey": "$overhaul_class_viking_desc",
+   "Paths": [
+    {
+     "ID": "Raider",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_viking_raider",
+     "DescriptionKey": "$overhaul_path_viking_raider_desc",
+     "Gauges": [
+      3,
+      1,
+      3,
+      2,
+      1
+     ]
+    },
+    {
+     "ID": "Seafarer",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_viking_seafarer",
+     "DescriptionKey": "$overhaul_path_viking_seafarer_desc",
+     "Gauges": [
+      5,
+      3,
+      5,
+      4,
+      2
+     ]
+    },
+    {
+     "ID": "Jarl",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_viking_jarl",
+     "DescriptionKey": "$overhaul_path_viking_jarl_desc",
+     "Gauges": [
+      4,
+      2,
+      4,
+      3,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Assassin",
+   "Emblem": "dagger",
+   "Color": "#6f7a72",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_assassin",
+   "RoleKey": "$overhaul_class_assassin_role",
+   "DescriptionKey": "$overhaul_class_assassin_desc",
+   "Paths": [
+    {
+     "ID": "Shadow",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_assassin_shadow",
+     "DescriptionKey": "$overhaul_path_assassin_shadow_desc",
+     "Gauges": [
+      4,
+      1,
+      1,
+      1,
+      5
+     ]
+    },
+    {
+     "ID": "Poison",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_assassin_poison",
+     "DescriptionKey": "$overhaul_path_assassin_poison_desc",
+     "Gauges": [
+      3,
+      1,
+      1,
+      1,
+      4
+     ]
+    },
+    {
+     "ID": "Blade",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_assassin_blade",
+     "DescriptionKey": "$overhaul_path_assassin_blade_desc",
+     "Gauges": [
+      5,
+      2,
+      2,
+      2,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Berserker",
+   "Emblem": "axes",
+   "Color": "#e03434",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_berserker",
+   "RoleKey": "$overhaul_class_berserker_role",
+   "DescriptionKey": "$overhaul_class_berserker_desc",
+   "Paths": [
+    {
+     "ID": "Rage",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_berserker_rage",
+     "DescriptionKey": "$overhaul_path_berserker_rage_desc",
+     "Gauges": [
+      5,
+      2,
+      4,
+      5,
+      4
+     ]
+    },
+    {
+     "ID": "Carnage",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_berserker_carnage",
+     "DescriptionKey": "$overhaul_path_berserker_carnage_desc",
+     "Gauges": [
+      5,
+      1,
+      3,
+      4,
+      3
+     ]
+    },
+    {
+     "ID": "Blood",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_berserker_blood",
+     "DescriptionKey": "$overhaul_path_berserker_blood_desc",
+     "Gauges": [
+      4,
+      1,
+      2,
+      3,
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "CursedShaman",
+   "Emblem": "skull",
+   "Color": "#8a74e8",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_cursedshaman",
+   "RoleKey": "$overhaul_class_cursedshaman_role",
+   "DescriptionKey": "$overhaul_class_cursedshaman_desc",
+   "Paths": [
+    {
+     "ID": "Curse",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_cursedshaman_curse",
+     "DescriptionKey": "$overhaul_path_cursedshaman_curse_desc",
+     "Gauges": [
+      1,
+      3,
+      1,
+      3,
+      3
+     ]
+    },
+    {
+     "ID": "Spirits",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_cursedshaman_spirits",
+     "DescriptionKey": "$overhaul_path_cursedshaman_spirits_desc",
+     "Gauges": [
+      2,
+      5,
+      3,
+      5,
+      5
+     ]
+    },
+    {
+     "ID": "Plague",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_cursedshaman_plague",
+     "DescriptionKey": "$overhaul_path_cursedshaman_plague_desc",
+     "Gauges": [
+      1,
+      4,
+      2,
+      4,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Chemist",
+   "Emblem": "flask",
+   "Color": "#3d7fd6",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_chemist",
+   "RoleKey": "$overhaul_class_chemist_role",
+   "DescriptionKey": "$overhaul_class_chemist_desc",
+   "Paths": [
+    {
+     "ID": "Explosives",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_chemist_explosives",
+     "DescriptionKey": "$overhaul_path_chemist_explosives_desc",
+     "Gauges": [
+      1,
+      4,
+      2,
+      5,
+      4
+     ]
+    },
+    {
+     "ID": "Elixirs",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_chemist_elixirs",
+     "DescriptionKey": "$overhaul_path_chemist_elixirs_desc",
+     "Gauges": [
+      1,
+      3,
+      1,
+      4,
+      3
+     ]
+    },
+    {
+     "ID": "Toxins",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_chemist_toxins",
+     "DescriptionKey": "$overhaul_path_chemist_toxins_desc",
+     "Gauges": [
+      2,
+      5,
+      3,
+      5,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Cleric",
+   "Emblem": "cross",
+   "Color": "#f4f1ea",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_cleric",
+   "RoleKey": "$overhaul_class_cleric_role",
+   "DescriptionKey": "$overhaul_class_cleric_desc",
+   "Paths": [
+    {
+     "ID": "Light",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_cleric_light",
+     "DescriptionKey": "$overhaul_path_cleric_light_desc",
+     "Gauges": [
+      3,
+      3,
+      4,
+      3,
+      3
+     ]
+    },
+    {
+     "ID": "Blessing",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_cleric_blessing",
+     "DescriptionKey": "$overhaul_path_cleric_blessing_desc",
+     "Gauges": [
+      2,
+      2,
+      3,
+      2,
+      2
+     ]
+    },
+    {
+     "ID": "Judgment",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_cleric_judgment",
+     "DescriptionKey": "$overhaul_path_cleric_judgment_desc",
+     "Gauges": [
+      1,
+      1,
+      2,
+      1,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Druid",
+   "Emblem": "leaf",
+   "Color": "#b0d45c",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_druid",
+   "RoleKey": "$overhaul_class_druid_role",
+   "DescriptionKey": "$overhaul_class_druid_desc",
+   "Paths": [
+    {
+     "ID": "Growth",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_druid_growth",
+     "DescriptionKey": "$overhaul_path_druid_growth_desc",
+     "Gauges": [
+      2,
+      2,
+      2,
+      2,
+      3
+     ]
+    },
+    {
+     "ID": "Shapeshift",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_druid_shapeshift",
+     "DescriptionKey": "$overhaul_path_druid_shapeshift_desc",
+     "Gauges": [
+      4,
+      4,
+      4,
+      4,
+      5
+     ]
+    },
+    {
+     "ID": "Storm",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_druid_storm",
+     "DescriptionKey": "$overhaul_path_druid_storm_desc",
+     "Gauges": [
+      3,
+      3,
+      3,
+      3,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Scout",
+   "Emblem": "eye",
+   "Color": "#3cc8b4",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_scout",
+   "RoleKey": "$overhaul_class_scout_role",
+   "DescriptionKey": "$overhaul_class_scout_desc",
+   "Paths": [
+    {
+     "ID": "Lookout",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_scout_lookout",
+     "DescriptionKey": "$overhaul_path_scout_lookout_desc",
+     "Gauges": [
+      2,
+      4,
+      2,
+      1,
+      2
+     ]
+    },
+    {
+     "ID": "Ambush",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_scout_ambush",
+     "DescriptionKey": "$overhaul_path_scout_ambush_desc",
+     "Gauges": [
+      1,
+      3,
+      1,
+      1,
+      1
+     ]
+    },
+    {
+     "ID": "Sprint",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_scout_sprint",
+     "DescriptionKey": "$overhaul_path_scout_sprint_desc",
+     "Gauges": [
+      3,
+      5,
+      3,
+      2,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Gladiator",
+   "Emblem": "trident",
+   "Color": "#e8a040",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_gladiator",
+   "RoleKey": "$overhaul_class_gladiator_role",
+   "DescriptionKey": "$overhaul_class_gladiator_desc",
+   "Paths": [
+    {
+     "ID": "Arena",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_gladiator_arena",
+     "DescriptionKey": "$overhaul_path_gladiator_arena_desc",
+     "Gauges": [
+      5,
+      3,
+      4,
+      3,
+      4
+     ]
+    },
+    {
+     "ID": "Net",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_gladiator_net",
+     "DescriptionKey": "$overhaul_path_gladiator_net_desc",
+     "Gauges": [
+      5,
+      2,
+      3,
+      2,
+      3
+     ]
+    },
+    {
+     "ID": "Champion",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_gladiator_champion",
+     "DescriptionKey": "$overhaul_path_gladiator_champion_desc",
+     "Gauges": [
+      4,
+      1,
+      2,
+      1,
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Battlemage",
+   "Emblem": "spellsword",
+   "Color": "#6f86e8",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_battlemage",
+   "RoleKey": "$overhaul_class_battlemage_role",
+   "DescriptionKey": "$overhaul_class_battlemage_desc",
+   "Paths": [
+    {
+     "ID": "ArcaneBlade",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_battlemage_arcaneblade",
+     "DescriptionKey": "$overhaul_path_battlemage_arcaneblade_desc",
+     "Gauges": [
+      3,
+      2,
+      2,
+      2,
+      4
+     ]
+    },
+    {
+     "ID": "Aegis",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_battlemage_aegis",
+     "DescriptionKey": "$overhaul_path_battlemage_aegis_desc",
+     "Gauges": [
+      5,
+      4,
+      4,
+      4,
+      5
+     ]
+    },
+    {
+     "ID": "Rupture",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_battlemage_rupture",
+     "DescriptionKey": "$overhaul_path_battlemage_rupture_desc",
+     "Gauges": [
+      4,
+      3,
+      3,
+      3,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Monk",
+   "Emblem": "fist",
+   "Color": "#bc9c78",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_monk",
+   "RoleKey": "$overhaul_class_monk_role",
+   "DescriptionKey": "$overhaul_class_monk_desc",
+   "Paths": [
+    {
+     "ID": "Fist",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_monk_fist",
+     "DescriptionKey": "$overhaul_path_monk_fist_desc",
+     "Gauges": [
+      5,
+      1,
+      3,
+      2,
+      4
+     ]
+    },
+    {
+     "ID": "Breath",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_monk_breath",
+     "DescriptionKey": "$overhaul_path_monk_breath_desc",
+     "Gauges": [
+      4,
+      1,
+      2,
+      1,
+      3
+     ]
+    },
+    {
+     "ID": "Balance",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_monk_balance",
+     "DescriptionKey": "$overhaul_path_monk_balance_desc",
+     "Gauges": [
+      5,
+      2,
+      4,
+      3,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Paladin",
+   "Emblem": "hammer",
+   "Color": "#f2e27a",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_paladin",
+   "RoleKey": "$overhaul_class_paladin_role",
+   "DescriptionKey": "$overhaul_class_paladin_desc",
+   "Paths": [
+    {
+     "ID": "Crusader",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_paladin_crusader",
+     "DescriptionKey": "$overhaul_path_paladin_crusader_desc",
+     "Gauges": [
+      5,
+      2,
+      5,
+      3,
+      3
+     ]
+    },
+    {
+     "ID": "Bulwark",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_paladin_bulwark",
+     "DescriptionKey": "$overhaul_path_paladin_bulwark_desc",
+     "Gauges": [
+      4,
+      1,
+      5,
+      2,
+      2
+     ]
+    },
+    {
+     "ID": "Grace",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_paladin_grace",
+     "DescriptionKey": "$overhaul_path_paladin_grace_desc",
+     "Gauges": [
+      3,
+      1,
+      4,
+      1,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "ID": "Savage",
+   "Emblem": "claw",
+   "Color": "#a8713e",
+   "Pickable": false,
+   "NameKey": "$overhaul_class_savage",
+   "RoleKey": "$overhaul_class_savage_role",
+   "DescriptionKey": "$overhaul_class_savage_desc",
+   "Paths": [
+    {
+     "ID": "Pack",
+     "Color": "#3fbf6a",
+     "NameKey": "$overhaul_path_savage_pack",
+     "DescriptionKey": "$overhaul_path_savage_pack_desc",
+     "Gauges": [
+      4,
+      1,
+      2,
+      2,
+      1
+     ]
+    },
+    {
+     "ID": "Hunt",
+     "Color": "#5a6ee0",
+     "NameKey": "$overhaul_path_savage_hunt",
+     "DescriptionKey": "$overhaul_path_savage_hunt_desc",
+     "Gauges": [
+      5,
+      2,
+      4,
+      4,
+      3
+     ]
+    },
+    {
+     "ID": "Fury",
+     "Color": "#e04545",
+     "NameKey": "$overhaul_path_savage_fury",
+     "DescriptionKey": "$overhaul_path_savage_fury_desc",
+     "Gauges": [
+      5,
+      1,
+      3,
+      3,
+      2
+     ]
+    }
+   ]
+  }
+ ],
+ "Skills": [
+  {
+   "ID": "Warrior.Hero.RisingHero",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 0
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_hero_risinghero",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_risinghero_desc",
+   "Icon": "Skill_Warrior_Hero_RisingHero"
+  },
+  {
+   "ID": "Warrior.Hero.ThirstForAdventure",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 0
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_hero_thirstforadventure",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_thirstforadventure_desc",
+   "Icon": "Skill_Warrior_Hero_ThirstForAdventure"
+  },
+  {
+   "ID": "Warrior.Hero.MageSlayer",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 0
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_hero_mageslayer",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_mageslayer_desc",
+   "Icon": "Skill_Warrior_Hero_MageSlayer"
+  },
+  {
+   "ID": "Warrior.Hero.HonourOfTheJust",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 1
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_hero_honourofthejust",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_honourofthejust_desc",
+   "Icon": "Skill_Warrior_Hero_HonourOfTheJust"
+  },
+  {
+   "ID": "Warrior.Hero.RebukeOfTheJust",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 1
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_rebukeofthejust",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_rebukeofthejust_desc",
+   "Icon": "Skill_Warrior_Hero_RebukeOfTheJust"
+  },
+  {
+   "ID": "Warrior.Hero.ChampionOfLight",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 1
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_championoflight",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_championoflight_desc",
+   "Icon": "Skill_Warrior_Hero_ChampionOfLight"
+  },
+  {
+   "ID": "Warrior.Hero.ExcalibursAwakening",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 2
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_excalibursawakening",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_excalibursawakening_desc",
+   "Icon": "Skill_Warrior_Hero_ExcalibursAwakening"
+  },
+  {
+   "ID": "Warrior.Hero.UnshakableCourage",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 2
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_hero_unshakablecourage",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_unshakablecourage_desc",
+   "Icon": "Skill_Warrior_Hero_UnshakableCourage"
+  },
+  {
+   "ID": "Warrior.Hero.EvenMoreVigorousBash",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 2
+   },
+   "MaxRank": 2,
+   "NameKey": "$overhaul_skill_warrior_hero_evenmorevigorousbash",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_evenmorevigorousbash_desc",
+   "Icon": "Skill_Warrior_Hero_EvenMoreVigorousBash"
+  },
+  {
+   "ID": "Warrior.Hero.HolyStrength",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_holystrength",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_holystrength_desc",
+   "Icon": "Skill_Warrior_Hero_HolyStrength"
+  },
+  {
+   "ID": "Warrior.Hero.DecisiveStrike",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_decisivestrike",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_decisivestrike_desc",
+   "Icon": "Skill_Warrior_Hero_DecisiveStrike"
+  },
+  {
+   "ID": "Warrior.Hero.ExcaliburMastery",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_hero_excaliburmastery",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_excaliburmastery_desc",
+   "Icon": "Skill_Warrior_Hero_ExcaliburMastery"
+  },
+  {
+   "ID": "Warrior.Hero.CleaveTheHeavens",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Ultimate",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_hero_cleavetheheavens",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_cleavetheheavens_desc",
+   "Icon": "Skill_Warrior_Hero_CleaveTheHeavens"
+  },
+  {
+   "ID": "Warrior.Hero.VigorousBash",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Active",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_hero_vigorousbash",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_vigorousbash_desc",
+   "Icon": "Skill_Warrior_Hero_VigorousBash"
+  },
+  {
+   "ID": "Warrior.Hero.HerosAwakening",
+   "ClassID": "Warrior",
+   "PathID": "Hero",
+   "Kind": "Passive",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_hero_herosawakening",
+   "DescriptionKey": "$overhaul_skill_warrior_hero_herosawakening_desc",
+   "Icon": "Skill_Warrior_Hero_HerosAwakening"
+  },
+  {
+   "ID": "Warrior.Veteran.WarmUp",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 0
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_warmup",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_warmup_desc",
+   "Icon": "Skill_Warrior_Veteran_WarmUp"
+  },
+  {
+   "ID": "Warrior.Veteran.IronWill",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 0
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_veteran_ironwill",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_ironwill_desc",
+   "Icon": "Skill_Warrior_Veteran_IronWill"
+  },
+  {
+   "ID": "Warrior.Veteran.SeekTheGap",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 0
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_veteran_seekthegap",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_seekthegap_desc",
+   "Icon": "Skill_Warrior_Veteran_SeekTheGap"
+  },
+  {
+   "ID": "Warrior.Veteran.CombatExperience",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 1
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_combatexperience",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_combatexperience_desc",
+   "Icon": "Skill_Warrior_Veteran_CombatExperience"
+  },
+  {
+   "ID": "Warrior.Veteran.ThirstForRiposte",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 1
+   },
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_veteran_thirstforriposte",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_thirstforriposte_desc",
+   "Icon": "Skill_Warrior_Veteran_ThirstForRiposte"
+  },
+  {
+   "ID": "Warrior.Veteran.FindTheGap",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 1
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_findthegap",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_findthegap_desc",
+   "Icon": "Skill_Warrior_Veteran_FindTheGap"
+  },
+  {
+   "ID": "Warrior.Veteran.MartialWaltz",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 2
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_veteran_martialwaltz",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_martialwaltz_desc",
+   "Icon": "Skill_Warrior_Veteran_MartialWaltz"
+  },
+  {
+   "ID": "Warrior.Veteran.BloodySpear",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 2
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_bloodyspear",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_bloodyspear_desc",
+   "Icon": "Skill_Warrior_Veteran_BloodySpear"
+  },
+  {
+   "ID": "Warrior.Veteran.MartialMastery",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 2
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_veteran_martialmastery",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_martialmastery_desc",
+   "Icon": "Skill_Warrior_Veteran_MartialMastery"
+  },
+  {
+   "ID": "Warrior.Veteran.CircleOfLife",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_circleoflife",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_circleoflife_desc",
+   "Icon": "Skill_Warrior_Veteran_CircleOfLife"
+  },
+  {
+   "ID": "Warrior.Veteran.VampireSpear",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 3
+   },
+   "MaxRank": 6,
+   "NameKey": "$overhaul_skill_warrior_veteran_vampirespear",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_vampirespear_desc",
+   "Icon": "Skill_Warrior_Veteran_VampireSpear"
+  },
+  {
+   "ID": "Warrior.Veteran.Adrenaline",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_veteran_adrenaline",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_adrenaline_desc",
+   "Icon": "Skill_Warrior_Veteran_Adrenaline"
+  },
+  {
+   "ID": "Warrior.Veteran.Godslayer",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Ultimate",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_veteran_godslayer",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_godslayer_desc",
+   "Icon": "Skill_Warrior_Veteran_Godslayer"
+  },
+  {
+   "ID": "Warrior.Veteran.LightningAssault",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Active",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_veteran_lightningassault",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_lightningassault_desc",
+   "Icon": "Skill_Warrior_Veteran_LightningAssault"
+  },
+  {
+   "ID": "Warrior.Veteran.AccumulatedExpertise",
+   "ClassID": "Warrior",
+   "PathID": "Veteran",
+   "Kind": "Passive",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_veteran_accumulatedexpertise",
+   "DescriptionKey": "$overhaul_skill_warrior_veteran_accumulatedexpertise_desc",
+   "Icon": "Skill_Warrior_Veteran_AccumulatedExpertise"
+  },
+  {
+   "ID": "Warrior.Warlord.UnwaveringWill",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 0
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_warlord_unwaveringwill",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_unwaveringwill_desc",
+   "Icon": "Skill_Warrior_Warlord_UnwaveringWill"
+  },
+  {
+   "ID": "Warrior.Warlord.VowOfImmortality",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 0
+   },
+   "MaxRank": 6,
+   "NameKey": "$overhaul_skill_warrior_warlord_vowofimmortality",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_vowofimmortality_desc",
+   "Icon": "Skill_Warrior_Warlord_VowOfImmortality"
+  },
+  {
+   "ID": "Warrior.Warlord.TitanStrength",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 0
+   },
+   "MaxRank": 3,
+   "NameKey": "$overhaul_skill_warrior_warlord_titanstrength",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_titanstrength_desc",
+   "Icon": "Skill_Warrior_Warlord_TitanStrength"
+  },
+  {
+   "ID": "Warrior.Warlord.ImposingBuild",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 1
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_warlord_imposingbuild",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_imposingbuild_desc",
+   "Icon": "Skill_Warrior_Warlord_ImposingBuild"
+  },
+  {
+   "ID": "Warrior.Warlord.ViolentRetribution",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 1
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_warlord_violentretribution",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_violentretribution_desc",
+   "Icon": "Skill_Warrior_Warlord_ViolentRetribution"
+  },
+  {
+   "ID": "Warrior.Warlord.WarriorValour",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 1
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_warlord_warriorvalour",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_warriorvalour_desc",
+   "Icon": "Skill_Warrior_Warlord_WarriorValour"
+  },
+  {
+   "ID": "Warrior.Warlord.AdventOfChaos",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 2
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_warlord_adventofchaos",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_adventofchaos_desc",
+   "Icon": "Skill_Warrior_Warlord_AdventOfChaos"
+  },
+  {
+   "ID": "Warrior.Warlord.LetMyVoiceBeLaw",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 2
+   },
+   "MaxRank": 2,
+   "NameKey": "$overhaul_skill_warrior_warlord_letmyvoicebelaw",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_letmyvoicebelaw_desc",
+   "Icon": "Skill_Warrior_Warlord_LetMyVoiceBeLaw"
+  },
+  {
+   "ID": "Warrior.Warlord.AdventOfOrder",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 2
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_warlord_adventoforder",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_adventoforder_desc",
+   "Icon": "Skill_Warrior_Warlord_AdventOfOrder"
+  },
+  {
+   "ID": "Warrior.Warlord.AwakeningOfEvil",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 0,
+    "y": 3
+   },
+   "MaxRank": 5,
+   "NameKey": "$overhaul_skill_warrior_warlord_awakeningofevil",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_awakeningofevil_desc",
+   "Icon": "Skill_Warrior_Warlord_AwakeningOfEvil"
+  },
+  {
+   "ID": "Warrior.Warlord.SadisticJoy",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 1,
+    "y": 3
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_warlord_sadisticjoy",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_sadisticjoy_desc",
+   "Icon": "Skill_Warrior_Warlord_SadisticJoy"
+  },
+  {
+   "ID": "Warrior.Warlord.DivineAura",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Normal",
+   "Cell": {
+    "x": 2,
+    "y": 3
+   },
+   "MaxRank": 4,
+   "NameKey": "$overhaul_skill_warrior_warlord_divineaura",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_divineaura_desc",
+   "Icon": "Skill_Warrior_Warlord_DivineAura"
+  },
+  {
+   "ID": "Warrior.Warlord.EmbraceTheDarkness",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Ultimate",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_warlord_embracethedarkness",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_embracethedarkness_desc",
+   "Icon": "Skill_Warrior_Warlord_EmbraceTheDarkness"
+  },
+  {
+   "ID": "Warrior.Warlord.MartialJudgment",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Active",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_warlord_martialjudgment",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_martialjudgment_desc",
+   "Icon": "Skill_Warrior_Warlord_MartialJudgment"
+  },
+  {
+   "ID": "Warrior.Warlord.ImperialAuthority",
+   "ClassID": "Warrior",
+   "PathID": "Warlord",
+   "Kind": "Passive",
+   "MaxRank": 1,
+   "NameKey": "$overhaul_skill_warrior_warlord_imperialauthority",
+   "DescriptionKey": "$overhaul_skill_warrior_warlord_imperialauthority_desc",
+   "Icon": "Skill_Warrior_Warlord_ImperialAuthority"
+  }
+ ]
 }

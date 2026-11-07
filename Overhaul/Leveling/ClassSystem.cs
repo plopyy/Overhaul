@@ -165,7 +165,7 @@ namespace Overhaul.Leveling
         {
             if (!Classes.TryGetValue(classID, out var progress))
             {
-                progress = new ClassProgress();
+                progress = new ClassProgress { AvailablePoints = ClassProgress.TotalPointsAtLevel(1) };
                 Classes[classID] = progress;
             }
             return progress;
@@ -284,7 +284,96 @@ namespace Overhaul.Leveling
     /// <summary>Layout of the embedded Classes.json.</summary>
     internal sealed class ClassesFile
     {
+        public List<ClassData> Classes = new List<ClassData>();
         public List<ClassSkillData> Skills = new List<ClassSkillData>();
+    }
+
+    /// <summary>One class of the choice screen: emblem, colour, texts and its three paths.</summary>
+    internal sealed class ClassData
+    {
+        public string ID;
+        /// <summary>Rune sprite of the emblem ("Rune_" + Emblem in the window prefabs).</summary>
+        public string Emblem;
+        public string Color;
+        /// <summary>False: shown locked (padlock and chain) in the choice grid.</summary>
+        public bool Pickable;
+        public string NameKey, RoleKey, DescriptionKey;
+        public List<ClassPathData> Paths = new List<ClassPathData>();
+
+        public ClassPathData Path(string pathID) => Paths.Find(p => p.ID == pathID);
+    }
+
+    /// <summary>One path of a class: colour, texts and the five gauges of the choice screen (1..5).</summary>
+    internal sealed class ClassPathData
+    {
+        public string ID;
+        public string Color;
+        public string NameKey, DescriptionKey;
+        /// <summary>Melee, ranged, survival, area damage, difficulty.</summary>
+        public int[] Gauges;
+    }
+
+    /// <summary>
+    /// Spending rules of the trees: only the bottom row is open at first; 5 points in a row open the next row of
+    /// that path; the chosen path's ultimate is learned by itself with 5 points in its top row, which opens every
+    /// row of every path. A point can only be taken back when it closes no row (or ultimate) still in use.
+    /// </summary>
+    internal static class ClassRules
+    {
+        public const int RowNeed = 5;
+
+        static int Rank(ClassProgress p, ClassSkill s) => p.SkillPoints.TryGetValue(s.ID, out int r) ? r : 0;
+
+        public static IEnumerable<ClassSkill> PathSkills(string classID, string pathID) =>
+            ClassSkills.All.Values.Where(s => s.Data.ClassID == classID && s.Data.PathID == pathID);
+
+        public static int RowSum(ClassProgress p, string classID, string pathID, int row) =>
+            PathSkills(classID, pathID).Where(s => s.Data.Kind == ClassSkillKind.Normal && s.Data.Cell.y == row).Sum(s => Rank(p, s));
+
+        /// <summary>The chosen path's ultimate, learned once its top row holds 5 points.</summary>
+        public static bool UltimateLearned(ClassProgress p, string classID) =>
+            p.ChosenPathID != null && RowSum(p, classID, p.ChosenPathID, 3) >= RowNeed;
+
+        public static bool UltimateLearned(ClassProgress p, string classID, string pathID) => p.ChosenPathID == pathID && UltimateLearned(p, classID);
+
+        public static bool RowOpen(ClassProgress p, string classID, string pathID, int row) =>
+            p.ChosenPathID != null && (row == 0 || UltimateLearned(p, classID) || RowSum(p, classID, pathID, row - 1) >= RowNeed);
+
+        public static bool CanAdd(ClassProgress p, ClassSkill s) =>
+            s.Data.Kind == ClassSkillKind.Normal && RowOpen(p, s.Data.ClassID, s.Data.PathID, s.Data.Cell.y) && p.AvailablePoints > 0 && Rank(p, s) < s.Data.MaxRank;
+
+        public static bool CanRemove(ClassProgress p, ClassSkill s)
+        {
+            if (p.ChosenPathID == null || s.Data.Kind != ClassSkillKind.Normal || Rank(p, s) == 0) return false;
+            string c = s.Data.ClassID, path = s.Data.PathID; int row = s.Data.Cell.y;
+            bool ult = UltimateLearned(p, c, path);
+            if (UltimateLearned(p, c)) return !(ult && row == 3 && RowSum(p, c, path, 3) - 1 < RowNeed);
+            if (row < 3 && RowSum(p, c, path, row) - 1 < RowNeed && PathSkills(c, path).Any(o => o.Data.Kind == ClassSkillKind.Normal && o.Data.Cell.y > row && Rank(p, o) > 0)) return false;
+            return true;
+        }
+
+        public static bool Add(ClassProgress p, ClassSkill s)
+        {
+            if (!CanAdd(p, s)) return false;
+            p.SkillPoints[s.ID] = Rank(p, s) + 1; p.AvailablePoints--;
+            return true;
+        }
+
+        public static bool Remove(ClassProgress p, ClassSkill s)
+        {
+            if (!CanRemove(p, s)) return false;
+            int r = Rank(p, s) - 1;
+            if (r > 0) p.SkillPoints[s.ID] = r; else p.SkillPoints.Remove(s.ID);
+            p.AvailablePoints++;
+            return true;
+        }
+
+        /// <summary>Every point back and no path chosen, so another one can be picked.</summary>
+        public static void ResetAll(ClassProgress p)
+        {
+            p.SkillPoints.Clear(); p.ChosenPathID = null;
+            p.AvailablePoints = ClassProgress.TotalPointsAtLevel(p.Level);
+        }
     }
 
     /// <summary>
@@ -299,6 +388,12 @@ namespace Overhaul.Leveling
             new Dictionary<string, Func<ClassSkillData, ClassSkill>>();
 
         private static Dictionary<string, ClassSkill> all;
+        private static List<ClassData> classes;
+
+        /// <summary>Classes of the choice screen, in grid order.</summary>
+        public static List<ClassData> Classes { get { if (all == null) all = Load(); return classes; } }
+
+        public static ClassData GetClass(string classID) => classID == null ? null : Classes.Find(c => c.ID == classID);
 
         /// <summary>Registers the class bonuses as a source of the effect registry.</summary>
         public static void Initialize() => EffectRegistry.Register(AddBonuses);
@@ -336,6 +431,7 @@ namespace Overhaul.Leveling
             string json = Jotunn.Utils.AssetUtils.LoadTextFromResources(Resource, typeof(ClassSkills).Assembly)
                 ?? throw new InvalidOperationException("Missing embedded " + Resource);
             var file = JsonConvert.DeserializeObject<ClassesFile>(json);
+            classes = file.Classes ?? new List<ClassData>();
 
             var skills = new Dictionary<string, ClassSkill>();
             foreach (var data in file.Skills)
