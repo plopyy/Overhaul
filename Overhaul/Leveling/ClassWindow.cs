@@ -371,8 +371,7 @@ namespace Overhaul.Leveling
             var colour = none || data == null ? new Color(.84f, .80f, .72f) : ColorOf(data.Color);
             rune.color = colour; hud.transform.Find("Emblem/Border").GetComponent<Image>().color = colour;
             var hint = hud.transform.Find("Hint").GetComponent<TMP_Text>();
-            hint.gameObject.SetActive(none);
-            if (none) hint.text = string.Format(L("$overhaul_class_hud_hint"), KeyLabel());
+            hint.text = string.Format(L("$overhaul_class_hud_hint"), KeyLabel());
             // Blink: the gold glow pulses every 1.2 s while no class is chosen.
             var glow = hud.transform.Find("Emblem/Glow").GetComponent<Image>();
             glow.gameObject.SetActive(none);
