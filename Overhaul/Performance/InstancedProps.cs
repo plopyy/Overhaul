@@ -15,7 +15,9 @@ namespace Overhaul.Performance
     // The objects stay as they are in the game (colliders, network, interaction); only their renderers are hidden
     // (Renderer.forceRenderingOff, the game's own enabled flags untouched).
     //
-    // Objects with physics (logs left on the ground) are taken while their bodies sleep and given back in the frame they wake.
+    // Objects with physics (logs left on the ground) are taken while their bodies sleep and given back in the frame they wake;
+    // objects synchronised over the network (simulated by the server or another player) are checked every frame as well, a
+    // move being a real change of position or rotation (the sync rewrites the same position each frame).
     // Taken: objects coming into the world (networked ones on creation, locations' visuals once spawned), split per LODGroup
     // (each a copy with its levels) and per renderer outside any LODGroup. Left alone: pieces (merged by PieceBatcher), creatures,
     // items, anything with physics, animation, a ship or cart, things that change look by themselves (pickables, mined rocks,
@@ -139,11 +141,8 @@ namespace Overhaul.Performance
                 var copy = new Copy { Center = bounds.center, Radius = bounds.extents.magnitude, Size = 0f, Levels = new[] { parts }, Heights = new[] { 0f } };
                 Add(ref tracker, go, copy);
             }
-            if (tracker && bodies != null)
-            {
-                foreach (var body in bodies) body.transform.hasChanged = false;
+            if (tracker && (bodies != null || go.GetComponent<ZSyncTransform>()))
                 foreach (var c in tracker.Copies) { c.Bodies = bodies; physical.Add(c); }
-            }
         }
 
         static float MaxScale(Transform t) { var s = t.lossyScale; return Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z)); }
@@ -190,7 +189,7 @@ namespace Overhaul.Performance
             if (!tracker) tracker = go.AddComponent<Tracker>();
             copy.Owner = tracker;
             tracker.Copies.Add(copy);
-            foreach (var level in copy.Levels) foreach (var p in level) { p.Renderer.forceRenderingOff = true; p.Renderer.transform.hasChanged = false; }
+            foreach (var level in copy.Levels) foreach (var p in level) p.Renderer.forceRenderingOff = true;
             copies.Add(copy);
         }
 
@@ -202,13 +201,24 @@ namespace Overhaul.Performance
         }
 
         // A copy whose renderers moved, were hidden or changed goes back to them.
+        // Moved for real (more than 1 cm or about half a degree): a position rewritten unchanged each frame, as the network
+        // sync of an object simulated elsewhere does, is no move.
+        static bool Moved(Part p)
+        {
+            var now = p.Renderer.localToWorldMatrix; var was = p.Matrix;
+            float dx = now.m03 - was.m03, dy = now.m13 - was.m13, dz = now.m23 - was.m23;
+            if (dx * dx + dy * dy + dz * dz > 1e-4f) return true;
+            for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) if (Mathf.Abs(now[i, j] - was[i, j]) > .01f) return true;
+            return false;
+        }
+
         static bool StillSame(Copy copy)
         {
             foreach (var level in copy.Levels)
                 foreach (var p in level)
                 {
                     var r = p.Renderer;
-                    if (!r || !r.enabled || !r.gameObject.activeInHierarchy || r.transform.hasChanged || r.HasPropertyBlock()) return false;
+                    if (!r || !r.enabled || !r.gameObject.activeInHierarchy || r.HasPropertyBlock() || Moved(p)) return false;
                 }
             return true;
         }
@@ -242,7 +252,8 @@ namespace Overhaul.Performance
                 var copy = physical[i];
                 if (copy.Dead || !copy.Owner) { physical.RemoveAt(i); continue; }
                 bool moving = false;
-                foreach (var body in copy.Bodies) if (!body || !body.IsSleeping() || body.transform.hasChanged) { moving = true; break; }
+                if (copy.Bodies != null) foreach (var body in copy.Bodies) if (!body || !body.isKinematic && !body.IsSleeping()) { moving = true; break; }
+                if (!moving) foreach (var level in copy.Levels) { foreach (var p in level) if (!p.Renderer || Moved(p)) { moving = true; break; } if (moving) break; }
                 if (!moving) continue;
                 var go = copy.Owner.gameObject;
                 Release(copy); copy.Owner.Copies.Remove(copy); physical.RemoveAt(i);
