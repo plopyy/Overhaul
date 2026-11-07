@@ -54,9 +54,15 @@ namespace Overhaul.Rarity
             foreach (var collider in prefab.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(collider);
             var look = Object.Instantiate(model, prefab.transform, false); look.name = "model";
             int layer = prefab.layer; foreach (var t in look.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
-            var bounds = look.GetComponentInChildren<Renderer>().bounds;
+            // From the mesh itself: the prefab is inactive here, and an inactive renderer reports empty bounds.
+            var filter = look.GetComponentInChildren<MeshFilter>();
+            var local = filter.sharedMesh.bounds;
+            var toRoot = prefab.transform.worldToLocalMatrix * filter.transform.localToWorldMatrix;
+            var bounds = new Bounds(toRoot.MultiplyPoint3x4(local.center), Vector3.zero);
+            for (int i = 0; i < 8; i++)
+                bounds.Encapsulate(toRoot.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
             var box = prefab.AddComponent<BoxCollider>();
-            box.center = prefab.transform.InverseTransformPoint(bounds.center); box.size = new Vector3(bounds.size.x, Mathf.Max(.05f, bounds.size.y), bounds.size.z);
+            box.center = bounds.center; box.size = new Vector3(bounds.size.x, Mathf.Max(.05f, bounds.size.y), bounds.size.z);
         }
 
         static Sprite Icon()
