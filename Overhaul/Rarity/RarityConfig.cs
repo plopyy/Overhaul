@@ -100,6 +100,8 @@ namespace Overhaul.Rarity
         // Mystic powder: cost per rarity, obliterator divisor, drop chance and multiplier per rank, amount per biome.
         internal readonly Dictionary<string, int> PowderCost = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         internal int PowderDismantleDivisor = 5;
+        // Fixed obliterator amounts for rarities the powder cannot buy (Magic, Rare).
+        internal readonly Dictionary<string, int> PowderDismantle = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Magic"] = 25, ["Rare"] = 50 };
         internal readonly Dictionary<string, float> PowderChance = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, float> PowderRankMultiplier = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, (int Min, int Max)> PowderBiomes = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
@@ -458,6 +460,11 @@ namespace Overhaul.Rarity
                     case "mysticpowder":
                         foreach (var (key, value) in Pairs(Get(v, "Cost", ""))) if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cost) && cost > 0) data.PowderCost[key] = cost;
                         data.PowderDismantleDivisor = Math.Max(1, Int(v, "DismantleDivisor", 5));
+                        if (v.ContainsKey("Dismantle"))
+                        {
+                            data.PowderDismantle.Clear();
+                            foreach (var (key, value) in Pairs(Get(v, "Dismantle", ""))) if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int amount) && amount > 0) data.PowderDismantle[key] = amount;
+                        }
                         foreach (var (key, value) in Pairs(Get(v, "Chance", ""))) data.PowderChance[key] = ParseFloat(value);
                         foreach (var (key, value) in Pairs(Get(v, "RankMultiplier", ""))) data.PowderRankMultiplier[key] = ParseFloat(value, 1);
                         foreach (var (key, value) in Pairs(Get(v, "Biomes", "")))

@@ -87,8 +87,12 @@ namespace Overhaul.Rarity
         // Powder given back by the obliterator for an enchanted item.
         internal static int Dismantle(ItemDrop.ItemData item)
         {
-            int divisor = Math.Max(1, RarityConfig.Current.PowderDismantleDivisor);
-            return Cost(ItemRarity.Of(item)) / divisor * Math.Max(1, item.m_stack);
+            var data = RarityConfig.Current; var rarity = ItemRarity.Of(item);
+            int cost = Cost(rarity);
+            // Rarities the powder can buy give back their cost / DismantleDivisor; the others (Magic, Rare) their fixed Dismantle amount.
+            int amount = cost > 0 ? cost / Math.Max(1, data.PowderDismantleDivisor)
+                : rarity != null && data.PowderDismantle.TryGetValue(rarity.Id, out int fixedAmount) ? fixedAmount : 0;
+            return amount * Math.Max(1, item.m_stack);
         }
 
         internal static ItemDrop.ItemData Make(int amount)
