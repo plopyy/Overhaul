@@ -79,7 +79,12 @@ namespace Overhaul.Storage
             var inputs = inventory.GetAllItems().Where(Eligible).ToArray();
             var refunds = new List<ItemDrop.ItemData>();
             foreach (var item in inputs)
+            {
                 refunds.AddRange(Refund(item, ObjectDB.instance.GetRecipe(item)));
+                // Enchanted gear also gives mystic powder.
+                var powder = Rarity.MysticPowder.Make(Rarity.MysticPowder.Dismantle(item));
+                if (powder != null) refunds.Add(powder);
+            }
             var wood = inventory.GetAllItems().Where(IsWood).ToArray();
             var coal = ObjectDB.instance.GetItemPrefab("Coal");
             if (coal && wood.Length > 0)

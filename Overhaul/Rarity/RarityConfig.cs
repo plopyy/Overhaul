@@ -97,6 +97,12 @@ namespace Overhaul.Rarity
         internal readonly SortedDictionary<int, float[]> EnchantTiers = new SortedDictionary<int, float[]>();
         internal (string Item, int Amount)[] RerollCost = new (string, int)[0];
         internal int CaptainTiers = 1, EliteTiers = 1, BossTiers = 2;
+        // Mystic powder: cost per rarity, obliterator divisor, drop chance and multiplier per rank, amount per biome.
+        internal readonly Dictionary<string, int> PowderCost = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        internal int PowderDismantleDivisor = 5;
+        internal readonly Dictionary<string, float> PowderChance = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        internal readonly Dictionary<string, float> PowderRankMultiplier = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        internal readonly Dictionary<string, (int Min, int Max)> PowderBiomes = new Dictionary<string, (int, int)>(StringComparer.OrdinalIgnoreCase);
         internal string Text = "";
 
         internal RarityDef Rarity(string id) => id == null ? null : Rarities.FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.OrdinalIgnoreCase));
@@ -114,7 +120,7 @@ namespace Overhaul.Rarity
             string path = Path.Combine(Path.GetDirectoryName(typeof(RarityConfig).Assembly.Location), FileName);
             if (!File.Exists(path)) File.WriteAllText(path, Utility.ConfigSections.Defaults(FileName));
             else { RenameOldRarities(path); AddCatalystRarity(path); AddEnchantSections(path); AddBiomeLootSections(path); AddBiomeLootExceptions(path);
-                AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddAfterLast(path, "[MythicEnchant_", "[MythicEnchant_DualSlash]"); AddCatalystEffects(path); AddAccessories(path);
+                AddAfterLast(path, "[LootList_", "[LootList_AskArmor]"); AddAfterLast(path, "[MobLoot_", "[MobLoot_Asksvin]"); AddAfterLast(path, "[MythicEnchant_", "[MythicEnchant_DualSlash]"); AddAfterLast(path, "[EnchantTable]", "[MysticPowder]"); AddCatalystEffects(path); AddAccessories(path);
                 // Ricochet Axe's Value was a bounce count before the three-axe throw, now a damage percent.
                 OldMythicValue(path, "RicochetAxe", "[2,2,3,3,3,4,4,5]", "[40,45,50,55,60,65,70,80]");
                 OldMythicValue(path, "SpectralDagger", "[10,11,12,13,14,15,16,18]", "[35,35,35,35,35,35,35,35]");
@@ -449,6 +455,18 @@ namespace Overhaul.Rarity
                             .Select(p => (p[0].Trim(), int.TryParse(p[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : 0)).Where(c => c.Item2 > 0).ToArray();
                         data.CaptainTiers = Int(v, "CaptainTiers", 1); data.EliteTiers = Int(v, "EliteTiers", 1); data.BossTiers = Int(v, "BossTiers", 2);
                         break;
+                    case "mysticpowder":
+                        foreach (var (key, value) in Pairs(Get(v, "Cost", ""))) if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int cost) && cost > 0) data.PowderCost[key] = cost;
+                        data.PowderDismantleDivisor = Math.Max(1, Int(v, "DismantleDivisor", 5));
+                        foreach (var (key, value) in Pairs(Get(v, "Chance", ""))) data.PowderChance[key] = ParseFloat(value);
+                        foreach (var (key, value) in Pairs(Get(v, "RankMultiplier", ""))) data.PowderRankMultiplier[key] = ParseFloat(value, 1);
+                        foreach (var (key, value) in Pairs(Get(v, "Biomes", "")))
+                        {
+                            var range = value.Split('-');
+                            if (int.TryParse(range[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int min))
+                                data.PowderBiomes[key] = (min, range.Length > 1 && int.TryParse(range[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int max) ? Math.Max(min, max) : min);
+                        }
+                        break;
                     case "enchanttier":
                         if (int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int tier)) data.EnchantTiers[tier] = List(Get(v, "Rarity", "")).Select(w => ParseFloat(w)).ToArray();
                         break;
@@ -505,6 +523,9 @@ namespace Overhaul.Rarity
 
         // "[a, b]" or "a, b" lists.
         internal static string[] List(string value) => (value ?? "").Trim('[', ']').Split(',').Select(i => i.Trim()).Where(i => i.Length > 0).ToArray();
+        // "Key:Value, Key:Value" pairs.
+        internal static IEnumerable<(string Key, string Value)> Pairs(string value) =>
+            List(value).Select(p => p.Split(':')).Where(p => p.Length == 2).Select(p => (p[0].Trim(), p[1].Trim()));
         internal static string Get(Dictionary<string, string> v, string key, string fallback) => v.TryGetValue(key, out string value) && value.Length > 0 ? value : fallback;
         internal static int Int(Dictionary<string, string> v, string key, int fallback = 0) => int.TryParse(Get(v, key, ""), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : fallback;
         internal static float Float(Dictionary<string, string> v, string key, float fallback = 0) => v.TryGetValue(key, out string value) && value.Length > 0 ? ParseFloat(value, fallback) : fallback;

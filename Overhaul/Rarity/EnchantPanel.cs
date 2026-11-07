@@ -16,6 +16,8 @@ namespace Overhaul.Rarity
     // and offers the current line and two other effects; clicking one puts it on the item and closes the offers (closing the
     // window keeps the current line). Missing cost items blink red like crafting requirements.
     // Catalysts: the item's catalyst slots (the table's second inventory, written into the item).
+    // Mystic powder in the trophy slot: the odds become the powder cost of each rarity it can reach; the player clicks one and
+    // Enchant gives the item that rarity, using up its cost from the slot.
     internal sealed class EnchantPanel : MonoBehaviour
     {
         internal const string LockKey = "overhaul_enchant_lock";
@@ -26,7 +28,9 @@ namespace Overhaul.Rarity
         int tab, line = -1, choice;
         string[] choices; ItemDrop.ItemData shownItem;
         float nextRefresh;
-        TMP_Text itemName, itemRarity, trophyName, trophyRank, lockedHint;
+        TMP_Text itemName, itemRarity, trophyName, trophyRank, lockedHint, oddsLabel;
+        string chancesText, powderText;
+        int powderPick = -1;
         Button enchantButton, rollButton;
         readonly List<TMP_Text> costAmounts = new List<TMP_Text>();
 
@@ -44,6 +48,15 @@ namespace Overhaul.Rarity
             {
                 int index = i; var button = Find("SubTabs/" + TabNames[i] + "Tab")?.GetComponent<Button>();
                 if (button) { button.onClick = new Button.ButtonClickedEvent(); button.onClick.AddListener(() => ShowTab(index)); }
+            }
+            oddsLabel = Text("EnchantPage/OddsLabel");
+            chancesText = Localization.instance.Localize("$overhaul_enchant_chances");
+            powderText = Localization.instance.Localize("$overhaul_enchant_powder_choose");
+            var rarityList = RarityConfig.Current.Rarities;
+            for (int i = 0; i < rarityList.Count; i++)
+            {
+                int index = i; var row = Find("EnchantPage/Odds/" + rarityList[i].Id.ToLowerInvariant())?.GetComponent<Button>();
+                if (row) { row.onClick = new Button.ButtonClickedEvent(); row.onClick.AddListener(() => PickRarity(index)); }
             }
             enchantButton = Find("EnchantPage/EnchantButton")?.GetComponent<Button>();
             if (enchantButton) { enchantButton.onClick = new Button.ButtonClickedEvent(); enchantButton.onClick.AddListener(Enchant); }
@@ -92,6 +105,16 @@ namespace Overhaul.Rarity
                 bool missing = player && !player.NoCostCheat() && EnchantCost.Count(player, table.Station, cost[i].Name) < cost[i].Amount;
                 costAmounts[i].color = missing && Mathf.Sin(Time.time * 10f) > 0f ? Color.red : Color.white;
             }
+            // Powder costs the slot cannot pay blink the same way.
+            var powder = table.Trophy; var rarities = RarityConfig.Current.Rarities;
+            if (!MysticPowder.Is(powder)) return;
+            for (int i = 0; i < rarities.Count; i++)
+            {
+                int powderCost = MysticPowder.Cost(rarities[i]);
+                var chance = Text("EnchantPage/Odds/" + rarities[i].Id.ToLowerInvariant() + "/Chance"); if (!chance || powderCost <= 0) continue;
+                bool missing = player && !player.NoCostCheat() && powder.m_stack < powderCost;
+                chance.color = missing && Mathf.Sin(Time.time * 10f) > 0f ? Color.red : Color.white;
+            }
         }
 
         static int Lock(ItemDrop.ItemData item) =>
@@ -124,17 +147,29 @@ namespace Overhaul.Rarity
             bool owner = store.Owner && !EnchantCost.Busy;
 
             // Enchant tab.
-            var trophy = table.Trophy; var source = EnchantOdds.Of(trophy);
+            var trophy = table.Trophy; var source = EnchantOdds.Of(trophy); bool powder = MysticPowder.Is(trophy);
             if (trophyName) trophyName.text = trophy != null ? Localization.instance.Localize(trophy.m_shared.m_name) : "";
-            if (trophyRank) trophyRank.text = source == null ? "" : Localization.instance.Localize("$biome_" + source.Biome.ToLowerInvariant()) + " · " +
+            if (trophyRank) trophyRank.text = powder ? Localization.instance.Localize("$overhaul_enchant_powder_owned", trophy.m_stack.ToString("N0", CultureInfo.CurrentCulture))
+                : source == null ? "" : Localization.instance.Localize("$biome_" + source.Biome.ToLowerInvariant()) + " · " +
                 Localization.instance.Localize("$overhaul_enchant_rank_" + source.Rank.ToLowerInvariant());
+            if (oddsLabel) oddsLabel.text = powder ? powderText : chancesText;
             var odds = source != null ? EnchantOdds.Odds(source.Tier) : null; var rarities = RarityConfig.Current.Rarities;
+            if (!powder || powderPick >= rarities.Count || powderPick >= 0 && MysticPowder.Cost(rarities[powderPick]) <= 0) powderPick = -1;
             for (int i = 0; i < rarities.Count; i++)
             {
-                var chance = Text("EnchantPage/Odds/" + rarities[i].Id.ToLowerInvariant() + "/Chance");
-                if (chance) chance.text = odds == null ? "–" : odds[i].ToString(odds[i] > 0 && odds[i] < 10 ? "0.#" : "0", CultureInfo.CurrentCulture) + " %";
+                string path = "EnchantPage/Odds/" + rarities[i].Id.ToLowerInvariant();
+                var chance = Text(path + "/Chance"); int cost = powder ? MysticPowder.Cost(rarities[i]) : 0;
+                if (chance)
+                {
+                    chance.text = powder ? (cost > 0 ? cost.ToString("N0", CultureInfo.CurrentCulture) : "–")
+                        : odds == null ? "–" : odds[i].ToString(odds[i] > 0 && odds[i] < 10 ? "0.#" : "0", CultureInfo.CurrentCulture) + " %";
+                    if (!powder) chance.color = Color.white;
+                }
+                var highlight = Find(path + "/Highlight")?.GetComponent<Image>(); if (highlight) highlight.enabled = powder && i == powderPick;
+                var button = Find(path)?.GetComponent<Button>(); if (button) button.interactable = owner && powder && cost > 0;
             }
-            if (enchantButton) enchantButton.interactable = owner && EnchantInventory.Gear(item) && source != null && !Mythic(item);
+            bool affordable = powder && powderPick >= 0 && Player.m_localPlayer && (Player.m_localPlayer.NoCostCheat() || trophy.m_stack >= MysticPowder.Cost(rarities[powderPick]));
+            if (enchantButton) enchantButton.interactable = owner && EnchantInventory.Gear(item) && (powder ? affordable : source != null) && !Mythic(item);
 
             // Change tab.
             var lines = item != null ? ItemRarity.Enchants(item) : new string[0];
@@ -179,14 +214,27 @@ namespace Overhaul.Rarity
             return effect.Name + " " + effect.Format(effect.EnchantValue(biome));
         }
 
+        void PickRarity(int index) { if (MysticPowder.Is(table.Trophy) && MysticPowder.Cost(RarityConfig.Current.Rarities[index]) > 0) { powderPick = index; Refresh(); } }
+
         void SelectLine(int index) { if (choices == null) { line = index; Refresh(); } }
 
         void Enchant()
         {
             var item = table.Item; var trophy = table.Trophy; var source = EnchantOdds.Of(trophy);
-            if (!store.Owner || !EnchantInventory.Gear(item) || source == null || Mythic(item)) return;
-            var rarity = EnchantOdds.Roll(source.Tier); if (rarity == null) return;
             var player = Player.m_localPlayer;
+            bool powder = MysticPowder.Is(trophy);
+            if (!store.Owner || !EnchantInventory.Gear(item) || (!powder && source == null) || Mythic(item)) return;
+            RarityDef rarity; int used = 1;
+            if (powder)
+            {
+                var rarities = RarityConfig.Current.Rarities;
+                if (powderPick < 0 || powderPick >= rarities.Count) return;
+                rarity = rarities[powderPick]; used = MysticPowder.Cost(rarity);
+                if (used <= 0 || trophy.m_stack < used && !player.NoCostCheat()) return;
+                used = Mathf.Min(used, trophy.m_stack);
+            }
+            else rarity = EnchantOdds.Roll(source.Tier);
+            if (rarity == null) return;
             store.Change(() =>
             {
                 // Catalysts kept up to the new rarity's slots; the others go back to the player.
@@ -201,7 +249,7 @@ namespace Overhaul.Rarity
                 }
                 var kept = socketed.Take(slots).ToArray();
                 if (kept.Any(n => n.Length > 0)) item.m_customData[ItemRarity.CatalystKey] = string.Join(",", kept); else item.m_customData.Remove(ItemRarity.CatalystKey);
-                store.Items.RemoveItem(trophy, 1);
+                store.Items.RemoveItem(trophy, used);
                 table.ShowCatalysts();
             });
             choices = null; line = -1;

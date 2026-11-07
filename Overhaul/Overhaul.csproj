@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -189,6 +189,7 @@
     <EmbeddedResource Include="Assets\trough-layout.tsv"><LogicalName>Overhaul.Assets.trough-layout.tsv</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\Classes.json"><LogicalName>Overhaul.Assets.Classes.json</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\LootAura\overhaul_lootaura"><LogicalName>Overhaul.Assets.LootAura.overhaul_lootaura</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\mystic_powder.png"><LogicalName>Overhaul.Assets.mystic_powder.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_swampbossroom"><LogicalName>Overhaul.Assets.overhaul_swampbossroom</LogicalName></EmbeddedResource>
@@ -205,6 +206,7 @@
     <EmbeddedResource Include="Assets\overhaul_grimoirestand"><LogicalName>Overhaul.Assets.overhaul_grimoirestand</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_enchanttable"><LogicalName>Overhaul.Assets.overhaul_enchanttable</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_gems"><LogicalName>Overhaul.Assets.overhaul_gems</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_mysticpowder"><LogicalName>Overhaul.Assets.overhaul_mysticpowder</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_shields">
       <LogicalName>Overhaul.Assets.overhaul_shields</LogicalName>
     </EmbeddedResource>

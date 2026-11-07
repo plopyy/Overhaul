@@ -21,7 +21,7 @@ namespace Overhaul.Rarity
         internal override bool SingleItems => true;
         internal override bool SingleFuel => true;
         // Trophies stack in their slot: enchanting uses one at a time, so the next try is ready.
-        internal override bool Single(ItemDrop.ItemData item, bool fuel) => fuel || item == null || EnchantOdds.Of(item) == null;
+        internal override bool Single(ItemDrop.ItemData item, bool fuel) => fuel || item == null || EnchantOdds.Of(item) == null && !MysticPowder.Is(item);
         internal override string Title => Station.m_name;
         internal override string MaterialLabel => "";
 
@@ -43,7 +43,8 @@ namespace Overhaul.Rarity
                 if (Item != null && CatalystEffects.IsTrinket(Item) && CatalystEffects.IsImmunity(prefab) && Store.Fuel.GetAllItems().Any(other => other != item && CatalystEffects.IsImmunity(other.m_dropPrefab ? other.m_dropPrefab.name : null))) return false;
                 return pos.HasValue ? pos.Value.y == 0 && pos.Value.x < CatalystSlots : Enumerable.Range(0, CatalystSlots).Any(x => Store.Fuel.GetItemAt(x, 0) == null);
             }
-            bool gear = Gear(item), trophy = EnchantOdds.Of(item) != null;
+            // Mystic powder goes in the trophy slot too.
+            bool gear = Gear(item), trophy = EnchantOdds.Of(item) != null || MysticPowder.Is(item);
             if (!pos.HasValue) return gear || trophy;
             return pos.Value.y == 0 && (pos.Value.x == 0 ? gear : pos.Value.x == 1 && trophy);
         }

@@ -210,6 +210,7 @@ namespace Overhaul.Rarity
         internal static void CreatureLoot(string creature, Vector3 center)
         {
             var data = RarityConfig.Current;
+            MysticPowder.Creature(creature, center);
             if (creature == null || !data.MobLoots.TryGetValue(creature, out var lists)) { BiomeLoot.Creature(creature, center); return; }
             var rank = BiomeLoot.Rank(creature, out _);
             foreach (string name in lists)
@@ -286,6 +287,7 @@ namespace Overhaul.Rarity
             Enchantments.Initialize();
             CatalystEffects.Initialize();
             Gems.Initialize();
+            MysticPowder.Initialize();
         }
 
         private static void Tooltip(ComplexTooltip tooltip, ItemDrop.ItemData item)
