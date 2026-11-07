@@ -27,6 +27,7 @@ namespace Overhaul.Performance
         static readonly Dictionary<string, int> calls = new Dictionary<string, int>();
         // Time spent per group since the last ClearFrame (read by the background recorder, "operf record").
         internal static readonly Dictionary<string, long> FrameTicks = new Dictionary<string, long>();
+        internal static readonly Dictionary<string, int> FrameCalls = new Dictionary<string, int>();
         static bool sampling;
         internal static bool Running => sampling;
 
@@ -43,6 +44,20 @@ namespace Overhaul.Performance
             ("Game", "Update"), ("Game", "FixedUpdate"), ("SpawnSystem", "UpdateSpawning"), ("Heightmap", "CustomLateUpdate"),
             ("EnemyHud", "LateUpdate"), ("MessageHud", "Update"), ("AudioMan", "Update"), ("MusicMan", "Update"),
             ("LightLod", "Update"), ("Fireplace", "UpdateFireplace"), ("Smelter", "UpdateSmelter"),
+            // Zone loading: objects created and removed, zones generated (vegetation, locations), terrain, environment.
+            ("ZNetScene", "CreateObject"), ("ZNetScene", "CreateObjects"), ("ZNetScene", "RemoveObjects"),
+            ("ZoneSystem", "CreateLocalZones"), ("ZoneSystem", "CreateGhostZones"), ("ZoneSystem", "SpawnZone"), ("ZoneSystem", "PlaceVegetation"),
+            ("ZoneSystem", "PlaceLocations"), ("ZoneSystem", "SpawnLocation"), ("LocationProxy", "SpawnLocation"), ("DungeonGenerator", "Generate"),
+            ("Heightmap", "Generate"), ("Heightmap", "RebuildRenderMesh"), ("Heightmap", "RebuildCollisionMesh"),
+            ("EnvMan", "UpdateEnvironment"), ("EnvMan", "SetEnv"),
+        };
+        // The groups no other timed group runs inside: their sum is the frame time the timing covers.
+        internal static readonly HashSet<string> Roots = new HashSet<string>
+        {
+            "MonoUpdaters.Update", "MonoUpdaters.FixedUpdate", "MonoUpdaters.LateUpdate", "WearNTearUpdater.Update", "ZNetScene.Update", "ZNet.Update", "ZNet.LateUpdate",
+            "ZoneSystem.Update", "Minimap.Update", "EnvMan.Update", "EnvMan.FixedUpdate", "Player.Update", "Player.FixedUpdate", "Player.LateUpdate", "GameCamera.LateUpdate",
+            "Hud.Update", "Hud.LateUpdate", "InventoryGui.Update", "ClutterSystem.LateUpdate", "Game.Update", "Game.FixedUpdate", "EnemyHud.LateUpdate", "MessageHud.Update",
+            "AudioMan.Update", "MusicMan.Update", "LightLod.Update",
         };
         static readonly (string Name, ProfilerCategory Category)[] Counters =
         {
@@ -81,9 +96,14 @@ namespace Overhaul.Performance
             }
             foreach (var (type, name) in Managers)
             {
-                var t = AccessTools.TypeByName(type); var method = t != null ? AccessTools.DeclaredMethod(t, name) : null;
-                if (method == null || method.IsAbstract) continue;
-                harmony.Patch(method, begin, new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last }); patched++;
+                var t = AccessTools.TypeByName(type); if (t == null) continue;
+                // Every overload of the name.
+                foreach (var method in AccessTools.GetDeclaredMethods(t))
+                {
+                    if (method.Name != name || method.IsAbstract || method.IsGenericMethodDefinition) continue;
+                    try { harmony.Patch(method, begin, new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last }); patched++; }
+                    catch (System.Exception e) { Log.LogWarning("[Performance] Profile: " + type + "." + name + " not timed: " + e.Message); }
+                }
             }
             return patched;
         }
@@ -93,7 +113,7 @@ namespace Overhaul.Performance
             if (users == 0 || --users > 0) return;
             harmony?.UnpatchSelf();
             harmony = null;
-            FrameTicks.Clear();
+            FrameTicks.Clear(); FrameCalls.Clear();
         }
 
         static void Begin(out long __state) => __state = Stopwatch.GetTimestamp();
@@ -111,6 +131,7 @@ namespace Overhaul.Performance
                 calls.TryGetValue(label, out int count); calls[label] = count + 1;
             }
             FrameTicks.TryGetValue(label, out long frame); FrameTicks[label] = frame + spent;
+            FrameCalls.TryGetValue(label, out int frameCalls); FrameCalls[label] = frameCalls + 1;
         }
 
         static void Stop()

@@ -32,6 +32,7 @@ namespace Overhaul.Performance
         float until, second, worst, total; int frames, gcAtSecond, gcAtFrame;
         readonly Dictionary<string, long> secondTicks = new Dictionary<string, long>();
         readonly float[] recent = new float[120]; int recentCount, recentIndex;
+        long memory;
         int spikeCount, secondCount; float worstSpike; float fpsSum, fpsMin = float.MaxValue;
         readonly Dictionary<string, int> spikeBlame = new Dictionary<string, int>();
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -57,7 +58,7 @@ namespace Overhaul.Performance
             seconds = new StreamWriter(Path.Combine(folder, "record-" + stamp + ".csv"), false, new UTF8Encoding(false));
             spikes = new StreamWriter(Path.Combine(folder, "spikes-" + stamp + ".csv"), false, new UTF8Encoding(false));
             seconds.WriteLine("time;fps;avg_ms;worst_ms;cpu_main_ms;cpu_render_ms;gpu_ms;draw_calls;shadow_casters;triangles;pieces;merged_pieces;characters;particles;particles_hidden;gc;x;z;biome;top_scripts");
-            spikes.WriteLine("time;frame_ms;median_ms;gc;x;z;biome;top_scripts");
+            spikes.WriteLine("time;frame_ms;median_ms;untimed_ms;alloc_kb;gc;objects_created;zones_spawned;x;z;biome;top_scripts");
             main = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Main Thread Frame Time");
             render = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Render Thread Frame Time");
             gpu = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "GPU Frame Time");
@@ -67,6 +68,7 @@ namespace Overhaul.Performance
             PerfProfile.Install();
             PerfProfile.FrameTicks.Clear();
             gcAtSecond = gcAtFrame = GC.CollectionCount(0);
+            memory = GC.GetTotalMemory(false);
             PerfMonitor.Print(PerfMonitor.L("overhaul_perf_record_start", minutes > 0 ? minutes.ToString("0.#", Inv) + " min" : "∞", folder));
         }
 
@@ -76,10 +78,11 @@ namespace Overhaul.Performance
             // The groups timed since the last frame belong to this one (close enough to find who made a frame slow).
             foreach (var pair in PerfProfile.FrameTicks) { secondTicks.TryGetValue(pair.Key, out long t); secondTicks[pair.Key] = t + pair.Value; }
             int gc = GC.CollectionCount(0);
+            long now = GC.GetTotalMemory(false); long alloc = Math.Max(0, now - memory); memory = now;
             float median = Median();
-            if (recentCount >= 30 && ms > SpikeMinMs && ms > median * SpikeFactor) Spike(ms, median, gc != gcAtFrame);
+            if (recentCount >= 30 && ms > SpikeMinMs && ms > median * SpikeFactor) Spike(ms, median, gc != gcAtFrame, alloc);
             gcAtFrame = gc;
-            PerfProfile.FrameTicks.Clear();
+            PerfProfile.FrameTicks.Clear(); PerfProfile.FrameCalls.Clear();
             recent[recentIndex] = ms; recentIndex = (recentIndex + 1) % recent.Length; recentCount = Math.Min(recentCount + 1, recent.Length);
             second += dt; total += dt; frames++; worst = Mathf.Max(worst, ms);
             if (second >= 1f) WriteSecond();
@@ -104,7 +107,7 @@ namespace Overhaul.Performance
         static string Top(Dictionary<string, long> ticks, int count, double toMs) =>
             string.Join(" | ", ticks.OrderByDescending(p => p.Value).Take(count).Select(p => p.Key + " " + (p.Value * toMs).ToString("0.00", Inv)));
 
-        void Spike(float ms, float median, bool gc)
+        void Spike(float ms, float median, bool gc, long alloc)
         {
             spikeCount++; worstSpike = Mathf.Max(worstSpike, ms);
             var (x, z, biome) = Where();
@@ -112,8 +115,13 @@ namespace Overhaul.Performance
             var first = PerfProfile.FrameTicks.OrderByDescending(p => p.Value).FirstOrDefault();
             string blame = gc ? "GC" : first.Key ?? "unknown";
             spikeBlame.TryGetValue(blame, out int n); spikeBlame[blame] = n + 1;
-            spikes.WriteLine(string.Join(";", DateTime.Now.ToString("HH:mm:ss.fff", Inv), ms.ToString("0.0", Inv), median.ToString("0.0", Inv), gc ? "1" : "0",
-                x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(PerfProfile.FrameTicks, 5, toMs)));
+            // What the timing does not cover: the engine's own work (loading, instancing, physics, rendering) in that frame.
+            double timed = 0; foreach (var pair in PerfProfile.FrameTicks) if (PerfProfile.Roots.Contains(pair.Key)) timed += pair.Value * toMs;
+            PerfProfile.FrameCalls.TryGetValue("ZNetScene.CreateObject", out int created);
+            PerfProfile.FrameCalls.TryGetValue("ZoneSystem.SpawnZone", out int zones);
+            spikes.WriteLine(string.Join(";", DateTime.Now.ToString("HH:mm:ss.fff", Inv), ms.ToString("0.0", Inv), median.ToString("0.0", Inv), Math.Max(0, ms - timed).ToString("0.0", Inv),
+                (alloc / 1024).ToString(Inv), gc ? "1" : "0", created.ToString(Inv), zones.ToString(Inv),
+                x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(PerfProfile.FrameTicks, 8, toMs)));
         }
 
         void WriteSecond()
