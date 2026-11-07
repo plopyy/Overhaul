@@ -32,13 +32,16 @@ namespace Overhaul.Leveling
         /// <summary>One class point per level: a freshly chosen class starts at level 1 with 1 point.</summary>
         public static int TotalPointsAtLevel(int level) => level;
 
-        /// <summary>Same experience table as the leveling, capped at MaxLevel.</summary>
+        /// <summary>Experience from a class level to the next: 40 x level^2.5 (about 4.7 million to reach level 50).</summary>
+        public static long ExperienceToNextLevel(int level) => (long)Math.Round(40.0 * Math.Pow(level, 2.5));
+
+        /// <summary>Class experience table (steeper than the leveling's), capped at MaxLevel.</summary>
         public static void Calculate(long total, out int level, out long current)
         {
             level = 1; current = Math.Max(0, total);
             while (level < MaxLevel)
             {
-                long cost = LevelingSystem.GetExperienceToNextLevel(level);
+                long cost = ExperienceToNextLevel(level);
                 if (current < cost) return;
                 current -= cost; level++;
             }
