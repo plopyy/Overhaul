@@ -23,6 +23,7 @@ namespace Overhaul.Performance
             ("terrain", () => OverhaulConfig.PerfTerrainCache),
             ("shadows", () => OverhaulConfig.PerfDecorShadows),
             ("particles", () => OverhaulConfig.PerfHiddenParticles),
+            ("merge", () => OverhaulConfig.PerfMergePieces),
         };
 
         // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
@@ -97,7 +98,7 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { DecorShadows.Tick(); HiddenParticles.Tick(); }
+                try { DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
                 catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
             }
         }

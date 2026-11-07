@@ -63,6 +63,7 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfTerrainCache { get; private set; }
         public static ConfigEntry<bool> PerfDecorShadows { get; private set; }
         public static ConfigEntry<bool> PerfHiddenParticles { get; private set; }
+        public static ConfigEntry<bool> PerfMergePieces { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -103,6 +104,9 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfHiddenParticles = config.Bind("Performance", "HiddenParticles", true,
                 new ConfigDescription("Particle effects hidden behind walls, pieces or the ground are not drawn. Far effects in plain sight stay drawn.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfMergePieces = config.Bind("Performance", "MergePieces", true,
+                new ConfigDescription("Building pieces are drawn merged into a few big meshes per 16 m area (one per material), with their usual level of detail. Pieces highlighted, damaged, moved or with effects of their own are drawn alone.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",

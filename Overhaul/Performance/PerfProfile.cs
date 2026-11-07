@@ -150,7 +150,7 @@ namespace Overhaul.Performance
             // What is loaded around the player right now.
             static IEnumerable<string> Scene()
             {
-                yield return "Pieces (WearNTear) : " + WearNTear.s_allInstances.Count;
+                yield return "Pieces (WearNTear) : " + WearNTear.s_allInstances.Count + " (" + PieceBatcher.MergedPieces + " merged in " + PieceBatcher.MergedCells + " areas: " + PieceBatcher.MergedRenderers + " renderers drawn as " + PieceBatcher.MergedDrawn + ")";
                 yield return "Characters : " + Character.s_characters.Count;
                 yield return "Network objects : " + (ZNetScene.instance ? ZNetScene.instance.m_instances.Count : 0);
                 var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
