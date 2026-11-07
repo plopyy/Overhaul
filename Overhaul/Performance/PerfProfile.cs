@@ -22,9 +22,13 @@ namespace Overhaul.Performance
         const float Seconds = 10f;
         const string HarmonyId = "plopyy.valheim.Overhaul.perfprofile";
         static Harmony harmony;
+        static int users;
         static readonly Dictionary<string, long> ticks = new Dictionary<string, long>();
         static readonly Dictionary<string, int> calls = new Dictionary<string, int>();
-        internal static bool Running => harmony != null;
+        // Time spent per group since the last ClearFrame (read by the background recorder, "operf record").
+        internal static readonly Dictionary<string, long> FrameTicks = new Dictionary<string, long>();
+        static bool sampling;
+        internal static bool Running => sampling;
 
         // The game's own update groups (MonoUpdatersExtra: the scope string names the group).
         static readonly string[] Scoped = { "UpdateAI", "CustomFixedUpdate", "CustomUpdate", "CustomLateUpdate" };
@@ -50,8 +54,22 @@ namespace Overhaul.Performance
 
         internal static void Start(Terminal context)
         {
-            if (harmony != null) { context.AddString(PerfMonitor.L("overhaul_perf_busy")); return; }
+            if (sampling) { context.AddString(PerfMonitor.L("overhaul_perf_busy")); return; }
             ticks.Clear(); calls.Clear();
+            sampling = true;
+            int patched = Install();
+            var go = new GameObject("Overhaul performance profile");
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            go.hideFlags = HideFlags.HideAndDontSave;
+            go.AddComponent<Sampler>();
+            PerfMonitor.Print(PerfMonitor.L("overhaul_perf_profile_start", Seconds.ToString("0")));
+            Log.LogInfo("[Performance] Profile: " + patched + " methods timed");
+        }
+
+        // The timing patches, shared by the 10 s profile and the background recorder: added by the first user, removed by the last.
+        internal static int Install()
+        {
+            if (users++ > 0) return 0;
             harmony = new Harmony(HarmonyId);
             var begin = new HarmonyMethod(typeof(PerfProfile), nameof(Begin)) { priority = Priority.First };
             int patched = 0;
@@ -67,12 +85,15 @@ namespace Overhaul.Performance
                 if (method == null || method.IsAbstract) continue;
                 harmony.Patch(method, begin, new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last }); patched++;
             }
-            var go = new GameObject("Overhaul performance profile");
-            UnityEngine.Object.DontDestroyOnLoad(go);
-            go.hideFlags = HideFlags.HideAndDontSave;
-            go.AddComponent<Sampler>();
-            PerfMonitor.Print(PerfMonitor.L("overhaul_perf_profile_start", Seconds.ToString("0")));
-            Log.LogInfo("[Performance] Profile: " + patched + " methods timed");
+            return patched;
+        }
+
+        internal static void Uninstall()
+        {
+            if (users == 0 || --users > 0) return;
+            harmony?.UnpatchSelf();
+            harmony = null;
+            FrameTicks.Clear();
         }
 
         static void Begin(out long __state) => __state = Stopwatch.GetTimestamp();
@@ -84,14 +105,19 @@ namespace Overhaul.Performance
         static void Add(string label, long start)
         {
             long spent = Stopwatch.GetTimestamp() - start;
-            ticks.TryGetValue(label, out long total); ticks[label] = total + spent;
-            calls.TryGetValue(label, out int count); calls[label] = count + 1;
+            if (sampling)
+            {
+                ticks.TryGetValue(label, out long total); ticks[label] = total + spent;
+                calls.TryGetValue(label, out int count); calls[label] = count + 1;
+            }
+            FrameTicks.TryGetValue(label, out long frame); FrameTicks[label] = frame + spent;
         }
 
         static void Stop()
         {
-            harmony?.UnpatchSelf();
-            harmony = null;
+            if (!sampling) return;
+            sampling = false;
+            Uninstall();
         }
 
         sealed class Sampler : MonoBehaviour

@@ -22,6 +22,7 @@ namespace Overhaul.Performance
         static int next, mask;
         static float nextScan;
         internal static int HiddenCount => hidden.Count;
+        internal static int SystemCount => systems.Count;
 
         static int Mask() => mask != 0 ? mask : mask = LayerMask.GetMask("Default", "static_solid", "Default_small", "piece", "terrain");
 
