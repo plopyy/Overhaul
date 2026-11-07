@@ -33,11 +33,11 @@ namespace Overhaul.Performance
 
         internal static void Initialize()
         {
-            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "status" }.Concat(Options.Select(o => o.Id)).ToList());
+            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|status|<option> on|off]",
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "status" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
-        private static string L(string key, params string[] words) =>
+        internal static string L(string key, params string[] words) =>
             Localization.instance != null ? Localization.instance.Localize("$" + key, words) : key;
 
         private static void Run(Terminal.ConsoleEventArgs args)
@@ -45,12 +45,18 @@ namespace Overhaul.Performance
             string first = args.Length > 1 ? args.Args[1].ToLowerInvariant() : "";
             if (first == "" || first == "ab")
             {
-                if (sampler != null) { args.Context.AddString(L("overhaul_perf_busy")); return; }
+                if (sampler != null || PerfProfile.Running) { args.Context.AddString(L("overhaul_perf_busy")); return; }
                 var go = new GameObject("Overhaul performance sampler");
                 UnityEngine.Object.DontDestroyOnLoad(go);
                 go.hideFlags = HideFlags.HideAndDontSave;
                 sampler = go.AddComponent<Sampler>();
                 sampler.Begin(first == "ab");
+                return;
+            }
+            if (first == "profile")
+            {
+                if (sampler != null) { args.Context.AddString(L("overhaul_perf_busy")); return; }
+                PerfProfile.Start(args.Context);
                 return;
             }
             if (first == "status")
@@ -74,7 +80,7 @@ namespace Overhaul.Performance
         private static string Counters(int runs, int skips, int floaters, int terrain) =>
             L("overhaul_perf_counters", runs.ToString(), skips.ToString(), floaters.ToString(), terrain.ToString());
 
-        private static void Print(string text)
+        internal static void Print(string text)
         {
             Log.LogInfo("[Performance] " + text);
             if (Console.instance) Console.instance.AddString(text);
