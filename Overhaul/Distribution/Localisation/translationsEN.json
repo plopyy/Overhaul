@@ -2546,7 +2546,7 @@
   "overhaul_move_binding": "Move an object",
   "overhaul_move_binding_tip": "Choose the key used to relocate a building piece and cancel placement.",
   "overhaul_dash_setting": "Dash (replaces sprint)",
-  "overhaul_perf_usage": "operf: measure 10 s | operf ab: 10 s without the optimisations, then 10 s with them | operf profile: where the frame time goes | operf hud: fps, CPU and GPU times on screen | operf record [minutes|stop]: records in the background | operf status | operf <streaming|water|floaters|terrain|shadows|particles|merge|grass|terrainspread|senses|collision|locations> on|off",
+  "overhaul_perf_usage": "operf: measure 10 s | operf ab: 10 s without the optimisations, then 10 s with them | operf profile: where the frame time goes | operf hud: fps, CPU and GPU times on screen | operf record [minutes|stop]: records in the background | operf status | operf <streaming|water|floaters|terrain|shadows|particles|merge|grass|terrainspread|senses|collision|locations|props> on|off",
   "overhaul_perf_record_start": "Overhaul: recording performance in the background ($1), files in $2. \"operf record stop\" to stop.",
   "overhaul_perf_record_stop": "Recording stopped after $1 min: $2 fps on average, lowest second $3 fps, $4 slow frames (worst $5 ms), mostly $6.",
   "overhaul_perf_record_already": "A recording is already running (\"operf record stop\" to stop it).",

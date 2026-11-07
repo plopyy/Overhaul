@@ -69,6 +69,7 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfAiSense { get; private set; }
         public static ConfigEntry<bool> PerfAsyncCollision { get; private set; }
         public static ConfigEntry<bool> PerfAsyncLocations { get; private set; }
+        public static ConfigEntry<bool> PerfInstancedProps { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -127,6 +128,9 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfAsyncLocations = config.Bind("Performance", "AsyncLocations", true,
                 new ConfigDescription("Locations (ruins, fortresses, villages) are copied into the world in the background and joined a little each frame when you come near, instead of in one frame. Client only.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfInstancedProps = config.Bind("Performance", "InstancedProps", true,
+                new ConfigDescription("Repeated still objects of the world (trees, rocks, bushes, location props) are drawn by Overhaul, each model in one instanced call for all its copies, which copies are seen being worked out on several cores. Objects that move, change or go away are drawn as usual again at once. Switch off if something looks wrong.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",

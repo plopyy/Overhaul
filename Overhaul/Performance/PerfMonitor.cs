@@ -29,6 +29,7 @@ namespace Overhaul.Performance
             ("senses", () => OverhaulConfig.PerfAiSense),
             ("collision", () => OverhaulConfig.PerfAsyncCollision),
             ("locations", () => OverhaulConfig.PerfAsyncLocations),
+            ("props", () => OverhaulConfig.PerfInstancedProps),
         };
 
         // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
@@ -115,7 +116,7 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { ServerStats.Tick(); StutterFixes.Tick(); AsyncLocations.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); }
+                try { ServerStats.Tick(); StutterFixes.Tick(); AsyncLocations.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); InstancedProps.Tick(); }
                 catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
             }
         }
