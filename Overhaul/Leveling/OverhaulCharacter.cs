@@ -9,7 +9,10 @@ namespace Overhaul.Leveling
     public sealed class OverhaulCharacter : MonoBehaviour
     {
         internal const string SaveKey = "Overhaul.Character";
+        internal const string ClassSaveKey = "Overhaul.Classes";
         public OverhaulCharacterData Data = new OverhaulCharacterData();
+        internal ClassSystem Classes = new ClassSystem();
+        internal bool InvalidClassSave;
         public long TotalExperience => Data.TotalExperience;
         public long CurrentExperience => Data.CurrentExperience;
         public int Level => Data.Level;
@@ -39,6 +42,26 @@ namespace Overhaul.Leveling
                 if(ZNet.instance && ZNet.instance.IsServer()) { Reconcile(); Ready=true; }
             }
             catch(Exception error) { InvalidSave=true; Log.LogError("Progression preserved without overwriting unreadable save: "+error); }
+            LoadClasses();
+        }
+
+        // Classes live under their own key: an unreadable class save never blocks the leveling, and the other way round.
+        private void LoadClasses()
+        {
+            InvalidClassSave=false;
+            try
+            {
+                Classes=Player.m_customData.TryGetValue(ClassSaveKey,out string json)?JsonConvert.DeserializeObject<ClassSystem>(json):new ClassSystem();
+                if(Classes==null || Classes.Version!=1)throw new InvalidOperationException("Invalid class save version/data");
+                Classes.RecalculateLevels();
+            }
+            catch(Exception error) { InvalidClassSave=true; Classes=new ClassSystem(); Log.LogError("Class save preserved without overwriting unreadable data: "+error); }
+        }
+
+        // Kill rewards also feed the active class; the class save is written by Store.
+        internal void AddClassExperience(long amount)
+        {
+            if(!InvalidClassSave)Classes.Active?.AddExperience(amount);
         }
 
         internal void Reconcile()
@@ -55,6 +78,7 @@ namespace Overhaul.Leveling
             if(!InvalidSave && Ready)
             {
                 Player.m_customData[SaveKey]=JsonConvert.SerializeObject(Data);
+                if(!InvalidClassSave)Player.m_customData[ClassSaveKey]=JsonConvert.SerializeObject(Classes);
                 if(Player.m_nview && Player.m_nview.IsValid() && Player.m_nview.IsOwner()){ var zdo=Player.m_nview.GetZDO(); zdo.Set("overhaul_loot_chance",(float)Math.Min(1,Bonus("bonus_loot"))); zdo.Set("overhaul_artisan",HasPassive("artisan")); }
             }
         }
@@ -75,6 +99,7 @@ namespace Overhaul.Leveling
                 if(ZNet.instance.IsServer()){Reconcile();Ready=true;Store();}
                 else LevelingNetwork.Hello();
             }
+            if(Ready && !InvalidClassSave)Classes.Tick(Time.deltaTime);
             if(Ready && HasPassive("vitality") && !Player.IsDead() && Time.time>=nextHeal)
             { nextHeal=Time.time+1;Player.Heal((float)LevelingConfig.Current.VitalityRegen); }
         }

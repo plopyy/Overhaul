@@ -47,6 +47,7 @@ namespace Overhaul
             AlterItemStat.Initialize();
             Leveling.LevelingConfig.Initialize();
             Leveling.ClassSkillConfig.Initialize();
+            Leveling.ClassSkills.Initialize();
             AI.MobBehaviorConfig.Initialize();
             AugaUnity.ComplexTooltip.FoodDuration = Leveling.NutritionDuration.Preview;
             Effects.CharacterSheetData.Initialize();

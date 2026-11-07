@@ -162,7 +162,7 @@ namespace Overhaul.Leveling
             if(includeLocal)
             {
                 var state=OverhaulCharacter.Get(local);int before=state.Level;long amount=each+(remainder>0?1:0);
-                LevelingSystem.AddExperience(state.Data,amount);state.Store();LevelingWindow.RefreshCurrent();
+                LevelingSystem.AddExperience(state.Data,amount);state.AddClassExperience(amount);state.Store();LevelingWindow.RefreshCurrent();
                 ExperienceFeed.Reward(prefab.GetComponent<Character>()?.m_name??prefab.name,Math.Max(0,victim.GetInt(ZDOVars.s_level,1)-1),amount,before,state.Level);
             }
         }
@@ -187,6 +187,7 @@ namespace Overhaul.Leveling
                     {
                         int before=state.Level;
                         state.Data=packet.Data;state.Ready=true;
+                        if(packet.RewardAmount>0)state.AddClassExperience(packet.RewardAmount);
                         if(packet.RewardAmount>0)ExperienceFeed.Reward(packet.RewardName,packet.RewardStars,packet.RewardAmount,before,state.Level);
                         // Levels gained without a kill (o_exp) still show the level up.
                         else if(state.Level>before && Player.m_localPlayer)Rarity.MythicVfx.LevelUp(Player.m_localPlayer);

@@ -3,6 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Class system groundwork** (not visible yet): each class has its own experience and level, up to 50, with the leveling's experience table; kill rewards also go to the active class. A class starts at level 1 with 1 class point, then 1 point per level. Experience is never lost; only a reload after an experience table change that lowers the level gives every class point back and clears the chosen path. Saved in the character. (2.4.0.371)
 - **Golden Wings**, the mythic enchantment of dual axes (new DualAxe category): the combo finisher (the enhanced heavy attack) sends two gold slashes, one on each side, sweeping from the front to the back as the arms open (Eric VFX Studio's Magic Slash turned gold, seen by every player). Every enemy within 2.8 m ahead and on the sides (the back stays open) is hit once for 250 % of the attack's damage. An existing RaritySystem.cfg gets the new section. (2.4.0.365)
 - **DualAxe** gear category for enchantments and mythics (EnchantItemTypes / ItemTypes): dual axes have their own category and no longer count as Battleaxe, so a two-handed axe mythic (Reaper) no longer rolls on them; items already enchanted keep their mythic. (2.4.0.362)
 - **Opening thrust** (one-handed swords): the special attack (the thrust) of a sword that has not attacked for 3 s plays 50 % faster; switching from another weapon does not reset that time, only the sword's own attacks do. If it lands, the next 3 light attacks of that sword within 5 s deal 25 % more damage. (2.4.0.356)
