@@ -2,15 +2,11 @@ using HarmonyLib;
 
 namespace Overhaul.Storage
 {
+    // Every item added without a target slot (loot, pickup, shortcut moves, takes, splits...) goes to the first
+    // free slot from the top, in the bag and in every chest. Vanilla filled from the bottom for most item types.
     [HarmonyPatch(typeof(Inventory), "TopFirst")]
     internal static class ChestItemPlacement
     {
-        private static void Postfix(Inventory __instance, ref bool __result)
-        {
-            var gui = InventoryGui.instance;
-            if (gui && gui.m_currentContainer &&
-                __instance == gui.m_currentContainer.GetInventory())
-                __result = true;
-        }
+        private static void Postfix(ref bool __result) => __result = true;
     }
 }
