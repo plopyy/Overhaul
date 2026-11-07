@@ -68,6 +68,7 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfTerrainSpread { get; private set; }
         public static ConfigEntry<bool> PerfAiSense { get; private set; }
         public static ConfigEntry<bool> PerfAsyncCollision { get; private set; }
+        public static ConfigEntry<bool> PerfAsyncLocations { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -123,6 +124,9 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfAsyncCollision = config.Bind("Performance", "AsyncTerrainCollision", true,
                 new ConfigDescription("Terrain collision away from the player is prepared on a worker thread before being handed to the physics engine; the old collision stays meanwhile.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            PerfAsyncLocations = config.Bind("Performance", "AsyncLocations", true,
+                new ConfigDescription("Locations (ruins, fortresses, villages) are copied into the world in the background and joined a little each frame when you come near, instead of in one frame. Client only.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
