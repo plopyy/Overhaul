@@ -366,10 +366,19 @@ namespace Overhaul.Performance
         {
             var camera = Utils.GetMainCamera(); if (!camera) return;
             if (!Physics.Raycast(camera.transform.position, camera.transform.forward, out var hit, 300f, ~0, QueryTriggerInteraction.Ignore)) { PerfMonitor.Print("look: nothing under the crosshair"); return; }
-            var view = hit.collider.GetComponentInParent<ZNetView>();
-            var go = view ? view.gameObject : hit.collider.transform.root.gameObject;
+            // Every network object with renderers within 15 m of the aimed point (trees, rocks), closest first, up to 6.
+            var found = new List<GameObject>();
+            foreach (var view in Object.FindObjectsByType<ZNetView>(FindObjectsSortMode.None))
+                if (view && view.GetComponentInChildren<MeshRenderer>(true) && (view.transform.position - hit.point).sqrMagnitude < 225f && !view.GetComponent<Character>()) found.Add(view.gameObject);
+            found.Sort((a, b) => (a.transform.position - hit.point).sqrMagnitude.CompareTo((b.transform.position - hit.point).sqrMagnitude));
+            PerfMonitor.Print($"look: aimed at {hit.collider.name} {hit.distance:0.0} m away, {found.Count} objects within 15 m");
+            for (int i = 0; i < found.Count && i < 6; i++) LookAt(found[i], camera);
+        }
+
+        static void LookAt(GameObject go, Camera camera)
+        {
             var tracker = go.GetComponent<Tracker>();
-            PerfMonitor.Print($"look: {go.name} at {hit.distance:0.0} m, active={active}, tracked={(tracker ? tracker.Copies.Count + " copies" : "no")}, queued={queue.Contains(go)}, refused={Refused(go)}");
+            PerfMonitor.Print($"object {go.name} at {(go.transform.position - camera.transform.position).magnitude:0.0} m, active={active}, tracked={(tracker ? tracker.Copies.Count + " copies" : "no")}, queued={queue.Contains(go)}, refused={Refused(go)}, watched={awake.Contains(go)}");
             float k = 1f / (2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad)) * QualitySettings.lodBias;
             if (tracker)
                 foreach (var c in tracker.Copies)
