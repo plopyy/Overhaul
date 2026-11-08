@@ -44,6 +44,8 @@ namespace Overhaul.Performance
             // Physics bodies of the object (logs on the ground): taken only while they sleep, checked every frame.
             internal Rigidbody[] Bodies;
             internal Part[][] Levels; internal float[] Heights; internal bool Dead;
+            // Far voxels: the object's prefab and placement; the first copy of an object draws its voxel model.
+            internal string Prefab; internal Matrix4x4 Root; internal bool VoxelOwner;
         }
 
         static readonly Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int> protoIndex = new Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int>();
@@ -211,6 +213,7 @@ namespace Overhaul.Performance
         {
             if (!tracker) tracker = go.AddComponent<Tracker>();
             copy.Owner = tracker;
+            copy.Prefab = Utils.GetPrefabName(go); copy.Root = go.transform.localToWorldMatrix; copy.VoxelOwner = tracker.Copies.Count == 0;
             tracker.Copies.Add(copy);
             foreach (var level in copy.Levels) foreach (var p in level) p.Renderer.forceRenderingOff = true;
             copies.Add(copy);
@@ -323,12 +326,12 @@ namespace Overhaul.Performance
             Parallel.For(0, count, i =>
             {
                 var c = list[i];
-                if (c.Dead) { picks[i] = -1; return; }
+                if (c.Dead) { picks[i] = -2; return; }
                 Vector3 center = c.Center; float r = c.Radius + ShadowMargin;
                 // Sides and near plane only: how far a copy is drawn is the levels of detail's business.
                 if (p0.GetDistanceToPoint(center) < -r || p1.GetDistanceToPoint(center) < -r || p2.GetDistanceToPoint(center) < -r
                     || p3.GetDistanceToPoint(center) < -r || p4.GetDistanceToPoint(center) < -r)
-                { picks[i] = -1; return; }
+                { picks[i] = -2; return; } // off screen (-1: too small for any level)
                 if (c.Size <= 0f) { picks[i] = 0; return; }
                 float distance = Mathf.Max(.01f, (center - eye).magnitude);
                 float height = c.Size * k / distance;
@@ -340,8 +343,13 @@ namespace Overhaul.Performance
             int drawn = 0;
             for (int i = 0; i < count; i++)
             {
-                int level = picks[i]; if (level < 0) continue;
-                var c = list[i]; drawn++;
+                int level = picks[i]; if (level == -2) continue;
+                var c = list[i];
+                // Beyond Far voxels' start, a tree with a voxel model is drawn as voxels (even past its own last level).
+                int voxel = FarVoxels.ModelFor(c.Prefab);
+                if (voxel >= 0 && (c.Center - eye).sqrMagnitude >= FarVoxels.Start * FarVoxels.Start) { if (c.VoxelOwner) FarVoxels.Queue(voxel, c.Root); continue; }
+                if (level < 0) continue;
+                drawn++;
                 var b = new Bounds(c.Center, Vector3.one * (c.Radius * 2f));
                 foreach (var p in c.Levels[level])
                 {

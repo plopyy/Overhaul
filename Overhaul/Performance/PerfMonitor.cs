@@ -122,7 +122,7 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { ServerStats.Tick(); StutterFixes.Tick(); AsyncLocations.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); InstancedProps.Tick(); FarVoxels.Tick(); }
+                try { ServerStats.Tick(); StutterFixes.Tick(); AsyncLocations.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); FarVoxels.Tick(); InstancedProps.Tick(); FarVoxels.LateTick(); }
                 catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
             }
         }
