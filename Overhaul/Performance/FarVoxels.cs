@@ -174,7 +174,7 @@ namespace Overhaul.Performance
             });
         }
 
-        sealed class Cell { internal Vector3 Color, Normal; internal int N, Hits, Total; internal float Ao; }
+        sealed class Cell { internal Vector3 Color, Normal; internal int N, Hits, Total, Leaves; internal float Ao; }
         sealed class Built { internal Vector3[] Verts, Normals; internal Vector2[] Uv; internal int[] Tris; internal Color32[] Palette; internal int PaletteW, PaletteH; }
         static readonly Vector3Int[] Faces = { Vector3Int.right, Vector3Int.left, Vector3Int.up, Vector3Int.down, new Vector3Int(0, 0, 1), new Vector3Int(0, 0, -1) };
 
@@ -209,12 +209,12 @@ namespace Overhaul.Performance
                             if (s.Foliage && tc.a < s.Cutoff) continue; // the holes between leaves stay empty
                             col *= tc;
                         }
-                        if (s.VColor != null) col *= (Color)s.VColor[a];
+                        // Vertex colours are not a colour on these models (wind masks): ignored.
                         Vector3 n = s.Normals != null ? (s.Normals[a] * w0 + s.Normals[b] * u + s.Normals[c] * w).normalized : Vector3.Cross(v[b] - v[a], v[c] - v[a]).normalized;
                         // Leaf cards are two-sided: their normals point away from the crown so they add up instead of cancelling.
                         if (s.Foliage && Vector3.Dot(n, p - s.Center) < 0f) n = -n;
-                        Color lin = col.linear * s.Dark;
-                        cell.Color += new Vector3(lin.r, lin.g, lin.b); cell.Normal += n; cell.N++; cell.Hits++;
+                        Color lin = col.linear * (s.Foliage ? s.Dark : 1f);
+                        cell.Color += new Vector3(lin.r, lin.g, lin.b); cell.Normal += n; cell.N++; cell.Hits++; if (s.Foliage) cell.Leaves++;
                         if (!s.Foliage) cell.Total = Math.Max(cell.Total, cell.Hits);
                     }
                 }
@@ -246,7 +246,8 @@ namespace Overhaul.Performance
             foreach (var kv in cells)
             {
                 var cell = kv.Value;
-                Vector3 c = cell.Color / cell.N * Mathf.Lerp(AoFloor, 1f, cell.Ao);
+                float leafShare = cell.Leaves / (float)cell.N; // trunks, wood and thatch keep most of their light
+                Vector3 c = cell.Color / cell.N * Mathf.Lerp(Mathf.Lerp(.75f, AoFloor, leafShare), 1f, cell.Ao);
                 built.Palette[index] = new Color(c.x, c.y, c.z).gamma;
                 var uv = new Vector2((index % pw + .5f) / pw, (index / pw + .5f) / ph); index++;
                 Vector3 n = cell.Normal.sqrMagnitude > 1e-6f ? cell.Normal.normalized : Vector3.up;
