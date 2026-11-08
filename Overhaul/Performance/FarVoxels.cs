@@ -22,14 +22,16 @@ namespace Overhaul.Performance
     // (same seeds and rules, heights from WorldGenerator). Trees cut or rocks mined far away still show for now.
     internal static class FarVoxels
     {
-        internal const float Start = 100f, FarRange = 1000f;
+        internal const float Start = 100f, MaxRange = 1000f, ShadowRange = 250f;
+        internal static float Range => FarRange;
+        static float FarRange => OverhaulConfig.PerfFarVoxelsRange != null ? Mathf.Clamp(OverhaulConfig.PerfFarVoxelsRange.Value, Start, MaxRange) : 500f;
         const float ZoneSize = 64f, FogCut = .03f;
         const int Batch = 1023;
 
         sealed class Model
         {
             internal string Name; internal Material Material; internal Mesh Box;
-            internal readonly List<Matrix4x4> Draw = new List<Matrix4x4>();
+            internal readonly List<Matrix4x4> Draw = new List<Matrix4x4>(), DrawFar = new List<Matrix4x4>();
         }
         sealed class Zone { internal Vector2Int Id; internal Bounds Bounds; internal readonly List<(int Model, Matrix4x4 Matrix)> Items = new List<(int, Matrix4x4)>(); }
         sealed class Data { internal string Name; internal Vector3Int Dims; internal Vector3 BoundsMin; internal float VoxelSize; internal int Mips; internal byte[][] Colour, Normal; }
@@ -51,7 +53,13 @@ namespace Overhaul.Performance
 
         // ---- For Instanced props: a tree copy beyond Start is drawn as voxels instead of its own levels ----
         internal static int ModelFor(string prefab) => active && prefab != null && modelIndex.TryGetValue(prefab, out int i) ? i : -1;
-        internal static void Queue(int model, Matrix4x4 matrix) { models[model].Draw.Add(matrix); Handed++; }
+        // Only voxel trees within ShadowRange cast shadows: further away the fog drowns them, and the shadow passes cost most.
+        static Vector3 lastEye;
+        internal static void Queue(int model, Matrix4x4 matrix)
+        {
+            var m = models[model]; Vector3 p = matrix.GetColumn(3);
+            ((p - lastEye).sqrMagnitude < ShadowRange * ShadowRange ? m.Draw : m.DrawFar).Add(matrix); Handed++;
+        }
 
         internal static void Tick()
         {
@@ -307,7 +315,7 @@ namespace Overhaul.Performance
         static void Draw()
         {
             var camera = Utils.GetMainCamera();
-            if (!camera) { foreach (var m in models) m.Draw.Clear(); Handed = 0; return; }
+            if (!camera) { foreach (var m in models) { m.Draw.Clear(); m.DrawFar.Clear(); } Handed = 0; return; }
             // World size of one screen pixel at 1 m: the shader picks the voxel size that stays under a pixel.
             Shader.SetGlobalFloat(PixelId, 2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height));
             GeometryUtility.CalculateFrustumPlanes(camera, planes);
@@ -322,27 +330,32 @@ namespace Overhaul.Performance
                 float dist = Vector3.Distance(eye, zone.Bounds.center);
                 if (dist > FarRange + ZoneSize) continue;
                 if (fog > 0f && Mathf.Exp(-dist * fog) < FogCut) continue; // the game's fog hides it anyway
-                foreach (var (modelId, matrix) in zone.Items) { models[modelId].Draw.Add(matrix); drawn++; }
+                bool shadows = dist < ShadowRange + ZoneSize;
+                foreach (var (modelId, matrix) in zone.Items) { (shadows ? models[modelId].Draw : models[modelId].DrawFar).Add(matrix); drawn++; }
             }
             int calls = 0;
-            var world = new Bounds(eye, Vector3.one * (FarRange * 2.5f));
+            var world = new Bounds(eye, Vector3.one * (MaxRange * 2.5f));
             foreach (var model in models)
             {
-                var list = model.Draw; if (list.Count == 0) continue;
-                var rp = new RenderParams(model.Material)
+                for (int pass = 0; pass < 2; pass++)
                 {
-                    shadowCastingMode = ShadowCastingMode.On, receiveShadows = true, layer = 0, worldBounds = world,
-                    lightProbeUsage = LightProbeUsage.Off, reflectionProbeUsage = ReflectionProbeUsage.Off,
-                };
-                for (int s = 0; s < list.Count; s += Batch)
-                {
-                    int take = Math.Min(Batch, list.Count - s);
-                    list.CopyTo(s, batch, 0, take);
-                    Graphics.RenderMeshInstanced(rp, model.Box, 0, batch, take);
-                    calls++;
+                    var list = pass == 0 ? model.Draw : model.DrawFar; if (list.Count == 0) continue;
+                    var rp = new RenderParams(model.Material)
+                    {
+                        shadowCastingMode = pass == 0 ? ShadowCastingMode.On : ShadowCastingMode.Off, receiveShadows = true, layer = 0, worldBounds = world,
+                        lightProbeUsage = LightProbeUsage.Off, reflectionProbeUsage = ReflectionProbeUsage.Off,
+                    };
+                    for (int s = 0; s < list.Count; s += Batch)
+                    {
+                        int take = Math.Min(Batch, list.Count - s);
+                        list.CopyTo(s, batch, 0, take);
+                        Graphics.RenderMeshInstanced(rp, model.Box, 0, batch, take);
+                        calls++;
+                    }
+                    list.Clear();
                 }
-                list.Clear();
             }
+            lastEye = eye;
             Zones = zones.Count; Copies = copies; Drawn = drawn; Calls = calls; Handed = 0;
         }
 

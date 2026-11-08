@@ -46,6 +46,7 @@
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
 
 ### Fixed
+- Far voxels: trees shade themselves again, by a ray towards the sun through their own voxels (exact, no swarming patches), the leaves recalibrated with it; only voxel trees within 250 m cast shadows, the shadow pass and the sun ray use coarser voxels, and the distance is set by `[Performance] FarVoxelsRange` (500 m by default, 100 to 1000), to keep the graphics card load down. (2.4.0.439)
 - Far voxels: no more swarming dark patches on the voxels (they shadowed themselves where the shadow ray stopped on another voxel size): their shadow depth is pushed a voxel and a half away from the sun. (2.4.0.436)
 - Far voxels: models baked in the object's own space; prefabs with a scale of their own (FirTree_small 0.5, SwampTree2 1.5) had it counted twice and showed at the wrong size. (2.4.0.434)
 - Far voxels: trees around 100 m no longer flicker between their model and voxels as the camera sways: they switch to voxels past 105 m and back under 95 m. (2.4.0.433)

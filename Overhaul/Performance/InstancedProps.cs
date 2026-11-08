@@ -351,7 +351,8 @@ namespace Overhaul.Performance
                 if (voxel >= 0)
                 {
                     float edge = c.InVoxel ? FarVoxels.Start - 5f : FarVoxels.Start + 5f;
-                    c.InVoxel = (c.Center - eye).sqrMagnitude >= edge * edge;
+                    float d2 = (c.Center - eye).sqrMagnitude; c.InVoxel = d2 >= edge * edge;
+                    if (d2 > FarVoxels.Range * FarVoxels.Range) c.InVoxel = false; // beyond the far view range: the game's own levels again
                     if (c.InVoxel) { if (c.VoxelOwner) FarVoxels.Queue(voxel, c.Root); continue; }
                 }
                 else c.InVoxel = false;
