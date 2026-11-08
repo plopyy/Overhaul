@@ -22,7 +22,7 @@ namespace Overhaul.Performance
     // (same seeds and rules, heights from WorldGenerator). Trees cut or rocks mined far away still show for now.
     internal static class FarVoxels
     {
-        internal const float Start = 100f, MaxRange = 1000f, ShadowRange = 250f;
+        internal const float Start = 100f, MaxRange = 1000f, ShadowRange = 250f, SmallRange = 300f, SmallHeight = 8f;
         internal static float Range => FarRange;
         static float FarRange => OverhaulConfig.PerfFarVoxelsRange != null ? Mathf.Clamp(OverhaulConfig.PerfFarVoxelsRange.Value, Start, MaxRange) : 500f;
         const float ZoneSize = 64f, FogCut = .03f;
@@ -30,7 +30,7 @@ namespace Overhaul.Performance
 
         sealed class Model
         {
-            internal string Name; internal Material Material; internal Mesh Box;
+            internal string Name; internal Material Material; internal Mesh Box; internal float MaxDistance;
             internal readonly List<Matrix4x4> Draw = new List<Matrix4x4>(), DrawFar = new List<Matrix4x4>();
         }
         sealed class Zone { internal Vector2Int Id; internal Bounds Bounds; internal readonly List<(int Model, Matrix4x4 Matrix)> Items = new List<(int, Matrix4x4)>(); }
@@ -52,6 +52,7 @@ namespace Overhaul.Performance
         static bool On => PerfMonitor.On(OverhaulConfig.PerfFarVoxels);
 
         // ---- For Instanced props: a tree copy beyond Start is drawn as voxels instead of its own levels ----
+        internal static float MaxDistance(int model) => Mathf.Min(models[model].MaxDistance, FarRange);
         internal static int ModelFor(string prefab) => active && prefab != null && modelIndex.TryGetValue(prefab, out int i) ? i : -1;
         // Only voxel trees within ShadowRange cast shadows: further away the fog drowns them, and the shadow passes cost most.
         static Vector3 lastEye;
@@ -141,7 +142,9 @@ namespace Overhaul.Performance
             mat.SetTexture(ColourId, Make(d.Colour)); mat.SetTexture(NormalId, Make(d.Normal));
             mat.SetVector(BoundsId, d.BoundsMin); mat.SetVector(DimsId, (Vector3)d.Dims); mat.SetFloat(SizeId, d.VoxelSize); mat.SetFloat(MipsId, d.Mips);
             modelIndex[d.Name] = models.Count; modelHashes[d.Name.GetStableHashCode()] = models.Count;
-            models.Add(new Model { Name = d.Name, Material = mat, Box = BoxMesh(d.BoundsMin, d.BoundsMin + (Vector3)d.Dims * d.VoxelSize) });
+            // Small things (bushes, small rocks, young trees: under 8 m tall) stop at 300 m, the rest at the far view range.
+            float height = d.Dims.y * d.VoxelSize;
+            models.Add(new Model { Name = d.Name, Material = mat, Box = BoxMesh(d.BoundsMin, d.BoundsMin + (Vector3)d.Dims * d.VoxelSize), MaxDistance = height < SmallHeight ? SmallRange : MaxRange });
             ModelsReady = models.Count;
             candidates = null; // vegetation entries are matched again with the new model
             zones.Clear();
@@ -331,7 +334,11 @@ namespace Overhaul.Performance
                 if (dist > FarRange + ZoneSize) continue;
                 if (fog > 0f && Mathf.Exp(-dist * fog) < FogCut) continue; // the game's fog hides it anyway
                 bool shadows = dist < ShadowRange + ZoneSize;
-                foreach (var (modelId, matrix) in zone.Items) { (shadows ? models[modelId].Draw : models[modelId].DrawFar).Add(matrix); drawn++; }
+                foreach (var (modelId, matrix) in zone.Items)
+                {
+                    var m = models[modelId]; if (dist > Mathf.Min(m.MaxDistance, FarRange) + ZoneSize * .5f) continue;
+                    (shadows ? m.Draw : m.DrawFar).Add(matrix); drawn++;
+                }
             }
             int calls = 0;
             var world = new Bounds(eye, Vector3.one * (MaxRange * 2.5f));

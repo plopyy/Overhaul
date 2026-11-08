@@ -350,9 +350,11 @@ namespace Overhaul.Performance
                 // Hysteresis (5 m each way) so a tree near the switch does not flip between its model and voxels as the camera sways.
                 if (voxel >= 0)
                 {
+                    // Voxels past 100 m, or as soon as the game's levels would hide it (small things vanish at 50-100 m),
+                    // up to the model's own range; 5 m hysteresis at 100 m so it does not flip as the camera sways.
                     float edge = c.InVoxel ? FarVoxels.Start - 5f : FarVoxels.Start + 5f;
-                    float d2 = (c.Center - eye).sqrMagnitude; c.InVoxel = d2 >= edge * edge;
-                    if (d2 > FarVoxels.Range * FarVoxels.Range) c.InVoxel = false; // beyond the far view range: the game's own levels again
+                    float d2 = (c.Center - eye).sqrMagnitude, max = FarVoxels.MaxDistance(voxel);
+                    c.InVoxel = (d2 >= edge * edge || level == -1) && d2 <= max * max;
                     if (c.InVoxel) { if (c.VoxelOwner) FarVoxels.Queue(voxel, c.Root); continue; }
                 }
                 else c.InVoxel = false;
