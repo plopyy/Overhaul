@@ -127,7 +127,7 @@ namespace Overhaul.Performance
                 var t = group.transform; float scale = MaxScale(t);
                 var copy = new Copy
                 {
-                    Center = t.TransformPoint(group.localReferencePoint), Size = group.size * scale, Levels = levels, Heights = new float[lods.Length],
+                    Center = Centre(levels), Size = group.size * scale, Levels = levels, Heights = new float[lods.Length],
                 };
                 for (int i = 0; i < lods.Length; i++) copy.Heights[i] = lods[i].screenRelativeTransitionHeight;
                 copy.Radius = Radius(levels, copy.Center);
@@ -157,6 +157,15 @@ namespace Overhaul.Performance
             for (int i = 0; i < 8; i++)
                 b.Encapsulate(m.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
             return b;
+        }
+
+        // Centre of the copy: middle of its meshes' boxes. Not the LODGroup's reference point: some game trees (AshlandsTree*)
+        // carry a broken one, millions of metres away, which kept them culled and invisible.
+        static Vector3 Centre(Part[][] levels)
+        {
+            bool any = false; var b = new Bounds();
+            foreach (var level in levels) foreach (var p in level) { var w = WorldBounds(p.Renderer); if (any) b.Encapsulate(w); else { b = w; any = true; } }
+            return b.center;
         }
 
         static float MaxScale(Transform t) { var s = t.lossyScale; return Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z)); }

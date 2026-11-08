@@ -46,6 +46,7 @@
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
 
 ### Fixed
+- Instanced world objects: Ashlands trees could stay invisible (collision still there): their level-of-detail group carries a broken reference point millions of metres away, so the copy was always seen as off screen; the centre of a copy is now the middle of its meshes. (2.4.0.427)
 - Instanced world objects: freshly spawned copies (trees and rocks of a location coming into view) could stay invisible while their collision was there; their culling box is now worked out from the mesh and the transform instead of Renderer.bounds, which can still be empty in the frame an object is created. (2.4.0.418)
 - Class tree: Change class works before a path is chosen (that bottom row's own button was not wired). (2.4.0.400)
 - Mystic powder no longer sinks into the ground: it has a plain box collider of its size, 0.5 x 0.12 x 0.5 m (the earlier one, measured from an inactive prefab, had no size), and its model sits 4 cm above the box's bottom so the wide sheet no longer dips into uneven ground. (2.4.0.402)
