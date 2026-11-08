@@ -39,7 +39,7 @@ namespace Overhaul.Performance
         static readonly Dictionary<Vector2Int, Zone> zones = new Dictionary<Vector2Int, Zone>();
         static readonly Queue<Data> loadedData = new Queue<Data>();
         static List<(ZoneSystem.ZoneVegetation Veg, int Model)> candidates;
-        static Shader shader;
+        static Shader shader; static AssetBundle bundle;
         static bool active, loading;
         static readonly Plane[] planes = new Plane[6];
         static readonly Matrix4x4[] batch = new Matrix4x4[Batch];
@@ -75,9 +75,13 @@ namespace Overhaul.Performance
         static void StartLoading()
         {
             loading = true;
-            var bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_farvoxels");
-            shader = bundle ? bundle.LoadAsset<Shader>("FarVoxel") : null;
-            if (!shader && bundle) foreach (var s in bundle.LoadAllAssets<Shader>()) shader = s;
+            // Loaded once per session and kept: loading the same bundle again while it is loaded fails.
+            if (!shader)
+            {
+                if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_farvoxels");
+                shader = bundle ? bundle.LoadAsset<Shader>("FarVoxel") : null;
+                if (!shader && bundle) foreach (var s in bundle.LoadAllAssets<Shader>()) shader = s;
+            }
             if (!shader || !shader.isSupported) { Log.LogWarning("[Performance] Far voxels: shader missing or not supported, far view off"); return; }
             string dir = Path.Combine(Path.GetDirectoryName(typeof(FarVoxels).Assembly.Location) ?? "", "FarVoxels");
             if (!Directory.Exists(dir)) { Log.LogWarning("[Performance] Far voxels: no FarVoxels folder next to the DLL, far view off"); return; }

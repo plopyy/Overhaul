@@ -122,8 +122,17 @@ namespace Overhaul.Performance
         {
             private void Update()
             {
-                try { ServerStats.Tick(); StutterFixes.Tick(); AsyncLocations.Tick(); DecorShadows.Tick(); HiddenParticles.Tick(); PieceBatcher.Tick(); FarVoxels.Tick(); InstancedProps.Tick(); FarVoxels.LateTick(); }
-                catch (Exception e) { Log.LogWarning("[Performance] " + e); enabled = false; }
+                // Each optimisation on its own: one failing stops alone (and says so once) instead of all of them.
+                Run(0, ServerStats.Tick); Run(1, StutterFixes.Tick); Run(2, AsyncLocations.Tick); Run(3, DecorShadows.Tick); Run(4, HiddenParticles.Tick);
+                Run(5, PieceBatcher.Tick); Run(6, FarVoxels.Tick); Run(7, InstancedProps.Tick); Run(8, FarVoxels.LateTick);
+            }
+
+            private readonly bool[] failed = new bool[9];
+            private void Run(int index, Action tick)
+            {
+                if (failed[index]) return;
+                try { tick(); }
+                catch (Exception e) { failed[index] = true; Log.LogWarning("[Performance] " + tick.Method.DeclaringType?.Name + " stopped: " + e); }
             }
         }
 
