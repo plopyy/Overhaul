@@ -342,7 +342,7 @@ namespace Overhaul.Performance
                         if (Math.Abs(x) != r && Math.Abs(y) != r) continue;
                         var id = new Vector2Int(center.x + x, center.y + y);
                         if (zones.ContainsKey(id) || Loaded(id, center)) continue;
-                        zones[id] = Place(id);
+                        zones[id] = Place(id); LogStats();
                         if (stop.Elapsed.TotalMilliseconds >= 2.0) break;
                     }
             // Forget zones far behind.
@@ -373,6 +373,8 @@ namespace Overhaul.Performance
                     float cosMax = Mathf.Cos(Mathf.Deg2Rad * veg.m_maxTilt), cosMin = Mathf.Cos(Mathf.Deg2Rad * veg.m_minTilt);
                     float half = 32f - veg.m_groupRadius;
                     int tries = veg.m_forcePlacement ? wanted * 50 : wanted, placed = 0;
+                    surround.Clear();
+                    Count(veg, 0, tries);
                     for (int i = 0; i < tries; i++)
                     {
                         var start = new Vector3(UnityEngine.Random.Range(zoneCenter.x - half, zoneCenter.x + half), 0f, UnityEngine.Random.Range(zoneCenter.z - half, zoneCenter.z + half));
@@ -385,27 +387,47 @@ namespace Overhaul.Performance
                             float yaw = UnityEngine.Random.Range(0, 360), scale = UnityEngine.Random.Range(veg.m_scaleMin, veg.m_scaleMax);
                             float tiltX = UnityEngine.Random.Range(-veg.m_randTilt, veg.m_randTilt), tiltZ = UnityEngine.Random.Range(-veg.m_randTilt, veg.m_randTilt);
                             var biome = gen.GetBiome(p.x, p.z);
-                            if ((veg.m_biome & biome) == 0 || (veg.m_biomeArea & gen.GetBiomeArea(p)) == 0) continue;
+                            if ((veg.m_biome & biome) == 0 || (veg.m_biomeArea & gen.GetBiomeArea(p)) == 0) { Reject(veg, 2); continue; }
                             p.y = gen.GetHeight(p.x, p.z, out Color mask);
                             float altitude = p.y - 30f;
-                            if (altitude < veg.m_minAltitude || altitude > veg.m_maxAltitude) continue;
-                            if (!veg.m_minVegetation.Equals(veg.m_maxVegetation) && (mask.a > veg.m_maxVegetation || mask.a < veg.m_minVegetation)) continue;
-                            if (!veg.m_minOceanDepth.Equals(veg.m_maxOceanDepth)) continue;
+                            if (altitude < veg.m_minAltitude || altitude > veg.m_maxAltitude) { Reject(veg, 3); continue; }
+                            if (!veg.m_minVegetation.Equals(veg.m_maxVegetation) && (mask.a > veg.m_maxVegetation || mask.a < veg.m_minVegetation)) { Reject(veg, 4); continue; }
+                            if (!veg.m_minOceanDepth.Equals(veg.m_maxOceanDepth)) { Reject(veg, 5); continue; }
                             var normal = Normal(gen, p);
-                            if (normal.y < cosMax || normal.y > cosMin) continue;
+                            if (normal.y < cosMax || normal.y > cosMin) { Reject(veg, 6); continue; }
                             if ((veg.m_minDistanceFromCenter > 0f || veg.m_maxDistanceFromCenter > 0f))
                             {
                                 float d = Utils.LengthXZ(p);
-                                if (veg.m_minDistanceFromCenter > 0f && d < veg.m_minDistanceFromCenter || veg.m_maxDistanceFromCenter > 0f && d > veg.m_maxDistanceFromCenter) continue;
+                                if (veg.m_minDistanceFromCenter > 0f && d < veg.m_minDistanceFromCenter || veg.m_maxDistanceFromCenter > 0f && d > veg.m_maxDistanceFromCenter) { Reject(veg, 7); continue; }
                             }
-                            if (veg.m_inForest) { float f = WorldGenerator.GetForestFactor(p); if (f < veg.m_forestTresholdMin || f > veg.m_forestTresholdMax) continue; }
-                            if (veg.m_surroundCheckVegetation) continue; // needs the loaded heightmap
+                            if (veg.m_inForest) { float f = WorldGenerator.GetForestFactor(p); if (f < veg.m_forestTresholdMin || f > veg.m_forestTresholdMax) { Reject(veg, 8); continue; } }
+                            if (veg.m_surroundCheckVegetation)
+                            {
+                                // As the game, with the vegetation mask taken from the world generator instead of the loaded heightmap.
+                                float sum = 0f;
+                                for (int layer = 0; layer < veg.m_surroundCheckLayers; layer++)
+                                {
+                                    float ring = (layer + 1f) / veg.m_surroundCheckLayers * veg.m_surroundCheckDistance;
+                                    for (int k = 0; k < 6; k++)
+                                    {
+                                        float a = k / 6f * Mathf.PI * 2f;
+                                        gen.GetHeight(p.x + Mathf.Sin(a) * ring, p.z + Mathf.Cos(a) * ring, out Color m2);
+                                        sum += m2.a * ((1f - ring) / (veg.m_surroundCheckDistance * 2f));
+                                    }
+                                }
+                                surround.Add(sum);
+                                if (surround.Count < 10) { Reject(veg, 9); continue; }
+                                float best = float.MinValue, total = 0f; foreach (var x in surround) { best = Mathf.Max(best, x); total += x; }
+                                float average = total / surround.Count;
+                                if (sum < average + (best - average) * veg.m_surroundBetterThanAverage) { Reject(veg, 9); continue; }
+                            }
                             p.y += veg.m_groundOffset;
                             Quaternion rot;
                             if (veg.m_chanceToUseGroundTilt > 0f && UnityEngine.Random.value <= veg.m_chanceToUseGroundTilt)
                                 rot = Quaternion.LookRotation(Vector3.Cross(normal, Quaternion.Euler(0f, yaw, 0f) * Vector3.forward), normal);
                             else rot = Quaternion.Euler(tiltX, yaw, tiltZ);
                             zone.Items.Add((modelId, Matrix4x4.TRS(p, rot, Vector3.one * scale)));
+                            Count(veg, 1, 1);
                             minY = Mathf.Min(minY, p.y); maxY = Mathf.Max(maxY, p.y);
                             any = true;
                         }
@@ -418,6 +440,21 @@ namespace Overhaul.Performance
             if (zone.Items.Count == 0) { minY = 0f; maxY = 0f; }
             zone.Bounds = new Bounds(new Vector3(zoneCenter.x, (minY + maxY) * .5f + 20f, zoneCenter.z), new Vector3(ZoneSize + 30f, maxY - minY + 80f, ZoneSize + 30f));
             return zone;
+        }
+
+        // Placement statistics per vegetation entry, logged once after 400 zones: tries, placed, then rejections by biome,
+        // altitude, vegetation mask, ocean depth, tilt, distance from centre, forest, surroundings.
+        static readonly List<float> surround = new List<float>();
+        static readonly Dictionary<string, int[]> stats = new Dictionary<string, int[]>();
+        static int statZones; static bool statsLogged;
+        static void Count(ZoneSystem.ZoneVegetation veg, int i, int n) { if (statsLogged) return; string key = veg.m_name + "/" + veg.m_prefab.name; if (!stats.TryGetValue(key, out var a)) stats[key] = a = new int[10]; a[i] += n; }
+        static void Reject(ZoneSystem.ZoneVegetation veg, int i) => Count(veg, i, 1);
+        static void LogStats()
+        {
+            if (statsLogged || ++statZones < 400) return;
+            statsLogged = true;
+            Log.LogInfo("[Performance] Far voxels placement after 400 zones (tries placed | biome altitude mask ocean tilt distance forest surround):");
+            foreach (var kv in stats) Log.LogInfo("[Performance]   " + kv.Key + ": " + kv.Value[0] + " " + kv.Value[1] + " | " + string.Join(" ", kv.Value, 2, 8));
         }
 
         static bool Loaded(Vector2Int id, Vector2s center) => ZNetScene.InActiveArea(ZoneSystem.GetZonePos(new Vector2s(id.x, id.y)), center);
