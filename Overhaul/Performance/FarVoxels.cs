@@ -30,7 +30,7 @@ namespace Overhaul.Performance
 
         sealed class Model
         {
-            internal string Name; internal Material Material; internal Mesh Box; internal float MaxDistance;
+            internal string Name; internal Material Material; internal Mesh Box; internal float MaxDistance, Height;
             internal readonly List<Matrix4x4> Draw = new List<Matrix4x4>(), DrawFar = new List<Matrix4x4>();
         }
         sealed class Zone { internal Vector2Int Id; internal Bounds Bounds; internal readonly List<(int Model, Matrix4x4 Matrix)> Items = new List<(int, Matrix4x4)>(); }
@@ -69,10 +69,24 @@ namespace Overhaul.Performance
         internal static int ModelFor(string prefab) => active && prefab != null && modelIndex.TryGetValue(prefab, out int i) ? i : -1;
         // Only voxel trees within ShadowRange cast shadows: further away the fog drowns them, and the shadow passes cost most.
         static Vector3 lastEye;
+        static float lastPixel = .001f, lastFar = MaxRange;
         internal static void Queue(int model, Matrix4x4 matrix)
         {
             var m = models[model]; Vector3 p = matrix.GetColumn(3);
-            ((p - lastEye).sqrMagnitude < ShadowRange * ShadowRange ? m.Draw : m.DrawFar).Add(matrix); Handed++;
+            float d2 = (p - lastEye).sqrMagnitude;
+            if (TooSmall(m, matrix, d2)) return;
+            (d2 < ShadowRange * ShadowRange ? m.Draw : m.DrawFar).Add(matrix); Handed++;
+        }
+
+        // Screen size cut: not drawn once it would be under 2 pixels tall (small things far away cost as much as big ones
+        // for nothing to see), nor past the camera's far plane.
+        const float MinPixels = 2f;
+        static bool TooSmall(Model m, Matrix4x4 matrix, float d2)
+        {
+            if (d2 > lastFar * lastFar) return true;
+            float scale = ((Vector3)matrix.GetColumn(1)).magnitude;
+            float px = m.Height * scale / (Mathf.Sqrt(d2) * lastPixel);
+            return px < MinPixels;
         }
 
         internal static void Tick()
@@ -158,7 +172,7 @@ namespace Overhaul.Performance
             modelIndex[d.Name] = models.Count; modelHashes[d.Name.GetStableHashCode()] = models.Count;
             // Small things (bushes, small rocks, young trees: under 8 m tall) stop at 300 m, the rest at the far view range.
             float height = d.Dims.y * d.VoxelSize;
-            models.Add(new Model { Name = d.Name, Material = mat, Box = BoxMesh(d.BoundsMin, d.BoundsMin + (Vector3)d.Dims * d.VoxelSize), MaxDistance = height < SmallHeight ? SmallRange : MaxRange });
+            models.Add(new Model { Name = d.Name, Material = mat, Box = BoxMesh(d.BoundsMin, d.BoundsMin + (Vector3)d.Dims * d.VoxelSize), MaxDistance = height < SmallHeight ? SmallRange : MaxRange, Height = height });
             ModelsReady = models.Count;
             candidates = null; // vegetation entries are matched again with the new model
             zones.Clear();
@@ -334,7 +348,9 @@ namespace Overhaul.Performance
             var camera = Utils.GetMainCamera();
             if (!camera) { foreach (var m in models) { m.Draw.Clear(); m.DrawFar.Clear(); } Handed = 0; return; }
             // World size of one screen pixel at 1 m: the shader picks the voxel size that stays under a pixel.
-            Shader.SetGlobalFloat(PixelId, 2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height));
+            lastPixel = 2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height);
+            lastFar = Mathf.Min(camera.farClipPlane, MaxRange);
+            Shader.SetGlobalFloat(PixelId, lastPixel);
             GeometryUtility.CalculateFrustumPlanes(camera, planes);
             Vector3 eye = camera.transform.position;
             var center = ZoneSystem.GetZone(Player.m_localPlayer.transform.position);
@@ -351,6 +367,7 @@ namespace Overhaul.Performance
                 foreach (var (modelId, matrix) in zone.Items)
                 {
                     var m = models[modelId]; if (dist > Mathf.Min(m.MaxDistance, FarRange) + ZoneSize * .5f) continue;
+                    if (TooSmall(m, matrix, ((Vector3)matrix.GetColumn(3) - eye).sqrMagnitude)) continue;
                     (shadows ? m.Draw : m.DrawFar).Add(matrix); drawn++;
                 }
             }
