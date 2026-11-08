@@ -68,17 +68,20 @@ namespace Overhaul.Performance
         static void Prepare()
         {
             candidates = new List<(ZoneSystem.ZoneVegetation, int)>();
-            var rock = ZNetScene.instance.GetPrefab("Rock_3");
-            var rockRenderer = rock ? rock.GetComponentInChildren<MeshRenderer>(true) : null;
-            if (rockRenderer && rockRenderer.sharedMaterial)
+            // Template: the beech leaf material (Custom/Vegetation reads the mesh UVs, unlike the rock shader that maps its
+            // texture by world position), with no sway, no normal map, no metal and no alpha cut.
+            Material source = null;
+            var beech = ZNetScene.instance.GetPrefab("Beech1");
+            if (beech) foreach (var r in beech.GetComponentsInChildren<MeshRenderer>(true)) foreach (var m in r.sharedMaterials) if (!source && m && m.name.Contains("leaf")) source = m;
+            if (source)
             {
-                template = new Material(rockRenderer.sharedMaterial) { name = "Overhaul far voxels", enableInstancing = true };
-                foreach (var k in new[] { "_NORMALMAP", "_METALLICGLOSSMAP", "_SPECGLOSSMAP", "_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A", "_EMISSION" }) template.DisableKeyword(k);
-                foreach (var p in new[] { "_BumpMap", "_MetallicGlossMap", "_SpecGlossMap", "_MossTex", "_EmissionMap" }) if (template.HasProperty(p)) template.SetTexture(p, null);
-                foreach (var p in new[] { "_Glossiness", "_Metallic", "_MossBlend", "_GlossMapScale" }) if (template.HasProperty(p)) template.SetFloat(p, 0f);
+                template = new Material(source) { name = "Overhaul far voxels", enableInstancing = true };
+                foreach (var k in new[] { "_NORMALMAP", "_ALPHATEST_ON", "_EMISSION" }) template.DisableKeyword(k);
+                foreach (var p in new[] { "_BumpMap", "_MossTex", "_EmissionMap" }) if (template.HasProperty(p)) template.SetTexture(p, null);
+                foreach (var p in new[] { "_SwayDistance", "_SwaySpeed", "_RippleDistance", "_RippleSpeed", "_MetalGloss", "_Glossiness", "_Cutoff", "_SphereOffset", "_MossBlend" }) if (template.HasProperty(p)) template.SetFloat(p, 0f);
                 if (template.HasProperty("_Color")) template.SetColor("_Color", Color.white);
             }
-            else { Log.LogWarning("[Performance] Far voxels: no rock material found, far view off"); return; }
+            else { Log.LogWarning("[Performance] Far voxels: no beech leaf material found, far view off"); return; }
             foreach (var veg in ZoneSystem.instance.m_vegetation)
             {
                 if (!veg.m_enable || !veg.m_prefab || veg.m_max <= 0f || !string.IsNullOrEmpty(veg.AltBiomeParent)) continue;
