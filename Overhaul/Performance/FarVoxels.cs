@@ -23,8 +23,10 @@ namespace Overhaul.Performance
     internal static class FarVoxels
     {
         internal const float FarRange = 1000f;
-        static readonly float[] Sizes = { .4f, .8f, 1.6f };
-        static readonly float[] LevelEnd = { 400f, 800f, float.MaxValue };
+        static readonly float[] Sizes = { .25f, .5f, 1f };
+        // Distance where a voxel of each size becomes one screen pixel, worked out each frame from the camera and the screen.
+        static readonly float[] LevelEnd = { 280f, 560f, float.MaxValue };
+        const float FogCut = .03f;
         const float Coverage = .45f, AoFloor = .12f, ZoneSize = 64f;
         const int Batch = 1023;
 
@@ -82,8 +84,8 @@ namespace Overhaul.Performance
                 if (!veg.m_enable || !veg.m_prefab || veg.m_max <= 0f || !string.IsNullOrEmpty(veg.AltBiomeParent)) continue;
                 var prefab = veg.m_prefab;
                 if (prefab.GetComponent<Pickable>()) continue;
-                bool tree = prefab.GetComponent<TreeBase>();
-                if (!tree && !Big(prefab)) continue;
+                // Trees only for now: big rock formations do not survive coarse voxels.
+                if (!prefab.GetComponent<TreeBase>()) continue;
                 if (!modelIndex.TryGetValue(prefab.name, out int index))
                 {
                     index = models.Count; modelIndex[prefab.name] = index;
@@ -114,7 +116,7 @@ namespace Overhaul.Performance
         struct Surface
         {
             internal Vector3[] Verts, Normals; internal Vector2[] Uv; internal Color32[] VColor; internal int[] Tris;
-            internal Color32[] Pixels; internal int W, H; internal Color Tint; internal float Cutoff, Dark; internal bool Foliage; internal Vector3 Center;
+            internal Color32[] Pixels; internal int W, H; internal Color Tint; internal float Cutoff, Dark; internal bool Foliage; internal Vector3 Center; internal Bounds Box;
         }
 
         static void Build(GameObject prefab, Model model)
@@ -136,18 +138,28 @@ namespace Overhaul.Performance
                     var mesh = Readable(mf.sharedMesh); if (mesh == null || mesh.vertexCount == 0) continue;
                     var m = toRoot * r.transform.localToWorldMatrix;
                     var verts = mesh.vertices; var normals = mesh.normals; var uv = mesh.uv; var vcol = mesh.colors32;
+                    var subTris = new int[mesh.subMeshCount][]; for (int i = 0; i < subTris.Length; i++) subTris[i] = mesh.GetTriangles(i);
+                    if (mesh != mf.sharedMesh) Object.Destroy(mesh);
+                    // Box the mesh must stay in (its own bounds in prefab space, 1 m spare): triangles reaching out of it come from a bad read-back.
+                    var box = mf.sharedMesh.bounds; var boxRoot = new Bounds(m.MultiplyPoint3x4(box.center), Vector3.zero);
+                    for (int cx = -1; cx <= 1; cx += 2) for (int cy = -1; cy <= 1; cy += 2) for (int cz = -1; cz <= 1; cz += 2)
+                        boxRoot.Encapsulate(m.MultiplyPoint3x4(box.center + Vector3.Scale(box.extents, new Vector3(cx, cy, cz))));
+                    boxRoot.Expand(2f);
                     for (int i = 0; i < verts.Length; i++) verts[i] = m.MultiplyPoint3x4(verts[i]);
                     if (normals.Length == verts.Length) for (int i = 0; i < normals.Length; i++) normals[i] = m.MultiplyVector(normals[i]).normalized; else normals = null;
                     Vector3 center = toRoot.MultiplyPoint3x4(r.bounds.center);
                     var mats = r.sharedMaterials;
-                    for (int sub = 0; sub < mesh.subMeshCount && sub < mats.Length; sub++)
+                    for (int sub = 0; sub < subTris.Length && sub < mats.Length; sub++)
                     {
                         var mat = mats[sub]; if (!mat) continue;
+                        // Only opaque or alpha-cut surfaces: smoke, embers and other see-through effects are left out.
+                        string sh = mat.shader ? mat.shader.name : "";
+                        if (mat.renderQueue >= 2500 && !(mat.renderQueue < 3000 && mat.HasProperty("_Cutoff")) || sh.Contains("Particle") || sh.Contains("Additive") || sh.Contains("Transparent") || sh.Contains("Fade")) continue;
                         var tex = mat.HasProperty("_MainTex") ? mat.GetTexture("_MainTex") : null;
                         var s = new Surface
                         {
                             Verts = verts, Normals = normals, Uv = uv.Length == verts.Length ? uv : null, VColor = vcol.Length == verts.Length ? vcol : null,
-                            Tris = mesh.GetTriangles(sub), Tint = mat.HasProperty("_Color") ? mat.GetColor("_Color") : Color.white,
+                            Tris = subTris[sub], Box = boxRoot, Tint = mat.HasProperty("_Color") ? mat.GetColor("_Color") : Color.white,
                             Cutoff = mat.HasProperty("_Cutoff") ? mat.GetFloat("_Cutoff") : .5f, Center = center,
                             // The game's PBR "metal" share darkens the diffuse colour; folded into the albedo.
                             Dark = 1f - (mat.HasProperty("_MetalGloss") ? mat.GetFloat("_MetalGloss") : mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : 0f),
@@ -189,6 +201,7 @@ namespace Overhaul.Performance
                 for (int i = 0; i + 2 < t.Length; i += 3)
                 {
                     int a = t[i], b = t[i + 1], c = t[i + 2];
+                    if (a >= v.Length || b >= v.Length || c >= v.Length || !s.Box.Contains(v[a]) || !s.Box.Contains(v[b]) || !s.Box.Contains(v[c])) continue;
                     float area = Vector3.Cross(v[b] - v[a], v[c] - v[a]).magnitude * .5f;
                     int samples = Mathf.Clamp(Mathf.CeilToInt(area / (step * step)), 1, 2000);
                     for (int k = 0; k < samples; k++)
@@ -423,6 +436,9 @@ namespace Overhaul.Performance
             GeometryUtility.CalculateFrustumPlanes(camera, planes);
             Vector3 eye = camera.transform.position;
             var center = ZoneSystem.GetZone(Player.m_localPlayer.transform.position);
+            float pixel = 2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad) / Mathf.Max(1, Screen.height);
+            for (int l = 0; l < 2; l++) LevelEnd[l] = Sizes[l] / pixel;
+            float fog = RenderSettings.fog ? RenderSettings.fogDensity : 0f;
             foreach (var m in models) foreach (var l in m.Draw) l.Clear();
             int copies = 0, drawn = 0, tris = 0;
             foreach (var zone in zones.Values)
@@ -433,7 +449,8 @@ namespace Overhaul.Performance
                 if (zone.Items.Count == 0 || !GeometryUtility.TestPlanesAABB(planes, zone.Bounds)) continue;
                 float dist = Vector3.Distance(eye, zone.Bounds.center);
                 if (dist > FarRange + ZoneSize) continue;
-                int level = 0; while (dist > LevelEnd[level]) level++;
+                if (fog > 0f && Mathf.Exp(-dist * fog) < FogCut) continue; // the game's fog hides it anyway
+                int level = 0; while (level < 2 && dist > LevelEnd[level]) level++;
                 foreach (var (modelId, matrix) in zone.Items)
                 {
                     var model = models[modelId]; if (!model.Ready) continue;
