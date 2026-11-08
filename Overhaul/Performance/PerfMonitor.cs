@@ -46,8 +46,8 @@ namespace Overhaul.Performance
             UnityEngine.Object.DontDestroyOnLoad(runner);
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
-            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|hud|look|record [minutes|stop]|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look" }.Concat(Options.Select(o => o.Id)).ToList());
+            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
         internal static string L(string key, params string[] words) =>
@@ -71,6 +71,11 @@ namespace Overhaul.Performance
                 if (args.Length > 2 && args.Args[2].ToLowerInvariant() == "stop") { if (PerfRecorder.Recording) PerfRecorder.Stop(); else args.Context.AddString(L("overhaul_perf_record_none")); return; }
                 float minutes = args.Length > 2 && float.TryParse(args.Args[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float m) ? m : 0f;
                 PerfRecorder.Start(args.Context, minutes);
+                return;
+            }
+            if (first == "mods")
+            {
+                ModBench.Start(args.Context);
                 return;
             }
             if (first == "look")
