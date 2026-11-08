@@ -224,6 +224,8 @@ namespace Overhaul.Performance
                 yield return "Pieces (WearNTear) : " + WearNTear.s_allInstances.Count + " (" + PieceBatcher.MergedPieces + " merged in " + PieceBatcher.MergedCells + " areas: " + PieceBatcher.MergedRenderers + " renderers drawn as " + PieceBatcher.MergedDrawn + ")";
                 yield return "Characters : " + Character.s_characters.Count;
                 yield return "Instanced props : " + InstancedProps.Copies + " copies, " + InstancedProps.Drawn + " drawn in " + InstancedProps.Calls + " calls";
+                if (FarVoxels.ModelsTotal > 0)
+                    yield return "Far voxels : " + FarVoxels.ModelsReady + "/" + FarVoxels.ModelsTotal + " models, " + FarVoxels.Zones + " zones, " + FarVoxels.Copies + " copies, " + FarVoxels.Drawn + " drawn in " + FarVoxels.Calls + " calls, " + FarVoxels.Triangles.ToString("N0") + " triangles";
                 yield return "Network objects : " + (ZNetScene.instance ? ZNetScene.instance.m_instances.Count : 0);
                 var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
                 yield return "Lights : " + lights.Count(l => l.enabled && l.gameObject.activeInHierarchy) + " on (" + lights.Count(l => l.enabled && l.gameObject.activeInHierarchy && l.shadows != LightShadows.None) + " with shadows)";
