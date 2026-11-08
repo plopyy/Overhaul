@@ -361,6 +361,35 @@ namespace Overhaul.Performance
             Copies = count; Drawn = drawn; Calls = calls;
         }
 
+        // "operf look": what Instanced props does with the object under the crosshair (to find why a copy would not show).
+        internal static void Look(Terminal context)
+        {
+            var camera = Utils.GetMainCamera(); if (!camera) return;
+            if (!Physics.Raycast(camera.transform.position, camera.transform.forward, out var hit, 300f, ~0, QueryTriggerInteraction.Ignore)) { PerfMonitor.Print("look: nothing under the crosshair"); return; }
+            var view = hit.collider.GetComponentInParent<ZNetView>();
+            var go = view ? view.gameObject : hit.collider.transform.root.gameObject;
+            var tracker = go.GetComponent<Tracker>();
+            PerfMonitor.Print($"look: {go.name} at {hit.distance:0.0} m, active={active}, tracked={(tracker ? tracker.Copies.Count + " copies" : "no")}, queued={queue.Contains(go)}, refused={Refused(go)}");
+            float k = 1f / (2f * Mathf.Tan(.5f * camera.fieldOfView * Mathf.Deg2Rad)) * QualitySettings.lodBias;
+            if (tracker)
+                foreach (var c in tracker.Copies)
+                {
+                    float distance = Mathf.Max(.01f, (c.Center - camera.transform.position).magnitude), height = c.Size * k / distance;
+                    int level = -1; for (int l = 0; l < c.Heights.Length; l++) if (height >= c.Heights[l]) { level = l; break; }
+                    PerfMonitor.Print($"  copy dead={c.Dead} center={c.Center} radius={c.Radius:0.0} size={c.Size:0.0} height={height:0.000} heights=[{string.Join(" ", c.Heights)}] level={level} inList={copies.Contains(c)}");
+                    for (int l = 0; l < c.Levels.Length; l++)
+                        foreach (var p in c.Levels[l])
+                        {
+                            var proto = protos[p.Proto]; var r = p.Renderer;
+                            PerfMonitor.Print($"    L{l} {(r ? r.name : "gone")} off={(r && r.forceRenderingOff)} enabled={(r && r.enabled)} activeInHierarchy={(r && r.gameObject.activeInHierarchy)} block={(r && r.HasPropertyBlock())} moved={(r && Moved(p))} mesh={(proto.Mesh ? proto.Mesh.name + " v" + proto.Mesh.vertexCount : "null")} mat={(proto.Material ? proto.Material.name + "/" + proto.Material.shader.name : "null")} drawnThisFrame={proto.Matrices.Count}");
+                        }
+                }
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                PerfMonitor.Print($"  renderer {r.name} type={r.GetType().Name} enabled={r.enabled} active={r.gameObject.activeInHierarchy} off={r.forceRenderingOff} visible={r.isVisible} block={r.HasPropertyBlock()} bounds={r.bounds.size}");
+            foreach (var g in go.GetComponentsInChildren<LODGroup>(true))
+                PerfMonitor.Print($"  LODGroup {g.name} enabled={g.enabled} size={g.size} lossyScale={g.transform.lossyScale}");
+        }
+
         static void Clear()
         {
             foreach (var copy in copies) Release(copy);
