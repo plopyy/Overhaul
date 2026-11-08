@@ -132,7 +132,7 @@ namespace Overhaul.Performance
             var mat = (template ? new Material(template) : new Material(shader)); mat.name = "Far voxels " + d.Name; mat.enableInstancing = true;
             mat.SetTexture(ColourId, Make(d.Colour)); mat.SetTexture(NormalId, Make(d.Normal));
             mat.SetVector(BoundsId, d.BoundsMin); mat.SetVector(DimsId, (Vector3)d.Dims); mat.SetFloat(SizeId, d.VoxelSize); mat.SetFloat(MipsId, d.Mips);
-            modelIndex[d.Name] = models.Count;
+            modelIndex[d.Name] = models.Count; modelHashes[d.Name.GetStableHashCode()] = models.Count;
             models.Add(new Model { Name = d.Name, Material = mat, Box = BoxMesh(d.BoundsMin, d.BoundsMin + (Vector3)d.Dims * d.VoxelSize) });
             ModelsReady = models.Count;
             candidates = null; // vegetation entries are matched again with the new model
@@ -171,15 +171,40 @@ namespace Overhaul.Performance
                         if (Math.Abs(x) != r && Math.Abs(y) != r) continue;
                         var id = new Vector2Int(center.x + x, center.y + y);
                         if (zones.ContainsKey(id) || Loaded(id, center)) continue;
-                        zones[id] = Place(id);
+                        // The server's summary when it has come: the trees really standing there, or the original
+                        // vegetation placed here when the zone was never generated. Nothing until the answer comes.
+                        if (!FarTrees.TryGet(id, out var summary)) continue;
+                        zones[id] = summary.Generated ? FromSummary(id, summary) : Place(id);
                         if (stop.Elapsed.TotalMilliseconds >= 2.0) break;
                     }
+            // Zones whose summary changed (trees cut, grown, planted) are rebuilt.
+            foreach (var id in FarTrees.Changed) zones.Remove(id);
+            FarTrees.Changed.Clear();
+            FarTrees.Tick(modelHashes.Keys);
             if (Time.frameCount % 120 == 0)
             {
                 var gone = new List<Vector2Int>();
                 foreach (var id in zones.Keys) if (Math.Abs(id.x - center.x) > ring + 2 || Math.Abs(id.y - center.y) > ring + 2) gone.Add(id);
                 foreach (var id in gone) zones.Remove(id);
             }
+        }
+
+        static readonly Dictionary<int, int> modelHashes = new Dictionary<int, int>();
+
+        static Zone FromSummary(Vector2Int id, FarTrees.Summary summary)
+        {
+            var zone = new Zone { Id = id };
+            var zoneCenter = ZoneSystem.GetZonePos(new Vector2s(id.x, id.y));
+            float minY = float.MaxValue, maxY = float.MinValue;
+            foreach (var t in summary.Trees)
+            {
+                if (!modelHashes.TryGetValue(t.Hash, out int model)) continue;
+                zone.Items.Add((model, Matrix4x4.TRS(t.Position, t.Rotation, Vector3.one * t.Scale)));
+                minY = Mathf.Min(minY, t.Position.y); maxY = Mathf.Max(maxY, t.Position.y);
+            }
+            if (zone.Items.Count == 0) { minY = 0f; maxY = 0f; }
+            zone.Bounds = new Bounds(new Vector3(zoneCenter.x, (minY + maxY) * .5f + 20f, zoneCenter.z), new Vector3(ZoneSize + 40f, maxY - minY + 100f, ZoneSize + 40f));
+            return zone;
         }
 
         static bool Loaded(Vector2Int id, Vector2s center) => ZNetScene.InActiveArea(ZoneSystem.GetZonePos(new Vector2s(id.x, id.y)), center);
@@ -329,7 +354,7 @@ namespace Overhaul.Performance
                 if (m.Material) { Object.Destroy(m.Material.GetTexture(ColourId)); Object.Destroy(m.Material.GetTexture(NormalId)); Object.Destroy(m.Material); }
                 if (m.Box) Object.Destroy(m.Box);
             }
-            models.Clear(); modelIndex.Clear(); zones.Clear(); candidates = null;
+            models.Clear(); modelIndex.Clear(); modelHashes.Clear(); zones.Clear(); candidates = null; FarTrees.Clear();
             lock (loadedData) loadedData.Clear();
             Zones = Copies = Drawn = Calls = ModelsReady = ModelsTotal = Handed = 0;
         }
