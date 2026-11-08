@@ -52,6 +52,19 @@ namespace Overhaul.Performance
         static bool On => PerfMonitor.On(OverhaulConfig.PerfFarVoxels);
 
         // ---- For Instanced props: a tree copy beyond Start is drawn as voxels instead of its own levels ----
+        // Prefabs with a model file, known before the models are loaded (Instanced props asks when objects come in).
+        static HashSet<string> known;
+        internal static bool Known(string prefab)
+        {
+            if (known == null)
+            {
+                known = new HashSet<string>();
+                string dir = Path.Combine(Path.GetDirectoryName(typeof(FarVoxels).Assembly.Location) ?? "", "FarVoxels");
+                if (Directory.Exists(dir)) foreach (var f in Directory.GetFiles(dir, "*.vox")) known.Add(Path.GetFileNameWithoutExtension(f));
+            }
+            return prefab != null && known.Contains(prefab);
+        }
+
         internal static float MaxDistance(int model) => Mathf.Min(models[model].MaxDistance, FarRange);
         internal static int ModelFor(string prefab) => active && prefab != null && modelIndex.TryGetValue(prefab, out int i) ? i : -1;
         // Only voxel trees within ShadowRange cast shadows: further away the fog drowns them, and the shadow passes cost most.
@@ -99,6 +112,7 @@ namespace Overhaul.Performance
             var files = Directory.GetFiles(dir, "*.vox");
             ModelsTotal = files.Length;
             active = true;
+            InstancedProps.Rescan();
             Task.Run(() =>
             {
                 foreach (var file in files)

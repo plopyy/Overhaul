@@ -46,6 +46,8 @@ namespace Overhaul.Performance
             internal Part[][] Levels; internal float[] Heights; internal bool Dead;
             // Far voxels: the object's prefab and placement; the first copy of an object draws its voxel model.
             internal string Prefab; internal Matrix4x4 Root; internal bool VoxelOwner, InVoxel;
+            // Things that change look (berry bushes, ore deposits): drawn by the game, only handed to the voxels far away.
+            internal bool VoxelOnly;
         }
 
         static readonly Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int> protoIndex = new Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int>();
@@ -83,7 +85,7 @@ namespace Overhaul.Performance
 
         static readonly Type[] refused =
         {
-            typeof(Piece), typeof(Character), typeof(ItemDrop), typeof(Animator), typeof(Animation), typeof(Pickable), typeof(MineRock5), typeof(Ship), typeof(Vagon),
+            typeof(Piece), typeof(Character), typeof(ItemDrop), typeof(Animator), typeof(Animation), typeof(Ship), typeof(Vagon),
             typeof(Door), typeof(Fireplace), typeof(Smelter), typeof(CookingStation), typeof(Beehive), typeof(Plant), typeof(Container), typeof(Projectile), typeof(LocationProxy),
         };
 
@@ -111,9 +113,12 @@ namespace Overhaul.Performance
         static readonly List<MeshRenderer> renderers = new List<MeshRenderer>();
         static readonly HashSet<Renderer> inGroups = new HashSet<Renderer>();
 
+        static readonly Type[] changing = { typeof(Pickable), typeof(MineRock5) };
+
         static void Register(GameObject go)
         {
             if (!go || !go.activeInHierarchy || go.GetComponent<Tracker>() || Refused(go)) return;
+            foreach (var t in changing) if (go.GetComponentInChildren(t, true)) { RegisterVoxelOnly(go); return; }
             if (!Asleep(go, out var bodies)) { Watch(go); return; }
             Tracker tracker = null;
             lodGroups.Clear(); go.GetComponentsInChildren(false, lodGroups);
@@ -209,13 +214,34 @@ namespace Overhaul.Performance
             return true;
         }
 
+        // A thing that changes look, with a far voxel model: its renderers stay the game's, hidden only while it is drawn as
+        // voxels; any change (picked, mined, hidden) gives it back for good, through the usual checks.
+        static void RegisterVoxelOnly(GameObject go)
+        {
+            if (!FarVoxels.Known(Utils.GetPrefabName(go))) return;
+            renderers.Clear(); go.GetComponentsInChildren(false, renderers);
+            partList.Clear(); bool any = false; var box = new Bounds();
+            foreach (var r in renderers)
+            {
+                if (!r.enabled || r.forceRenderingOff) continue;
+                partList.Add(new Part { Proto = -1, Matrix = r.localToWorldMatrix, Renderer = r });
+                var w = WorldBounds(r); if (any) box.Encapsulate(w); else { box = w; any = true; }
+            }
+            if (!any) return;
+            Tracker tracker = null;
+            Add(ref tracker, go, new Copy { VoxelOnly = true, Center = box.center, Radius = box.extents.magnitude, Levels = new[] { partList.ToArray() }, Heights = new float[0] });
+        }
+
+        // Far voxels just started: objects already in the world are looked at again (things that change look need a model).
+        internal static void Rescan() { if (active) foreach (var view in Object.FindObjectsByType<ZNetView>(FindObjectsSortMode.None)) if (view.GetZDO() != null) queue.Enqueue(view.gameObject); }
+
         static void Add(ref Tracker tracker, GameObject go, Copy copy)
         {
             if (!tracker) tracker = go.AddComponent<Tracker>();
             copy.Owner = tracker;
             copy.Prefab = Utils.GetPrefabName(go); copy.Root = go.transform.localToWorldMatrix; copy.VoxelOwner = tracker.Copies.Count == 0;
             tracker.Copies.Add(copy);
-            foreach (var level in copy.Levels) foreach (var p in level) p.Renderer.forceRenderingOff = true;
+            if (!copy.VoxelOnly) foreach (var level in copy.Levels) foreach (var p in level) p.Renderer.forceRenderingOff = true;
             copies.Add(copy);
         }
 
@@ -347,6 +373,20 @@ namespace Overhaul.Performance
                 var c = list[i];
                 // Beyond Far voxels' start, a tree with a voxel model is drawn as voxels (even past its own last level).
                 int voxel = FarVoxels.ModelFor(c.Prefab);
+                if (c.VoxelOnly)
+                {
+                    bool was = c.InVoxel;
+                    if (voxel >= 0)
+                    {
+                        float edge = c.InVoxel ? FarVoxels.Start - 5f : FarVoxels.Start + 5f;
+                        float d2 = (c.Center - eye).sqrMagnitude, max = FarVoxels.MaxDistance(voxel);
+                        c.InVoxel = d2 >= edge * edge && d2 <= max * max;
+                    }
+                    else c.InVoxel = false;
+                    if (c.InVoxel != was) foreach (var p in c.Levels[0]) if (p.Renderer) p.Renderer.forceRenderingOff = c.InVoxel;
+                    if (c.InVoxel && c.VoxelOwner) FarVoxels.Queue(voxel, c.Root);
+                    continue;
+                }
                 // Hysteresis (5 m each way) so a tree near the switch does not flip between its model and voxels as the camera sways.
                 if (voxel >= 0)
                 {
@@ -416,7 +456,7 @@ namespace Overhaul.Performance
                     for (int l = 0; l < c.Levels.Length; l++)
                         foreach (var p in c.Levels[l])
                         {
-                            var proto = protos[p.Proto]; var r = p.Renderer;
+                            if (p.Proto < 0) { PerfMonitor.Print("    voxel only: " + (p.Renderer ? p.Renderer.name : "gone") + " in voxels=" + c.InVoxel); continue; } var proto = protos[p.Proto]; var r = p.Renderer;
                             PerfMonitor.Print($"    L{l} {(r ? r.name : "gone")} off={(r && r.forceRenderingOff)} enabled={(r && r.enabled)} activeInHierarchy={(r && r.gameObject.activeInHierarchy)} block={(r && r.HasPropertyBlock())} moved={(r && Moved(p))} mesh={(proto.Mesh ? proto.Mesh.name + " v" + proto.Mesh.vertexCount : "null")} mat={(proto.Material ? proto.Material.name + "/" + proto.Material.shader.name : "null")} drawnThisFrame={proto.Matrices.Count}");
                         }
                 }
