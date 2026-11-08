@@ -30,7 +30,6 @@ namespace Overhaul.Performance
             ("collision", () => OverhaulConfig.PerfAsyncCollision),
             ("locations", () => OverhaulConfig.PerfAsyncLocations),
             ("props", () => OverhaulConfig.PerfInstancedProps),
-            ("farvox", () => OverhaulConfig.PerfFarVoxels),
         };
 
         // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
@@ -124,10 +123,10 @@ namespace Overhaul.Performance
             {
                 // Each optimisation on its own: one failing stops alone (and says so once) instead of all of them.
                 Run(0, ServerStats.Tick); Run(1, StutterFixes.Tick); Run(2, AsyncLocations.Tick); Run(3, DecorShadows.Tick); Run(4, HiddenParticles.Tick);
-                Run(5, PieceBatcher.Tick); Run(6, FarVoxels.Tick); Run(7, InstancedProps.Tick); Run(8, FarVoxels.LateTick);
+                Run(5, PieceBatcher.Tick); Run(6, InstancedProps.Tick);
             }
 
-            private readonly bool[] failed = new bool[9];
+            private readonly bool[] failed = new bool[7];
             private void Run(int index, Action tick)
             {
                 if (failed[index]) return;

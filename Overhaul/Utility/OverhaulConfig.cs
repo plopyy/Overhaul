@@ -70,8 +70,6 @@ namespace Overhaul.Utility
         public static ConfigEntry<bool> PerfAsyncCollision { get; private set; }
         public static ConfigEntry<bool> PerfAsyncLocations { get; private set; }
         public static ConfigEntry<bool> PerfInstancedProps { get; private set; }
-        public static ConfigEntry<bool> PerfFarVoxels { get; private set; }
-        public static ConfigEntry<float> PerfFarVoxelsRange { get; private set; }
 
 		public static void Bind(ConfigFile config)
 		{
@@ -134,12 +132,6 @@ namespace Overhaul.Utility
             PerfInstancedProps = config.Bind("Performance", "InstancedProps", true,
                 new ConfigDescription("Repeated still objects of the world (trees, rocks, bushes, location props) are drawn by Overhaul, each model in one instanced call for all its copies, which copies are seen being worked out on several cores. Objects that move, change or go away are drawn as usual again at once. Switch off if something looks wrong.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfFarVoxels = config.Bind("Performance", "FarVoxels", false,
-                new ConfigDescription("Experimental far view: trees and big rocks beyond the loaded area, up to 1 km, drawn as voxel models placed like the game's own vegetation. Trees cut there still show for now. Off by default.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfFarVoxelsRange = config.Bind("Performance", "FarVoxelsRange", 500f,
-                new ConfigDescription("How far the far voxel trees are drawn, in metres (100 to 1000). Further costs more graphics card time.",
-                    new AcceptableValueRange<float>(100f, 1000f), new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
