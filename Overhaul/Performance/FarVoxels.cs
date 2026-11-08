@@ -39,7 +39,7 @@ namespace Overhaul.Performance
         static readonly Dictionary<Vector2Int, Zone> zones = new Dictionary<Vector2Int, Zone>();
         static readonly Queue<Data> loadedData = new Queue<Data>();
         static List<(ZoneSystem.ZoneVegetation Veg, int Model)> candidates;
-        static Shader shader; static AssetBundle bundle;
+        static Shader shader; static AssetBundle bundle; static Material template;
         static bool active, loading;
         static readonly Plane[] planes = new Plane[6];
         static readonly Matrix4x4[] batch = new Matrix4x4[Batch];
@@ -81,6 +81,8 @@ namespace Overhaul.Performance
                 if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_farvoxels");
                 shader = bundle ? bundle.LoadAsset<Shader>("FarVoxel") : null;
                 if (!shader && bundle) foreach (var s in bundle.LoadAllAssets<Shader>()) shader = s;
+                // The bundle's instanced material (it keeps the instancing variants in the build): each model copies it.
+                template = bundle ? bundle.LoadAsset<Material>("FarVoxel") : null;
             }
             if (!shader || !shader.isSupported) { Log.LogWarning("[Performance] Far voxels: shader missing or not supported, far view off"); return; }
             string dir = Path.Combine(Path.GetDirectoryName(typeof(FarVoxels).Assembly.Location) ?? "", "FarVoxels");
@@ -127,7 +129,7 @@ namespace Overhaul.Performance
                 t.Apply(false, true);
                 return t;
             }
-            var mat = new Material(shader) { name = "Far voxels " + d.Name, enableInstancing = true };
+            var mat = (template ? new Material(template) : new Material(shader)); mat.name = "Far voxels " + d.Name; mat.enableInstancing = true;
             mat.SetTexture(ColourId, Make(d.Colour)); mat.SetTexture(NormalId, Make(d.Normal));
             mat.SetVector(BoundsId, d.BoundsMin); mat.SetVector(DimsId, (Vector3)d.Dims); mat.SetFloat(SizeId, d.VoxelSize); mat.SetFloat(MipsId, d.Mips);
             modelIndex[d.Name] = models.Count;
