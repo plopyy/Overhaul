@@ -10,23 +10,23 @@ using Overhaul.Utility;
 
 namespace Overhaul.Performance
 {
-    // "operf mods": what the other visual mods cost, measured in one go without leaving the game. WeatherOverhaul and
+    // "operf mods": what the other mods cost (SteadyFrame against Overhaul's own optimisations, WeatherOverhaul, FarLands), measured in one go without leaving the game. WeatherOverhaul and
     // FarLands apply their settings while the game runs, so their settings are switched step by step (current, weather at
     // Medium, weather off, far land at Low, far land off), each step measured for a few seconds after settling, then
     // everything is put back as it was and a table printed. Do not move the camera meanwhile.
     internal static class ModBench
     {
-        const string Weather = "ru.ivest.weatheroverhaul", Far = "ru.ivest.farlands";
+        const string Weather = "ru.ivest.weatheroverhaul", Far = "ru.ivest.farlands", Steady = "ru.ivest.steadyframe";
         const float Settle = 4f, Measure = 8f;
         static Runner running;
 
         internal static void Start(Terminal context)
         {
             if (running) { PerfMonitor.Print("operf mods: already running"); return; }
-            var weather = Config(Weather); var far = Config(Far);
-            if (weather == null && far == null) { PerfMonitor.Print("operf mods: neither WeatherOverhaul nor FarLands is installed"); return; }
+            var weather = Config(Weather); var far = Config(Far); var steady = Config(Steady);
+            if (weather == null && far == null && steady == null) { PerfMonitor.Print("operf mods: none of SteadyFrame, WeatherOverhaul, FarLands is installed"); return; }
             var go = new GameObject("Overhaul mod bench"); UnityEngine.Object.DontDestroyOnLoad(go); go.hideFlags = HideFlags.HideAndDontSave;
-            running = go.AddComponent<Runner>(); running.Begin(weather, far);
+            running = go.AddComponent<Runner>(); running.Begin(weather, far, steady);
         }
 
         static ConfigFile Config(string guid) => Chainloader.PluginInfos.TryGetValue(guid, out var info) && info.Instance ? info.Instance.Config : null;
@@ -51,16 +51,22 @@ namespace Overhaul.Performance
                 e.BoxedValue = value is string s && e.SettingType.IsEnum ? Enum.Parse(e.SettingType, s) : value;
             }
 
-            internal void Begin(ConfigFile weather, ConfigFile far)
+            internal void Begin(ConfigFile weather, ConfigFile far, ConfigFile steady)
             {
-                var profile = Entry(weather, "General", "Profile");
                 // Every WeatherOverhaul part has its own Enabled switch: all off gives the game's own weather back.
                 var weatherParts = weather?.Keys.Where(k => k.Key == "Enabled").Select(k => weather[k]).ToList() ?? new List<ConfigEntryBase>();
-                var quality = Entry(far, "General", "Quality"); var farOn = Entry(far, "General", "Enabled");
+                var farOn = Entry(far, "General", "Enabled");
+                var steadyOn = Entry(steady, "1 - General", "Enabled");
+                // Overhaul's own versions of what SteadyFrame does (grass, object streaming, terrain).
+                var ours = new ConfigEntryBase[] { OverhaulConfig.PerfGrassSpread, OverhaulConfig.PerfStreamingSkip, OverhaulConfig.PerfTerrainCache };
                 steps.Add(("as set now", () => { }));
-                if (profile != null) steps.Add(("weather Medium", () => Set(profile, "Medium")));
+                if (steadyOn != null)
+                {
+                    steps.Add(("SteadyFrame off", () => { Set(steadyOn, false); foreach (var e in ours) Set(e, false); }));
+                    steps.Add(("Overhaul's own", () => { Set(steadyOn, false); foreach (var e in ours) Set(e, true); }));
+                    steps.Add(("SteadyFrame back", () => { Set(steadyOn, saved[steadyOn]); foreach (var e in ours) Set(e, saved.TryGetValue(e, out var v) ? v : e.BoxedValue); }));
+                }
                 if (weatherParts.Count > 0) steps.Add(("weather off", () => { foreach (var e in weatherParts) Set(e, false); }));
-                if (quality != null) steps.Add(("+ far land Low", () => Set(quality, "Low")));
                 if (farOn != null) steps.Add(("+ far land off", () => Set(farOn, false)));
                 StartCoroutine(Run());
             }
