@@ -46,6 +46,7 @@
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
 
 ### Fixed
+- Far voxels: trees around 100 m no longer flicker between their model and voxels as the camera sways: they switch to voxels past 105 m and back under 95 m. (2.4.0.433)
 - Far voxels: the voxel trees were drawn but invisible, their shader's instanced and fog variants having been stripped from the bundle; the bundle now carries an instanced material and every fog variant. (2.4.0.432)
 - Performance: switching the far voxels off then on again no longer fails on its shader bundle (loaded once per session), and an optimisation that fails now stops alone instead of stopping all the client optimisations with it. (2.4.0.431)
 - Instanced world objects: Ashlands trees could stay invisible (collision still there): their level-of-detail group carries a broken reference point millions of metres away, so the copy was always seen as off screen; the centre of a copy is now the middle of its meshes. (2.4.0.427)

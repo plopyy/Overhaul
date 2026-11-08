@@ -45,7 +45,7 @@ namespace Overhaul.Performance
             internal Rigidbody[] Bodies;
             internal Part[][] Levels; internal float[] Heights; internal bool Dead;
             // Far voxels: the object's prefab and placement; the first copy of an object draws its voxel model.
-            internal string Prefab; internal Matrix4x4 Root; internal bool VoxelOwner;
+            internal string Prefab; internal Matrix4x4 Root; internal bool VoxelOwner, InVoxel;
         }
 
         static readonly Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int> protoIndex = new Dictionary<(Mesh, int, Material, ShadowCastingMode, bool, int), int>();
@@ -347,7 +347,14 @@ namespace Overhaul.Performance
                 var c = list[i];
                 // Beyond Far voxels' start, a tree with a voxel model is drawn as voxels (even past its own last level).
                 int voxel = FarVoxels.ModelFor(c.Prefab);
-                if (voxel >= 0 && (c.Center - eye).sqrMagnitude >= FarVoxels.Start * FarVoxels.Start) { if (c.VoxelOwner) FarVoxels.Queue(voxel, c.Root); continue; }
+                // Hysteresis (5 m each way) so a tree near the switch does not flip between its model and voxels as the camera sways.
+                if (voxel >= 0)
+                {
+                    float edge = c.InVoxel ? FarVoxels.Start - 5f : FarVoxels.Start + 5f;
+                    c.InVoxel = (c.Center - eye).sqrMagnitude >= edge * edge;
+                    if (c.InVoxel) { if (c.VoxelOwner) FarVoxels.Queue(voxel, c.Root); continue; }
+                }
+                else c.InVoxel = false;
                 if (level < 0) continue;
                 drawn++;
                 var b = new Bounds(c.Center, Vector3.one * (c.Radius * 2f));
