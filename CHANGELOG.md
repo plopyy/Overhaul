@@ -46,6 +46,7 @@
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
 
 ### Fixed
+- Far voxels: back in the camera depth texture (coarser voxels there): the game's screen effects, its distance haze among them, read it, and without it far voxel trees stayed unhazed and looked cut out, floating over the fog. (2.4.0.444)
 - Far voxels: a voxel copy is no longer drawn once it would be under 2 pixels tall, nor past the camera's far plane. (2.4.0.443)
 - Far voxels: about a third of the graphics card time saved per voxel tree: the ray skips empty space through a grid 4 times coarser and only steps through the voxels where there is something, and the voxels are left out of the camera depth texture (a whole extra pass); they take the ambient colour the game sets, so they are no longer too dark at night. (2.4.0.442)
 - Far voxels: trees shade themselves again, by a ray towards the sun through their own voxels (exact, no swarming patches), the leaves recalibrated with it; only voxel trees within 250 m cast shadows, the shadow pass and the sun ray use coarser voxels, and the distance is set by `[Performance] FarVoxelsRange` (500 m by default, 100 to 1000), to keep the graphics card load down. (2.4.0.439)
