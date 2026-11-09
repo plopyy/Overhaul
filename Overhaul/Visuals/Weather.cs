@@ -9,7 +9,7 @@ namespace Overhaul.Visuals
     //   world reads at night without lamps everywhere (not in dungeons and other interiors).
     // - Biome border hold: the game picks weather and music from the biome under the camera; walking along a border flips
     //   it back and forth. The previous biome is kept while it is still within 4 m of the camera (8 points around).
-    internal static class Weather
+    internal static partial class Weather
     {
         const float NightBoost = 0.25f, BorderHold = 4f;
         static BiomeSector held;

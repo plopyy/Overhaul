@@ -26,7 +26,7 @@ namespace Overhaul.Visuals
         static readonly ConcurrentQueue<(Tile Tile, Vector2[] Shade, int Epoch)> shadowDone = new ConcurrentQueue<(Tile, Vector2[], int)>();
 
         // Toward the sun, as the game turns its sun light (before it turns it around into the moon at night).
-        static Vector3 SunDirection()
+        internal static Vector3 SunDirection()
         {
             var env = EnvMan.instance;
             var current = env.GetCurrentEnvironment();
