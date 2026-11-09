@@ -77,7 +77,7 @@ namespace Overhaul.Visuals
             hazeMaterial.SetFloat("_FarRate", FarRate);
             hazeMaterial.SetFloat("_HazeBase", HazeBase);
             hazeMaterial.SetFloat("_HazeHeight", HazeHeight);
-            hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix);
+            hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix * (1f - Weather.AerialAmount)); // by day the weather's aerial perspective takes over
         }
 
         // Diagnosis (the far land vanished behind something sky coloured): the camera's reach and what draws the sky.

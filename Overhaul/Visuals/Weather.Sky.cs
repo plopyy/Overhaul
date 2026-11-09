@@ -18,7 +18,11 @@ namespace Overhaul.Visuals
         static Shader skyShader;
         static bool skyFailed, tablesMade;
         static Material skyMaterial;
-        static RenderTexture transmittanceLut, multiLut, skyViewLut;
+        static RenderTexture transmittanceLut, multiLut, skyViewLut, aerialLut;
+        static CommandBuffer aerialBuffer;
+        // How much of the air the aerial perspective covers now (0 at night): the far view's haze gives way to it.
+        internal static float AerialAmount;
+        const float AerialScale = 3f; // Valheim's distances are short: the air thickened so a few km read as far
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
         static float skyMix;
@@ -59,6 +63,11 @@ namespace Overhaul.Visuals
             skyMaterial.SetVector("_SkyUp", t.up * (2f * up));
             skyMaterial.SetFloat("_SkyBlend", DebugNoSky ? 0f : SkyBlend * skyMix);
             skyMaterial.SetFloat("_SkyExposure", SkyExposure);
+            skyMaterial.SetFloat("_AerialScale", AerialScale);
+            skyMaterial.SetFloat("_AerialStrength", DebugNoSky ? 0f : skyMix);
+            AerialAmount = DebugNoSky ? 0f : skyMix;
+            Graphics.Blit(null, aerialLut, skyMaterial, 4);
+            skyMaterial.SetTexture("_AerialLut", aerialLut);
             if (skyCamera != camera) { DetachSky(); DetachClouds(); AttachSky(camera); KeepYggdrasilOver(); }
             TickClouds(camera, sun); // after the sky: its pass comes after ours
         }
@@ -143,6 +152,7 @@ namespace Overhaul.Visuals
             transmittanceLut = Lut("transmittance", 256, 64);
             multiLut = Lut("multiple scattering", 32, 32);
             skyViewLut = Lut("sky view", 192, 108);
+            aerialLut = Lut("aerial perspective", 32 * 32, 32);
             tablesMade = false;
             return true;
         }
@@ -160,14 +170,20 @@ namespace Overhaul.Visuals
             skyBuffer = new CommandBuffer { name = "Overhaul sky" };
             skyBuffer.DrawProcedural(Matrix4x4.identity, skyMaterial, 3, MeshTopology.Triangles, 3);
             camera.AddCommandBuffer(CameraEvent.AfterSkybox, skyBuffer);
+            // The aerial perspective after the water and transparents, like the far view's haze it replaces by day.
+            aerialBuffer = new CommandBuffer { name = "Overhaul aerial perspective" };
+            aerialBuffer.DrawProcedural(Matrix4x4.identity, skyMaterial, 5, MeshTopology.Triangles, 3);
+            camera.AddCommandBuffer(CameraEvent.AfterForwardAlpha, aerialBuffer);
             skyCamera = camera;
         }
 
         static void DetachSky()
         {
             if (skyCamera && skyBuffer != null) skyCamera.RemoveCommandBuffer(CameraEvent.AfterSkybox, skyBuffer);
-            skyBuffer?.Release();
-            skyBuffer = null; skyCamera = null;
+            if (skyCamera && aerialBuffer != null) skyCamera.RemoveCommandBuffer(CameraEvent.AfterForwardAlpha, aerialBuffer);
+            skyBuffer?.Release(); aerialBuffer?.Release();
+            skyBuffer = null; aerialBuffer = null; skyCamera = null;
+            AerialAmount = 0f;
         }
 
         static void StopSky()
