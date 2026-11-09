@@ -81,7 +81,7 @@ namespace Overhaul.Visuals
             // Cirrus: present in fair weather (more on some days), gone under rain and fog; drifting slowly with the wind.
             float fairWeight = presetMix.x + presetMix.y, total = presetMix.x + presetMix.y + presetMix.z + presetMix.w;
             int cirrusDay = (int)(ZNet.instance ? ZNet.instance.GetTimeSeconds() / Mathf.Max(1L, EnvMan.instance.m_dayLengthSec) : 0);
-            float cirrusDayAmount = 0.35f + 0.55f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
+            float cirrusDayAmount = 0.3f + 0.4f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
             skyMaterial.SetFloat("_CirrusAmount", total > 0f ? fairWeight / total * cirrusDayAmount : 0f);
             skyMaterial.SetVector("_CirrusOffset", cloudWind * 0.0004f);
             // Mid-level decks: on broken fair days and more as weather turns, gone in full storm (the low layer covers all).
@@ -91,8 +91,11 @@ namespace Overhaul.Visuals
             var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;
             // By night the high layers stay, dark, faintly lit by the moon.
             float dayK = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
-            skyMaterial.SetVector("_CirrusSun", dayK > 0f ? (Vector4)(sunCol * 0.55f * dayK) : new Vector4(0.06f, 0.07f, 0.09f, 0f));
-            skyMaterial.SetVector("_CirrusAmbient", (Vector4)((RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f) * Mathf.Lerp(0.25f, 1f, dayK)));
+            // Lit by the sun by day, by the game's measured sky (lighter than it) and the moon by night, so the streaks stay
+            // visible over the dark sky.
+            skyMaterial.SetVector("_CirrusSun", dayK > 0f ? (Vector4)(sunCol * 0.55f * dayK) : new Vector4(0.05f, 0.055f, 0.07f, 0f));
+            var skyGame = Color.Lerp(GameSkyAway, GameSkyToward, 0.5f);
+            skyMaterial.SetVector("_CirrusAmbient", (Vector4)Color.Lerp(skyGame * 2.6f + new Color(0.02f, 0.025f, 0.035f), RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f, dayK));
             skyMaterial.SetVector("_GlowColor", (Vector4)(EnvMan.instance.GetSunFogColor() * 0.6f + sunCol * 0.4f));
             skyMaterial.SetFloat("_GlowStrength", Mathf.Lerp(1.4f, 0.6f, Mathf.Clamp01(sun.y * 2f))); // stronger with the sun low
             skyMaterial.SetVector("_HorizonTint", (Vector4)RenderSettings.fogColor);
