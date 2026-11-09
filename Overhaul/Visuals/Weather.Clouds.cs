@@ -197,13 +197,16 @@ namespace Overhaul.Visuals
         // The game's pink smoky clouds in the sky (renderers with the Custom/SkyObject shader, high above) are hidden while our
         // volumetric clouds show, given back otherwise. The ground mists stay (user's choice).
         static bool skyObjectsHidden;
+        static float nextSkySearch;
         static readonly System.Collections.Generic.List<Renderer> skyObjects = new System.Collections.Generic.List<Renderer>();
         static void HideFogClouds(bool hide)
         {
-            if (hide == skyObjectsHidden) return;
+            // Searched again every 5 s while none were found (the sky objects come after the first frames).
+            if (hide == skyObjectsHidden && (!hide || skyObjects.Count > 0 || Time.time < nextSkySearch)) return;
             skyObjectsHidden = hide;
             if (hide)
             {
+                nextSkySearch = Time.time + 5f;
                 skyObjects.Clear();
                 foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                     if (r.enabled && r.sharedMaterial && r.sharedMaterial.shader && r.sharedMaterial.shader.name == "Custom/SkyObject")
