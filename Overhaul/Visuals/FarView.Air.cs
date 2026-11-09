@@ -50,7 +50,7 @@ namespace Overhaul.Visuals
             if (airMix <= 0f) { DetachHaze(); return; }
             if (Time.time >= nextAirLog) { nextAirLog = Time.time + 30f; Log.LogInfo("[FarView] air: game fog density " + gameDensity.ToString("0.00000") + ", " + RenderSettings.fogMode + ", mix " + airMix.ToString("0.00")); }
 
-            if (!hazeMaterial) hazeMaterial = new Material(farHazeShader);
+            if (!hazeMaterial) { hazeMaterial = new Material(farHazeShader); LogSky(camera); }
             if (hazeCamera != camera) { DetachHaze(); AttachHaze(camera); }
 
             var t = camera.transform;
@@ -68,6 +68,20 @@ namespace Overhaul.Visuals
             hazeMaterial.SetFloat("_HazeBase", HazeBase);
             hazeMaterial.SetFloat("_HazeHeight", HazeHeight);
             hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix);
+        }
+
+        // Diagnosis (the far land vanished behind something sky coloured): the camera's reach and what draws the sky.
+        static void LogSky(Camera camera)
+        {
+            Log.LogInfo("[FarView] air: camera far plane " + camera.farClipPlane + ", clear " + camera.clearFlags + ", path " + camera.actualRenderingPath + ", skybox " + (RenderSettings.skybox ? RenderSettings.skybox.shader.name : "none"));
+            foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            {
+                var m = r.sharedMaterial;
+                if (!m || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                string n = (r.name + " " + m.name + " " + m.shader.name).ToLowerInvariant();
+                if (n.Contains("sky") || n.Contains("cloud") || n.Contains("dome") || r.bounds.extents.magnitude > 1500f)
+                    Log.LogInfo("[FarView] air: big/sky renderer " + r.name + " (" + m.shader.name + ", queue " + m.renderQueue + ", layer " + r.gameObject.layer + ") extents " + r.bounds.extents + " scale " + r.transform.lossyScale);
+            }
         }
 
         static void AttachHaze(Camera camera)
