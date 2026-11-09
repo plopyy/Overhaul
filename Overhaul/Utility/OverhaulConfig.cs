@@ -57,19 +57,21 @@ namespace Overhaul.Utility
         public static ConfigEntry<UnityEngine.KeyCode> BuildPreciseKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildSnapToggleKey { get; private set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildResetKey { get; private set; }
-        public static ConfigEntry<bool> PerfStreamingSkip { get; private set; }
-        public static ConfigEntry<bool> PerfWaterMaterials { get; private set; }
-        public static ConfigEntry<bool> PerfFastFloaters { get; private set; }
-        public static ConfigEntry<bool> PerfTerrainCache { get; private set; }
-        public static ConfigEntry<bool> PerfDecorShadows { get; private set; }
-        public static ConfigEntry<bool> PerfHiddenParticles { get; private set; }
-        public static ConfigEntry<bool> PerfMergePieces { get; private set; }
-        public static ConfigEntry<bool> PerfGrassSpread { get; private set; }
-        public static ConfigEntry<bool> PerfTerrainSpread { get; private set; }
-        public static ConfigEntry<bool> PerfAiSense { get; private set; }
-        public static ConfigEntry<bool> PerfAsyncCollision { get; private set; }
-        public static ConfigEntry<bool> PerfAsyncLocations { get; private set; }
-        public static ConfigEntry<bool> PerfInstancedProps { get; private set; }
+        // Client optimisations: chosen in Settings > Overhaul > Graphics (saved like the game's graphics settings), not here.
+        // Each follows the general Optimisations switch and, where it has one, its group's checkbox.
+        internal static readonly Performance.PerfSwitch PerfStreamingSkip = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfWaterMaterials = new Performance.PerfSwitch(() => Performance.ClientPerf.Cache);
+        internal static readonly Performance.PerfSwitch PerfFastFloaters = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfTerrainCache = new Performance.PerfSwitch(() => Performance.ClientPerf.Cache);
+        internal static readonly Performance.PerfSwitch PerfDecorShadows = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfHiddenParticles = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfMergePieces = new Performance.PerfSwitch(() => Performance.ClientPerf.MergePieces);
+        internal static readonly Performance.PerfSwitch PerfGrassSpread = new Performance.PerfSwitch(() => Performance.ClientPerf.Progressive);
+        internal static readonly Performance.PerfSwitch PerfTerrainSpread = new Performance.PerfSwitch(() => Performance.ClientPerf.Progressive);
+        internal static readonly Performance.PerfSwitch PerfAiSense = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfAsyncCollision = new Performance.PerfSwitch(() => Performance.ClientPerf.Background);
+        internal static readonly Performance.PerfSwitch PerfAsyncLocations = new Performance.PerfSwitch(() => Performance.ClientPerf.Background);
+        internal static readonly Performance.PerfSwitch PerfInstancedProps = new Performance.PerfSwitch(() => true);
 
 		public static void Bind(ConfigFile config)
 		{
@@ -92,45 +94,6 @@ namespace Overhaul.Utility
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             BuildResetKey = config.Bind("Building", "ResetKey", UnityEngine.KeyCode.Less,
                 new ConfigDescription("Pressed while building or moving a piece, sets the ghost flat and facing north again (all three axes). The key does nothing else while building. Less is the < key left of W (AZERTY) or Z (QWERTY).",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfStreamingSkip = config.Bind("Performance", "SkipIdleStreaming", true,
-                new ConfigDescription("Skip the 30-per-second check for networked objects to create or remove around you while nothing it looks at has changed (still run twice a second). Same objects as the game. Compare with the o_opti console command.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfWaterMaterials = config.Bind("Performance", "CacheWaterMaterials", true,
-                new ConfigDescription("Keep each water surface's material instead of asking Unity for it every frame.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfFastFloaters = config.Bind("Performance", "FastFloaters", true,
-                new ConfigDescription("Work out the water height under floating things (boats, items, swimmers) with the water volume's size and the wind read once per frame instead of once per object. Same heights as the game, checked at the start of each session.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfTerrainCache = config.Bind("Performance", "TerrainBuildCache", true,
-                new ConfigDescription("Keep 128 finished terrain tiles instead of 16, and build first a tile the game is waiting for, so terrain is not rebuilt while the game stalls.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfDecorShadows = config.Bind("Performance", "DecorShadows", true,
-                new ConfigDescription("Decoration pieces (build menu Furniture tab: chairs, tables, rugs, banners, torches...) cast no shadow; walls, beams, floors and roofs keep theirs.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfHiddenParticles = config.Bind("Performance", "HiddenParticles", true,
-                new ConfigDescription("Particle effects hidden behind walls, pieces or the ground are not drawn. Far effects in plain sight stay drawn.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfMergePieces = config.Bind("Performance", "MergePieces", true,
-                new ConfigDescription("Building pieces are drawn merged into a few big meshes per 16 m area (one per material), with their usual level of detail. Pieces highlighted, damaged, moved or with effects of their own are drawn alone.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfGrassSpread = config.Bind("Performance", "SpreadGrassRebuilds", true,
-                new ConfigDescription("After a terrain change, grass around the player is rebuilt a little each frame instead of all in one frame.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfTerrainSpread = config.Bind("Performance", "SpreadTerrainRebuilds", true,
-                new ConfigDescription("Terrain tiles waiting for a rebuild are rebuilt within a time budget per frame instead of all in one frame; the tile under the player is always rebuilt at once.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfAiSense = config.Bind("Performance", "QuickCreatureSenses", true,
-                new ConfigDescription("Creatures refuse a target farther than both their hearing and seeing range before any other check (same result, sooner).",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfAsyncCollision = config.Bind("Performance", "AsyncTerrainCollision", true,
-                new ConfigDescription("Terrain collision away from the player is prepared on a worker thread before being handed to the physics engine; the old collision stays meanwhile.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfAsyncLocations = config.Bind("Performance", "AsyncLocations", true,
-                new ConfigDescription("Locations (ruins, fortresses, villages) are copied into the world in the background and joined a little each frame when you come near, instead of in one frame. Client only.",
-                    null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
-            PerfInstancedProps = config.Bind("Performance", "InstancedProps", true,
-                new ConfigDescription("Repeated still objects of the world (trees, rocks, bushes, location props) are drawn by Overhaul, each model in one instanced call for all its copies, which copies are seen being worked out on several cores. Objects that move, change or go away are drawn as usual again at once. Switch off if something looks wrong.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",

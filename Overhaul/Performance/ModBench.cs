@@ -58,13 +58,14 @@ namespace Overhaul.Performance
                 var farOn = Entry(far, "General", "Enabled");
                 var steadyOn = Entry(steady, "1 - General", "Enabled");
                 // Overhaul's own versions of what SteadyFrame does (grass, object streaming, terrain).
-                var ours = new ConfigEntryBase[] { OverhaulConfig.PerfGrassSpread, OverhaulConfig.PerfStreamingSkip, OverhaulConfig.PerfTerrainCache };
+                var ours = new[] { OverhaulConfig.PerfGrassSpread, OverhaulConfig.PerfStreamingSkip, OverhaulConfig.PerfTerrainCache };
+                var oursWere = ours.Select(e => e.Value).ToArray();
                 steps.Add(("as set now", () => { }));
                 if (steadyOn != null)
                 {
-                    steps.Add(("SteadyFrame off", () => { Set(steadyOn, false); foreach (var e in ours) Set(e, false); }));
-                    steps.Add(("Overhaul's own", () => { Set(steadyOn, false); foreach (var e in ours) Set(e, true); }));
-                    steps.Add(("SteadyFrame back", () => { Set(steadyOn, saved[steadyOn]); foreach (var e in ours) Set(e, saved.TryGetValue(e, out var v) ? v : e.BoxedValue); }));
+                    steps.Add(("SteadyFrame off", () => { Set(steadyOn, false); foreach (var e in ours) e.Value = false; }));
+                    steps.Add(("Overhaul's own", () => { Set(steadyOn, false); foreach (var e in ours) e.Value = true; }));
+                    steps.Add(("SteadyFrame back", () => { Set(steadyOn, saved[steadyOn]); for (int i = 0; i < ours.Length; i++) ours[i].Value = oursWere[i]; }));
                 }
                 if (weatherParts.Count > 0) steps.Add(("weather off", () => { foreach (var e in weatherParts) Set(e, false); }));
                 if (farOn != null) steps.Add(("+ far land off", () => Set(farOn, false)));

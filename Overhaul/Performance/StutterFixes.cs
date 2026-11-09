@@ -11,7 +11,7 @@ namespace Overhaul.Performance
     // Four sources of stutter (frames much longer than the others), each with its own [Performance] option.
     internal static class StutterFixes
     {
-        static bool On(BepInEx.Configuration.ConfigEntry<bool> entry) => PerfMonitor.On(entry);
+        static bool On(PerfSwitch entry) => PerfMonitor.On(entry);
 
         // ---- Grass: rebuilds spread over frames ----
         // The game builds one grass patch per frame, except after a terrain change or a reset (m_forceRebuild), when it builds

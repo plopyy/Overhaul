@@ -15,7 +15,7 @@ namespace Overhaul.Performance
         internal const string Command = "o_opti";
         private const float MeasureSeconds = 10f, SettleSeconds = 2f;
 
-        internal static readonly (string Id, Func<ConfigEntry<bool>> Entry)[] ConfigOptions =
+        internal static readonly (string Id, Func<PerfSwitch> Entry)[] ConfigOptions =
         {
             ("streaming", () => OverhaulConfig.PerfStreamingSkip),
             ("water", () => OverhaulConfig.PerfWaterMaterials),
@@ -42,7 +42,7 @@ namespace Overhaul.Performance
 
         private static Sampler sampler;
 
-        internal static bool On(ConfigEntry<bool> entry) => !AllOff && entry != null && entry.Value;
+        internal static bool On(PerfSwitch entry) => !AllOff && entry != null && entry.Value;
 
         internal static void Initialize()
         {
