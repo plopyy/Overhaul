@@ -14,7 +14,7 @@ namespace Overhaul.Performance
     // when you come back, grass arrays reused, buildings not judged while their floors stream in, a few needless copies and
     // allocations removed). One switch in the settings window (saved like the game's own graphics settings, no config
     // entry); `o_opti <name> on|off` switches each part live for measuring.
-    internal static class SmoothFrames
+    internal static partial class SmoothFrames
     {
         private const string PrefKey = "Overhaul_SmoothFrames";
 
@@ -40,6 +40,7 @@ namespace Overhaul.Performance
             ("grassarrays", () => GrassArrays, v => GrassArrays = v),
             ("settling", () => SettlingBuildings, v => SettlingBuildings = v),
             ("housekeeping", () => Housekeeping, v => { Housekeeping = v; ApplyHousekeeping(); }),
+            ("transitions", () => Transitions, v => Transitions = v),
         };
 
         internal static long GroundKept, TerrainHits, TerrainMisses, ArraysReused, BuildingsHeld;
@@ -48,6 +49,7 @@ namespace Overhaul.Performance
         {
             ApplyHousekeeping();
             GrassPool.Tick();
+            TickTransitions();
         }
 
         // ---- Ground meshes kept when nothing changed ----
