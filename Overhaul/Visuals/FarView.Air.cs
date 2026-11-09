@@ -69,7 +69,8 @@ namespace Overhaul.Visuals
             hazeMaterial.SetVector("_HazeUp", t.up * (2f * up));
             // Lighter than the game's fog colour: distant land fades toward the bright horizon, not into a dark wall.
             float dayLight = EnvMan.instance ? Mathf.Clamp01((SunDirection().y + 0.05f) / 0.15f) : 1f; // by night no lightening toward white
-            hazeMaterial.SetColor("_HazeColor", Color.Lerp(RenderSettings.fogColor, Color.white, HazeLight * dayLight));
+            // Night: a darker, thinner haze (the far land read as a pale band under the night sky).
+            hazeMaterial.SetColor("_HazeColor", Color.Lerp(RenderSettings.fogColor * Mathf.Lerp(0.45f, 1f, dayLight), Color.white, HazeLight * dayLight));
             var env = EnvMan.instance;
             hazeMaterial.SetColor("_HazeSunColor", env ? env.GetSunFogColor() : RenderSettings.fogColor);
             hazeMaterial.SetVector("_HazeSunDir", env ? SunDirection() : Vector3.up);
@@ -78,7 +79,7 @@ namespace Overhaul.Visuals
             hazeMaterial.SetFloat("_FarRate", FarRate);
             hazeMaterial.SetFloat("_HazeBase", HazeBase);
             hazeMaterial.SetFloat("_HazeHeight", HazeHeight);
-            hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix * (1f - Weather.AerialAmount)); // by day the weather's aerial perspective takes over
+            hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix * (1f - Weather.AerialAmount) * Mathf.Lerp(0.6f, 1f, dayLight)); // by day the weather's aerial perspective takes over
         }
 
         // Diagnosis (the far land vanished behind something sky coloured): the camera's reach and what draws the sky.

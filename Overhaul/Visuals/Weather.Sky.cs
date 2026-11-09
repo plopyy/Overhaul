@@ -41,7 +41,12 @@ namespace Overhaul.Visuals
             // Day: full with the sun 6 degrees up, none 3 degrees under the horizon.
             float target = inside ? 0f : Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
             skyMix = Mathf.MoveTowards(skyMix, target, Time.deltaTime / 2f);
-            if (skyMix <= 0f) { DetachSky(); TickClouds(camera, sun); return; }
+            // Kept attached at night too: the moon is drawn by the same pass (our sky's own colour faded out).
+            float night = inside ? 0f : Mathf.Clamp01((-sun.y + 0.02f) / 0.12f);
+            if (skyMix <= 0f && night <= 0f) { DetachSky(); TickClouds(camera, sun); return; }
+            skyMaterial.SetVector("_MoonDir", -sun);
+            skyMaterial.SetVector("_MoonColor", new Vector3(0.85f, 0.9f, 1f));
+            skyMaterial.SetFloat("_MoonStrength", night);
 
             skyMaterial.SetVector("_SunDir", sun);
             skyMaterial.SetFloat("_CameraKm", Mathf.Clamp(camera.transform.position.y - 30f, 0.01f, 9000f) / 1000f + 0.001f);

@@ -59,7 +59,8 @@ namespace Overhaul.Visuals
             int day = (int)(ZNet.instance ? ZNet.instance.GetTimeSeconds() / Mathf.Max(1L, env.m_dayLengthSec) : 0);
             float broken = Mathf.Repeat(Mathf.Sin((WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0) * 0.001f + day * 12.9898f) * 43758.5453f, 1f);
             var want = new Vector4((1f - broken) * (1f - rain) * (1f - fog), broken * (1f - rain) * (1f - fog), fog * (1f - rain), rain);
-            presetMix = Vector4.MoveTowards(presetMix, want, Time.deltaTime * 0.02f);
+            // Eased so a change of weather rolls in, at once when the weather is forced (debug environment, tests).
+            presetMix = string.IsNullOrEmpty(env.m_debugEnv) ? Vector4.MoveTowards(presetMix, want, Time.deltaTime * 0.02f) : want;
             ApplyPreset(presetMix);
 
             var wind = env.GetWindDir(); float speed = 10f + 15f * env.GetWindIntensity();
@@ -113,9 +114,10 @@ namespace Overhaul.Visuals
             // By night the game's light is the moon: clouds lit faintly by it, the ambient of the night sky (they were as white
             // as by day).
             float daylight = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
-            m.SetVector("_SunLightColor", (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.12f, 1f, daylight)));
+            // Night: the moon (opposite the sun, as the game turns its light) in a cool silver, dark cores.
+            m.SetVector("_SunLightColor", daylight > 0f ? (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.3f, 1f, daylight)) : new Vector4(0.32f, 0.36f, 0.45f, 0f));
             var amb = RenderSettings.ambientLight;
-            float ambScale = CloudAmbientScale * Mathf.Lerp(0.35f, 1f, daylight);
+            float ambScale = CloudAmbientScale * Mathf.Lerp(0.2f, 1f, daylight);
             m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * ambScale));
             m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * ambScale));
             m.SetFloat("_Fade", cloudMix);
