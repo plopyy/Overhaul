@@ -118,9 +118,9 @@ namespace Overhaul.Visuals
             // as by day).
             float daylight = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
             // Night: the moon (opposite the sun, as the game turns its light) in a cool silver, dark cores.
-            m.SetVector("_SunLightColor", daylight > 0f ? (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.3f, 1f, daylight)) : new Vector4(0.32f, 0.36f, 0.45f, 0f));
+            m.SetVector("_SunLightColor", daylight > 0f ? (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.3f, 1f, daylight)) : new Vector4(0.08f, 0.09f, 0.12f, 0f)); // dark, only the edges catch the moon
             var amb = RenderSettings.ambientLight;
-            float ambScale = CloudAmbientScale * Mathf.Lerp(0.2f, 1f, daylight);
+            float ambScale = CloudAmbientScale * Mathf.Lerp(0.05f, 1f, daylight);
             m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * ambScale));
             m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * ambScale));
             m.SetFloat("_Fade", cloudMix);

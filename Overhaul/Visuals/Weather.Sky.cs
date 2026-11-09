@@ -25,7 +25,7 @@ namespace Overhaul.Visuals
         const float AerialScale = 4f; // Valheim's distances are short: the air thickened so a few km read as far
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
-        static float skyMix;
+        static float skyMix, gameSunDisk = -1f;
         internal static bool DebugNoSky; // tests: the game's own sky under our clouds
 
         internal static void Tick()
@@ -45,7 +45,10 @@ namespace Overhaul.Visuals
             float night = inside ? 0f : Mathf.Clamp01((-sun.y + 0.02f) / 0.12f);
             if (skyMix <= 0f && night <= 0f) { DetachSky(); TickClouds(camera, sun); return; }
             skyMaterial.SetVector("_MoonDir", -sun);
-            skyMaterial.SetVector("_MoonColor", new Vector3(0.85f, 0.9f, 1f));
+            skyMaterial.SetVector("_MoonColor", new Vector3(0.9f, 0.92f, 0.95f));
+            // The game's own sun/moon disc off while ours shows (two discs made a ring).
+            var skybox = RenderSettings.skybox;
+            if (skybox && skybox.HasProperty("_SunDisk")) { if (gameSunDisk < 0f) gameSunDisk = skybox.GetFloat("_SunDisk"); skybox.SetFloat("_SunDisk", night > 0f ? 0f : gameSunDisk); }
             skyMaterial.SetFloat("_MoonStrength", night);
 
             skyMaterial.SetVector("_SunDir", sun);
@@ -82,8 +85,10 @@ namespace Overhaul.Visuals
             skyMaterial.SetVector("_CirrusWind", cloudWind.sqrMagnitude > 0f ? cloudWind.normalized : Vector2.right);
             var dirLight = EnvMan.instance.m_dirLight;
             var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;
-            skyMaterial.SetVector("_CirrusSun", (Vector4)(sunCol * 0.55f));
-            skyMaterial.SetVector("_CirrusAmbient", (Vector4)(RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f));
+            // By night the high layers stay, dark, faintly lit by the moon.
+            float dayK = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
+            skyMaterial.SetVector("_CirrusSun", dayK > 0f ? (Vector4)(sunCol * 0.55f * dayK) : new Vector4(0.06f, 0.07f, 0.09f, 0f));
+            skyMaterial.SetVector("_CirrusAmbient", (Vector4)((RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f) * Mathf.Lerp(0.25f, 1f, dayK)));
             skyMaterial.SetVector("_GlowColor", (Vector4)(EnvMan.instance.GetSunFogColor() * 0.6f + sunCol * 0.4f));
             skyMaterial.SetFloat("_GlowStrength", Mathf.Lerp(1.4f, 0.6f, Mathf.Clamp01(sun.y * 2f))); // stronger with the sun low
             skyMaterial.SetVector("_HorizonTint", (Vector4)RenderSettings.fogColor);
@@ -123,6 +128,9 @@ namespace Overhaul.Visuals
                     // Its own haze (fog to the game's fog colour out to 15 km) made its trunk a flat blue against our sky:
                     // half of it kept, as the other weather mod does.
                     if (m.HasProperty("_FogAmount")) m.SetFloat("_FogAmount", 0.5f);
+                    // Its green glow halved (it stood out against our darker night).
+                    if (m.HasProperty("_EmissBlend")) m.SetFloat("_EmissBlend", m.GetFloat("_EmissBlend") * 0.5f);
+                    if (m.HasProperty("_MossEmissive")) m.SetFloat("_MossEmissive", m.GetFloat("_MossEmissive") * 0.5f);
                 }
                 r.materials = mats; moved++;
             }
@@ -229,6 +237,7 @@ namespace Overhaul.Visuals
         static void StopSky()
         {
             DetachSky();
+            if (gameSunDisk >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_SunDisk")) RenderSettings.skybox.SetFloat("_SunDisk", gameSunDisk);
             skyMix = 0f;
         }
     }
