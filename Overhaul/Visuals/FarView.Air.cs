@@ -14,7 +14,7 @@ namespace Overhaul.Visuals
     // view on purpose) and under water; the change in and out is eased over a few seconds.
     internal static partial class FarView
     {
-        const float GameThin = 0.04f, FarRate = 0.02f, HazeBase = 30f, HazeHeight = 400f;
+        const float GameThin = 0.01f, FarRate = 0.02f, HazeBase = 30f, HazeHeight = 400f;
         static Shader farHazeShader;
         static Material hazeMaterial;
         static CommandBuffer hazeBuffer;
