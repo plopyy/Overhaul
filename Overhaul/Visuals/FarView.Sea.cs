@@ -26,17 +26,51 @@ namespace Overhaul.Visuals
             if (Mathf.Abs(scale.x) < 1e-4f || Mathf.Abs(scale.z) < 1e-4f) return;
             // Plane-local sizes: the plane's own half extent inside, the far view's reach (+ a margin) outside.
             float reach = TileSize(rings.Length - 1) * 2f + 512f;
+            // The game's plane is a disc (about 1000 vertices round its edge, 2 km radius): the ring starts just inside its rim.
             Vector2 inner = new Vector2(bounds.extents.x, bounds.extents.z) * 0.995f, centre = new Vector2(bounds.center.x, bounds.center.z);
             Vector2 outer = new Vector2(reach / Mathf.Abs(scale.x), reach / Mathf.Abs(scale.z));
             if (outer.x <= inner.x || outer.y <= inner.y) return;
             Utility.Log.LogInfo("[FarView] game sea plane: " + filter.sharedMesh.vertexCount + " vertices, local extents " + bounds.extents + ", scale " + scale + "; far sea from there to " + reach.ToString("0") + " m");
             sea = new GameObject("Overhaul far sea") { layer = surface.gameObject.layer };
             sea.transform.SetParent(surface, false);
-            sea.AddComponent<MeshFilter>().sharedMesh = SquareRing(centre, inner, outer, bounds.center.y, 32);
+            sea.AddComponent<MeshFilter>().sharedMesh = DiscRing(centre, inner, outer, bounds.center.y, 128);
             var ring = sea.AddComponent<MeshRenderer>();
             ring.sharedMaterial = renderer.sharedMaterial;
             ring.shadowCastingMode = ShadowCastingMode.Off;
             ring.receiveShadows = renderer.receiveShadows;
+        }
+
+        // The band between two centred ellipses (circles once scaled by the plane), in rows of quads widening outward.
+        static Mesh DiscRing(Vector2 c, Vector2 inner, Vector2 outer, float y, int segments)
+        {
+            const int Rows = 8;
+            var vertices = new System.Collections.Generic.List<Vector3>();
+            var tris = new System.Collections.Generic.List<int>();
+            for (int r = 0; r <= Rows; r++)
+            {
+                float t = (float)r / Rows; t *= t;
+                var size = Vector2.Lerp(inner, outer, t);
+                for (int s = 0; s <= segments; s++)
+                {
+                    float a = s * Mathf.PI * 2f / segments;
+                    vertices.Add(new Vector3(c.x + Mathf.Cos(a) * size.x, y, c.y + Mathf.Sin(a) * size.y));
+                }
+            }
+            for (int r = 0; r < Rows; r++)
+                for (int s = 0; s < segments; s++)
+                {
+                    int i0 = r * (segments + 1) + s, i1 = i0 + 1, i2 = i0 + segments + 1, i3 = i2 + 1;
+                    tris.Add(i0); tris.Add(i2); tris.Add(i1); tris.Add(i1); tris.Add(i2); tris.Add(i3);
+                }
+            var mesh = new Mesh { name = "Overhaul far sea", indexFormat = IndexFormat.UInt32 };
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(tris, 0);
+            var normals = new Vector3[vertices.Count];
+            for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
+            mesh.normals = normals;
+            mesh.RecalculateBounds();
+            mesh.UploadMeshData(true);
+            return mesh;
         }
 
         static void StopSea() { if (sea) Object.Destroy(sea); sea = null; seaRings = 0; }

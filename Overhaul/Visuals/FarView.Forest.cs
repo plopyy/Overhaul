@@ -104,6 +104,8 @@ namespace Overhaul.Visuals
 
         static bool IsTree(GameObject prefab)
         {
+            // Logs lying on the ground and stumps are not trees seen from afar.
+            if (prefab.GetComponent<TreeLog>() || prefab.name.StartsWith("Stump") || prefab.name.EndsWith("_log")) return false;
             if (prefab.GetComponent<TreeBase>()) return true;
             if (prefab.GetComponentInChildren<Pickable>(true) || prefab.GetComponentInChildren<HoverText>(true)) return false;
             var renderers = FirstLod(prefab);
@@ -253,7 +255,7 @@ namespace Overhaul.Visuals
             if (uploadedVersion != forestVersion && Time.time >= nextGather) { nextGather = Time.time + 1f; Gather(); }
             DrawForest(eye, reach);
         }
-        static float nextGather;
+        static float nextGather, nextCountLog;
 
         static void ForestWork()
         {
@@ -281,6 +283,9 @@ namespace Overhaul.Visuals
             var yaws = kinds.Select(_ => new List<float>()).ToArray();
             foreach (var cell in forestCells.Values)
                 foreach (var t in cell) { positions[t.Kind].Add(new Vector4(t.Position.x, t.Position.y, t.Position.z, t.Scale)); yaws[t.Kind].Add(t.Yaw); }
+            int total = 0, wet = 0;
+            foreach (var cell in forestCells.Values) foreach (var t in cell) { total++; if (t.Position.y < 29f) wet++; }
+            if (Time.time >= nextCountLog) { nextCountLog = Time.time + 20f; Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level"); }
             for (int k = 0; k < kinds.Count; k++)
             {
                 var kind = kinds[k]; int n = positions[k].Count;
