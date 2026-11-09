@@ -66,6 +66,17 @@ namespace Overhaul.Visuals
             skyMaterial.SetFloat("_AerialScale", AerialScale);
             skyMaterial.SetFloat("_AerialStrength", DebugNoSky ? 0f : skyMix);
             AerialAmount = DebugNoSky ? 0f : skyMix;
+            // Cirrus: present in fair weather (more on some days), gone under rain and fog; drifting slowly with the wind.
+            float fairWeight = presetMix.x + presetMix.y, total = presetMix.x + presetMix.y + presetMix.z + presetMix.w;
+            int cirrusDay = (int)(ZNet.instance ? ZNet.instance.GetTimeSeconds() / Mathf.Max(1L, EnvMan.instance.m_dayLengthSec) : 0);
+            float cirrusDayAmount = 0.35f + 0.55f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
+            skyMaterial.SetFloat("_CirrusAmount", total > 0f ? fairWeight / total * cirrusDayAmount : 0f);
+            skyMaterial.SetVector("_CirrusOffset", cloudWind * 0.0004f);
+            skyMaterial.SetVector("_CirrusWind", cloudWind.sqrMagnitude > 0f ? cloudWind.normalized : Vector2.right);
+            var dirLight = EnvMan.instance.m_dirLight;
+            var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;
+            skyMaterial.SetVector("_CirrusSun", (Vector4)(sunCol * 0.55f));
+            skyMaterial.SetVector("_CirrusAmbient", (Vector4)(RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f));
             Graphics.Blit(null, aerialLut, skyMaterial, 4);
             skyMaterial.SetTexture("_AerialLut", aerialLut);
             if (skyCamera != camera) { DetachSky(); DetachClouds(); AttachSky(camera); KeepYggdrasilOver(); }
