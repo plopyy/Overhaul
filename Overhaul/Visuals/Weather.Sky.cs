@@ -113,6 +113,9 @@ namespace Overhaul.Visuals
                     }
                     Log.LogInfo("[Weather] Yggdrasil part " + r.name + " (" + sh.name + ", queue " + m.renderQueue + "): " + props);
                     if (m.renderQueue < 2501) m.renderQueue = 2501;
+                    // Its own haze (fog to the game's fog colour out to 15 km) made its trunk a flat blue against our sky:
+                    // half of it kept, as the other weather mod does.
+                    if (m.HasProperty("_FogAmount")) m.SetFloat("_FogAmount", 0.5f);
                 }
                 r.materials = mats; moved++;
             }
