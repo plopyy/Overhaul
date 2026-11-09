@@ -73,6 +73,7 @@ namespace Overhaul.Visuals
             Upload();
             for (int level = 0; level < rings.Length; level++) Swap(level);
             UpdateProperties();
+            TickSea();
         }
 
         // The game's distant land: its material and layer are reused, the land itself is switched off while ours is drawn.
@@ -99,6 +100,7 @@ namespace Overhaul.Visuals
             epoch++;
             foreach (var ring in rings) { foreach (var t in ring.Shown.Values) Destroy(t); foreach (var t in ring.Coming.Values) Destroy(t); }
             rings = new Ring[0];
+            StopSea();
             if (root) UnityEngine.Object.Destroy(root);
             root = null;
             if (vanilla && !vanilla.enabled) vanilla.enabled = true;
