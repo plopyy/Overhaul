@@ -58,7 +58,24 @@ namespace Overhaul.Visuals
             skyMaterial.SetVector("_SkyUp", t.up * (2f * up));
             skyMaterial.SetFloat("_SkyBlend", SkyBlend * skyMix);
             skyMaterial.SetFloat("_SkyExposure", SkyExposure);
-            if (skyCamera != camera) { DetachSky(); AttachSky(camera); }
+            if (skyCamera != camera) { DetachSky(); AttachSky(camera); KeepYggdrasilOver(); }
+        }
+
+        // Yggdrasil (the world tree in the sky) is drawn before the sky would be covered by ours: its materials are moved
+        // after the sky pass (copies, the game's own materials untouched).
+        static bool yggdrasilDone;
+        static void KeepYggdrasilOver()
+        {
+            if (yggdrasilDone) return;
+            int moved = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (r.name.IndexOf("yggdrasil", StringComparison.OrdinalIgnoreCase) < 0 && (!r.transform.parent || r.transform.parent.name.IndexOf("yggdrasil", StringComparison.OrdinalIgnoreCase) < 0)) continue;
+                var mats = r.materials; // instanced copies
+                foreach (var m in mats) { Log.LogInfo("[Weather] Yggdrasil part " + r.name + " (" + m.shader.name + ", queue " + m.renderQueue + ")"); if (m.renderQueue < 2501) m.renderQueue = 2501; }
+                r.materials = mats; moved++;
+            }
+            if (moved > 0) yggdrasilDone = true;
         }
 
         static bool PrepareSky()
