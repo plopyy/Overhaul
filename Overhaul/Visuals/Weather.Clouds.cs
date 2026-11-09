@@ -50,7 +50,7 @@ namespace Overhaul.Visuals
             var player = Player.m_localPlayer;
             bool inside = player && player.InInterior();
             cloudMix = Mathf.MoveTowards(cloudMix, inside ? 0f : 1f, Time.deltaTime / 2f);
-            if (cloudMix <= 0f) { DetachClouds(); return; }
+            if (cloudMix <= 0f) { DetachClouds(); HideFogClouds(false); return; }
 
             // Weather regime as weights of HDRP's four presets: fair days between Sparse and Cloudy (per game day, from the
             // world seed), Overcast in foggy air, Stormy in rain. Eased so a change of weather rolls in over about a minute.
@@ -112,6 +112,7 @@ namespace Overhaul.Visuals
             m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * CloudAmbientScale));
             m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * CloudAmbientScale));
             m.SetFloat("_Fade", cloudMix);
+            HideFogClouds(true);
             Graphics.Blit(null, cloudTarget, cloudMaterial, 0);
             cloudMaterial.SetTexture("_CloudTex", cloudTarget);
             if (cloudCamera != camera) { DetachClouds(); AttachClouds(camera); }
@@ -193,8 +194,25 @@ namespace Overhaul.Visuals
             cloudBuffer = null; cloudCamera = null;
         }
 
+        // The environments' "FogClouds" particles (smoky banks lit pink at sunset, in the sky and on the ground) clash with our
+        // clouds: their renderers are switched off while ours show, given back otherwise.
+        static bool fogCloudsHidden;
+        static void HideFogClouds(bool hide)
+        {
+            if (fogCloudsHidden == hide || !EnvMan.instance) return;
+            fogCloudsHidden = hide;
+            foreach (var e in EnvMan.instance.m_environments)
+            {
+                if (e.m_psystems == null) continue;
+                foreach (var ps in e.m_psystems)
+                    if (ps && ps.name == "FogClouds")
+                        foreach (var r in ps.GetComponentsInChildren<ParticleSystemRenderer>(true)) r.enabled = !hide;
+            }
+        }
+
         static void StopClouds()
         {
+            HideFogClouds(false);
             DetachClouds();
             cloudMix = 0f;
         }
