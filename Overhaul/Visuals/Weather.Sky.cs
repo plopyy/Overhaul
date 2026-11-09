@@ -77,6 +77,20 @@ namespace Overhaul.Visuals
                 r.materials = mats; moved++;
             }
             if (moved > 0) yggdrasilDone = true;
+            // What else draws in the sky: the environments' particle systems and renderers far up.
+            var envMan = EnvMan.instance;
+            if (envMan)
+            {
+                foreach (var e in envMan.m_environments)
+                {
+                    if (e.m_psystems == null) continue;
+                    foreach (var ps in e.m_psystems) if (ps) Log.LogInfo("[Weather] env " + e.m_name + " particles " + ps.name + " active " + ps.activeInHierarchy);
+                }
+                Log.LogInfo("[Weather] game clouds " + (envMan.m_clouds ? envMan.m_clouds.name + " " + envMan.m_clouds.sharedMaterial.shader.name : "none") + ", rain clouds " + (envMan.m_rainClouds ? envMan.m_rainClouds.name : "none") + ", downside " + (envMan.m_rainCloudsDownside ? envMan.m_rainCloudsDownside.name : "none"));
+            }
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                if (r.enabled && r.gameObject.activeInHierarchy && r.bounds.center.y - (Camera.main ? Camera.main.transform.position.y : 0f) > 300f)
+                    Log.LogInfo("[Weather] high renderer " + r.name + " (" + r.GetType().Name + ", " + (r.sharedMaterial ? r.sharedMaterial.shader.name : "-") + ") at " + r.bounds.center);
             // What the game's sky material offers (its clouds are painted in it).
             var sky = RenderSettings.skybox;
             if (sky)
