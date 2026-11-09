@@ -195,18 +195,25 @@ namespace Overhaul.Visuals
         }
 
         // The environments' "FogClouds" particles (smoky banks lit pink at sunset, in the sky and on the ground) clash with our
-        // clouds: their renderers are switched off while ours show, given back otherwise.
+        // clouds: kept stopped and cleared while ours show (each frame: the game restarts them on a change of weather, and the
+        // renderers' own switch is driven elsewhere), let play again otherwise.
         static bool fogCloudsHidden;
         static void HideFogClouds(bool hide)
         {
-            if (fogCloudsHidden == hide || !EnvMan.instance) return;
+            if (!EnvMan.instance || (!hide && !fogCloudsHidden)) return;
             fogCloudsHidden = hide;
             foreach (var e in EnvMan.instance.m_environments)
             {
                 if (e.m_psystems == null) continue;
-                foreach (var ps in e.m_psystems)
-                    if (ps && ps.name == "FogClouds")
-                        foreach (var r in ps.GetComponentsInChildren<ParticleSystemRenderer>(true)) r.enabled = !hide;
+                foreach (var go in e.m_psystems)
+                {
+                    if (!go || go.name != "FogClouds") continue;
+                    foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+                    {
+                        if (hide) { if (ps.isPlaying || ps.particleCount > 0) ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); }
+                        else if (go.activeInHierarchy && !ps.isPlaying) ps.Play(true);
+                    }
+                }
             }
         }
 
