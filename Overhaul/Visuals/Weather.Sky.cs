@@ -72,6 +72,8 @@ namespace Overhaul.Visuals
             float cirrusDayAmount = 0.35f + 0.55f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
             skyMaterial.SetFloat("_CirrusAmount", total > 0f ? fairWeight / total * cirrusDayAmount : 0f);
             skyMaterial.SetVector("_CirrusOffset", cloudWind * 0.0004f);
+            // Mid-level decks: on broken fair days and more as weather turns, gone in full storm (the low layer covers all).
+            skyMaterial.SetFloat("_AltoAmount", total > 0f ? Mathf.Clamp01((presetMix.y * 0.8f + presetMix.z * 0.9f + presetMix.x * 0.35f) / total) : 0f);
             skyMaterial.SetVector("_CirrusWind", cloudWind.sqrMagnitude > 0f ? cloudWind.normalized : Vector2.right);
             var dirLight = EnvMan.instance.m_dirLight;
             var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;

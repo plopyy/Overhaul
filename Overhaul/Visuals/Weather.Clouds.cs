@@ -103,6 +103,9 @@ namespace Overhaul.Visuals
             m.SetFloat("_FadeInStart", 400f);
             m.SetFloat("_FadeInDistance", 600f);
             m.SetFloat("_CameraSpace", 1f);
+            m.SetFloat("_CloudStretch", 2.5f);      // decks longer along the wind
+            m.SetFloat("_CoverMapScale", 3f);       // bands about 30 km apart
+            m.SetFloat("_CoverMapContrast", 3f);
             m.SetVector("_ScatteringTint", Vector3.one);
             m.SetVector("_SunDirection", sun.y > -0.1f ? sun : -sun);
             var light = env.m_dirLight;
@@ -138,7 +141,7 @@ namespace Overhaul.Visuals
             var v = new float[5];
             for (int p = 0; p < 4; p++) for (int k = 0; k < 5; k++) v[k] += presetValues[p, k] * weights[p] / total;
             cloudMaterial.SetFloat("_ShapeFactor", v[0]);
-            cloudMaterial.SetFloat("_ShapeScale", v[1]);
+            cloudMaterial.SetFloat("_ShapeScale", v[1] * 0.6f); // larger cloud masses than HDRP's default scale
             cloudMaterial.SetFloat("_ErosionFactor", v[2]);
             cloudMaterial.SetFloat("_ErosionScale", v[3]);
             cloudMaterial.SetFloat("_DensityMultiplier", v[4] * v[4] * 2f);

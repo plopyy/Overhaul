@@ -27,7 +27,10 @@ float _AltitudeDistortion, _MediumWindSpeed, _SmallWindSpeed, _VerticalShapeWind
 float2 _WindVector, _WindDirection, _ShapeNoiseOffset;
 float _VerticalShapeNoiseOffset, _FadeInStart, _FadeInDistance, _CameraSpace, _Coverage;
 float3 _ScatteringTint, _SunDirection, _SunLightColor, _AmbientTop, _AmbientBottom;
-float2 _CloudCameraXZ; // the camera's world xz (the trace runs camera-relative; HDRP read _WorldSpaceCameraPos)
+float2 _CloudCameraXZ;
+// Overhaul additions: clouds stretched along the wind (_CloudStretch) and a large-scale cover map in bands (_CoverMapScale,
+// _CoverMapContrast) so the sky shows decks and gaps instead of an even field of puffs.
+float _CloudStretch, _CoverMapScale, _CoverMapContrast; // the camera's world xz (the trace runs camera-relative; HDRP read _WorldSpaceCameraPos)
 float Sq(float x) { return x * x; }
 
 sampler3D _Worley128RGBA;
@@ -124,12 +127,21 @@ void EvaluateCloudProperties(float3 positionPS, float noiseMipOffset, float eros
     properties.height = EvaluateNormalizedCloudHeight(positionPS);
     positionPS.xz += _CloudCameraXZ * _CameraSpace;
 
-    float3 baseNoiseSamplingCoordinates = float3(AnimateShapeNoisePosition(positionPS).xzy / NOISE_TEXTURE_NORMALIZATION_FACTOR) * _ShapeScale - float3(_ShapeNoiseOffset.x, _ShapeNoiseOffset.y, _VerticalShapeNoiseOffset);
+    float3 shapePos = AnimateShapeNoisePosition(positionPS);
+    // Overhaul: stretched along the wind direction.
+    float2 wd = normalize(_WindDirection + 1e-4), wn = float2(-wd.y, wd.x);
+    float along = dot(shapePos.xz, wd), across = dot(shapePos.xz, wn);
+    shapePos.xz = wd * (along / max(_CloudStretch, 1)) + wn * across;
+    float3 baseNoiseSamplingCoordinates = float3(shapePos.xzy / NOISE_TEXTURE_NORMALIZATION_FACTOR) * _ShapeScale - float3(_ShapeNoiseOffset.x, _ShapeNoiseOffset.y, _VerticalShapeNoiseOffset);
     baseNoiseSamplingCoordinates += properties.height * float3(_WindDirection.x, _WindDirection.y, 0.0f) * _AltitudeDistortion;
     float lowFrequencyNoise = tex3Dlod(_Worley128RGBA, float4(baseNoiseSamplingCoordinates.xyz, noiseMipOffset)).r;
 
     // Simple preset: coverage constant (here from the weather), no rain cloud, one cloud type.
     float coverage = _Coverage;
+    // Overhaul: large-scale cover map (two octaves of the Worley volume, flat, stretched along the wind) in decks and gaps.
+    float2 mp = float2(along / max(_CloudStretch, 1) * 0.5, across) / NOISE_TEXTURE_NORMALIZATION_FACTOR * _CoverMapScale;
+    float map = tex3Dlod(_Worley128RGBA, float4(mp, 0.37, 2)).r * 0.65 + tex3Dlod(_Worley128RGBA, float4(mp * 2.7, 0.71, 1)).r * 0.35;
+    coverage *= saturate((map - 0.5) * _CoverMapContrast + 0.5 + (_Coverage - 0.6));
     if (coverage <= CLOUD_DENSITY_TRESHOLD) return;
     float3 densityErosionAO = tex2Dlod(_CloudLutTexture, float4(0.5, properties.height, 0, 0)).rgb;
 
