@@ -75,6 +75,8 @@ namespace Overhaul.Visuals
             UpdateProperties();
             TickSea();
             TickForest(eye);
+            TickBuildings(eye);
+            TickLights(eye);
         }
 
         // The game's distant land: its material and layer are reused, the land itself is switched off while ours is drawn.
@@ -103,6 +105,8 @@ namespace Overhaul.Visuals
             rings = new Ring[0];
             StopSea();
             StopForest();
+            StopBuildings();
+            StopLights();
             if (root) UnityEngine.Object.Destroy(root);
             root = null;
             if (vanilla && !vanilla.enabled) vanilla.enabled = true;
@@ -176,14 +180,15 @@ namespace Overhaul.Visuals
                 for (int l = 0; l < Verts; l++)
                 {
                     float wx = x0 + l * spacing, wz = z0 + k * spacing;
-                    var biome = w.GetBiome(wx, wz, 0.02f, false);
-                    heights[k * Verts + l] = w.GetBiomeHeight(biome, wx, wz, out var m, false, true);
+                    // The ground as the game's own terrain makes it (zone corner biomes mixed), so far buildings and trees
+                    // standing on the real ground are not buried under it.
+                    heights[k * Verts + l] = Ground(w, wx, wz, out _, out var m);
                     mask[k * Verts + l] = m;
                     colours[k * Verts + l] = Heightmap.GetBiomeColor(w.GetBiomeSector(wx, wz, false));
                 }
-            // The game's smoothing of its distant land: 4 passes softening steps over 10 m.
+            // The game's smoothing of its distant land (4 passes softening steps over 10 m), for the coarse rings only.
             var copy = new float[heights.Length];
-            for (int pass = 0; pass < 4; pass++)
+            for (int pass = 0; pass < (job.Level < 2 ? 0 : 4); pass++)
             {
                 Array.Copy(heights, copy, heights.Length);
                 for (int k = 1; k < Verts - 1; k++)

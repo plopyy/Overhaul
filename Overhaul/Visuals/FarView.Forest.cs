@@ -58,6 +58,7 @@ namespace Overhaul.Visuals
                 var bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_farview");
                 impostorShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarImpostor.shader");
                 var captureShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/ImpostorCapture.shader");
+                farGlowShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarGlow.shader");
                 bundle.Unload(false);
                 if (!impostorShader || !impostorShader.isSupported || !captureShader || !captureShader.isSupported) throw new Exception("far view shaders not supported here");
                 capture = new Material(captureShader);
@@ -100,7 +101,7 @@ namespace Overhaul.Visuals
             return true;
         }
 
-        static Shader impostorShader;
+        static Shader impostorShader, farGlowShader;
 
         static bool IsTree(GameObject prefab)
         {
@@ -189,10 +190,20 @@ namespace Overhaul.Visuals
             }
         }
 
+        // The ground as the game's own terrain tiles make it: the heights of the four biomes at the corners of the zone, mixed
+        // with smoothed weights (a single biome's height alone differs along coasts and borders, which put trees on water).
         static float Ground(WorldGenerator w, float x, float z, out Heightmap.Biome biome, out Color mask)
         {
             biome = w.GetBiome(x, z, 0.02f, false);
-            return w.GetBiomeHeight(biome, x, z, out mask, false, true);
+            float x0 = Mathf.Floor((x + 32f) / 64f) * 64f - 32f, z0 = Mathf.Floor((z + 32f) / 64f) * 64f - 32f;
+            var b00 = w.GetBiome(x0, z0, 0.02f, false); var b10 = w.GetBiome(x0 + 64f, z0, 0.02f, false);
+            var b01 = w.GetBiome(x0, z0 + 64f, 0.02f, false); var b11 = w.GetBiome(x0 + 64f, z0 + 64f, 0.02f, false);
+            if (b00 == b10 && b00 == b01 && b00 == b11) return w.GetBiomeHeight(b00, x, z, out mask, false, true);
+            float tx = DUtils.SmoothStep(0f, 1f, (x - x0) / 64f), tz = DUtils.SmoothStep(0f, 1f, (z - z0) / 64f);
+            float h00 = w.GetBiomeHeight(b00, x, z, out var m00, false, true), h10 = w.GetBiomeHeight(b10, x, z, out var m10, false, true);
+            float h01 = w.GetBiomeHeight(b01, x, z, out var m01, false, true), h11 = w.GetBiomeHeight(b11, x, z, out var m11, false, true);
+            mask = Color.Lerp(Color.Lerp(m00, m10, tx), Color.Lerp(m01, m11, tx), tz);
+            return Mathf.Lerp(Mathf.Lerp(h00, h10, tx), Mathf.Lerp(h01, h11, tx), tz);
         }
 
         static bool Accept(WorldGenerator w, Rule rule, ref Vector3 p)
@@ -200,6 +211,8 @@ namespace Overhaul.Visuals
             float h = Ground(w, p.x, p.z, out var biome, out var mask);
             if ((rule.Biome & biome) == 0) return false;
             p.y = h;
+            // Ground under the water at rest: no tree.
+            if (h < 30f) return false;
             float altitude = h - 30f;
             if (altitude < rule.MinAltitude || altitude > rule.MaxAltitude) return false;
             if (!rule.MinVegetation.Equals(rule.MaxVegetation) && (mask.a > rule.MaxVegetation || mask.a < rule.MinVegetation)) return false;
