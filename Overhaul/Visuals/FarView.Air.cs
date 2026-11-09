@@ -7,14 +7,15 @@ using Overhaul.Utility;
 namespace Overhaul.Visuals
 {
     // Far view air: the game's fog hides the land about a kilometre out, so while the far view is on the fog the game sets
-    // each frame (EnvMan.SetEnv) is thinned to GameThin of itself, and a full-screen pass (FarHaze shader, after the opaque
-    // world, before water and transparents) adds a haze in the game's fog colours beyond the loaded land only (nothing near:
-    // it washed out the near trees), FarRate of the game's fog density, thinning with height (base 30 m, scale 400 m).
+    // each frame (EnvMan.SetEnv) is thinned to GameThin of itself and its linear fog pushed out, and a full-screen pass
+    // (FarHaze shader, after the world and the water, so far sea pales too) adds a haze in the game's fog colour lightened by
+    // HazeLight toward white, from HazeStart on (built up over 300 m), FarRate of the game's fog density, thinning with
+    // height (base 30 m, scale 400 m). Compared in game with the other far view mods' air (Run-GameTest -IvestMods).
     // Rain, snow and foggy weather thicken the game's fog, so the haze with it. Kept as the game's in the Mistlands (short
     // view on purpose) and under water; the change in and out is eased over a few seconds.
     internal static partial class FarView
     {
-        const float GameThin = 0.01f, FarRate = 0.02f, HazeBase = 30f, HazeHeight = 400f;
+        const float GameThin = 0.01f, FarRate = 0.04f, HazeStart = 80f, HazeLight = 0.25f, HazeBase = 30f, HazeHeight = 400f;
         static Shader farHazeShader;
         static Material hazeMaterial;
         static CommandBuffer hazeBuffer;
@@ -66,12 +67,13 @@ namespace Overhaul.Visuals
             hazeMaterial.SetVector("_HazeCorner", t.forward - t.right * right - t.up * up);
             hazeMaterial.SetVector("_HazeRight", t.right * (2f * right));
             hazeMaterial.SetVector("_HazeUp", t.up * (2f * up));
-            hazeMaterial.SetColor("_HazeColor", RenderSettings.fogColor);
+            // Lighter than the game's fog colour: distant land fades toward the bright horizon, not into a dark wall.
+            hazeMaterial.SetColor("_HazeColor", Color.Lerp(RenderSettings.fogColor, Color.white, HazeLight));
             var env = EnvMan.instance;
             hazeMaterial.SetColor("_HazeSunColor", env ? env.GetSunFogColor() : RenderSettings.fogColor);
             hazeMaterial.SetVector("_HazeSunDir", env ? SunDirection() : Vector3.up);
             hazeMaterial.SetFloat("_GameDensity", gameDensity);
-            hazeMaterial.SetFloat("_Start", ZoneSystem.instance ? Mathf.Max(Heightmap.GetLodHideDistance(), 300f) : 300f);
+            hazeMaterial.SetFloat("_Start", HazeStart);
             hazeMaterial.SetFloat("_FarRate", FarRate);
             hazeMaterial.SetFloat("_HazeBase", HazeBase);
             hazeMaterial.SetFloat("_HazeHeight", HazeHeight);
@@ -97,13 +99,13 @@ namespace Overhaul.Visuals
             camera.depthTextureMode |= DepthTextureMode.Depth;
             hazeBuffer = new CommandBuffer { name = "Overhaul far haze" };
             hazeBuffer.DrawProcedural(Matrix4x4.identity, hazeMaterial, 0, MeshTopology.Triangles, 3);
-            camera.AddCommandBuffer(CameraEvent.BeforeForwardAlpha, hazeBuffer);
+            camera.AddCommandBuffer(CameraEvent.AfterForwardAlpha, hazeBuffer);
             hazeCamera = camera;
         }
 
         static void DetachHaze()
         {
-            if (hazeCamera && hazeBuffer != null) hazeCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardAlpha, hazeBuffer);
+            if (hazeCamera && hazeBuffer != null) hazeCamera.RemoveCommandBuffer(CameraEvent.AfterForwardAlpha, hazeBuffer);
             hazeBuffer?.Release();
             hazeBuffer = null; hazeCamera = null;
         }
