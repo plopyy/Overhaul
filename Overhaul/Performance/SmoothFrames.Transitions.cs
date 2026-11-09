@@ -333,6 +333,10 @@ namespace Overhaul.Performance
             }
             float waited = now - floorSince;
             if (waited > 10f) return true;
+            // The server says the player holds the arrival's ground and buildings: arrive. It is given 3 s to say so
+            // before the objects' own coming in decides.
+            if (ArrivalConfirmed(point)) return true;
+            if (waited < 3f) return false;
             bool shallow = point.y - height <= 1.5f;
             bool settled = floorKnown > floorKnownAtStart ? now - floorGrewAt >= 0.75f : waited >= (shallow ? 1f : 3f);
             return settled && (shallow || ZNetScene.instance == null || ZNetScene.instance.IsAreaReady(point));

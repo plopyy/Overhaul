@@ -52,6 +52,7 @@ namespace Overhaul.Performance
             GrassPool.Tick();
             TickTransitions();
             TickDungeons();
+            TickNetwork();
         }
 
         // ---- Ground meshes kept when nothing changed ----
