@@ -88,6 +88,14 @@ namespace Overhaul.Visuals
                 }
                 Log.LogInfo("[Weather] game clouds " + (envMan.m_clouds ? envMan.m_clouds.name + " " + envMan.m_clouds.sharedMaterial.shader.name : "none") + ", rain clouds " + (envMan.m_rainClouds ? envMan.m_rainClouds.name : "none") + ", downside " + (envMan.m_rainCloudsDownside ? envMan.m_rainCloudsDownside.name : "none"));
             }
+            var seen = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var pr in UnityEngine.Object.FindObjectsByType<ParticleSystemRenderer>(FindObjectsSortMode.None))
+            {
+                if (!pr.enabled || !pr.gameObject.activeInHierarchy) continue;
+                string key = pr.name + " / " + (pr.transform.parent ? pr.transform.parent.name : "-") + " / " + (pr.sharedMaterial ? pr.sharedMaterial.name + " " + pr.sharedMaterial.shader.name : "-");
+                seen[key] = seen.TryGetValue(key, out int c) ? c + 1 : 1;
+            }
+            foreach (var kv in seen) Log.LogInfo("[Weather] particles " + kv.Key + " x" + kv.Value);
             foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
                 if (r.enabled && r.gameObject.activeInHierarchy && r.bounds.center.y - (Camera.main ? Camera.main.transform.position.y : 0f) > 300f)
                     Log.LogInfo("[Weather] high renderer " + r.name + " (" + r.GetType().Name + ", " + (r.sharedMaterial ? r.sharedMaterial.shader.name : "-") + ") at " + r.bounds.center);
