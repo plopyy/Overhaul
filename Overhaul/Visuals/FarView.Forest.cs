@@ -213,8 +213,11 @@ namespace Overhaul.Visuals
             float h = Ground(w, p.x, p.z, out var biome, out var mask);
             if ((rule.Biome & biome) == 0) return false;
             p.y = h;
-            // Ground under the water at rest: no tree.
-            if (h < 30f) return false;
+            // Ground under the water at rest: no tree. Along coasts the far land is coarser (points 10 to 80 m apart) and each
+            // ring sits a little lower, so it can show sea where the ground is just above it: the land 40 m around and 1 m
+            // above the water is asked too.
+            if (h < 31f) return false;
+            for (int i = 0; i < 4; i++) if (Ground(w, p.x + (i == 0 ? 40f : i == 1 ? -40f : 0f), p.z + (i == 2 ? 40f : i == 3 ? -40f : 0f), out _, out _) < 31f) return false;
             float altitude = h - 30f;
             if (altitude < rule.MinAltitude || altitude > rule.MaxAltitude) return false;
             if (!rule.MinVegetation.Equals(rule.MaxVegetation) && (mask.a > rule.MaxVegetation || mask.a < rule.MinVegetation)) return false;
