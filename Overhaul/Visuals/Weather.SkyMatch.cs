@@ -112,7 +112,8 @@ namespace Overhaul.Visuals
         {
             float lv = Mathf.Max(Luminance(vanilla), 1e-5f), lo = Mathf.Max(Luminance(ours), 1e-5f);
             var t = new Color((vanilla.r / lv) / Mathf.Max(ours.r / lo, 1e-3f), (vanilla.g / lv) / Mathf.Max(ours.g / lo, 1e-3f), (vanilla.b / lv) / Mathf.Max(ours.b / lo, 1e-3f), 1f);
-            return new Color(Mathf.Clamp(t.r, 0.3f, 3f), Mathf.Clamp(t.g, 0.3f, 3f), Mathf.Clamp(t.b, 0.3f, 3f), 1f);
+            // Half of the correction, within 0.6..1.6: a full tint over a whole overcast half-sky turned it brown.
+            return new Color(Mathf.Lerp(1f, Mathf.Clamp(t.r, 0.6f, 1.6f), 0.5f), Mathf.Lerp(1f, Mathf.Clamp(t.g, 0.6f, 1.6f), 0.5f), Mathf.Lerp(1f, Mathf.Clamp(t.b, 0.6f, 1.6f), 0.5f), 1f);
         }
 
         static void StopMeter()
