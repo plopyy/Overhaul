@@ -52,6 +52,10 @@ namespace Overhaul.Visuals
             skyMaterial.SetFloat("_MoonStrength", night);
 
             skyMaterial.SetVector("_SunDir", sun);
+            TickMeter(camera, sun);
+            skyMaterial.SetFloat("_AutoExposure", AutoExposure);
+            skyMaterial.SetVector("_TintToward", (Vector4)TintToward);
+            skyMaterial.SetVector("_TintAway", (Vector4)TintAway);
             skyMaterial.SetFloat("_CameraKm", Mathf.Clamp(camera.transform.position.y - 30f, 0.01f, 9000f) / 1000f + 0.001f);
             if (!tablesMade)
             {
@@ -237,6 +241,7 @@ namespace Overhaul.Visuals
         static void StopSky()
         {
             DetachSky();
+            StopMeter();
             if (gameSunDisk >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_SunDisk")) RenderSettings.skybox.SetFloat("_SunDisk", gameSunDisk);
             skyMix = 0f;
         }

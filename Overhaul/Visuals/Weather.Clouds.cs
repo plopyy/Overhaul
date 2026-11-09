@@ -114,15 +114,16 @@ namespace Overhaul.Visuals
             m.SetVector("_SunDirection", sun.y > -0.1f ? sun : -sun);
             var light = env.m_dirLight;
             var sunColor = light ? light.color * light.intensity : Color.white;
-            // By night the game's light is the moon: clouds lit faintly by it, the ambient of the night sky (they were as white
-            // as by day).
+            // Light: the game's sun by day; by night its light is the moon, far dimmer (about 1/500 of the sun, as the other
+            // weather mod has it). Ambient: the game's own sky colour measured around (Weather.SkyMatch), so the clouds are as
+            // dark as the game's night, as pink as its dusk, as grey as its rain.
             float daylight = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
-            // Night: the moon (opposite the sun, as the game turns its light) in a cool silver, dark cores.
-            m.SetVector("_SunLightColor", daylight > 0f ? (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.3f, 1f, daylight)) : new Vector4(0.08f, 0.09f, 0.12f, 0f)); // dark, only the edges catch the moon
-            var amb = RenderSettings.ambientLight;
-            float ambScale = CloudAmbientScale * Mathf.Lerp(0.05f, 1f, daylight);
-            m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * ambScale));
-            m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * ambScale));
+            var lightCol = light ? light.color * light.intensity : Color.white;
+            var cloudLight = daylight > 0f ? lightCol * CloudSunScale * daylight : lightCol * 0.06f;
+            m.SetVector("_SunLightColor", (Vector4)cloudLight);
+            var skyAround = Color.Lerp(GameSkyAway, GameSkyToward, 0.3f);
+            m.SetVector("_AmbientTop", (Vector4)(skyAround * CloudAmbientScale));
+            m.SetVector("_AmbientBottom", (Vector4)(skyAround * 0.45f * CloudAmbientScale));
             m.SetFloat("_Fade", cloudMix);
             HideFogClouds(true);
             Graphics.Blit(null, cloudTarget, cloudMaterial, 0);
