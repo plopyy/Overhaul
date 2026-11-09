@@ -14,7 +14,7 @@ namespace Overhaul.Visuals
     // "North": ozone x1.3, haze (Mie) x0.6, after the other weather mod's default.
     internal static partial class Weather
     {
-        const float SkyBlend = 0.75f, SkyExposure = 12f;
+        const float SkyBlend = 0.9f, SkyExposure = 8f;
         static Shader skyShader;
         static bool skyFailed, tablesMade;
         static Material skyMaterial;
