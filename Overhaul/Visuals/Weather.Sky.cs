@@ -77,6 +77,10 @@ namespace Overhaul.Visuals
             var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;
             skyMaterial.SetVector("_CirrusSun", (Vector4)(sunCol * 0.55f));
             skyMaterial.SetVector("_CirrusAmbient", (Vector4)(RenderSettings.fogColor * 0.6f + RenderSettings.ambientLight * 0.4f));
+            skyMaterial.SetVector("_GlowColor", (Vector4)(EnvMan.instance.GetSunFogColor() * 0.6f + sunCol * 0.4f));
+            skyMaterial.SetFloat("_GlowStrength", Mathf.Lerp(1.4f, 0.6f, Mathf.Clamp01(sun.y * 2f))); // stronger with the sun low
+            skyMaterial.SetVector("_HorizonTint", (Vector4)RenderSettings.fogColor);
+            skyMaterial.SetFloat("_HorizonPale", 0.35f);
             Graphics.Blit(null, aerialLut, skyMaterial, 4);
             skyMaterial.SetTexture("_AerialLut", aerialLut);
             if (skyCamera != camera) { DetachSky(); DetachClouds(); AttachSky(camera); KeepYggdrasilOver(); }
