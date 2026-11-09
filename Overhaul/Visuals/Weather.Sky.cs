@@ -8,7 +8,8 @@ namespace Overhaul.Visuals
 {
     // Weather, sky: a physical atmosphere (Hidden/Overhaul/Sky, after Hillaire 2020) drawn over the game's sky. Its tables:
     // transmittance (256x64) and multiple scattering (32x32) are worked out once, the sky view around the camera (192x108)
-    // every frame (camera height and sun). The composite pass, after the opaque world and the game's sky, covers only the
+    // every frame (camera height and sun). The composite pass, right after the game's sky (Yggdrasil and the rest drawn later stay
+    // over it), covers only the
     // sky pixels and mixes ours in by SkyBlend, faded out at dusk: at night the game's own sky, stars and aurora. Style
     // "North": ozone x1.3, haze (Mie) x0.6, after the other weather mod's default.
     internal static partial class Weather
@@ -100,13 +101,13 @@ namespace Overhaul.Visuals
             camera.depthTextureMode |= DepthTextureMode.Depth;
             skyBuffer = new CommandBuffer { name = "Overhaul sky" };
             skyBuffer.DrawProcedural(Matrix4x4.identity, skyMaterial, 3, MeshTopology.Triangles, 3);
-            camera.AddCommandBuffer(CameraEvent.BeforeForwardAlpha, skyBuffer);
+            camera.AddCommandBuffer(CameraEvent.AfterSkybox, skyBuffer);
             skyCamera = camera;
         }
 
         static void DetachSky()
         {
-            if (skyCamera && skyBuffer != null) skyCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardAlpha, skyBuffer);
+            if (skyCamera && skyBuffer != null) skyCamera.RemoveCommandBuffer(CameraEvent.AfterSkybox, skyBuffer);
             skyBuffer?.Release();
             skyBuffer = null; skyCamera = null;
         }
