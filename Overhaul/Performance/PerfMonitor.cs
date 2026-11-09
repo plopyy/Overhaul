@@ -132,10 +132,10 @@ namespace Overhaul.Performance
             {
                 // Each optimisation on its own: one failing stops alone (and says so once) instead of all of them.
                 Run(0, ServerStats.Tick); Run(1, StutterFixes.Tick); Run(2, AsyncLocations.Tick); Run(3, DecorShadows.Tick); Run(4, HiddenParticles.Tick);
-                Run(5, PieceBatcher.Tick); Run(6, InstancedProps.Tick); Run(7, SmoothFrames.Tick);
+                Run(5, PieceBatcher.Tick); Run(6, InstancedProps.Tick); Run(7, SmoothFrames.Tick); Run(8, Visuals.FarView.Tick);
             }
 
-            private readonly bool[] failed = new bool[8];
+            private readonly bool[] failed = new bool[9];
             private void Run(int index, Action tick)
             {
                 if (failed[index]) return;
