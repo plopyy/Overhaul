@@ -110,10 +110,14 @@ namespace Overhaul.Visuals
             m.SetVector("_SunDirection", sun.y > -0.1f ? sun : -sun);
             var light = env.m_dirLight;
             var sunColor = light ? light.color * light.intensity : Color.white;
-            m.SetVector("_SunLightColor", (Vector4)(sunColor * CloudSunScale));
+            // By night the game's light is the moon: clouds lit faintly by it, the ambient of the night sky (they were as white
+            // as by day).
+            float day = Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
+            m.SetVector("_SunLightColor", (Vector4)(sunColor * CloudSunScale * Mathf.Lerp(0.12f, 1f, day)));
             var amb = RenderSettings.ambientLight;
-            m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * CloudAmbientScale));
-            m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * CloudAmbientScale));
+            float ambScale = CloudAmbientScale * Mathf.Lerp(0.35f, 1f, day);
+            m.SetVector("_AmbientTop", (Vector4)((amb * 1.2f + RenderSettings.fogColor * 0.5f) * ambScale));
+            m.SetVector("_AmbientBottom", (Vector4)(amb * 0.6f * ambScale));
             m.SetFloat("_Fade", cloudMix);
             HideFogClouds(true);
             Graphics.Blit(null, cloudTarget, cloudMaterial, 0);

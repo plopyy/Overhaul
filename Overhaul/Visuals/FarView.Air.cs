@@ -68,7 +68,8 @@ namespace Overhaul.Visuals
             hazeMaterial.SetVector("_HazeRight", t.right * (2f * right));
             hazeMaterial.SetVector("_HazeUp", t.up * (2f * up));
             // Lighter than the game's fog colour: distant land fades toward the bright horizon, not into a dark wall.
-            hazeMaterial.SetColor("_HazeColor", Color.Lerp(RenderSettings.fogColor, Color.white, HazeLight));
+            float dayLight = EnvMan.instance ? Mathf.Clamp01((SunDirection().y + 0.05f) / 0.15f) : 1f; // by night no lightening toward white
+            hazeMaterial.SetColor("_HazeColor", Color.Lerp(RenderSettings.fogColor, Color.white, HazeLight * dayLight));
             var env = EnvMan.instance;
             hazeMaterial.SetColor("_HazeSunColor", env ? env.GetSunFogColor() : RenderSettings.fogColor);
             hazeMaterial.SetVector("_HazeSunDir", env ? SunDirection() : Vector3.up);

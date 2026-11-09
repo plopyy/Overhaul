@@ -37,14 +37,15 @@ Shader "Hidden/Overhaul/Clouds"
                 CloudRay ray;
                 ray.originWS = float3(0, _CamPos.y, 0);
                 ray.direction = normalize(_CloudCorner.xyz + _CloudRight.xyz * i.uv.x + _CloudUp.xyz * i.uv.y);
-                ray.maxRayLength = 200000;
+                ray.maxRayLength = 60000; // beyond, grazing rays cut the far layer into slices
                 // Interleaved gradient noise (stable per pixel, no flicker without temporal accumulation).
                 float2 px = i.uv * _ScreenParams.xy;
                 ray.integrationNoise = frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
                 ray.envLighting = (EnvironmentLighting)0;
                 VolumetricRayResult r = TraceVolumetricRay(ray);
-                float a = (1 - r.transmittance) * _Fade;
-                return float4(r.scattering * _Fade, a);
+                float horizon = saturate((ray.direction.y - 0.01) * 12); // fade out at the horizon (the aerial haze takes over)
+                float a = (1 - r.transmittance) * _Fade * horizon;
+                return float4(r.scattering * _Fade * horizon, a);
             }
             ENDCG
         }
