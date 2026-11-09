@@ -59,6 +59,7 @@ namespace Overhaul.Visuals
                 impostorShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarImpostor.shader");
                 var captureShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/ImpostorCapture.shader");
                 farGlowShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarGlow.shader");
+                farShadowShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarShadow.shader");
                 bundle.Unload(false);
                 if (!impostorShader || !impostorShader.isSupported || !captureShader || !captureShader.isSupported) throw new Exception("far view shaders not supported here");
                 capture = new Material(captureShader);
@@ -101,7 +102,7 @@ namespace Overhaul.Visuals
             return true;
         }
 
-        static Shader impostorShader, farGlowShader;
+        static Shader impostorShader, farGlowShader, farShadowShader;
 
         static bool IsTree(GameObject prefab)
         {

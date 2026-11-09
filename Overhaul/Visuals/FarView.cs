@@ -27,6 +27,7 @@ namespace Overhaul.Visuals
         {
             internal int Level, X, Z;
             internal GameObject Go; internal Mesh Mesh; internal Texture2D Mask; internal MaterialPropertyBlock Props;
+            internal float[] Heights; internal bool Shaded; // heights kept for the far shadows; second (shadow) material set
         }
 
         sealed class Job
@@ -77,6 +78,7 @@ namespace Overhaul.Visuals
             TickForest(eye);
             TickBuildings(eye);
             TickLights(eye);
+            TickShadows();
         }
 
         // The game's distant land: its material and layer are reused, the land itself is switched off while ours is drawn.
@@ -107,6 +109,7 @@ namespace Overhaul.Visuals
             StopForest();
             StopBuildings();
             StopLights();
+            StopShadows();
             if (root) UnityEngine.Object.Destroy(root);
             root = null;
             if (vanilla && !vanilla.enabled) vanilla.enabled = true;
@@ -249,8 +252,9 @@ namespace Overhaul.Visuals
             var mesh = new Mesh { name = "Overhaul far land" };
             mesh.SetVertices(vertices); mesh.SetNormals(normals); mesh.SetColors(colours); mesh.SetUVs(0, uv);
             mesh.SetIndices(Indices(), MeshTopology.Triangles, 0, true);
+            mesh.SetUVs(1, new Vector2[vertices.Length]); // far shadow per vertex (FarView.Shadows), all lit at first
             mesh.RecalculateTangents();
-            mesh.UploadMeshData(true);
+            mesh.UploadMeshData(false); // kept readable: the far shadows rewrite uv1
 
             var maskTexture = new Texture2D(Verts, Verts, TextureFormat.RGBA32, false) { name = "Overhaul far land mask", wrapMode = TextureWrapMode.Clamp };
             maskTexture.SetPixels(job.Mask); maskTexture.Apply(false, true);
@@ -269,7 +273,7 @@ namespace Overhaul.Visuals
             var props = new MaterialPropertyBlock();
             props.SetTexture("_ClearedMaskTex", maskTexture);
             props.SetFloatArray("_depth", CornerDepths(job.Heights));
-            tile.Go = go; tile.Mesh = mesh; tile.Mask = maskTexture; tile.Props = props;
+            tile.Go = go; tile.Mesh = mesh; tile.Mask = maskTexture; tile.Props = props; tile.Heights = job.Heights;
         }
 
         // As the game's own tiles: the sea depth at the four corners (water level 30 m).
@@ -288,6 +292,7 @@ namespace Overhaul.Visuals
             foreach (var pair in ring.Shown) if (!ring.Wanted.Contains(pair.Key)) gone.Add(pair.Key);
             foreach (var key in gone) { Destroy(ring.Shown[key]); ring.Shown.Remove(key); }
             foreach (var pair in ring.Coming) { if (pair.Value.Go) pair.Value.Go.SetActive(true); ring.Shown[pair.Key] = pair.Value; }
+            if (ring.Coming.Count > 0) shadowsDirty = true;
             ring.Coming.Clear();
         }
 
