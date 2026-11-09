@@ -27,7 +27,7 @@ namespace Overhaul.Visuals
         {
             var camera = Utils.GetMainCamera();
             bool want = On && camera && EnvMan.instance && ZNet.instance && !ZNet.instance.IsDedicated() && SystemInfo.graphicsDeviceType != GraphicsDeviceType.Null;
-            if (!want) { StopSky(); return; }
+            if (!want) { StopSky(); StopClouds(); return; }
             if (!PrepareSky()) return;
 
             var sun = FarView.SunDirection();
@@ -36,7 +36,7 @@ namespace Overhaul.Visuals
             // Day: full with the sun 6 degrees up, none 3 degrees under the horizon.
             float target = inside ? 0f : Mathf.Clamp01((sun.y + 0.05f) / 0.15f);
             skyMix = Mathf.MoveTowards(skyMix, target, Time.deltaTime / 2f);
-            if (skyMix <= 0f) { DetachSky(); return; }
+            if (skyMix <= 0f) { DetachSky(); TickClouds(camera, sun); return; }
 
             skyMaterial.SetVector("_SunDir", sun);
             skyMaterial.SetFloat("_CameraKm", Mathf.Clamp(camera.transform.position.y - 30f, 0.01f, 9000f) / 1000f + 0.001f);
@@ -58,7 +58,8 @@ namespace Overhaul.Visuals
             skyMaterial.SetVector("_SkyUp", t.up * (2f * up));
             skyMaterial.SetFloat("_SkyBlend", SkyBlend * skyMix);
             skyMaterial.SetFloat("_SkyExposure", SkyExposure);
-            if (skyCamera != camera) { DetachSky(); AttachSky(camera); KeepYggdrasilOver(); }
+            if (skyCamera != camera) { DetachSky(); DetachClouds(); AttachSky(camera); KeepYggdrasilOver(); }
+            TickClouds(camera, sun); // after the sky: its pass comes after ours
         }
 
         // Yggdrasil (the world tree in the sky) is drawn before the sky would be covered by ours: its materials are moved
