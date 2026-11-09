@@ -11,7 +11,7 @@ using Debug = UnityEngine.Debug;
 
 namespace Overhaul.Performance
 {
-    // "operf profile": where the frame time goes. For 10 s it times the game's update groups (the MonoUpdaters categories the
+    // "o_opti profile": where the frame time goes. For 10 s it times the game's update groups (the MonoUpdaters categories the
     // game names itself: Character, BaseAI, ZSyncTransform... and the big managers: building wear, network scene, minimap...),
     // reads Unity's render counters (draw calls, batches, triangles, shadow casters; CPU and GPU frame times when the build
     // exposes them) and counts what is loaded around the player (pieces, creatures, lights, particles, renderers).
@@ -25,7 +25,7 @@ namespace Overhaul.Performance
         static int users;
         static readonly Dictionary<string, long> ticks = new Dictionary<string, long>();
         static readonly Dictionary<string, int> calls = new Dictionary<string, int>();
-        // Time spent per group since the last ClearFrame (read by the background recorder, "operf record").
+        // Time spent per group since the last ClearFrame (read by the background recorder, "o_opti record").
         internal static readonly Dictionary<string, long> FrameTicks = new Dictionary<string, long>();
         internal static readonly Dictionary<string, int> FrameCalls = new Dictionary<string, int>();
         static bool sampling;

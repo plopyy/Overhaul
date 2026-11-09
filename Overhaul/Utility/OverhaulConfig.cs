@@ -94,7 +94,7 @@ namespace Overhaul.Utility
                 new ConfigDescription("Pressed while building or moving a piece, sets the ghost flat and facing north again (all three axes). The key does nothing else while building. Less is the < key left of W (AZERTY) or Z (QWERTY).",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfStreamingSkip = config.Bind("Performance", "SkipIdleStreaming", true,
-                new ConfigDescription("Skip the 30-per-second check for networked objects to create or remove around you while nothing it looks at has changed (still run twice a second). Same objects as the game. Compare with the operf console command.",
+                new ConfigDescription("Skip the 30-per-second check for networked objects to create or remove around you while nothing it looks at has changed (still run twice a second). Same objects as the game. Compare with the o_opti console command.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
             PerfWaterMaterials = config.Bind("Performance", "CacheWaterMaterials", true,
                 new ConfigDescription("Keep each water surface's material instead of asking Unity for it every frame.",

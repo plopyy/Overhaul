@@ -7,12 +7,12 @@ using Overhaul.Utility;
 
 namespace Overhaul.Performance
 {
-    // Player tool behind the "operf" console command: measures frame times over a few seconds,
+    // Player tool behind the "o_opti" console command: measures frame times over a few seconds,
     // compares the client optimisations off and on, and switches each of them live.
-    // It needs no admin rights (the command does not start with o_).
+    // It needs no admin rights: AdminCommandAccess.Protected lets it through although it starts with o_.
     internal static class PerfMonitor
     {
-        internal const string Command = "operf";
+        internal const string Command = "o_opti";
         private const float MeasureSeconds = 10f, SettleSeconds = 2f;
 
         internal static readonly (string Id, Func<ConfigEntry<bool>> Entry)[] Options =
@@ -32,7 +32,7 @@ namespace Overhaul.Performance
             ("props", () => OverhaulConfig.PerfInstancedProps),
         };
 
-        // Set by "operf ab" while it measures the game without the optimisations; the saved settings stay as they are.
+        // Set by "o_opti ab" while it measures the game without the optimisations; the saved settings stay as they are.
         internal static volatile bool AllOff;
         internal static int StreamingRuns, StreamingSkips, FloaterPasses, TerrainPromoted;
 
@@ -46,7 +46,7 @@ namespace Overhaul.Performance
             UnityEngine.Object.DontDestroyOnLoad(runner);
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
-            new Terminal.ConsoleCommand(Command, "Overhaul performance: operf [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
+            new Terminal.ConsoleCommand(Command, "Overhaul performance: o_opti [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
                 (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 

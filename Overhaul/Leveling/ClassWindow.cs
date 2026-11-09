@@ -126,7 +126,11 @@ namespace Overhaul.Leveling
                 Get<Button>(grid, "Tile" + k).onClick.AddListener(() => { var c = ClassSkills.Classes.ElementAtOrDefault(index); if (c != null && c.Pickable) { shownClass = index; Refresh(); } });
                 Hover(tile.gameObject, on => { var c = ClassSkills.Classes.ElementAtOrDefault(index); tile.Find("Emblem/Glow").gameObject.SetActive(on && c != null && c.Pickable); });
             }
-            for (int i = 0; i < 3; i++) { var col = paths.Find("Path" + i); Hover(col.Find("Hit").gameObject, on => col.Find("Hot").gameObject.SetActive(on)); }
+            for (int i = 0; i < 3; i++)
+            {
+                var col = paths.Find("Path" + i);
+                Hover(col.Find("Hit").gameObject, on => { for (int r = 0; r < 5; r++) col.Find("Hot" + r).gameObject.SetActive(on); col.Find("Emblem/Glow").gameObject.SetActive(on); });
+            }
             Get<Button>(paths, "Back").onClick.AddListener(() => { shownClass = -1; Refresh(); });
             Get<Button>(paths, "Pick").onClick.AddListener(PickShownClass);
         }
@@ -244,12 +248,14 @@ namespace Overhaul.Leveling
             var win = p.transform.Find("Window");
             var c = ClassSkills.GetClass(classes.ActiveClassID); var pr = classes.Active;
             if (c == null || pr == null) return;
+            // Default selection (the mock-up's): the selected path's first bottom-row skill, framed in gold like a click.
+            if (sKind == ClassSkillKind.Normal && ClassSkills.Get(sSkill) == null) sSkill = SkillAt(c, sPath, 0, 0)?.ID;
             SetText(win, "Title", L(c.NameKey));
             // Left side: level and experience to the next level.
             SetText(win, "Side/Level", pr.Level.ToString(CultureInfo.InvariantCulture));
             long need = pr.Level >= ClassProgress.MaxLevel ? 0 : ClassProgress.ExperienceToNextLevel(pr.Level);
             SetText(win, "Side/Experience", need > 0 ? string.Format(L("$overhaul_class_exp"), pr.CurrentExperience.ToString("N0", CultureInfo.CurrentCulture), need.ToString("N0", CultureInfo.CurrentCulture)) : "");
-            Get<Image>(win, "Side/Bar/Fill").fillAmount = need > 0 ? Mathf.Clamp01(pr.CurrentExperience / (float)need) : 1;
+            ((RectTransform)win.Find("Side/Bar/Fill")).anchorMax = new Vector2(need > 0 ? Mathf.Clamp01(pr.CurrentExperience / (float)need) : 1, 1);
             bool chosen = pr.ChosenPathID != null;
             for (int b = 0; b < 3; b++)
             {
@@ -259,8 +265,6 @@ namespace Overhaul.Leveling
                 Get<Image>(tree, "Head").color = colour;
                 SetText(tree, "Head/Name", L(pd.NameKey));
                 Get<CanvasGroup>(tree, "Head").alpha = chosen && pr.ChosenPathID != pd.ID ? .6f : 1;
-                Get<Image>(tree, "UltimateBand").color = new Color(colour.r, colour.g, colour.b, .133f);
-                Get<Image>(tree, "SkillBand").color = new Color(colour.r, colour.g, colour.b, .133f);
                 bool empty = !ClassRules.PathSkills(c.ID, pd.ID).Any();
                 tree.Find("Empty").gameObject.SetActive(empty);
                 tree.Find("Ultimate").gameObject.SetActive(!empty); tree.Find("Split").gameObject.SetActive(!empty);
@@ -269,6 +273,9 @@ namespace Overhaul.Leveling
                 bool learned = ClassRules.UltimateLearned(pr, c.ID, pd.ID), locked = chosen && pr.ChosenPathID != pd.ID;
                 Icon(ul.Find("IconMask/Icon").GetComponent<Image>(), p.transform, ult, learned);
                 ul.GetComponent<CanvasGroup>().alpha = locked ? .35f : 1;
+                ul.Find("Bg").GetComponent<Image>().sprite = Sprite(p.transform, locked ? "UltBg_Grey" : "91a76baf68a2");
+                ul.Find("Border").GetComponent<Image>().sprite = Sprite(p.transform, locked ? "UltBorder_Grey" : "7f01a097e533");
+                if (locked) ul.Find("IconMask/Icon").GetComponent<Image>().sprite = Sprite(p.transform, ult != null && Sprite(p.transform, ult.Data.Icon) ? ult.Data.Icon + "_Off" : "Placeholder_Off");
                 ul.Find("Lock").gameObject.SetActive(locked);
                 ul.Find("Picked").gameObject.SetActive(sPath == b && sKind == ClassSkillKind.Ultimate);
                 // Skills.
@@ -291,9 +298,11 @@ namespace Overhaul.Leveling
                 Get<Image>(tree, "Split/Passive").sprite = Sprite(p.transform, "SplitPassive" + (sPath == b && sKind == ClassSkillKind.Passive ? "Picked" : lit ? "On" : "Off"));
                 tree.Find("Choose").gameObject.SetActive(!chosen && !empty);
             }
-            // Bottom row.
+            // Bottom: points / change / reset once a path is chosen; before, the Choisir row then Changer de classe alone,
+            // one row lower (the mock-up's window grows from 867 to 923).
             var bottom = win.Find("Bottom");
-            bottom.Find("Points").gameObject.SetActive(chosen); bottom.Find("Reset").gameObject.SetActive(chosen);
+            bottom.gameObject.SetActive(chosen); win.Find("BottomNew").gameObject.SetActive(!chosen);
+            var wrt = (RectTransform)win; wrt.sizeDelta = new Vector2(wrt.sizeDelta.x, chosen ? 867 : 923);
             SetText(bottom, "Points", string.Format(L("$overhaul_class_points"), pr.AvailablePoints, ClassProgress.TotalPointsAtLevel(pr.Level)));
             Detail(win, p.transform, c, pr, sPath, sKind, sSkill);
             // Confirmation box.
@@ -305,12 +314,14 @@ namespace Overhaul.Leveling
                 SetText(confirm, "Box/Text", string.Format(L("$overhaul_class_path_confirm_text"), L(pending0.NameKey)));
             }
         }
-        // Skill icon from the prefab library; unlearned icons dimmed (the mock-up's greyscale, brightness .55).
+        // Skill icon from the prefab library: its greyscale copy (filter grayscale(1) brightness(.55)) while not learned;
+        // without an icon, the mock-up's placeholder at 70 % of the slot.
         static void Icon(Image image, Transform panel, ClassSkill s, bool lit)
         {
-            var sprite = s == null ? null : Sprite(panel, s.Data.Icon);
-            image.enabled = sprite; image.sprite = sprite;
-            image.color = lit ? Color.white : new Color(.5f, .5f, .5f);
+            var own = s == null ? null : Sprite(panel, s.Data.Icon);
+            var sprite = own ? Sprite(panel, s.Data.Icon + (lit ? "" : "_Off")) : Sprite(panel, lit ? "e6dfaae8fab1" : "Placeholder_Off");
+            image.sprite = sprite; image.enabled = sprite; image.color = Color.white;
+            image.rectTransform.localScale = Vector3.one * (own ? 1 : .7f);
         }
 
         // Left panel: the selected skill (default the chosen or first path's first bottom-row skill).
@@ -351,7 +362,14 @@ namespace Overhaul.Leveling
             Get<TMP_Text>(fx, "Rank").text = rankLine;
             Get<TMP_Text>(fx, "Text").text = text;
             var needText = Get<TMP_Text>(fx, "Need"); needText.text = need; needText.gameObject.SetActive(need != "");
-            var laterText = Get<TMP_Text>(fx, "Later"); laterText.text = later; laterText.gameObject.SetActive(later != "");
+            var rows = later == "" ? new string[0] : later.Split('\n');
+            var laterBox = fx.Find("Later"); laterBox.gameObject.SetActive(rows.Length > 0); fx.Find("LaterGap").gameObject.SetActive(rows.Length > 0);
+            for (int i = 0; i < 6; i++)
+            {
+                var row = Get<TMP_Text>(laterBox, "Rank" + i);
+                row.gameObject.SetActive(i < rows.Length);
+                if (i < rows.Length) row.text = rows[i].Replace("<b>", "<b><color=#d6ccb8>").Replace("</b>", "</color></b>");
+            }
         }
 
         // ---------------------------------------------------------------- HUD button

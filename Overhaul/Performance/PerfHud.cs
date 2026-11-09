@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Overhaul.Performance
 {
-    // "operf hud": a few lines of text on the left of the screen, half way down: frames per second, the slowest 1 % of the
+    // "o_opti hud": a few lines of text on the left of the screen, half way down: frames per second, the slowest 1 % of the
     // last 5 s, and the main thread, render thread and GPU times of a frame, refreshed 4 times a second. A diagnostic
     // tool to see when and where frames are lost; off by default, its state is not saved.
     internal sealed class PerfHud : MonoBehaviour

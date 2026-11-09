@@ -372,7 +372,7 @@ namespace Overhaul.Performance
             Copies = count; Drawn = drawn; Calls = calls;
         }
 
-        // "operf look": what Instanced props does with the object under the crosshair (to find why a copy would not show).
+        // "o_opti look": what Instanced props does with the object under the crosshair (to find why a copy would not show).
         internal static void Look(Terminal context)
         {
             var camera = Utils.GetMainCamera(); if (!camera) return;

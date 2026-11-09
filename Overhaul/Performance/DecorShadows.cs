@@ -40,7 +40,7 @@ namespace Overhaul.Performance
             }
         }
 
-        // Called every frame by PerfMonitor: follows the option (and "operf ab") live.
+        // Called every frame by PerfMonitor: follows the option (and "o_opti ab") live.
         internal static void Tick()
         {
             bool on = PerfMonitor.On(OverhaulConfig.PerfDecorShadows);

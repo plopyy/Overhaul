@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Overhaul.Performance
 {
-    // Server side of "operf hud". The server measures each second its frames per second, its average and worst frame
+    // Server side of "o_opti hud". The server measures each second its frames per second, its average and worst frame
     // time and the CPU its process used (percent of the whole machine, all cores); a client showing the hud asks once a
     // second and gets them back. The answer echoes the client's send time, so the client also measures the round trip
     // through the server (network plus the server's own delay) and how much it varies over the last 10 answers: a steady

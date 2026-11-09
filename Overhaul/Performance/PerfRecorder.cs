@@ -11,14 +11,14 @@ using Overhaul.Utility;
 
 namespace Overhaul.Performance
 {
-    // "operf record [minutes]" / "operf record stop": records the performance in the background while playing, to track down
+    // "o_opti record [minutes]" / "o_opti record stop": records the performance in the background while playing, to track down
     // fps losses afterwards. Two files in BepInEx/OverhaulPerf (CSV, ";" separated, opens in a spreadsheet):
     // - record-<date>.csv, one line per second: fps, average and worst frame, main thread, render thread and GPU times, draw
     //   calls, shadow casters, triangles, what is loaded (pieces and how many merged, characters, particle systems and hidden ones),
     //   memory collections, position and biome, and the 3 costliest game script groups of that second;
     // - spikes-<date>.csv, one line per slow frame (over 2.5 times the running median and over 25 ms): its time, where it was,
     //   whether a memory collection ran, and the 5 costliest groups of that very frame.
-    // The cost is the timing patches of "operf profile" (a stopwatch around about 30 update methods) and one file write
+    // The cost is the timing patches of "o_opti profile" (a stopwatch around about 30 update methods) and one file write
     // per second. A summary goes to the console and the log when it stops.
     internal sealed class PerfRecorder : MonoBehaviour
     {
