@@ -19,7 +19,7 @@ namespace Overhaul.Visuals
         static Material hazeMaterial;
         static CommandBuffer hazeBuffer;
         static Camera hazeCamera;
-        static float gameDensity, airMix;
+        static float gameDensity, airMix, gameStart, gameEnd;
         static bool airWanted;
         internal static bool DebugNoHaze; // tests: the game's fog stays thinned but our haze is not drawn
         static float nextAirLog;
@@ -30,7 +30,15 @@ namespace Overhaul.Visuals
             static void Postfix()
             {
                 gameDensity = RenderSettings.fogDensity;
-                if (airMix > 0f) RenderSettings.fogDensity = gameDensity * Mathf.Lerp(1f, GameThin, airMix);
+                if (gameEnd <= 0f) { gameStart = RenderSettings.fogStartDistance; gameEnd = RenderSettings.fogEndDistance; }
+                if (airMix > 0f)
+                {
+                    RenderSettings.fogDensity = gameDensity * Mathf.Lerp(1f, GameThin, airMix);
+                    // The game's shaders also fade to the fog colour by the linear fog distances: pushed out as far as the far
+                    // view reaches.
+                    RenderSettings.fogEndDistance = Mathf.Lerp(gameEnd, Mathf.Max(gameEnd, 20000f), airMix);
+                    RenderSettings.fogStartDistance = Mathf.Lerp(gameStart, Mathf.Max(gameStart, 2000f), airMix);
+                }
             }
         }
 
@@ -48,7 +56,7 @@ namespace Overhaul.Visuals
             airWanted = camera && AirFits(camera);
             airMix = Mathf.MoveTowards(airMix, airWanted ? 1f : 0f, Time.deltaTime / 3f);
             if (airMix <= 0f) { DetachHaze(); return; }
-            if (Time.time >= nextAirLog) { nextAirLog = Time.time + 30f; Log.LogInfo("[FarView] air: game fog density " + gameDensity.ToString("0.00000") + ", " + RenderSettings.fogMode + ", mix " + airMix.ToString("0.00")); }
+            if (Time.time >= nextAirLog) { nextAirLog = Time.time + 30f; Log.LogInfo("[FarView] air: game fog density " + gameDensity.ToString("0.00000") + ", " + RenderSettings.fogMode + ", linear " + gameStart + "-" + gameEnd + " now " + RenderSettings.fogStartDistance + "-" + RenderSettings.fogEndDistance + ", mix " + airMix.ToString("0.00")); }
 
             if (!hazeMaterial) { hazeMaterial = new Material(farHazeShader); LogSky(camera); }
             if (hazeCamera != camera) { DetachHaze(); AttachHaze(camera); }
@@ -105,6 +113,7 @@ namespace Overhaul.Visuals
             DetachHaze();
             airMix = 0f;
             if (gameDensity > 0f) RenderSettings.fogDensity = gameDensity;
+            if (gameEnd > 0f) { RenderSettings.fogStartDistance = gameStart; RenderSettings.fogEndDistance = gameEnd; }
             if (hazeMaterial) Object.Destroy(hazeMaterial);
             hazeMaterial = null;
         }
