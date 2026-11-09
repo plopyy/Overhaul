@@ -21,6 +21,7 @@ namespace Overhaul.Visuals
         static Camera hazeCamera;
         static float gameDensity, airMix;
         static bool airWanted;
+        internal static bool DebugNoHaze; // tests: the game's fog stays thinned but our haze is not drawn
         static float nextAirLog;
 
         [HarmonyPatch(typeof(EnvMan), nameof(EnvMan.SetEnv))]
@@ -66,7 +67,7 @@ namespace Overhaul.Visuals
             hazeMaterial.SetFloat("_FarRate", FarRate);
             hazeMaterial.SetFloat("_HazeBase", HazeBase);
             hazeMaterial.SetFloat("_HazeHeight", HazeHeight);
-            hazeMaterial.SetFloat("_HazeStrength", airMix);
+            hazeMaterial.SetFloat("_HazeStrength", DebugNoHaze ? 0f : airMix);
         }
 
         static void AttachHaze(Camera camera)
