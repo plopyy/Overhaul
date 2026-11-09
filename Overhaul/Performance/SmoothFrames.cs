@@ -42,6 +42,7 @@ namespace Overhaul.Performance
             ("housekeeping", () => Housekeeping, v => { Housekeeping = v; ApplyHousekeeping(); }),
             ("transitions", () => Transitions, v => Transitions = v),
             ("dungeons", () => DungeonSpread, v => DungeonSpread = v),
+            ("leangrass", () => LeanGrass, v => LeanGrass = v),
         };
 
         internal static long GroundKept, TerrainHits, TerrainMisses, ArraysReused, BuildingsHeld;
