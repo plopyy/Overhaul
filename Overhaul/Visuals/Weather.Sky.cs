@@ -76,6 +76,23 @@ namespace Overhaul.Visuals
                 r.materials = mats; moved++;
             }
             if (moved > 0) yggdrasilDone = true;
+            // What the game's sky material offers (its clouds are painted in it).
+            var sky = RenderSettings.skybox;
+            if (sky)
+            {
+                var sh = sky.shader; var list = new System.Text.StringBuilder();
+                for (int i = 0; i < sh.GetPropertyCount(); i++)
+                {
+                    string n = sh.GetPropertyName(i); var t = sh.GetPropertyType(i);
+                    list.Append(n).Append('=');
+                    if (t == UnityEngine.Rendering.ShaderPropertyType.Float || t == UnityEngine.Rendering.ShaderPropertyType.Range) list.Append(sky.GetFloat(n));
+                    else if (t == UnityEngine.Rendering.ShaderPropertyType.Color) list.Append(sky.GetColor(n));
+                    else if (t == UnityEngine.Rendering.ShaderPropertyType.Texture) list.Append(sky.GetTexture(n) ? sky.GetTexture(n).name : "none");
+                    else list.Append(sky.GetVector(n));
+                    list.Append("; ");
+                }
+                Log.LogInfo("[Weather] game sky " + sh.name + ": " + list);
+            }
         }
 
         static bool PrepareSky()
