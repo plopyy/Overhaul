@@ -62,6 +62,9 @@ namespace Overhaul.Visuals
             // Eased so a change of weather rolls in, at once when the weather is forced (debug environment, tests).
             presetMix = string.IsNullOrEmpty(env.m_debugEnv) ? Vector4.MoveTowards(presetMix, want, Time.deltaTime * 0.02f) : want;
             ApplyPreset(presetMix);
+            // Clear nights: thinner low layer, so the stars show between dark bands (fair weather only).
+            float nightSky = Mathf.Clamp01((-sun.y + 0.02f) / 0.12f) * (presetMix.x + presetMix.y) / Mathf.Max(1e-3f, presetMix.x + presetMix.y + presetMix.z + presetMix.w);
+            cloudMaterial.SetFloat("_Coverage", Mathf.Lerp(0.9f, 0.72f, nightSky));
 
             var wind = env.GetWindDir(); float speed = 10f + 15f * env.GetWindIntensity();
             var windDir = new Vector2(wind.x, wind.z).normalized;
