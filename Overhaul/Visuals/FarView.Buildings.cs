@@ -28,8 +28,6 @@ namespace Overhaul.Visuals
         sealed class BuildingCell { internal GameObject Go; internal long Print; internal readonly List<Mesh> Meshes = new List<Mesh>(); }
         static readonly Dictionary<(int, int), BuildingCell> buildingCells = new Dictionary<(int, int), BuildingCell>();
         static GameObject buildingRoot;
-        static int logMerges = 12;
-        static float nextVisibleLog;
         static float nextBuildingScan;
         static readonly List<ZDO> zonePieces = new List<ZDO>();
 
@@ -54,10 +52,8 @@ namespace Overhaul.Visuals
                 var toRoot = prefab.transform.worldToLocalMatrix;
                 var candidate = new PieceModel();
                 var bounds = new Bounds(); bool any = false;
-                var seen = new System.Text.StringBuilder();
                 foreach (var r in renderers)
                 {
-                    if (r) seen.Append(r.name).Append(r.enabled ? "" : "(off)").Append(r.gameObject.activeSelf ? "" : "(inactive)").Append(":").Append(string.Join("/", System.Linq.Enumerable.Select(r.sharedMaterials, m => m && m.shader ? m.shader.name : "-"))).Append(" ");
                     if (!(r is MeshRenderer) || !r.enabled || !r.gameObject.activeSelf) continue;
                     var filter = r.GetComponent<MeshFilter>();
                     if (!filter || !filter.sharedMesh) continue;
@@ -74,7 +70,6 @@ namespace Overhaul.Visuals
                     if (!any) { bounds = worldish; any = true; } else bounds.Encapsulate(worldish);
                 }
                 if (candidate.Parts.Count > 0 && Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z) >= 1f) model = candidate;
-                else Utility.Log.LogInfo("[FarView] far buildings leave out " + prefab.name + ": " + (candidate.Parts.Count == 0 ? "no part with the piece shader" : "smaller than 1 m") + " [" + seen + "]");
             }
             pieceModels[hash] = model;
             return model;
@@ -100,14 +95,6 @@ namespace Overhaul.Visuals
                 var inReach = new HashSet<(int, int)>(buildingOrder);
                 foreach (var key in new List<(int, int)>(buildingCells.Keys))
                     if (!inReach.Contains(key)) { FreeCell(buildingCells[key]); buildingCells.Remove(key); ForgetCellGlows(key); }
-            }
-            if (Time.time >= nextVisibleLog && buildingRoot)
-            {
-                nextVisibleLog = Time.time + 10f;
-                var all = buildingRoot.GetComponentsInChildren<MeshRenderer>();
-                int seen = 0; foreach (var mr in all) if (mr.isVisible) seen++;
-                var first = all.Length > 0 ? all[0] : null;
-                Utility.Log.LogInfo("[FarView] far buildings: " + seen + " of " + all.Length + " meshes drawn" + (first ? ", first on layer " + first.gameObject.layer + " (" + LayerMask.LayerToName(first.gameObject.layer) + "), active " + first.gameObject.activeInHierarchy + ", bounds " + first.bounds : "") + ", camera mask " + (Camera.main ? Camera.main.cullingMask.ToString("X") : "-") + ", far clip " + (Camera.main ? Camera.main.farClipPlane : 0));
             }
             if (buildingOrder.Count == 0) return;
             var player = ZoneSystem.GetZone(eye);
@@ -193,7 +180,6 @@ namespace Overhaul.Visuals
             cell.Print = print; // after FreeCell, which clears it
             GlowsOfCell(key, cellPieces);
             if (count == 0) return;
-            Utility.Log.LogInfo("[FarView] far buildings: cell " + key.Item1 + "," + key.Item2 + " merged, " + count + " pieces");
             cell.Go = new GameObject("Far buildings " + key.Item1 + "," + key.Item2);
             cell.Go.transform.SetParent(buildingRoot.transform, false);
             cell.Go.transform.position = origin;
@@ -203,8 +189,6 @@ namespace Overhaul.Visuals
                 var mesh = new Mesh { name = "Overhaul far buildings", indexFormat = IndexFormat.UInt32 };
                 try { mesh.CombineMeshes(pair.Value.ToArray(), true, true, false); }
                 catch (Exception e) { UnityEngine.Object.Destroy(mesh); Log.LogWarning("[FarView] far buildings: " + e.Message); continue; }
-                if (logMerges == 12) { var mat = pair.Key; var sb = new System.Text.StringBuilder("[FarView] piece material " + mat.name + " shader " + mat.shader.name + " keywords [" + string.Join(",", mat.shaderKeywords) + "] queue " + mat.renderQueue + ":"); for (int i = 0; i < mat.shader.GetPropertyCount(); i++) { var n = mat.shader.GetPropertyName(i); var t = mat.shader.GetPropertyType(i); sb.Append(" " + n + "=" + (t == UnityEngine.Rendering.ShaderPropertyType.Float || t == UnityEngine.Rendering.ShaderPropertyType.Range ? mat.GetFloat(n).ToString("0.###") : t == UnityEngine.Rendering.ShaderPropertyType.Color ? mat.GetColor(n).ToString() : t == UnityEngine.Rendering.ShaderPropertyType.Vector ? mat.GetVector(n).ToString() : "tex")); } Utility.Log.LogInfo(sb.ToString()); }
-                if (logMerges-- > 0) Utility.Log.LogInfo("[FarView] far buildings mesh " + pair.Key.name + ": " + mesh.vertexCount + " vertices from " + pair.Value.Count + " parts, bounds " + mesh.bounds + " at " + origin);
                 mesh.UploadMeshData(true);
                 cell.Meshes.Add(mesh);
                 var part = new GameObject(pair.Key.name) { layer = LayerMask.NameToLayer("piece") >= 0 ? LayerMask.NameToLayer("piece") : 0 };
