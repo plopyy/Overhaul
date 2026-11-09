@@ -19,6 +19,7 @@ namespace Overhaul.Visuals
         static Material glowMaterial;
         static Shader glowShader;
         static float night;
+        static bool lightsOn = true;
 
         static GlowModel GlowOf(int hash)
         {
@@ -45,6 +46,7 @@ namespace Overhaul.Visuals
         // Called while a buildings cell is merged: the glows of its far pieces.
         static void GlowsOfCell((int, int) key, List<ZDO> pieces)
         {
+            if (!lightsOn) { ForgetCellGlows(key); return; }
             List<(Vector4, Vector4)> list = null;
             foreach (var zdo in pieces)
             {
@@ -66,11 +68,19 @@ namespace Overhaul.Visuals
 
         static void TickLights(Vector3 eye)
         {
-            if (!ClientVisuals.FarLights || !ClientVisuals.FarBuildings) { if (glowCount > 0) { cellGlows.Clear(); glowsDirty = true; } }
+            bool on = ClientVisuals.FarLights && ClientVisuals.FarBuildings;
+            if (on != lightsOn)
+            {
+                // Switched: drop the glows, or merge the cells again so they gather theirs.
+                lightsOn = on;
+                cellGlows.Clear(); glowsDirty = true;
+                if (on) foreach (var cell in buildingCells.Values) cell.Print = 0;
+            }
             if (!glowShader) { if (forestFailed || kinds == null) return; glowShader = farGlowShader; if (!glowShader) return; glowMaterial = new Material(glowShader); }
-            // Night: the sun under the horizon (eased over a few seconds).
+            // Night from the time of day (the game turns its sun light around into the moon at night, so its direction
+            // can't tell): sun height -1 at midnight, 1 at noon; glows from just before sunset to just after sunrise.
             float target = 0f;
-            if (EnvMan.instance && EnvMan.instance.m_dirLight) target = Mathf.Clamp01((EnvMan.instance.m_dirLight.transform.forward.y + 0.05f) / 0.25f);
+            if (EnvMan.instance) target = Mathf.Clamp01((0.15f + Mathf.Cos(EnvMan.instance.GetDayFraction() * Mathf.PI * 2f)) / 0.3f);
             night = Mathf.MoveTowards(night, target, Time.deltaTime * 0.5f);
             if (glowsDirty) UploadGlows();
             if (glowCount == 0 || night <= 0.01f) return;
