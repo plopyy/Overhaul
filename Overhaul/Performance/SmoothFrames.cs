@@ -41,6 +41,7 @@ namespace Overhaul.Performance
             ("settling", () => SettlingBuildings, v => SettlingBuildings = v),
             ("housekeeping", () => Housekeeping, v => { Housekeeping = v; ApplyHousekeeping(); }),
             ("transitions", () => Transitions, v => Transitions = v),
+            ("dungeons", () => DungeonSpread, v => DungeonSpread = v),
         };
 
         internal static long GroundKept, TerrainHits, TerrainMisses, ArraysReused, BuildingsHeld;
@@ -50,6 +51,7 @@ namespace Overhaul.Performance
             ApplyHousekeeping();
             GrassPool.Tick();
             TickTransitions();
+            TickDungeons();
         }
 
         // ---- Ground meshes kept when nothing changed ----
