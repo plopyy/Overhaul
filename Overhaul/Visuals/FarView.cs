@@ -79,6 +79,7 @@ namespace Overhaul.Visuals
             TickBuildings(eye);
             TickLights(eye);
             TickShadows();
+            TickAir();
         }
 
         // The game's distant land: its material and layer are reused, the land itself is switched off while ours is drawn.
@@ -110,6 +111,7 @@ namespace Overhaul.Visuals
             StopBuildings();
             StopLights();
             StopShadows();
+            StopAir();
             if (root) UnityEngine.Object.Destroy(root);
             root = null;
             if (vanilla && !vanilla.enabled) vanilla.enabled = true;

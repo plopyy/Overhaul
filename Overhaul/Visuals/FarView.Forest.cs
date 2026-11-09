@@ -60,6 +60,7 @@ namespace Overhaul.Visuals
                 var captureShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/ImpostorCapture.shader");
                 farGlowShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarGlow.shader");
                 farShadowShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarShadow.shader");
+                farHazeShader = bundle.LoadAsset<Shader>("Assets/OverhaulFarView/FarHaze.shader");
                 bundle.Unload(false);
                 if (!impostorShader || !impostorShader.isSupported || !captureShader || !captureShader.isSupported) throw new Exception("far view shaders not supported here");
                 capture = new Material(captureShader);
