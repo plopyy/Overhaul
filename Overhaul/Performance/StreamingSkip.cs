@@ -95,6 +95,11 @@ namespace Overhaul.Performance
                 }
                 var destroy = AccessTools.DeclaredMethod(typeof(ZNetScene), "Destroy", new[] { typeof(GameObject) });
                 var distant = AccessTools.PropertySetter(typeof(ZDO), nameof(ZDO.Distant));
+                // An object marked created or not, and the portal list changing, also change what a run would do.
+                var created = AccessTools.PropertySetter(typeof(ZDO), nameof(ZDO.Created));
+                var portals = AccessTools.PropertySetter(typeof(ZDOMan), "DirtyPortalObjects");
+                if (created != null) yield return created; else Log.LogWarning("[Performance] Streaming skip: ZDO.Created setter not found");
+                if (portals != null) yield return portals; else Log.LogWarning("[Performance] Streaming skip: ZDOMan.DirtyPortalObjects setter not found");
                 if (destroy == null || distant == null) { broken = true; Log.LogWarning("[Performance] Streaming skip off: ZNetScene.Destroy or ZDO.Distant not found"); }
                 if (destroy != null) yield return destroy;
                 if (distant != null) yield return distant;

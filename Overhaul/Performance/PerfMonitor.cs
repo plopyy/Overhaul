@@ -15,7 +15,7 @@ namespace Overhaul.Performance
         internal const string Command = "o_opti";
         private const float MeasureSeconds = 10f, SettleSeconds = 2f;
 
-        internal static readonly (string Id, Func<ConfigEntry<bool>> Entry)[] Options =
+        internal static readonly (string Id, Func<ConfigEntry<bool>> Entry)[] ConfigOptions =
         {
             ("streaming", () => OverhaulConfig.PerfStreamingSkip),
             ("water", () => OverhaulConfig.PerfWaterMaterials),
@@ -31,6 +31,10 @@ namespace Overhaul.Performance
             ("locations", () => OverhaulConfig.PerfAsyncLocations),
             ("props", () => OverhaulConfig.PerfInstancedProps),
         };
+
+        // Every switchable part: the [Performance] config options and the Smooth frames parts (session only).
+        internal static readonly (string Id, Func<bool> Get, Action<bool> Set)[] Options = ConfigOptions
+            .Select(o => (o.Id, (Func<bool>)(() => o.Entry().Value), (Action<bool>)(v => o.Entry().Value = v))).Concat(SmoothFrames.Parts).ToArray();
 
         // Set by "o_opti ab" while it measures the game without the optimisations; the saved settings stay as they are.
         internal static volatile bool AllOff;
@@ -97,7 +101,7 @@ namespace Overhaul.Performance
             if (first == "status")
             {
                 foreach (var option in Options)
-                    args.Context.AddString(L("overhaul_perf_status", option.Id, L(option.Entry().Value ? "overhaul_perf_on" : "overhaul_perf_off")));
+                    args.Context.AddString(L("overhaul_perf_status", option.Id, L(option.Get() ? "overhaul_perf_on" : "overhaul_perf_off")));
                 args.Context.AddString(Counters(StreamingRuns, StreamingSkips, FloaterPasses, TerrainPromoted));
                 return;
             }
@@ -108,8 +112,8 @@ namespace Overhaul.Performance
                 args.Context.AddString(L("overhaul_perf_usage"));
                 return;
             }
-            match.Entry().Value = args.Args[2] == "on";
-            args.Context.AddString(L("overhaul_perf_set", match.Id, L(match.Entry().Value ? "overhaul_perf_on" : "overhaul_perf_off")));
+            match.Set(args.Args[2] == "on");
+            args.Context.AddString(L("overhaul_perf_set", match.Id, L(match.Get() ? "overhaul_perf_on" : "overhaul_perf_off")));
         }
 
         private static string Counters(int runs, int skips, int floaters, int terrain) =>
@@ -128,10 +132,10 @@ namespace Overhaul.Performance
             {
                 // Each optimisation on its own: one failing stops alone (and says so once) instead of all of them.
                 Run(0, ServerStats.Tick); Run(1, StutterFixes.Tick); Run(2, AsyncLocations.Tick); Run(3, DecorShadows.Tick); Run(4, HiddenParticles.Tick);
-                Run(5, PieceBatcher.Tick); Run(6, InstancedProps.Tick);
+                Run(5, PieceBatcher.Tick); Run(6, InstancedProps.Tick); Run(7, SmoothFrames.Tick);
             }
 
-            private readonly bool[] failed = new bool[7];
+            private readonly bool[] failed = new bool[8];
             private void Run(int index, Action tick)
             {
                 if (failed[index]) return;
