@@ -22,6 +22,7 @@ namespace Overhaul.Visuals
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
         static float skyMix;
+        internal static bool DebugNoSky; // tests: the game's own sky under our clouds
 
         internal static void Tick()
         {
@@ -56,7 +57,7 @@ namespace Overhaul.Visuals
             skyMaterial.SetVector("_SkyCorner", t.forward - t.right * right - t.up * up);
             skyMaterial.SetVector("_SkyRight", t.right * (2f * right));
             skyMaterial.SetVector("_SkyUp", t.up * (2f * up));
-            skyMaterial.SetFloat("_SkyBlend", SkyBlend * skyMix);
+            skyMaterial.SetFloat("_SkyBlend", DebugNoSky ? 0f : SkyBlend * skyMix);
             skyMaterial.SetFloat("_SkyExposure", SkyExposure);
             if (skyCamera != camera) { DetachSky(); DetachClouds(); AttachSky(camera); KeepYggdrasilOver(); }
             TickClouds(camera, sun); // after the sky: its pass comes after ours
