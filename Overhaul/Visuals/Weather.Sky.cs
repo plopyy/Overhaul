@@ -98,7 +98,22 @@ namespace Overhaul.Visuals
             {
                 if (r.name.IndexOf("yggdrasil", StringComparison.OrdinalIgnoreCase) < 0 && (!r.transform.parent || r.transform.parent.name.IndexOf("yggdrasil", StringComparison.OrdinalIgnoreCase) < 0)) continue;
                 var mats = r.materials; // instanced copies
-                foreach (var m in mats) { Log.LogInfo("[Weather] Yggdrasil part " + r.name + " (" + m.shader.name + ", queue " + m.renderQueue + ")"); if (m.renderQueue < 2501) m.renderQueue = 2501; }
+                foreach (var m in mats)
+                {
+                    var sh = m.shader; var props = new System.Text.StringBuilder();
+                    for (int i = 0; i < sh.GetPropertyCount(); i++)
+                    {
+                        string n = sh.GetPropertyName(i); var t = sh.GetPropertyType(i);
+                        props.Append(n).Append('=');
+                        if (t == UnityEngine.Rendering.ShaderPropertyType.Color) props.Append(m.GetColor(n));
+                        else if (t == UnityEngine.Rendering.ShaderPropertyType.Float || t == UnityEngine.Rendering.ShaderPropertyType.Range) props.Append(m.GetFloat(n));
+                        else if (t == UnityEngine.Rendering.ShaderPropertyType.Vector) props.Append(m.GetVector(n));
+                        else props.Append(m.GetTexture(n) ? m.GetTexture(n).name : "none");
+                        props.Append("; ");
+                    }
+                    Log.LogInfo("[Weather] Yggdrasil part " + r.name + " (" + sh.name + ", queue " + m.renderQueue + "): " + props);
+                    if (m.renderQueue < 2501) m.renderQueue = 2501;
+                }
                 r.materials = mats; moved++;
             }
             if (moved > 0) yggdrasilDone = true;
