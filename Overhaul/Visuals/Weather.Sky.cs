@@ -22,7 +22,7 @@ namespace Overhaul.Visuals
         static CommandBuffer aerialBuffer;
         // How much of the air the aerial perspective covers now (0 at night): the far view's haze gives way to it.
         internal static float AerialAmount;
-        const float AerialScale = 8f; // Valheim's distances are short: the air thickened so a few km read as far (4 was too clear: user wants the far land a little veiled, as WeatherOverhaul)
+        const float AerialScale = 16f; // Valheim's distances are short: the air thickened so a few km read as far (4 was too clear: user wants the far land a little veiled, as WeatherOverhaul)
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
         static float skyMix, gameSunDisk = -1f, gameMoonSize = -1f;
