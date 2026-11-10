@@ -25,7 +25,7 @@ namespace Overhaul.Visuals
         const float AerialScale = 4f; // Valheim's distances are short: the air thickened so a few km read as far
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
-        static float skyMix, gameSunDisk = -1f;
+        static float skyMix, gameSunDisk = -1f, gameMoonSize = -1f;
         // High layer: the day's photographed sky among eight (weights eased from one day's to the next), turned with the wind.
         static Texture2D highMapA, highMapB;
         static Vector4 highWeightA = new Vector4(1f, 0f, 0f, 0f), highWeightB;
@@ -55,6 +55,8 @@ namespace Overhaul.Visuals
             // The game's own sun/moon disc off while ours shows (two discs made a ring).
             var skybox = RenderSettings.skybox;
             if (skybox && skybox.HasProperty("_SunDisk")) { if (gameSunDisk < 0f) gameSunDisk = skybox.GetFloat("_SunDisk"); skybox.SetFloat("_SunDisk", night > 0f ? 0f : gameSunDisk); }
+            // Its own moon too (a bluish disc larger than ours: a blue ring around our white disc).
+            if (skybox && skybox.HasProperty("_MoonSize")) { if (gameMoonSize < 0f) gameMoonSize = skybox.GetFloat("_MoonSize"); skybox.SetFloat("_MoonSize", 0f); }
             skyMaterial.SetFloat("_MoonStrength", night);
 
             skyMaterial.SetVector("_SunDir", sun);
@@ -269,6 +271,7 @@ namespace Overhaul.Visuals
             DetachSky();
             StopMeter();
             if (gameSunDisk >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_SunDisk")) RenderSettings.skybox.SetFloat("_SunDisk", gameSunDisk);
+            if (gameMoonSize >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_MoonSize")) RenderSettings.skybox.SetFloat("_MoonSize", gameMoonSize);
             skyMix = 0f;
         }
     }
