@@ -416,6 +416,7 @@ namespace Overhaul.Visuals
         static void EndKind(Kind kind)
         {
             kind.Albedo.GenerateMips(); kind.Normal.GenerateMips();
+            DumpAtlas(kind);
             if (stage) UnityEngine.Object.Destroy(stage);
             stage = null;
             kind.Material = new Material(impostorShader) { name = "Overhaul far " + kind.Name };
@@ -423,6 +424,25 @@ namespace Overhaul.Visuals
             kind.Material.SetFloat("_Frames", Frames); kind.Material.SetVector("_Sphere", kind.Sphere); kind.Material.SetFloat("_Cutoff", 0.5f);
             kind.Material.enableInstancing = true;
             if (kind.Trees != null) { kind.Material.SetBuffer("_Trees", kind.Trees); kind.Material.SetBuffer("_Yaws", kind.Yaws); }
+        }
+
+        // Test runs only (Tools/GameTest sets OVERHAUL_TEST_OUT): each kind's colour atlas and its renderers written there,
+        // to look at what was photographed.
+        static void DumpAtlas(Kind kind)
+        {
+            var dir = Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT");
+            if (string.IsNullOrEmpty(dir)) return;
+            try
+            {
+                var tex = new Texture2D(kind.Albedo.width, kind.Albedo.height, TextureFormat.RGBA32, false);
+                var prev = RenderTexture.active; RenderTexture.active = kind.Albedo;
+                tex.ReadPixels(new Rect(0, 0, tex.width, tex.height), 0, 0); tex.Apply();
+                RenderTexture.active = prev;
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(dir, "impostor-" + kind.Name.Replace(' ', '_') + ".png"), tex.EncodeToPNG());
+                UnityEngine.Object.Destroy(tex);
+                Log.LogInfo("[FarView] impostor " + kind.Name + ": " + string.Join(", ", FirstLod(kind.Prefab).Select(r => r.name + (r.gameObject.activeSelf && r.enabled ? "" : " (inactive)") + "[" + string.Join("/", r.sharedMaterials.Where(m => m).Select(m => m.name)) + "]")));
+            }
+            catch (Exception e) { Log.LogWarning("[FarView] atlas dump failed: " + e.Message); }
         }
 
         static RenderTexture Atlas(int frameSize, RenderTextureReadWrite space, string name)
