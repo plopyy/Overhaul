@@ -278,18 +278,20 @@ namespace Overhaul.Visuals
         static void ForestWork()
         {
             var trees = new List<Tree>();
+            int done = 0, skipped = 0; var clock = Stopwatch.StartNew();
             foreach (var job in cellJobs.GetConsumingEnumerable())
             {
                 try
                 {
-                    if (job.Epoch != forestEpoch || forestCells.ContainsKey((job.X, job.Z))) continue;
-                    var w = WorldGenerator.instance; if (w == null) continue;
+                    if (job.Epoch != forestEpoch || forestCells.ContainsKey((job.X, job.Z))) { skipped++; continue; }
+                    var w = WorldGenerator.instance; if (w == null) { skipped++; continue; }
                     trees.Clear();
                     for (int x = 0; x < CellZones; x++) for (int z = 0; z < CellZones; z++) PlaceZone(w, job.X * CellZones + x, job.Z * CellZones + z, trees);
                     forestCells[(job.X, job.Z)] = new List<Tree>(trees);
                     Interlocked.Increment(ref forestVersion);
+                    if (++done <= 3 || done % 50 == 0) Log.LogInfo("[FarView] forest cells done " + done + " (last " + trees.Count + " trees), skipped " + skipped + ", queued " + cellJobs.Count + ", " + clock.Elapsed.TotalSeconds.ToString("0.0") + " s");
                 }
-                catch (Exception e) { Log.LogWarning("[FarView] forest cell failed: " + e.Message); }
+                catch (Exception e) { Log.LogWarning("[FarView] forest cell failed: " + e); }
             }
         }
 
