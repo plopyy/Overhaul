@@ -26,6 +26,12 @@ namespace Overhaul.Visuals
         static CommandBuffer skyBuffer;
         static Camera skyCamera;
         static float skyMix, gameSunDisk = -1f;
+        // High layer: the day's photographed sky among eight (weights eased from one day's to the next), turned with the wind.
+        static Texture2D highMapA, highMapB;
+        static Vector4 highWeightA = new Vector4(1f, 0f, 0f, 0f), highWeightB;
+        static float highTurn;
+        // Test hook (Tools/GameTest): >= 0 shows that one of the eight skies, < 0 the day's own.
+        internal static int highSkyOverride = -1;
         internal static bool DebugNoSky; // tests: the game's own sky under our clouds
 
         internal static void Tick()
@@ -81,11 +87,23 @@ namespace Overhaul.Visuals
             // Cirrus: present in fair weather (more on some days), gone under rain and fog; drifting slowly with the wind.
             float fairWeight = presetMix.x + presetMix.y, total = presetMix.x + presetMix.y + presetMix.z + presetMix.w;
             int cirrusDay = (int)(ZNet.instance ? ZNet.instance.GetTimeSeconds() / Mathf.Max(1L, EnvMan.instance.m_dayLengthSec) : 0);
-            float cirrusDayAmount = 0.3f + 0.4f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
+            float cirrusDayAmount = 0.45f + 0.4f * Mathf.Repeat(Mathf.Sin(cirrusDay * 78.233f + 1.7f) * 43758.5453f, 1f);
             skyMaterial.SetFloat("_CirrusAmount", total > 0f ? fairWeight / total * cirrusDayAmount : 0f);
             skyMaterial.SetVector("_CirrusOffset", cloudWind * 0.0004f);
-            // Mid-level decks: on broken fair days and more as weather turns, gone in full storm (the low layer covers all).
-            skyMaterial.SetFloat("_AltoAmount", total > 0f ? Mathf.Clamp01((presetMix.y * 0.8f + presetMix.z * 0.9f + presetMix.x * 0.35f) / total) : 0f);
+            // The day's sky among the eight maps (per game day, from the world seed, same for every player), faded in over
+            // about a minute when the day changes; turned a full circle in about 2 game hours of average wind.
+            int highSky = (int)(Mathf.Repeat(Mathf.Sin((WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0) * 0.0017f + cirrusDay * 39.346f) * 11234.5678f, 1f) * 8f) & 7;
+            if (highSkyOverride >= 0) { highSky = highSkyOverride & 7; cirrusDayAmount = 0.8f; }
+            var wantA = Vector4.zero; var wantB = Vector4.zero;
+            if (highSky < 4) wantA[highSky] = 1f; else wantB[highSky - 4] = 1f;
+            float ease = string.IsNullOrEmpty(EnvMan.instance.m_debugEnv) ? Time.deltaTime / 60f : 1f;
+            highWeightA = Vector4.MoveTowards(highWeightA, wantA, ease); highWeightB = Vector4.MoveTowards(highWeightB, wantB, ease);
+            skyMaterial.SetVector("_HighWeightA", highWeightA);
+            skyMaterial.SetVector("_HighWeightB", highWeightB);
+            highTurn = Mathf.Repeat(highTurn + Time.deltaTime * (0.3f + EnvMan.instance.GetWindIntensity()) / 4000f, 1f);
+            skyMaterial.SetFloat("_HighTurn", highTurn);
+            // The older painted mid-level decks are off: the high maps and the altocumulus layer take their place.
+            skyMaterial.SetFloat("_AltoAmount", 0f);
             skyMaterial.SetVector("_CirrusWind", cloudWind.sqrMagnitude > 0f ? cloudWind.normalized : Vector2.right);
             var dirLight = EnvMan.instance.m_dirLight;
             var sunCol = dirLight ? dirLight.color * dirLight.intensity : Color.white;
@@ -191,11 +209,16 @@ namespace Overhaul.Visuals
             {
                 var bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_weather");
                 skyShader = bundle.LoadAsset<Shader>("Assets/OverhaulWeather/OverhaulSky.shader");
+                highMapA = bundle.LoadAsset<Texture2D>("Assets/OverhaulWeather/Textures/HighCloudMapA.png");
+                highMapB = bundle.LoadAsset<Texture2D>("Assets/OverhaulWeather/Textures/HighCloudMapB.png");
                 bundle.Unload(false);
                 if (!skyShader || !skyShader.isSupported) throw new Exception("sky shader not supported here");
+                if (!highMapA || !highMapB) throw new Exception("high cloud maps missing");
             }
             catch (Exception e) { skyFailed = true; Log.LogWarning("[Weather] sky off: " + e.Message); return false; }
             skyMaterial = new Material(skyShader);
+            skyMaterial.SetTexture("_HighMapA", highMapA);
+            skyMaterial.SetTexture("_HighMapB", highMapB);
             // Earth's air (per km), "North" style.
             skyMaterial.SetVector("_RayleighScatter", new Vector3(5.802e-3f, 13.558e-3f, 33.1e-3f));
             skyMaterial.SetFloat("_RayleighHeight", 8f);
