@@ -303,7 +303,26 @@ namespace Overhaul.Visuals
                 foreach (var t in cell) { positions[t.Kind].Add(new Vector4(t.Position.x, t.Position.y, t.Position.z, t.Scale)); yaws[t.Kind].Add(t.Yaw); }
             int total = 0, wet = 0;
             foreach (var cell in forestCells.Values) foreach (var t in cell) { total++; if (t.Position.y < 29f) wet++; }
-            if (Time.time >= nextCountLog) { nextCountLog = Time.time + 20f; Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level"); }
+            if (Time.time >= nextCountLog)
+            {
+                nextCountLog = Time.time + 20f; Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level");
+                // Test runs: the trees of each kind by the biome they stand in, and the biomes each kind's rules allow.
+                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT")) && WorldGenerator.instance != null)
+                {
+                    var byKind = new Dictionary<string, Dictionary<Heightmap.Biome, int>>();
+                    foreach (var cell in forestCells.Values) foreach (var t in cell)
+                    {
+                        var b = WorldGenerator.instance.GetBiome(t.Position.x, t.Position.z, 0.02f, false);
+                        if (!byKind.TryGetValue(kinds[t.Kind].Name, out var d)) byKind[kinds[t.Kind].Name] = d = new Dictionary<Heightmap.Biome, int>();
+                        d.TryGetValue(b, out int c); d[b] = c + 1;
+                    }
+                    foreach (var kv in byKind)
+                    {
+                        var allowed = rules.Where(r => kinds[r.Kind].Name == kv.Key).Select(r => r.Biome.ToString()).Distinct();
+                        Log.LogInfo("[FarView] far trees " + kv.Key + ": " + string.Join(", ", kv.Value.Select(p => p.Key + " " + p.Value)) + " (rules: " + string.Join(" | ", allowed) + ")");
+                    }
+                }
+            }
             for (int k = 0; k < kinds.Count; k++)
             {
                 var kind = kinds[k]; int n = positions[k].Count;
