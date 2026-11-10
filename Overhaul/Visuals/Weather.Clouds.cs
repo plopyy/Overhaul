@@ -26,7 +26,13 @@ namespace Overhaul.Visuals
         static Vector4 presetMix = new Vector4(1f, 0f, 0f, 0f);
         static Texture2D cloudLut;
         static readonly Color[] lutPixels = new Color[64];
-        static Texture3D worley, perlin;
+        static Texture3D worley, perlin, swirl;
+        static Texture2D extraNoise, blueNoise;
+        // Altocumulus: a thin layer of small puffs above the cumulus on some fair days (OverhaulAltocumulus.hlsl).
+        static float altoMix;
+        static Vector2 altoWind;
+        // Test hook (Tools/GameTest): >= 0 forces the altocumulus amount, < 0 lets the weather decide.
+        internal static float altoOverride = -1f;
 
         static bool CloudsOn => On && ClientVisuals.Clouds && cloudMaterial;
 
@@ -65,6 +71,13 @@ namespace Overhaul.Visuals
             // Clear nights: thinner low layer, so the stars show between dark bands (fair weather only).
             float nightSky = Mathf.Clamp01((-sun.y + 0.02f) / 0.12f) * (presetMix.x + presetMix.y) / Mathf.Max(1e-3f, presetMix.x + presetMix.y + presetMix.z + presetMix.w);
             cloudMaterial.SetFloat("_Coverage", Mathf.Lerp(0.9f, 0.72f, nightSky));
+            // Altocumulus on about 4 fair days in 10 (per game day, from the world seed, same for every player), thicker or
+            // thinner from day to day; gone in rain and fog.
+            float seed = WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0;
+            float altoRoll = Mathf.Repeat(Mathf.Sin(seed * 0.0013f + day * 78.233f) * 24634.6345f, 1f);
+            float fair = (presetMix.x + presetMix.y) / Mathf.Max(1e-3f, presetMix.x + presetMix.y + presetMix.z + presetMix.w);
+            float altoWant = altoRoll < 0.4f ? (0.55f + altoRoll * 1.1f) * fair : 0f;
+            altoMix = altoOverride >= 0f ? altoOverride : Mathf.MoveTowards(altoMix, altoWant, Time.deltaTime * 0.01f);
 
             var wind = env.GetWindDir(); float speed = 10f + 15f * env.GetWindIntensity();
             var windDir = new Vector2(wind.x, wind.z).normalized;
@@ -125,6 +138,17 @@ namespace Overhaul.Visuals
             m.SetVector("_AmbientTop", (Vector4)(skyAround * CloudAmbientScale));
             m.SetVector("_AmbientBottom", (Vector4)(skyAround * 0.45f * CloudAmbientScale));
             m.SetFloat("_Fade", cloudMix);
+            // Altocumulus layer 4.3-4.65 km up, puffs about 200 m, drifting a little faster than the clouds below.
+            altoWind += windDir * speed * 1.4f * Time.deltaTime;
+            m.SetFloat("_AltoAmount", altoMix);
+            m.SetFloat("_AltoBottom", R + 4300f);
+            m.SetFloat("_AltoThickness", 350f);
+            m.SetFloat("_AltoDensity", 0.35f);
+            m.SetFloat("_AltoScale", 6000f);
+            m.SetFloat("_AltoSwirlScale", 9000f);
+            m.SetFloat("_AltoSwirlStrength", 0.06f);
+            m.SetFloat("_AltoTime", ZNet.instance ? (float)(ZNet.instance.GetTimeSeconds() / 3600.0 % 1.0) : 0f); // the swirl evolves over an hour
+            m.SetVector("_AltoWind", altoWind);
             HideFogClouds(true);
             Graphics.Blit(null, cloudTarget, cloudMaterial, 0);
             cloudMaterial.SetTexture("_CloudTex", cloudTarget);
@@ -177,15 +201,21 @@ namespace Overhaul.Visuals
                 cloudShader = bundle.LoadAsset<Shader>("Assets/OverhaulWeather/OverhaulClouds.shader");
                 worley = bundle.LoadAsset<Texture3D>("Assets/OverhaulWeather/HDRP/Worley128.asset");
                 perlin = bundle.LoadAsset<Texture3D>("Assets/OverhaulWeather/HDRP/Perlin32.asset");
+                swirl = bundle.LoadAsset<Texture3D>("Assets/OverhaulWeather/Textures/Swirl64.asset");
+                extraNoise = bundle.LoadAsset<Texture2D>("Assets/OverhaulWeather/Textures/ExtraCloudNoise.png");
+                blueNoise = bundle.LoadAsset<Texture2D>("Assets/OverhaulWeather/Textures/CloudBlueNoise64.png");
                 if (!skyShader) skyShader = bundle.LoadAsset<Shader>("Assets/OverhaulWeather/OverhaulSky.shader");
                 bundle.Unload(false);
                 if (!cloudShader || !cloudShader.isSupported) throw new Exception("cloud shader not supported here");
             }
             catch (Exception e) { Log.LogWarning("[Weather] clouds off: " + e.Message); cloudShader = Shader.Find("Hidden/InternalErrorShader"); return false; }
-            if (!worley || !perlin) { Log.LogWarning("[Weather] clouds off: noise volumes missing"); return false; }
+            if (!worley || !perlin || !swirl || !extraNoise || !blueNoise) { Log.LogWarning("[Weather] clouds off: noise textures missing"); return false; }
             cloudMaterial = new Material(cloudShader);
             cloudMaterial.SetTexture("_Worley128RGBA", worley);
             cloudMaterial.SetTexture("_ErosionNoise", perlin);
+            cloudMaterial.SetTexture("_ExtraCloudSwirley", swirl);
+            cloudMaterial.SetTexture("_ExtraCloudNoise", extraNoise);
+            cloudMaterial.SetTexture("_BlueNoise", blueNoise);
             cloudLut = new Texture2D(1, 64, TextureFormat.RGBAHalf, false, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = "Overhaul cloud profile" };
             cloudMaterial.SetTexture("_CloudLutTexture", cloudLut);
             return true;
