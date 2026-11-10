@@ -50,6 +50,8 @@ namespace Overhaul.Utility
 		public static ConfigEntry<float> BlockStaminaDrain { get; set; }
 		public static ConfigEntry<bool> BowUseStamina { get; set; }
         public static ConfigEntry<bool> CrouchedBowAiming { get; set; }
+        public static ConfigEntry<bool> Raids { get; set; }
+        public static ConfigEntry<bool> BossKeySpawns { get; set; }
         public static ConfigEntry<bool> StackSize100 { get; private set; }
 		public static ConfigEntry<float> BowStaminaDrainRate { get; set; }
         public static ConfigEntry<UnityEngine.KeyCode> BuildPitchKey { get; private set; }
@@ -95,6 +97,12 @@ namespace Overhaul.Utility
             BuildResetKey = config.Bind("Building", "ResetKey", UnityEngine.KeyCode.Less,
                 new ConfigDescription("Pressed while building or moving a piece, sets the ghost flat and facing north again (all three axes). The key does nothing else while building. Less is the < key left of W (AZERTY) or Z (QWERTY).",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = false }));
+            Raids = config.Bind("World", "Raids", false,
+                new ConfigDescription("Random events: raids near bases and the events that start on their own. They follow the server's progress (bosses defeated by anyone), not each player's, so they are off by default; true gives the game's raids back. The console's event command works either way.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            BossKeySpawns = config.Bind("World", "BossKeySpawns", false,
+                new ConfigDescription("World spawns unlocked by a global key (a boss defeated anywhere on the server): they come to every player whatever their own progress, so they are off by default; true gives them back. Ordinary biome spawns are unchanged.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             CrouchedBowAiming = config.Bind("Combat", "CrouchedBowAiming", true,
                 new ConfigDescription("Experimental: keep crouching while drawing and releasing a bow, combining native crouched legs with the aiming torso. Set false to restore vanilla bow posture. No prefab or save changes.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
