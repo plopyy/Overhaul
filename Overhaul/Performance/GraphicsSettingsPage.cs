@@ -71,8 +71,9 @@ namespace Overhaul.Performance
         internal static void SetPart(string key, bool value) { parts[key] = value ? 1 : 0; PlatformPrefs.SetInt(key, value ? 1 : 0); }
 
         // What is in effect: the general Optimisations switch off turns the far view and the weather off too.
-        internal static Level FarViewInEffect => ClientPerf.All ? FarView : Level.Off;
-        internal static Level WeatherInEffect => ClientPerf.All ? Weather : Level.Off;
+        // With FarLands or WeatherOverhaul themselves installed, ours are off (OtherMods).
+        internal static Level FarViewInEffect => ClientPerf.All && !OtherMods.FarLands ? FarView : Level.Off;
+        internal static Level WeatherInEffect => ClientPerf.All && !OtherMods.WeatherOverhaul ? Weather : Level.Off;
 
         internal static bool FarBuildings => Part("Overhaul_FarBuildings");
         internal static bool FarLights => Part("Overhaul_FarLights");

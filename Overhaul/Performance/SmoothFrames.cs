@@ -29,7 +29,7 @@ namespace Overhaul.Performance
             set { enabled = value ? 1 : 0; PlatformPrefs.SetInt(PrefKey, enabled); ApplyHousekeeping(); }
         }
 
-        static bool On(bool part) => part && !PerfMonitor.AllOff && ClientPerf.All && Enabled;
+        static bool On(bool part) => part && !PerfMonitor.AllOff && ClientPerf.All && Enabled && !OtherMods.SteadyFrame; // SteadyFrame itself installed: ours off
 
         internal static readonly (string Id, Func<bool> Get, Action<bool> Set)[] Parts =
         {
