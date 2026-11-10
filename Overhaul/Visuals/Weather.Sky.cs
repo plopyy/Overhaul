@@ -58,6 +58,7 @@ namespace Overhaul.Visuals
             // Its own moon too (a bluish disc larger than ours: a blue ring around our white disc).
             if (skybox && skybox.HasProperty("_MoonSize")) { if (gameMoonSize < 0f) gameMoonSize = skybox.GetFloat("_MoonSize"); skybox.SetFloat("_MoonSize", 0f); }
             skyMaterial.SetFloat("_MoonStrength", night);
+            TickYggdrasil(night);
 
             skyMaterial.SetVector("_SunDir", sun);
             TickMeter(camera, sun);
@@ -129,6 +130,23 @@ namespace Overhaul.Visuals
         // Yggdrasil (the world tree in the sky) is drawn before the sky would be covered by ours: its materials are moved
         // after the sky pass (copies, the game's own materials untouched).
         static bool yggdrasilDone;
+        class YggPart { public Material m; public Color color, moss; public float emiss, mossEmiss; }
+        static readonly System.Collections.Generic.List<YggPart> yggdrasilParts = new System.Collections.Generic.List<YggPart>();
+
+        // At night the tree is a dark silhouette (bark and moss darkened) with its glowing veins and moss specks bright
+        // (as the other weather mod shows it); by day the game's own look. night: 0 day .. 1 night.
+        static void TickYggdrasil(float night)
+        {
+            float dark = Mathf.Lerp(1f, 0.4f, night), mossDark = Mathf.Lerp(1f, 0.32f, night), glow = Mathf.Lerp(1f, 1.4f, night);
+            foreach (var p in yggdrasilParts)
+            {
+                if (!p.m) continue;
+                if (p.m.HasProperty("_Color")) p.m.SetColor("_Color", new Color(p.color.r * dark, p.color.g * dark, p.color.b * dark, p.color.a));
+                if (p.m.HasProperty("_MossColor")) p.m.SetColor("_MossColor", new Color(p.moss.r * mossDark, p.moss.g * mossDark, p.moss.b * mossDark, p.moss.a));
+                if (p.m.HasProperty("_EmissBlend")) p.m.SetFloat("_EmissBlend", p.emiss * glow);
+                if (p.m.HasProperty("_MossEmissive")) p.m.SetFloat("_MossEmissive", p.mossEmiss * glow);
+            }
+        }
         static void KeepYggdrasilOver()
         {
             if (yggdrasilDone) return;
@@ -155,9 +173,14 @@ namespace Overhaul.Visuals
                     // Its own haze (fog to the game's fog colour out to 15 km) made its trunk a flat blue against our sky:
                     // half of it kept, as the other weather mod does.
                     if (m.HasProperty("_FogAmount")) m.SetFloat("_FogAmount", 0.5f);
-                    // Its green glow halved (it stood out against our darker night).
-                    if (m.HasProperty("_EmissBlend")) m.SetFloat("_EmissBlend", m.GetFloat("_EmissBlend") * 0.5f);
-                    if (m.HasProperty("_MossEmissive")) m.SetFloat("_MossEmissive", m.GetFloat("_MossEmissive") * 0.5f);
+                    yggdrasilParts.Add(new YggPart
+                    {
+                        m = m,
+                        color = m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white,
+                        moss = m.HasProperty("_MossColor") ? m.GetColor("_MossColor") : Color.white,
+                        emiss = m.HasProperty("_EmissBlend") ? m.GetFloat("_EmissBlend") : 0f,
+                        mossEmiss = m.HasProperty("_MossEmissive") ? m.GetFloat("_MossEmissive") : 0f,
+                    });
                 }
                 r.materials = mats; moved++;
             }
@@ -269,6 +292,7 @@ namespace Overhaul.Visuals
         static void StopSky()
         {
             DetachSky();
+            TickYggdrasil(0f);
             StopMeter();
             if (gameSunDisk >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_SunDisk")) RenderSettings.skybox.SetFloat("_SunDisk", gameSunDisk);
             if (gameMoonSize >= 0f && RenderSettings.skybox && RenderSettings.skybox.HasProperty("_MoonSize")) RenderSettings.skybox.SetFloat("_MoonSize", gameMoonSize);
