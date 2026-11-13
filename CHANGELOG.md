@@ -3,6 +3,7 @@
 ## 2.4.0 (in progress)
 
 ### Added
+- **Class window, Hero icons**: the Warrior's Hero path has icons for its second and third rows (Honour of the Just, Rebuke of the Just, Champion of Light, Excalibur's Awakening, Unshakable Courage, Even More Vigorous Bash) and for Excalibur Mastery. (2.4.0.560)
 - **Mystic mage set**: a hat, a robe and boots with their own models, three separate pieces with the armour and Eitr regeneration of the Mistlands mage set (hat +20 %, robe +40 %, boots +40 %). The robe and the boots hide the body under them, the boots keep the Mistlands trousers on the legs, hair and beard stay under the hat. No recipe and no loot yet: `spawn Overhaul_MageMysticHat`, `Overhaul_MageMysticRobe`, `Overhaul_MageMysticBoots`. (2.4.0.551-552)
 - **Far view, distant conifers**: far pines and firs keep their crown (their thin needles faded away with distance, leaving bare trunks with a branch at the top on the horizon). (2.4.0.553)
 - **Far view, forest while walking**: far trees no longer thin out then fill again as you move: each one is hidden only where the game really shows its own trees (zones loaded for a second), not inside a circle around the camera. The far tree lists are built on the background thread (they were rebuilt on the main thread each second while walking: hitches). (2.4.0.554)
