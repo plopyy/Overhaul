@@ -62,7 +62,9 @@ namespace Overhaul.Visuals
 
             // Weather regime as weights of HDRP's four presets: fair days between Sparse and Cloudy (per game day, from the
             // world seed), Overcast in foggy air, Stormy in rain. Eased so a change of weather rolls in over about a minute.
-            float rain = current != null ? current.m_rainCloudAlpha : 0f;
+            // The game's Rain weather has a rain cloud alpha of 2 (the dome's rain layer saturates): taken as is it gave negative
+            // weights to the fair presets and a storm weight of 2 (the whole sky covered, clearing far too slowly afterwards).
+            float rain = Mathf.Clamp01(current != null ? current.m_rainCloudAlpha : 0f);
             float fog = Mathf.Clamp01(FogOfGame() * 40f);
             int day = (int)(ZNet.instance ? ZNet.instance.GetTimeSeconds() / Mathf.Max(1L, env.m_dayLengthSec) : 0);
             float broken = Mathf.Repeat(Mathf.Sin((WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0) * 0.001f + day * 12.9898f) * 43758.5453f, 1f);
