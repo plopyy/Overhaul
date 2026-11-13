@@ -292,17 +292,24 @@ namespace Overhaul.Leveling
                         slot.Find("Minus").GetComponent<Button>().interactable = ClassRules.CanRemove(pr, s);
                         slot.Find("Picked").gameObject.SetActive(sKind == ClassSkillKind.Normal && sSkill == s.ID);
                     }
-                // Split bar: lit for the chosen path, white outline on the selected half.
+                // Bottom bar: each half's image (greyed while the path is not the chosen one), the bar dimmed then, the picked
+                // half's border gold.
                 bool lit = pr.ChosenPathID == pd.ID;
-                Get<Image>(tree, "Split/Active").sprite = Sprite(p.transform, "SplitActive" + (sPath == b && sKind == ClassSkillKind.Active ? "Picked" : lit ? "On" : "Off"));
-                Get<Image>(tree, "Split/Passive").sprite = Sprite(p.transform, "SplitPassive" + (sPath == b && sKind == ClassSkillKind.Passive ? "Picked" : lit ? "On" : "Off"));
+                var dim = lit ? Color.white : new Color(.75f, .75f, .75f, 1);
+                foreach (var (half, kind) in new[] { ("Active", ClassSkillKind.Active), ("Passive", ClassSkillKind.Passive) })
+                {
+                    MainIcon(tree.Find("Split/" + half), p.transform, KindSkill(c, b, kind), lit);
+                    Get<Image>(tree, "Split/" + half + "Border").color = dim;
+                    tree.Find("Split/" + half + "Picked").gameObject.SetActive(sPath == b && sKind == kind);
+                }
+                Get<Image>(tree, "Split/Bg").color = dim;
                 tree.Find("Choose").gameObject.SetActive(!chosen && !empty);
             }
             // Bottom: points / change / reset once a path is chosen; before, the Choisir row then Changer de classe alone,
-            // one row lower (the mock-up's window grows from 867 to 923).
+            // one row lower (the mock-up's window grows from 908 to 964, with the 85 px bottom bar).
             var bottom = win.Find("Bottom");
             bottom.gameObject.SetActive(chosen); win.Find("BottomNew").gameObject.SetActive(!chosen);
-            var wrt = (RectTransform)win; wrt.sizeDelta = new Vector2(wrt.sizeDelta.x, chosen ? 867 : 923);
+            var wrt = (RectTransform)win; wrt.sizeDelta = new Vector2(wrt.sizeDelta.x, chosen ? 908 : 964);
             SetText(bottom, "Points", string.Format(L("$overhaul_class_points"), pr.AvailablePoints, ClassProgress.TotalPointsAtLevel(pr.Level)));
             Detail(win, p.transform, c, pr, sPath, sKind, sSkill);
             // Confirmation box.
@@ -323,6 +330,15 @@ namespace Overhaul.Leveling
             image.sprite = sprite; image.enabled = sprite; image.color = Color.white;
             image.rectTransform.localScale = Vector3.one * (own ? 1 : .7f);
         }
+        // Bottom bar / detail frame image: the skill's picture placed by the prefab (210 px wide, its rule), greyed while not
+        // lit; without one, the grey placeholder.
+        static void MainIcon(Transform holder, Transform panel, ClassSkill s, bool lit)
+        {
+            bool own = s != null && Sprite(panel, s.Data.Icon);
+            var icon = Get<Image>(holder, "Icon"); icon.gameObject.SetActive(own);
+            holder.Find("Placeholder").gameObject.SetActive(!own);
+            if (own) icon.sprite = Sprite(panel, s.Data.Icon + (lit ? "" : "_Off"));
+        }
 
         // Left panel: the selected skill (default the chosen or first path's first bottom-row skill).
         static void Detail(Transform win, Transform panel, ClassData c, ClassProgress pr, int b, ClassSkillKind kind, string skillID)
@@ -330,7 +346,9 @@ namespace Overhaul.Leveling
             var pd = c.Paths.ElementAtOrDefault(b);
             var s = kind == ClassSkillKind.Normal ? (ClassSkills.Get(skillID) ?? SkillAt(c, b, 0, 0)) : KindSkill(c, b, kind);
             var side = win.Find("Side");
-            side.Find("DetailSkill").gameObject.SetActive(s != null && kind != ClassSkillKind.Ultimate);
+            bool main = kind == ClassSkillKind.Active || kind == ClassSkillKind.Passive;
+            side.Find("DetailSkill").gameObject.SetActive(s != null && kind == ClassSkillKind.Normal);
+            side.Find("DetailMain").gameObject.SetActive(s != null && main);
             side.Find("DetailUltimate").gameObject.SetActive(s != null && kind == ClassSkillKind.Ultimate);
             side.Find("DetailName").gameObject.SetActive(s != null); side.Find("Effects").gameObject.SetActive(s != null);
             if (s == null || pd == null) return;
@@ -338,7 +356,8 @@ namespace Overhaul.Leveling
             int rank = pr.SkillPoints.TryGetValue(s.ID, out int v) ? v : 0;
             bool ultLearned = ClassRules.UltimateLearned(pr, c.ID, pd.ID);
             if (kind == ClassSkillKind.Ultimate) Icon(Get<Image>(side, "DetailUltimate/IconMask/Icon"), panel, s, ultLearned);
-            else Icon(Get<Image>(side, "DetailSkill/Icon"), panel, s, kind == ClassSkillKind.Normal ? rank > 0 : pr.ChosenPathID == pd.ID);
+            else if (main) MainIcon(side.Find("DetailMain/IconMask"), panel, s, pr.ChosenPathID == pd.ID);
+            else Icon(Get<Image>(side, "DetailSkill/IconMask/Icon"), panel, s, rank > 0);
             SetText(side, "DetailName", L(s.Data.NameKey));
             var fx = side.Find("Effects");
             var path = Get<TMP_Text>(fx, "Path"); path.text = L(pd.NameKey); path.color = ColorOf(pd.Color);

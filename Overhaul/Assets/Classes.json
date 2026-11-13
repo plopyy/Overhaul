@@ -934,7 +934,7 @@
    "PathID": "Hero",
    "Kind": "Normal",
    "Cell": {
-    "x": 0,
+    "x": 2,
     "y": 3
    },
    "MaxRank": 5,
@@ -962,7 +962,7 @@
    "PathID": "Hero",
    "Kind": "Normal",
    "Cell": {
-    "x": 2,
+    "x": 0,
     "y": 3
    },
    "MaxRank": 5,
