@@ -63,6 +63,7 @@ namespace Overhaul
             TarDrain.Initialize();
             DvergerCirclet.Initialize();
             Magic.StaffModels.Initialize();
+            Magic.MageMysticSet.Initialize();
             Magic.SpellSystem.Initialize();
             Magic.EitrFoods.Initialize();
             Magic.GrimoireStand.Initialize();
@@ -123,6 +124,7 @@ namespace Overhaul
             TarDrain.Shutdown();
             DvergerCirclet.Shutdown();
             Magic.StaffModels.Shutdown();
+            Magic.MageMysticSet.Shutdown();
             Magic.SpellSystem.Shutdown();
             Magic.EitrFoods.Shutdown();
             Magic.GrimoireStand.Shutdown();
