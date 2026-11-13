@@ -63,6 +63,7 @@ namespace Overhaul.Utility
         // Each follows the general Optimisations switch and, where it has one, its group's checkbox.
         internal static readonly Performance.PerfSwitch PerfStreamingSkip = new Performance.PerfSwitch(() => true);
         internal static readonly Performance.PerfSwitch PerfInteriorStreaming = new Performance.PerfSwitch(() => true);
+        internal static readonly Performance.PerfSwitch PerfDeferredDungeons = new Performance.PerfSwitch(() => true);
         internal static readonly Performance.PerfSwitch PerfWaterMaterials = new Performance.PerfSwitch(() => Performance.ClientPerf.Cache);
         internal static readonly Performance.PerfSwitch PerfFastFloaters = new Performance.PerfSwitch(() => true);
         internal static readonly Performance.PerfSwitch PerfTerrainCache = new Performance.PerfSwitch(() => Performance.ClientPerf.Cache);

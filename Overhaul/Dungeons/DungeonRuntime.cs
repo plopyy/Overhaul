@@ -46,6 +46,7 @@ namespace Overhaul.Dungeons
             internal float Deadline;
             internal bool Recovery;
             internal bool Manual;
+            internal bool First; // first generation of a deferred interior (DungeonDeferred)
         }
 
         internal sealed class Capture
@@ -58,6 +59,7 @@ namespace Overhaul.Dungeons
             internal readonly HashSet<GameObject> Views = new HashSet<GameObject>();
             internal readonly List<Bounds> Volumes = new List<Bounds>();
             internal readonly Dictionary<int, ZDO> PreviousGenerators = new Dictionary<int, ZDO>();
+            internal bool Deferred; // a generator was left ungenerated (DungeonDeferred)
         }
 
         internal static void ConfigureGeneration(DungeonGenerator generator, ref int seed)
@@ -100,6 +102,7 @@ namespace Overhaul.Dungeons
             if (proxy == null) return;
             proxy.Set(VisitStartedKey, 0L);
             proxy.Set(TrackedKey, true);
+            if (capture.Deferred) { proxy.Set(DeferredKey, true); Log.LogInfo("Dungeon " + proxy.m_uid + " : interieur differe (genere a la premiere entree)"); }
             Identity(proxy);
             BossDungeonLayout.CommitMarker(proxy, capture.Objects.Select(id => ZDOMan.instance.GetZDO(id)));
             foreach (ZDOID id in capture.Objects)
@@ -311,6 +314,17 @@ namespace Overhaul.Dungeons
                 if (realtime < nextTick) return;
                 nextTick = realtime + 1f;
                 if (preparation != null) { AdvancePreparation(realtime); return; }
+                // A player waiting behind a door comes first.
+                if (firstQueue.Count > 0)
+                {
+                    ZDO proxy = session.GetZDO(firstQueue.Dequeue());
+                    if (proxy != null && proxy.GetBool(DeferredKey, false))
+                    {
+                        var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
+                        if (location != null) BeginPreparation(proxy, location, false, false, true);
+                    }
+                    return;
+                }
                 if (queue.Count > 0)
                 {
                     ZDOID id = queue.Dequeue();
@@ -350,17 +364,18 @@ namespace Overhaul.Dungeons
             BeginPreparation(proxy, location, false, requested);
         }
 
-        private static void BeginPreparation(ZDO proxy, ZoneSystem.ZoneLocation location, bool recovery, bool manual = false)
+        private static void BeginPreparation(ZDO proxy, ZoneSystem.ZoneLocation location, bool recovery, bool manual = false, bool first = false)
         {
-            if (!KnownPlayersClear(proxy, location))
+            // A first generation fills an empty interior: the player waiting at its arrival point loses nothing.
+            if (!first && !KnownPlayersClear(proxy, location))
             {
                 Report(proxy, location.m_prefab.Name, "joueur dans le donjon, chargement evite");
                 return;
             }
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
             if (!ZoneSystem.instance.IsZoneGenerated(zone)) { Report(proxy, location.m_prefab.Name, "secteur non genere"); return; }
-            var next = recovery ? location : NextVersion(location);
-            preparation = new Preparation { Id = proxy.m_uid, Location = location, Next = next, Recovery = recovery, Manual = manual, Deadline = Time.realtimeSinceStartup + 60f };
+            var next = recovery || first ? location : NextVersion(location);
+            preparation = new Preparation { Id = proxy.m_uid, Location = location, Next = next, Recovery = recovery, Manual = manual, First = first, Deadline = Time.realtimeSinceStartup + 60f };
             queued.Add(proxy.m_uid);
             // Keep our own reference, independent of the native streaming cache lifetime.
             location.m_prefab.LoadAsync();
@@ -393,7 +408,7 @@ namespace Overhaul.Dungeons
                 return;
             }
             if (!work.Location.m_prefab.IsLoaded || !work.Next.m_prefab.IsLoaded) return;
-            if (!work.Recovery && (!selected.Contains(name) || (!work.Manual && proxy.GetLong(VisitStartedKey, 0) == 0)))
+            if (!work.Recovery && !work.First && (!selected.Contains(name) || (!work.Manual && proxy.GetLong(VisitStartedKey, 0) == 0)))
             { EndPreparation(); return; }
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
             // Only poll resource preparation; a refused reset is never retried here.
@@ -404,9 +419,9 @@ namespace Overhaul.Dungeons
                 if (work.Recovery)
                 {
                     byte[] journal = proxy.GetByteArray(JournalKey, null);
-                    if (journal != null && journal.Length != 0) FinishCommit(proxy, journal);
+                    if (journal != null && journal.Length != 0 && FinishCommit(proxy, journal)) proxy.Set(DeferredKey, false);
                 }
-                else Reset(proxy, work.Location, work.Next);
+                else Reset(proxy, work.Location, work.Next, work.First);
             }
             finally { EndPreparation(); }
         }
@@ -449,7 +464,7 @@ namespace Overhaul.Dungeons
             Log.LogInfo("Dungeon " + proxy.m_uid + " : nouvelle version " + next.m_prefab.Name);
         }
 
-        private static void Reset(ZDO proxy, ZoneSystem.ZoneLocation location, ZoneSystem.ZoneLocation next)
+        private static void Reset(ZDO proxy, ZoneSystem.ZoneLocation location, ZoneSystem.ZoneLocation next, bool first = false)
         {
             // A manual command grants one attempt, not a persistent bypass of the visit deadline.
             // Consume it before any occupied/migration/placement failure can return.
@@ -480,8 +495,8 @@ namespace Overhaul.Dungeons
                 }
                 List<Bounds> volumes = ScopeInteriorVolumes(proxy, BuildVolumes(proxy, prefab, previous.Values, exterior), generators.Length != 0);
                 List<Bounds> occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
-                Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : debut de preparation du reset");
+                if (!first && !OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur dans le donjon"); return; }
+                Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + (first ? " : premiere generation de l'interieur" : " : debut de preparation du reset"));
                 if (!proxy.GetBool(TrackedKey, false))
                 {
                     Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " : reconstruction de reference de l'ancien contenu (aucun remplacement a cette etape)");
@@ -549,7 +564,7 @@ namespace Overhaul.Dungeons
                     if (zdo.GetPosition().y > 3000) old.Add(id);
                 }
                 occupied = OccupiedVolumes(locationComponent, volumes);
-                if (!OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
+                if (!first && !OccupantsClear(proxy, occupied)) { Report(proxy, name, "joueur arrive dans le donjon avant validation"); return; }
                 var tombs = world.Select(session.GetZDO).Where(z => z != null && IsTomb(z) &&
                     ((Inside(occupied, z.GetPosition()) && (z.GetPosition().y <= 3000 || InResetInterior(proxy, z, occupied, generators.Length != 0))) || old.Contains(z.m_uid))).ToList();
                 old = old.Distinct().Where(id => { ZDO z = session.GetZDO(id); return z != null && !IsTomb(z) && !IsPlayer(z); }).ToList();
@@ -568,6 +583,7 @@ namespace Overhaul.Dungeons
                 proxy.Set(JournalKey, journal); // Commit point: after this, never discard the replacement.
                 committed = true;
                 if (!FinishCommit(proxy, journal)) return;
+                proxy.Set(DeferredKey, false);
                 reports.Remove(proxy.m_uid);
                 Log.LogInfo("Dungeon " + name + " " + proxy.m_uid + " regenere, seed " + newSeed + ", " + old.Count + " anciens objets / " + staged.Objects.Count + " nouveaux");
             }

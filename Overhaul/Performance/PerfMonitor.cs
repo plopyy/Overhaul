@@ -19,6 +19,7 @@ namespace Overhaul.Performance
         {
             ("streaming", () => OverhaulConfig.PerfStreamingSkip),
             ("interiors", () => OverhaulConfig.PerfInteriorStreaming),
+            ("deferred", () => OverhaulConfig.PerfDeferredDungeons),
             ("water", () => OverhaulConfig.PerfWaterMaterials),
             ("floaters", () => OverhaulConfig.PerfFastFloaters),
             ("terrain", () => OverhaulConfig.PerfTerrainCache),
