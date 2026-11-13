@@ -141,6 +141,7 @@
     <Compile Include="Dungeons\DungeonReconnect.cs" />
     <Compile Include="Dungeons\DungeonDeathGrave.cs" />
     <Compile Include="Dungeons\DungeonPatches.cs" />
+    <Compile Include="Dungeons\InteriorStreaming.cs" />
     <Compile Include="Dungeons\Boss*.cs" />
     <Compile Include="Commands\AdminCommands.cs" />
     <Compile Include="Commands\AdminCommandAccess.cs" />

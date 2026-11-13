@@ -314,6 +314,7 @@ namespace Overhaul.Visuals
                         Volatile.Write(ref gathered, Gather(log));
                     }
                 }
+                catch (ThreadAbortException) { return; } // the game quitting
                 catch (Exception e) { Log.LogWarning("[FarView] forest cell failed: " + e); }
             }
         }

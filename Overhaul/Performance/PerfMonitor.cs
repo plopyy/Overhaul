@@ -18,6 +18,7 @@ namespace Overhaul.Performance
         internal static readonly (string Id, Func<PerfSwitch> Entry)[] ConfigOptions =
         {
             ("streaming", () => OverhaulConfig.PerfStreamingSkip),
+            ("interiors", () => OverhaulConfig.PerfInteriorStreaming),
             ("water", () => OverhaulConfig.PerfWaterMaterials),
             ("floaters", () => OverhaulConfig.PerfFastFloaters),
             ("terrain", () => OverhaulConfig.PerfTerrainCache),
