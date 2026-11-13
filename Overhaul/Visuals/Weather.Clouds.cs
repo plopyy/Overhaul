@@ -24,6 +24,8 @@ namespace Overhaul.Visuals
         static Vector2 cloudWind;
         static float cloudMix;
         static Vector4 presetMix = new Vector4(1f, 0f, 0f, 0f);
+        static string lastDebugEnv = "";
+        static float nextCloudLog;
         static Texture2D cloudLut;
         static readonly Color[] lutPixels = new Color[64];
         static Texture3D worley, perlin, swirl;
@@ -66,7 +68,12 @@ namespace Overhaul.Visuals
             float broken = Mathf.Repeat(Mathf.Sin((WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0) * 0.001f + day * 12.9898f) * 43758.5453f, 1f);
             var want = new Vector4((1f - broken) * (1f - rain) * (1f - fog), broken * (1f - rain) * (1f - fog), fog * (1f - rain), rain);
             // Eased so a change of weather rolls in, at once when the weather is forced (debug environment, tests).
-            presetMix = string.IsNullOrEmpty(env.m_debugEnv) ? Vector4.MoveTowards(presetMix, want, Time.deltaTime * 0.02f) : want;
+            // Also at once when the forced weather is changed or cleared (the storm cover stayed about a minute after the
+            // command gave the weather back); natural changes roll in over about 20 s, as the game's own rain fades.
+            bool forced = !string.IsNullOrEmpty(env.m_debugEnv), switched = env.m_debugEnv != lastDebugEnv;
+            lastDebugEnv = env.m_debugEnv;
+            presetMix = forced || switched ? want : Vector4.MoveTowards(presetMix, want, Time.deltaTime * 0.05f);
+            if (Time.time >= nextCloudLog) { nextCloudLog = Time.time + 30f; Log.LogInfo("[Weather] clouds: env " + (current != null ? current.m_name : "-") + (forced ? " (forced)" : "") + ", rain " + rain.ToString("0.00") + ", fog " + fog.ToString("0.00") + ", mix sparse/cloudy/overcast/stormy " + presetMix.ToString("0.00")); }
             ApplyPreset(presetMix);
             // Clear nights: thinner low layer, so the stars show between dark bands (fair weather only).
             float nightSky = Mathf.Clamp01((-sun.y + 0.02f) / 0.12f) * (presetMix.x + presetMix.y) / Mathf.Max(1e-3f, presetMix.x + presetMix.y + presetMix.z + presetMix.w);

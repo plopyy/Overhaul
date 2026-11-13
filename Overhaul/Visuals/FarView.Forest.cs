@@ -263,51 +263,73 @@ namespace Overhaul.Visuals
                 forestCentreX = cx; forestCentreZ = cz; forestReachShown = reach; forestEpoch++;
                 if (forestWorker == null) { forestWorker = new Thread(ForestWork) { IsBackground = true, Name = "Overhaul far forest" }; forestWorker.Start(); }
                 int r = Mathf.CeilToInt(reach / cellSize) + 1;
-                var wanted = new List<(int, int)>();
+                var wanted = new HashSet<(int, int)>();
                 for (int x = cx - r; x <= cx + r; x++) for (int z = cz - r; z <= cz + r; z++) wanted.Add((x, z));
                 foreach (var key in forestCells.Keys) if (!wanted.Contains(key)) forestCells.TryRemove(key, out _);
                 foreach (var key in wanted.OrderBy(k => (k.Item1 - cx) * (k.Item1 - cx) + (k.Item2 - cz) * (k.Item2 - cz)))
                     if (!forestCells.ContainsKey(key)) cellJobs.Add((key.Item1, key.Item2, forestEpoch));
-                forestVersion++;
+                Interlocked.Increment(ref forestVersion);
             }
-            if (uploadedVersion != forestVersion && Time.time >= nextGather) { nextGather = Time.time + 1f; Gather(); }
+            // The tree lists are built on the worker (gathering ~100 000 trees on the main thread each second while walking
+            // made the hitches seen in game); here only the finished arrays are sent to the graphics card.
+            var ready = Interlocked.Exchange(ref gathered, null);
+            if (ready != null) Upload(ready);
+            TickZoneMask();
             DrawForest(eye, reach);
         }
-        static float nextGather, nextCountLog;
+
+        // The worker's latest lists, per kind: positions + scale, yaws.
+        sealed class Gathered { internal Vector4[][] Positions; internal float[][] Yaws; }
+        static Gathered gathered;
 
         static void ForestWork()
         {
             var trees = new List<Tree>();
-            int done = 0, skipped = 0; var clock = Stopwatch.StartNew();
-            foreach (var job in cellJobs.GetConsumingEnumerable())
+            int done = 0, skipped = 0; var clock = Stopwatch.StartNew(); double lastGather = -10, lastCountLog = -100;
+            while (true)
             {
                 try
                 {
-                    if (job.Epoch != forestEpoch || forestCells.ContainsKey((job.X, job.Z))) { skipped++; continue; }
-                    var w = WorldGenerator.instance; if (w == null) { skipped++; continue; }
-                    trees.Clear();
-                    for (int x = 0; x < CellZones; x++) for (int z = 0; z < CellZones; z++) PlaceZone(w, job.X * CellZones + x, job.Z * CellZones + z, trees);
-                    forestCells[(job.X, job.Z)] = new List<Tree>(trees);
-                    Interlocked.Increment(ref forestVersion);
-                    if (++done <= 3 || done % 50 == 0) Log.LogInfo("[FarView] forest cells done " + done + " (last " + trees.Count + " trees), skipped " + skipped + ", queued " + cellJobs.Count + ", " + clock.Elapsed.TotalSeconds.ToString("0.0") + " s");
+                    // Cells first; the lists are rebuilt when the cells changed, at most twice a second, and once the queue
+                    // is empty (so the last cells show without waiting).
+                    if (cellJobs.TryTake(out var job, 100))
+                    {
+                        if (job.Epoch != forestEpoch || forestCells.ContainsKey((job.X, job.Z))) { skipped++; }
+                        else
+                        {
+                            var w = WorldGenerator.instance; if (w == null) { skipped++; continue; }
+                            trees.Clear();
+                            for (int x = 0; x < CellZones; x++) for (int z = 0; z < CellZones; z++) PlaceZone(w, job.X * CellZones + x, job.Z * CellZones + z, trees);
+                            forestCells[(job.X, job.Z)] = new List<Tree>(trees);
+                            Interlocked.Increment(ref forestVersion);
+                            if (++done <= 3 || done % 50 == 0) Log.LogInfo("[FarView] forest cells done " + done + " (last " + trees.Count + " trees), skipped " + skipped + ", queued " + cellJobs.Count + ", " + clock.Elapsed.TotalSeconds.ToString("0.0") + " s");
+                        }
+                    }
+                    double now = clock.Elapsed.TotalSeconds;
+                    int version = Volatile.Read(ref forestVersion);
+                    if (version != uploadedVersion && (now - lastGather >= 0.5 || cellJobs.Count == 0))
+                    {
+                        lastGather = now; uploadedVersion = version;
+                        bool log = now - lastCountLog >= 20; if (log) lastCountLog = now;
+                        Volatile.Write(ref gathered, Gather(log));
+                    }
                 }
                 catch (Exception e) { Log.LogWarning("[FarView] forest cell failed: " + e); }
             }
         }
 
-        // Every placed tree into its kind's buffers (position + scale, yaw).
-        static void Gather()
+        // Every placed tree into its kind's lists (position + scale, yaw). On the worker.
+        static Gathered Gather(bool log)
         {
-            uploadedVersion = forestVersion;
-            var positions = kinds.Select(_ => new List<Vector4>()).ToArray();
-            var yaws = kinds.Select(_ => new List<float>()).ToArray();
-            foreach (var cell in forestCells.Values)
-                foreach (var t in cell) { positions[t.Kind].Add(new Vector4(t.Position.x, t.Position.y, t.Position.z, t.Scale)); yaws[t.Kind].Add(t.Yaw); }
+            var list = kinds; if (list == null) return null;
+            var positions = list.Select(_ => new List<Vector4>()).ToArray();
+            var yaws = list.Select(_ => new List<float>()).ToArray();
             int total = 0, wet = 0;
-            foreach (var cell in forestCells.Values) foreach (var t in cell) { total++; if (t.Position.y < 29f) wet++; }
-            if (Time.time >= nextCountLog)
+            foreach (var cell in forestCells.Values)
+                foreach (var t in cell) { if (t.Kind >= positions.Length) continue; positions[t.Kind].Add(new Vector4(t.Position.x, t.Position.y, t.Position.z, t.Scale)); yaws[t.Kind].Add(t.Yaw); total++; if (t.Position.y < 29f) wet++; }
+            if (log)
             {
-                nextCountLog = Time.time + 20f; Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level");
+                Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level");
                 // Test runs: the trees of each kind by the biome they stand in, and the biomes each kind's rules allow.
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT")) && WorldGenerator.instance != null)
                 {
@@ -325,9 +347,16 @@ namespace Overhaul.Visuals
                     }
                 }
             }
+            return new Gathered { Positions = positions.Select(p => p.ToArray()).ToArray(), Yaws = yaws.Select(y => y.ToArray()).ToArray() };
+        }
+
+        // The worker's lists into each kind's buffers (main thread).
+        static void Upload(Gathered g)
+        {
+            if (kinds == null || g.Positions.Length != kinds.Count) return;
             for (int k = 0; k < kinds.Count; k++)
             {
-                var kind = kinds[k]; int n = positions[k].Count;
+                var kind = kinds[k]; int n = g.Positions[k].Length;
                 if (kind.Trees == null || kind.Trees.count < n)
                 {
                     kind.Trees?.Release(); kind.Yaws?.Release();
@@ -335,21 +364,76 @@ namespace Overhaul.Visuals
                     kind.Trees = new ComputeBuffer(capacity, 16); kind.Yaws = new ComputeBuffer(capacity, 4);
                     if (kind.Material) { kind.Material.SetBuffer("_Trees", kind.Trees); kind.Material.SetBuffer("_Yaws", kind.Yaws); }
                 }
-                if (n > 0) { kind.Trees.SetData(positions[k], 0, 0, n); kind.Yaws.SetData(yaws[k], 0, 0, n); }
+                if (n > 0) { kind.Trees.SetData(g.Positions[k], 0, 0, n); kind.Yaws.SetData(g.Yaws[k], 0, 0, n); }
                 kind.Count = n;
             }
         }
 
-        // One draw per kind; the shader hides trees inside the game's own range and beyond the reach.
+        // ---- Where the game's own trees stand: a far tree is hidden only in a zone whose objects the game really shows ----
+        // It used to be hidden inside a circle of the game's simulation distance around the camera: while walking, the zones
+        // ahead were not loaded yet (the game builds them over a few frames, its objects 10 per frame), so for a moment there
+        // was neither the far tree nor the game's own (the far forest seen thinning, then filling again). Now a mask of
+        // MaskSize x MaskSize zones around the player: red = the game shows its trees there (loaded zone in its near area,
+        // for a second at least), green = the same for the trees it keeps at a distance (distant objects, total area).
+        const int MaskSize = 64;
+        const float ZoneSettle = 1f;
+        static Texture2D zoneMask;
+        static Color32[] maskPixels;
+        static readonly Dictionary<Vector2s, float> zoneSeen = new Dictionary<Vector2s, float>();
+        static readonly List<Vector2s> zoneDrop = new List<Vector2s>();
+        static Vector2i maskOrigin;
+
+        static void TickZoneMask()
+        {
+            var zs = ZoneSystem.instance; var net = ZNet.instance;
+            if (!zs || !net) return;
+            if (!zoneMask)
+            {
+                zoneMask = new Texture2D(MaskSize, MaskSize, TextureFormat.RGBA32, false, true) { name = "Overhaul far forest zones", filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+                maskPixels = new Color32[MaskSize * MaskSize];
+            }
+            var sim = net.GetSyncedSimulationDistance();
+            var centre = ZoneSystem.GetZone(net.GetReferencePosition());
+            maskOrigin = new Vector2i(centre.x - MaskSize / 2, centre.y - MaskSize / 2);
+            System.Array.Clear(maskPixels, 0, maskPixels.Length);
+            float now = Time.time;
+            int reachZones = Mathf.Min(MaskSize / 2 - 1, sim.TotalSimulationDistance + 1);
+            for (int dz = -reachZones; dz <= reachZones; dz++)
+                for (int dx = -reachZones; dx <= reachZones; dx++)
+                {
+                    var zone = new Vector2s(centre.x + dx, centre.y + dz);
+                    if (!zs.IsZoneLoaded(zone)) { zoneSeen.Remove(zone); continue; }
+                    if (!zoneSeen.TryGetValue(zone, out float since)) zoneSeen[zone] = since = now;
+                    if (now - since < ZoneSettle) continue;
+                    bool near = Within(zs, sim, centre, zone, sim.NearSimulationDistance);
+                    bool distant = near || Within(zs, sim, centre, zone, sim.TotalSimulationDistance);
+                    if (!distant) continue;
+                    maskPixels[(dz + MaskSize / 2) * MaskSize + dx + MaskSize / 2] = new Color32(near ? (byte)255 : (byte)0, 255, 0, 255);
+                }
+            // Zones left behind are forgotten (a zone loaded again settles again).
+            zoneDrop.Clear();
+            foreach (var z in zoneSeen.Keys) if (Mathf.Abs(z.x - centre.x) > reachZones || Mathf.Abs(z.y - centre.y) > reachZones) zoneDrop.Add(z);
+            foreach (var z in zoneDrop) zoneSeen.Remove(z);
+            zoneMask.SetPixels32(maskPixels); zoneMask.Apply(false);
+        }
+
+        // In the game's area around the centre zone: a square in its classic mode, else a circle (as the game finds objects).
+        static bool Within(ZoneSystem zs, SimulationDistance sim, Vector2s centre, Vector2s zone, int radius)
+        {
+            if (sim.IsClassic) return Mathf.Abs(zone.x - centre.x) <= radius && Mathf.Abs(zone.y - centre.y) <= radius;
+            return zs.ZonesWithinRadius(centre, zone, radius, false);
+        }
+
+        // One draw per kind; the shader hides trees standing in zones where the game shows its own, and beyond the reach.
         static void DrawForest(Vector3 eye, float reach)
         {
             var bounds = new Bounds(eye, Vector3.one * (reach * 2f + 1000f));
-            var sim = ZNet.instance.GetSyncedSimulationDistance();
-            float near = (sim.NearSimulationDistance + 0.5f) * 64f, total = (sim.TotalSimulationDistance + 0.5f) * 64f;
             foreach (var kind in kinds)
             {
                 if (kind.Count == 0 || !kind.Material) continue;
-                kind.Material.SetVector("_Range", new Vector2(kind.Distant ? total : near, reach));
+                kind.Material.SetVector("_Range", new Vector2(0f, reach));
+                kind.Material.SetTexture("_ZoneMask", zoneMask);
+                kind.Material.SetVector("_ZoneMaskOrigin", new Vector4(maskOrigin.x, maskOrigin.y, MaskSize, kind.Distant ? 1f : 0f));
                 Graphics.DrawMeshInstancedProcedural(quad, 0, kind.Material, bounds, kind.Count, null, ShadowCastingMode.Off, true, kind.Layer);
             }
         }
@@ -496,7 +580,7 @@ namespace Overhaul.Visuals
         {
             forestEpoch++; forestCentreX = forestCentreZ = int.MinValue; forestCells.Clear(); uploadedVersion = -1;
             if (kinds != null) foreach (var k in kinds) { k.Trees?.Release(); k.Yaws?.Release(); if (k.Albedo) k.Albedo.Release(); if (k.Normal) k.Normal.Release(); }
-            kinds = null; rules = null; bakeKind = bakeFrame = 0;
+            kinds = null; rules = null; bakeKind = bakeFrame = 0; gathered = null; zoneSeen.Clear();
             if (stage) UnityEngine.Object.Destroy(stage);
         }
     }
