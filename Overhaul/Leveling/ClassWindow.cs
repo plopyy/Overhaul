@@ -340,6 +340,12 @@ namespace Overhaul.Leveling
             if (own) icon.sprite = Sprite(panel, s.Data.Icon + (lit ? "" : "_Off"));
         }
 
+        // Header line of the detail: label bold light blue, value in the text's colour.
+        static string Head(string label, string value) => "<b><color=#9cc3e6>" + L(label) + "</color></b> " + L(value);
+        // Values in a description (damage, stats, durations, chances...) bold and warm yellow, tags left untouched (mock-up's hl).
+        static readonly Regex ValueRx = new Regex(@"[+\u2212-]?\d+(?:[.,]\d+)?(?:/\d+(?:[.,]\d+)?)*\s?(?:%|s\b|m\b|PV\b|HP\b)?");
+        static string Values(string text) => string.Join("", Regex.Split(text ?? "", "(<[^>]+>)").Select(p => p.StartsWith("<") ? p : ValueRx.Replace(p, v => "<b><color=#ecd696>" + v.Value + "</color></b>")));
+
         // Left panel: the selected skill (default the chosen or first path's first bottom-row skill).
         static void Detail(Transform win, Transform panel, ClassData c, ClassProgress pr, int b, ClassSkillKind kind, string skillID)
         {
@@ -364,9 +370,9 @@ namespace Overhaul.Leveling
             string text = L(s.Data.DescriptionKey), need = "", later = "", rankLine = "";
             if (kind == ClassSkillKind.Normal)
             {
-                rankLine = string.Format(L("$overhaul_class_rank"), rank + "/" + s.Data.MaxRank);
+                rankLine = rank + "/" + s.Data.MaxRank;
                 var lines = new List<string>();
-                for (int r = Mathf.Max(rank, 1) + 1; r <= s.Data.MaxRank; r++) lines.Add(string.Format(L("$overhaul_class_rank_next"), r, AtRank(text, r)));
+                for (int r = Mathf.Max(rank, 1) + 1; r <= s.Data.MaxRank; r++) lines.Add(string.Format(L("$overhaul_class_rank_next"), r, Values(AtRank(text, r))));
                 later = string.Join("\n", lines);
                 text = AtRank(text, Mathf.Max(rank, 1));
                 if (rank < s.Data.MaxRank)
@@ -374,12 +380,17 @@ namespace Overhaul.Leveling
             }
             else if (kind == ClassSkillKind.Ultimate)
             {
-                rankLine = string.Format(L("$overhaul_class_rank"), (ultLearned ? 1 : 0) + "/1");
+                rankLine = (ultLearned ? 1 : 0) + "/1";
                 need = ultLearned ? "" : !chosen ? L("$overhaul_class_need_path_this") : pr.ChosenPathID != pd.ID ? L("$overhaul_class_need_chosen") : L("$overhaul_class_need_top");
             }
-            else rankLine = L(pr.ChosenPathID == pd.ID ? "$overhaul_class_with_tree" : "$overhaul_class_with_choice");
-            Get<TMP_Text>(fx, "Rank").text = rankLine;
-            Get<TMP_Text>(fx, "Text").text = text;
+            string note = main ? L(pr.ChosenPathID == pd.ID ? "$overhaul_class_with_tree" : "$overhaul_class_with_choice") : "";
+            bool passive = kind == ClassSkillKind.Normal || kind == ClassSkillKind.Passive;
+            Get<TMP_Text>(fx, "Trigger").text = Head("$overhaul_class_trigger", passive ? "$overhaul_class_trigger_passive" : "$overhaul_class_trigger_active");
+            Get<TMP_Text>(fx, "Type").text = Head("$overhaul_class_type", kind == ClassSkillKind.Normal ? "$overhaul_class_type_normal" : kind == ClassSkillKind.Ultimate ? "$overhaul_class_type_ultimate" : kind == ClassSkillKind.Active ? "$overhaul_class_type_special" : "$overhaul_class_type_main");
+            var rankText = Get<TMP_Text>(fx, "Rank"); rankText.text = rankLine == "" ? "" : "<b><color=#9cc3e6>" + L("$overhaul_class_rank_label") + "</color></b> " + rankLine;
+            rankText.gameObject.SetActive(rankLine != "");
+            Get<TMP_Text>(fx, "Text").text = Values(text);
+            var noteText = Get<TMP_Text>(fx, "Note"); noteText.text = note; noteText.gameObject.SetActive(note != "");
             var needText = Get<TMP_Text>(fx, "Need"); needText.text = need; needText.gameObject.SetActive(need != "");
             var rows = later == "" ? new string[0] : later.Split('\n');
             var laterBox = fx.Find("Later"); laterBox.gameObject.SetActive(rows.Length > 0); fx.Find("LaterGap").gameObject.SetActive(rows.Length > 0);
