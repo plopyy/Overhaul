@@ -132,7 +132,7 @@
     <AppDesigner Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DynamicCombat.cs" /><Compile Include="Leveling\*.cs" /><Compile Include="Storage\*.cs" /><Compile Include="Building\*.cs" /><Compile Include="Rarity\*.cs" /><Compile Include="Effects\*.cs" /><Compile Include="Magic\*.cs" />
+    <Compile Include="DynamicCombat.cs" /><Compile Include="Leveling\*.cs" /><Compile Include="Storage\*.cs" /><Compile Include="Building\*.cs" /><Compile Include="Rarity\*.cs" /><Compile Include="Effects\*.cs" /><Compile Include="Magic\*.cs" /><Compile Include="Dyes\*.cs" />
     <Compile Include="Dungeons\DungeonPolicy.cs" />
     <Compile Include="Dungeons\DungeonRuntime.cs" />
     <Compile Include="Dungeons\DungeonResetSafety.cs" />
@@ -192,6 +192,7 @@
     <EmbeddedResource Include="Assets\trough-layout.tsv"><LogicalName>Overhaul.Assets.trough-layout.tsv</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\Classes.json"><LogicalName>Overhaul.Assets.Classes.json</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\LootAura\overhaul_lootaura"><LogicalName>Overhaul.Assets.LootAura.overhaul_lootaura</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_icon.png"><LogicalName>Overhaul.Assets.spirit_icon.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\Dyes\*"><LogicalName>Overhaul.Assets.Dyes.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\mystic_powder.png"><LogicalName>Overhaul.Assets.mystic_powder.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\spirit_texture.png"><LogicalName>Overhaul.Assets.spirit_texture.png</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\hoe_drain_tar.png"><LogicalName>Overhaul.Assets.hoe_drain_tar.png</LogicalName></EmbeddedResource><EmbeddedResource Include="Assets\overhaul_mountainbossroom"><LogicalName>Overhaul.Assets.overhaul_mountainbossroom</LogicalName></EmbeddedResource>

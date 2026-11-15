@@ -64,6 +64,7 @@ namespace Overhaul
             DvergerCirclet.Initialize();
             Magic.StaffModels.Initialize();
             Magic.MageMysticSet.Initialize();
+            Dyes.DyeItems.Initialize();
             Magic.SpellSystem.Initialize();
             Magic.EitrFoods.Initialize();
             Magic.GrimoireStand.Initialize();
@@ -93,7 +94,7 @@ namespace Overhaul
             XPortal.XPortal.Initialize();
 		}
 
-        public void Update() { XPortal.XPortal.Update(); if (Features.Classes) Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); Rarity.RavenThief.Tick(); }
+        public void Update() { XPortal.XPortal.Update(); if (Features.Classes) Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); Dyes.DyeWindow.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); Rarity.RavenThief.Tick(); }
 
         public void LateUpdate()
         {
@@ -125,6 +126,8 @@ namespace Overhaul
             DvergerCirclet.Shutdown();
             Magic.StaffModels.Shutdown();
             Magic.MageMysticSet.Shutdown();
+            Dyes.DyeItems.Shutdown();
+            Dyes.DyeWindow.Clear();
             Magic.SpellSystem.Shutdown();
             Magic.EitrFoods.Shutdown();
             Magic.GrimoireStand.Shutdown();

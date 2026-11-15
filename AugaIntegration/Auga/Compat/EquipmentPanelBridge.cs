@@ -80,6 +80,9 @@ namespace Auga
             if (tabPanel != panel)
             {
                 tabPanel = panel; cosmeticTab = false;
+                // Dye button on the panel's right edge: opens the dyeing window.
+                var dye = panel.Find("DyeButton");
+                if (dye) dye.GetComponent<Button>().onClick.AddListener(Overhaul.Dyes.DyeWindow.Open);
                 panel.Find("Tabs/Equipment").GetComponent<Button>().onClick.AddListener(() => SelectEquipmentTab(false));
                 panel.Find("Tabs/Cosmetic").GetComponent<Button>().onClick.AddListener(() => SelectEquipmentTab(true));
             }

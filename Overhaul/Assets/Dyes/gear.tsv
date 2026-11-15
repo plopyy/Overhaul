@@ -1,0 +1,14 @@
+HelmetLeather	leather,trim	helmet_leather_d|helmet_leather_d|mesh
+ArmorLeatherChest	cloth,leather,belt	LeatherArmourChest_d|LeatherArmourChest_d|body
+ArmorLeatherLegs	cloth,leather,belt	LeatherArmourPants_d|LeatherArmourPants_d|body
+CapeDeerHide	hide	(Wood 26) tree bark seamless texture 2048x2048|bark|mesh
+HelmetPadded	metal	paddedarmortest_d|paddedarmortest_d|mesh
+ArmorPaddedCuirass	cloth,leather,metal,linen	PaddedArmorChest_d|PaddedArmorChest_d|body;paddedarmortest_d|paddedarmortest_d|mesh
+ArmorPaddedGreaves	cloth,leather,metal,linen	Padded_Grieves_d|Padded_Grieves_d|body;paddedarmortest_d|paddedarmortest_d|mesh
+HelmetCarapace	metal,mail,carapace	carapacearmor_d|carapacearmor_d|mesh
+ArmorCarapaceChest	carapace,leather,mail,metal	carapacearmorChest_d|carapacearmorChest_d|body;carapacearmor_d|carapacearmor_d|mesh
+ArmorCarapaceLegs	leather,cloth,carapace,mail	carapacearmorLegs_d|carapacearmorLegs_d|body;carapacearmor_d|carapacearmor_d|mesh
+HelmetMage	cloth,metal	MageArmorRed_d|MageArmorRed_d|mesh
+ArmorMageChest	feathers,cloth,leather,fur	MageArmorChestRed_d|MageArmorChestRed_d|body;MageArmorRed_d|MageArmorRed_d|mesh
+ArmorMageLegs	leather,cloth	MageArmorLegs_d|MageArmorLegs_d|body;MageArmorRed_d|MageArmorRed_d|mesh
+CapeFeather	feathers	feathercape_d|feathercape_d|mesh
