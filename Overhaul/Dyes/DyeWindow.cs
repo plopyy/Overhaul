@@ -187,16 +187,33 @@ namespace Overhaul.Dyes
             }
             var pickedColour = DyePalette.Get(picked);
             T("ColourPanel/ColourName")?.GetComponent<TMP_Text>()?.SetText(pickedColour != null ? Localization.instance.Localize(pickedColour.NameKey) : "");
-            // Cost: the dye icon in the zone's colour, the number of dyes used.
-            var need = Needed(); int total = need.Values.Sum(); bool enough = need.All(n => DyeItems.Count(inv, n.Key) >= n.Value);
-            var costIcon = T("ColourPanel/Cost/Icon").GetComponent<Image>();
-            costIcon.sprite = DyeItems.Icon(pickedColour != null ? pickedColour.Value : Color.white, pickedColour != null ? pickedColour.ID : "white");
-            var amount = T("ColourPanel/Cost/Amount").GetComponent<TMP_Text>(); amount.text = "× " + total; amount.color = enough ? Color.white : new Color(1f, .35f, .3f);
+            // Cost: every zone set to a new colour costs one dye of that colour; one entry per colour (icon tinted in
+            // it, how many), red when the bag holds too few. Apply stays off until every one is there.
+            var need = Needed(); bool enough = need.All(n => DyeItems.Count(inv, n.Key) >= n.Value);
+            var entries = need.ToList();
+            for (int e = 0; e < 4; e++)
+            {
+                var entry = T("ColourPanel/Cost/Entry" + e); if (!entry) continue;
+                bool on = e < entries.Count || (e == 0 && entries.Count == 0);
+                entry.gameObject.SetActive(on); if (!on) continue;
+                var c = e < entries.Count ? entries[e].Key : null; int n = e < entries.Count ? entries[e].Value : 0;
+                entry.Find("Icon").GetComponent<Image>().sprite = DyeItems.Icon(c != null ? c.Value : Color.white, c != null ? c.ID : "white");
+                var amount = entry.Find("Amount").GetComponent<TMP_Text>(); amount.text = "×" + n;
+                amount.color = c == null || DyeItems.Count(inv, c) >= n ? Color.white : new Color(1f, .35f, .3f);
+            }
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)T("ColourPanel/Cost"));
-            T("ColourPanel/Apply").GetComponent<Button>().interactable = selected != null && Changed() && enough;
-            T("ColourPanel/Reset").GetComponent<Button>().interactable = pending != null && zone < pending.Length && pending[zone] != null;
+            Enable(T("ColourPanel/Apply"), selected != null && Changed() && enough);
+            Enable(T("ColourPanel/Reset"), pending != null && zone < pending.Length && pending[zone] != null);
             // Character.
             Preview.Show(T("PreviewPanel/View").GetComponent<RawImage>(), selected, pending);
+        }
+
+        // A button off: not clickable and faded, so it reads as off whatever its sprites.
+        static void Enable(Transform button, bool on)
+        {
+            button.GetComponent<Button>().interactable = on;
+            var group = button.GetComponent<CanvasGroup>() ?? button.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = on ? 1f : .45f;
         }
 
         // ---------------------------------------------------------------- the dressed character
