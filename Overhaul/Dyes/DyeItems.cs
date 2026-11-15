@@ -7,20 +7,22 @@ using UnityEngine;
 
 namespace Overhaul.Dyes
 {
-    // The 50 dyes (Overhaul_Dye_<colour ID>), crafted at the workbench from game ingredients: each normal colour from
-    // something of that colour, its light shade with bone fragments added, its dark shade with coal added; black from
-    // coal, white from bone fragments. They share one picture, the white dye icon, tinted in their colour by code
+    // The 50 dyes (Overhaul_Dye_<colour ID>), crafted at the workbench from common game ingredients: each normal colour
+    // from something of that colour (2) or two mixed (1 each), its light shade with a bone fragment added, its dark shade
+    // with a coal added; black from coal, white from bone fragments, grey from both. They share one picture, the white dye icon, tinted in their colour by code
     // (icon + mask: R where to colour, G its relief), so a new colour needs no new image.
     internal static class DyeItems
     {
         const string Source = "Resin";
-        // Ingredient giving each hue's normal shade.
-        static readonly Dictionary<string, string> Ingredient = new Dictionary<string, string>
+        // Ingredients giving each hue's normal shade: common ones, two mixed like a real dye where no single one fits.
+        static readonly Dictionary<string, string[]> Ingredients = new Dictionary<string, string[]>
         {
-            { "red", "Raspberry" }, { "orange", "Carrot" }, { "yellow", "Dandelion" }, { "lime", "MushroomJotunPuffs" },
-            { "green", "Guck" }, { "teal", "Ooze" }, { "cyan", "FreezeGland" }, { "sky", "Crystal" },
-            { "blue", "Blueberries" }, { "indigo", "MushroomBlue" }, { "purple", "Thistle" }, { "magenta", "Onion" },
-            { "pink", "Ruby" }, { "brown", "LeatherScraps" }, { "beige", "Turnip" }, { "grey", "Stone" },
+            { "red", new[] { "Raspberry" } }, { "orange", new[] { "Carrot" } }, { "yellow", new[] { "Dandelion" } },
+            { "lime", new[] { "Dandelion", "Guck" } }, { "green", new[] { "Guck" } }, { "teal", new[] { "Guck", "Blueberries" } },
+            { "cyan", new[] { "Blueberries", "Ooze" } }, { "sky", new[] { "Blueberries", "Turnip" } }, { "blue", new[] { "Blueberries" } },
+            { "indigo", new[] { "Blueberries", "Thistle" } }, { "purple", new[] { "Thistle" } }, { "magenta", new[] { "Raspberry", "Thistle" } },
+            { "pink", new[] { "Raspberry", "Turnip" } }, { "brown", new[] { "Resin" } }, { "beige", new[] { "Turnip" } },
+            { "grey", new[] { "Coal", "BoneFragments" } },
         };
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
@@ -49,10 +51,12 @@ namespace Overhaul.Dyes
         {
             if (c.ID == "black") return new[] { new RequirementConfig("Coal", 2) };
             if (c.ID == "white") return new[] { new RequirementConfig("BoneFragments", 2) };
-            var reqs = new List<RequirementConfig> { new RequirementConfig(Ingredient[c.Hue], 2) };
-            if (c.Shade == 0) reqs.Add(new RequirementConfig("BoneFragments", 1));
-            if (c.Shade == 2) reqs.Add(new RequirementConfig("Coal", 1));
-            return reqs.ToArray();
+            // Light shade: one bone fragment more, dark shade: one coal more (added to the same entry when already there).
+            var amounts = new Dictionary<string, int>();
+            foreach (var i in Ingredients[c.Hue]) amounts[i] = (amounts.TryGetValue(i, out int n) ? n : 0) + (Ingredients[c.Hue].Length == 1 ? 2 : 1);
+            if (c.Shade == 0) amounts["BoneFragments"] = (amounts.TryGetValue("BoneFragments", out int b) ? b : 0) + 1;
+            if (c.Shade == 2) amounts["Coal"] = (amounts.TryGetValue("Coal", out int k) ? k : 0) + 1;
+            return amounts.Select(x => new RequirementConfig(x.Key, x.Value)).ToArray();
         }
 
         // The dye icon in a colour (also the cost icon of the dyeing window).

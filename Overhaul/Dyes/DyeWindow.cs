@@ -223,7 +223,9 @@ namespace Overhaul.Dyes
                 if (!player || !Game.instance) return;
                 if (!puppet) Build(player);
                 if (!puppet) return;
+                bool wake = !puppet.activeSelf;
                 puppet.SetActive(true); cameraGo.SetActive(true);
+                if (wake) Stand();   // a reactivated animator starts over from its first (falling) state
                 var size = ((RectTransform)view.transform).rect.size;
                 int w = Mathf.Max(64, Mathf.RoundToInt(size.x * 1.5f)), h = Mathf.Max(64, Mathf.RoundToInt(size.y * 1.5f));
                 if (!texture || texture.width != w || texture.height != h)
@@ -235,6 +237,12 @@ namespace Overhaul.Dyes
                 view.texture = texture; view.color = Color.white;
                 Dress(player, item, ids);
                 Frame();
+            }
+            // Standing idle at once: no rigidbody or collider is kept on the copy (no gravity, nothing to fall), and its
+            // animator is told it is on the ground then run a few seconds ahead past the transition.
+            static void Stand()
+            {
+                foreach (var a in puppet.GetComponentsInChildren<Animator>(true)) { a.SetBool(OnGround, true); for (int i = 0; i < 20; i++) a.Update(.25f); }
             }
             internal static void Hide() { if (puppet) puppet.SetActive(false); if (cameraGo) cameraGo.SetActive(false); }
             internal static void Destroy()
@@ -280,11 +288,8 @@ namespace Overhaul.Dyes
                 puppet.transform.SetPositionAndRotation(Place, Quaternion.Euler(0, Yaw, 0));
                 // Standing at once: the animator starts on its ground flag off (sitting/falling), then is run a few
                 // seconds ahead so the transition to the standing idle is already over when the window shows.
-                foreach (var a in puppet.GetComponentsInChildren<Animator>(true))
-                {
-                    a.updateMode = AnimatorUpdateMode.Normal; a.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-                    a.SetBool(OnGround, true); for (int i = 0; i < 20; i++) a.Update(.25f);
-                }
+                foreach (var a in puppet.GetComponentsInChildren<Animator>(true)) { a.updateMode = AnimatorUpdateMode.Normal; a.cullingMode = AnimatorCullingMode.AlwaysAnimate; }
+                Stand();
 
                 cameraGo = new GameObject("DyePreviewCamera");
                 camera = cameraGo.AddComponent<Camera>();
