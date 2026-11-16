@@ -3425,6 +3425,8 @@
   "overhaul_dye_contrast": "Contraste",
   "overhaul_dyeitem_mystic": "Teinture mystique",
   "overhaul_dye_mystic_desc": "Un tourbillon de toutes les couleurs. Teint une zone d’une pièce d’équipement dans la couleur de votre choix, depuis la fenêtre de teinture (bouton du panneau d’équipement).",
+  "overhaul_perf_impostors_on": "Imposteurs des arbres lointains : contours rouges affichés (o_opti impostors à nouveau pour les cacher).",
+  "overhaul_perf_impostors_off": "Imposteurs des arbres lointains : contours rouges masqués.",
   "overhaul_dye_colours": "Couleurs",
   "overhaul_dye_apply": "Appliquer",
   "overhaul_dye_reset": "Restaurer",

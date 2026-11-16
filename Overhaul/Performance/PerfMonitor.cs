@@ -53,7 +53,7 @@ namespace Overhaul.Performance
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
             new Terminal.ConsoleCommand(Command, "Overhaul performance: o_opti [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods" }.Concat(Options.Select(o => o.Id)).ToList());
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods", "impostors" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
         internal static string L(string key, params string[] words) =>
@@ -87,6 +87,14 @@ namespace Overhaul.Performance
             if (first == "look")
             {
                 InstancedProps.Look(args.Context);
+                return;
+            }
+            // "o_opti impostors": each far tree impostor drawn with a red border (again: off), to tell them from the game's trees.
+            if (first == "impostors")
+            {
+                bool on = Shader.GetGlobalFloat("_OverhaulImpostorDebug") < 0.5f;
+                Shader.SetGlobalFloat("_OverhaulImpostorDebug", on ? 1f : 0f);
+                args.Context.AddString(L(on ? "overhaul_perf_impostors_on" : "overhaul_perf_impostors_off"));
                 return;
             }
             if (first == "hud")
