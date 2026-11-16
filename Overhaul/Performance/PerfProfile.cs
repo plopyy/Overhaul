@@ -31,6 +31,14 @@ namespace Overhaul.Performance
         static bool sampling;
         internal static bool Running => sampling;
 
+        // A group timed by hand (Overhaul's own per-frame work), counted as a root: added to the frame's timed time.
+        internal static void AddRoot(string label, long spent)
+        {
+            Roots.Add(label);
+            FrameTicks.TryGetValue(label, out long frame); FrameTicks[label] = frame + spent;
+            FrameCalls.TryGetValue(label, out int n); FrameCalls[label] = n + 1;
+        }
+
         // The game's own update groups (MonoUpdatersExtra: the scope string names the group).
         static readonly string[] Scoped = { "UpdateAI", "CustomFixedUpdate", "CustomUpdate", "CustomLateUpdate" };
         // Managers timed whole, by type and method.

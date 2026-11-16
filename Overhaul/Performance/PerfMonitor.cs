@@ -138,11 +138,16 @@ namespace Overhaul.Performance
             }
 
             private readonly bool[] failed = new bool[10];
+            private static readonly string[] Names = { "Opti.ServerStats", "Opti.StutterFixes", "Opti.AsyncLocations", "Opti.DecorShadows", "Opti.HiddenParticles",
+                "Opti.PieceBatcher", "Opti.InstancedProps", "Opti.SmoothFrames", "Opti.FarView", "Opti.Weather" };
             private void Run(int index, Action tick)
             {
                 if (failed[index]) return;
+                long start = PerfRecorder.Recording ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
                 try { tick(); }
                 catch (Exception e) { failed[index] = true; Log.LogWarning("[Performance] " + tick.Method.DeclaringType?.Name + " stopped: " + e); }
+                // While recording: each optimisation's own time, shown with the game's scripts (top_scripts).
+                if (start != 0) PerfProfile.AddRoot(Names[index], System.Diagnostics.Stopwatch.GetTimestamp() - start);
             }
         }
 
