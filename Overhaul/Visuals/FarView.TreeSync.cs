@@ -218,13 +218,6 @@ namespace Overhaul.Visuals
                     }
                     if (!same) removed.Add(new Removed { Hash = t.Hash, X = t.Position.x, Z = t.Position.z });
                 }
-                // Diagnostic: trees well below the world generator's ground (buried by raised terrain?), logged once each.
-                foreach (var zdo in standing)
-                {
-                    var p = zdo.GetPosition(); float g = WorldGenerator.instance.GetHeight(p.x, p.z);
-                    if (p.y < g - 3f && loggedBuried.Add(zdo.m_uid))
-                        Log.LogInfo("[FarView] tree below the generated ground: " + (ZNetScene.instance && ZNetScene.instance.GetPrefab(zdo.GetPrefab()) ? ZNetScene.instance.GetPrefab(zdo.GetPrefab()).name : zdo.GetPrefab().ToString()) + " at " + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + " (ground " + g.ToString("0") + ")");
-                }
                 for (int i = 0; i < standing.Count; i++)
                 {
                     if (matched[i]) continue;
@@ -234,7 +227,6 @@ namespace Overhaul.Visuals
                 }
                 return new ZoneDelta { Removed = removed.ToArray(), Added = added.ToArray() };
             }
-            static readonly HashSet<ZDOID> loggedBuried = new HashSet<ZDOID>();
             static float Scale(ZDO zdo) => zdo.GetFloat(ZDOVars.s_scaleScalarHash, zdo.GetVec3(ZDOVars.s_scaleHash, Vector3.one).y);
             static bool Same(ZoneDelta a, ZoneDelta b)
             {

@@ -603,8 +603,7 @@ namespace Overhaul.Visuals
         static void DumpAtlas(Kind kind)
         {
             var dir = Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT");
-            // Diagnostic for now: also in normal games, the atlases go to BepInEx/OverhaulPerf (cut far pines seen there only).
-            if (string.IsNullOrEmpty(dir)) { dir = System.IO.Path.Combine(BepInEx.Paths.BepInExRootPath, "OverhaulPerf"); System.IO.Directory.CreateDirectory(dir); }
+            if (string.IsNullOrEmpty(dir)) return;
             try
             {
                 var tex = new Texture2D(kind.Albedo.width, kind.Albedo.height, TextureFormat.RGBA32, false);
