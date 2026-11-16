@@ -10,14 +10,17 @@ namespace Overhaul.Dyes
     // Highlights are rolled off smoothly, so white keeps its relief too.
     internal static class DyeBlend
     {
-        const float GRef = .70f, Dark = .09f, Knee = .80f;
+        // Dark: relief added around dark dyes, mostly downward (folds deepen, highlights rise a little only): a pure black
+        // lifted its highlights to a washed dark grey with 0.09 both ways. Knee: roll-off kept high so white reaches white.
+        const float GRef = .70f, Dark = .04f, Knee = .92f;
 
         static float Soft(float x) => x <= Knee ? x : Knee + (1 - Knee) * (float)Math.Tanh((x - Knee) / (1 - Knee));
 
         internal static Color Tint(Color c, float grey)
         {
             float s = grey / GRef, dark = 1 - Mathf.Max(c.r, Mathf.Max(c.g, c.b)); dark *= dark;
-            float add = Dark * dark * (s - 1);
+            float relief = Mathf.Min(s - 1, 0) + .35f * Mathf.Max(s - 1, 0);
+            float add = Dark * dark * relief;
             return new Color(Soft(Mathf.Max(0, c.r * s + add)), Soft(Mathf.Max(0, c.g * s + add)), Soft(Mathf.Max(0, c.b * s + add)), 1);
         }
 

@@ -12,3 +12,19 @@ HelmetMage	cloth,metal	MageArmorRed_d|MageArmorRed_d|mesh
 ArmorMageChest	feathers,cloth,leather,fur	MageArmorChestRed_d|MageArmorChestRed_d|body;MageArmorRed_d|MageArmorRed_d|mesh
 ArmorMageLegs	leather,cloth	MageArmorLegs_d|MageArmorLegs_d|body;MageArmorRed_d|MageArmorRed_d|mesh
 CapeFeather	feathers	feathercape_d|feathercape_d|mesh
+HelmetBronze	hide,cloth	helmet_bronze_d|helmet_bronze_d|mesh
+ArmorBronzeChest	leather,metal	BronzeArmorChest_d|BronzeArmorChest_d|body;BronzeArmor_Chest_meshes_chest_d|BronzeArmor_Chest_meshes_chest_d|mesh
+ArmorBronzeLegs	leather,metal	BronzeArmorLegs_d|BronzeArmorLegs_d|body;BronzeArmor_Chest_meshes_chest_d|BronzeArmor_Chest_meshes_chest_d|mesh
+HelmetIron	hide,metal	helmet_iron_d|helmet_iron_d|mesh
+ArmorIronChest	metal,leather	IronArmorChestPlayer_d|IronArmorChestPlayer_d|body;IronArmorChest_d|IronArmorChest_d|mesh
+ArmorIronLegs	trim,leather,metal	IronArmorLegs_d|IronArmorLegs_d|body;IronArmorLegs_d|IronArmorLegs_d|mesh
+HelmetRoot	roots,hide,leather	AbominationArmor_d|AbominationArmor_d|mesh
+ArmorRootChest	roots,hide,leather	AbominationArmorChest_d|AbominationArmorChest_d|body;AbominationArmor_d|AbominationArmor_d|mesh
+ArmorRootLegs	hide,roots	AbominationArmorLegs_d|AbominationArmorLegs_d|body;AbominationArmor_d|AbominationArmor_d|mesh
+HelmetDrake	mail	SilverArmourChest_d|SilverArmourChest_d|mesh
+ArmorWolfChest	mail,hide,cloth	SilverArmour_Skin_d|SilverArmour_Skin_d|body;SilverArmourChest_d|SilverArmourChest_d|mesh
+ArmorWolfLegs	cloth,mail,hide	SilverArmour_Skin_Legs_d|SilverArmour_Skin_Legs_d|body;SilverArmourChest_d|SilverArmourChest_d|mesh
+CapeWolf	fur	WolfCape_d|WolfCape_d|mesh;(Wood 26) tree bark seamless texture 2048x2048|bark|mesh
+HelmetFenring	cloth,trim	FenringArmor_d|FenringArmor_d|mesh
+ArmorFenringChest	trim,leather	FenringArmorChest_d|FenringArmorChest_d|body;FenringArmor_d|FenringArmor_d|mesh
+ArmorFenringLegs	trim,leather,cloth	FenringArmorLegs_d|FenringArmorLegs_d|body;FenringArmor_d|FenringArmor_d|mesh
