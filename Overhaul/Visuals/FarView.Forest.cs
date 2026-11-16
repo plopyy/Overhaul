@@ -413,6 +413,35 @@ namespace Overhaul.Visuals
         }
 
         // The worker's lists into each kind's buffers (main thread).
+        // "o_opti trees": every far tree the far view places within 150 m of the player (hidden up close or not): kind, place,
+        // whether the seed's placement or the server put it there, and the biome the world generator gives there.
+        internal static List<string> TreesAround(float radius = 150f)
+        {
+            var lines = new List<string>();
+            var player = Player.m_localPlayer; var w = WorldGenerator.instance;
+            if (!player || w == null || rules == null || kinds == null) { lines.Add("far forest not ready"); return lines; }
+            var p = player.transform.position;
+            var list = new List<Tree>();
+            int zr = Mathf.CeilToInt(radius / 64f) + 1; var c = ZoneSystem.GetZone(p);
+            for (int x = c.x - zr; x <= c.x + zr; x++)
+                for (int z = c.y - zr; z <= c.y + zr; z++)
+                {
+                    list.Clear();
+                    PlaceZone(w, x, z, list);
+                    treeDeltas.TryGetValue((x, z), out var delta);
+                    foreach (var t in list)
+                    {
+                        if (new Vector2(t.Position.x - p.x, t.Position.z - p.z).magnitude > radius) continue;
+                        bool fromServer = delta != null && delta.Added.Any(a => a.Hash == t.Hash && Mathf.Abs(a.X - t.Position.x) < .01f && Mathf.Abs(a.Z - t.Position.z) < .01f);
+                        lines.Add(kinds[t.Kind].Name + " at " + t.Position.x.ToString("0") + ", " + t.Position.y.ToString("0") + ", " + t.Position.z.ToString("0") +
+                            " (" + Vector3.Distance(p, t.Position).ToString("0") + " m) " + (fromServer ? "server" : "seed") + ", biome " + w.GetBiome(t.Position.x, t.Position.z, 0.02f, false) +
+                            ", zone " + x + "," + z + (delta != null ? " (server changes: " + delta.Removed.Length + " gone, " + delta.Added.Length + " added)" : " (no server changes)"));
+                    }
+                }
+            lines.Insert(0, lines.Count + " far trees within " + radius.ToString("0") + " m of " + p.x.ToString("0") + ", " + p.z.ToString("0") + ", player biome " + w.GetBiome(p.x, p.z, 0.02f, false));
+            return lines;
+        }
+
         static Gathered shownTrees;
         // "o_opti impostors": the far tree closest to the centre of the screen (its kind, place, distance), from the lists drawn.
         internal static string AimedImpostor()

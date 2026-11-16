@@ -53,7 +53,7 @@ namespace Overhaul.Performance
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
             new Terminal.ConsoleCommand(Command, "Overhaul performance: o_opti [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods", "impostors" }.Concat(Options.Select(o => o.Id)).ToList());
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods", "impostors", "trees" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
         internal static string L(string key, params string[] words) =>
@@ -87,6 +87,14 @@ namespace Overhaul.Performance
             if (first == "look")
             {
                 InstancedProps.Look(args.Context);
+                return;
+            }
+            // "o_opti trees": the far trees placed around the player, to the console (first lines) and the log (all).
+            if (first == "trees")
+            {
+                var lines = Visuals.FarView.TreesAround();
+                foreach (var line in lines) Utility.Log.LogInfo("[FarView] " + line);
+                foreach (var line in lines.Take(12)) args.Context.AddString(line);
                 return;
             }
             // "o_opti impostors": each far tree impostor drawn with a red border (again: off), to tell them from the game's trees.
