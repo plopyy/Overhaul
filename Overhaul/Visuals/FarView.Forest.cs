@@ -67,6 +67,23 @@ namespace Overhaul.Visuals
             }
             catch (Exception e) { forestFailed = true; Log.LogWarning("[FarView] far forest off: " + e.Message); return false; }
 
+            if (!TreeRules(out var prefabs, out rules)) return false;
+            kinds = prefabs.Select(p => new Kind { Name = p.name, Prefab = p }).ToList();
+            kindOfHash = new Dictionary<int, int>(); for (int i = 0; i < kinds.Count; i++) kindOfHash[kinds[i].Name.GetStableHashCode()] = i;
+            seed = WorldGenerator.instance.GetSeed();
+            foreach (var kind in kinds) { var view = kind.Prefab.GetComponent<ZNetView>(); kind.Distant = view && view.m_distant; }
+            quad = MakeQuad();
+            Log.LogInfo("[FarView] far forest: " + kinds.Count + " kinds of tree (" + string.Join(", ", kinds.Select(k => k.Name)) + ")");
+            return true;
+        }
+        static Dictionary<int, int> kindOfHash;   // tree prefab hash -> kind (client)
+
+        // The tree kinds (at most 32, those the game places most of) and the game's vegetation rules for them. The same on
+        // the server, which compares the trees really standing with this placement (FarView.TreeSync).
+        static bool TreeRules(out List<GameObject> prefabs, out Rule[] result)
+        {
+            prefabs = null; result = null;
+            if (!ZoneSystem.instance || ZoneSystem.instance.m_vegetation == null) return false;
             var weight = new Dictionary<GameObject, float>();
             foreach (var veg in ZoneSystem.instance.m_vegetation)
             {
@@ -74,8 +91,8 @@ namespace Overhaul.Visuals
                 weight.TryGetValue(veg.m_prefab, out float w);
                 weight[veg.m_prefab] = w + Mathf.Max(veg.m_max < 1f ? veg.m_max : (veg.m_min + veg.m_max) * 0.5f, 0.01f) * (veg.m_groupSizeMin + veg.m_groupSizeMax) * 0.5f;
             }
-            kinds = weight.OrderByDescending(p => p.Value).Take(MaxKinds).Select(p => new Kind { Name = p.Key.name, Prefab = p.Key }).ToList();
-            var index = kinds.Select((k, i) => (k.Prefab, i)).ToDictionary(p => p.Prefab, p => p.i);
+            prefabs = weight.OrderByDescending(p => p.Value).Take(MaxKinds).Select(p => p.Key).ToList();
+            var index = prefabs.Select((k, i) => (k, i)).ToDictionary(p => p.k, p => p.i);
             var list = new List<Rule>();
             foreach (var veg in ZoneSystem.instance.m_vegetation)
             {
@@ -95,11 +112,7 @@ namespace Overhaul.Visuals
                 });
             }
             // The game seeds per vegetation entry in list order; the order of our copy is the same.
-            rules = list.ToArray();
-            seed = WorldGenerator.instance.GetSeed();
-            foreach (var kind in kinds) { var view = kind.Prefab.GetComponent<ZNetView>(); kind.Distant = view && view.m_distant; }
-            quad = MakeQuad();
-            Log.LogInfo("[FarView] far forest: " + kinds.Count + " kinds of tree (" + string.Join(", ", kinds.Select(k => k.Name)) + ")");
+            result = list.ToArray();
             return true;
         }
 
@@ -156,9 +169,29 @@ namespace Overhaul.Visuals
         }
 
         // ---- Placement, per zone, on the worker ----
-        struct Tree { internal Vector3 Position; internal float Scale, Yaw; internal int Kind; }
+        struct Tree { internal Vector3 Position; internal float Scale, Yaw; internal int Kind, Hash; }
 
+        // Client: the zone's trees as the game placed them at first, with the changes the server sent since (trees cut down
+        // left out, trees grown since added: FarView.TreeSync).
         static void PlaceZone(WorldGenerator w, int zx, int zz, List<Tree> into)
+        {
+            int from = into.Count;
+            PlaceZone(w, rules, seed, zx, zz, into);
+            if (!TreeSync.Enabled || !treeDeltas.TryGetValue((zx, zz), out var delta)) return;
+            if (delta.Removed.Length > 0)
+                for (int i = into.Count - 1; i >= from; i--)
+                {
+                    var t = into[i];
+                    foreach (var r in delta.Removed)
+                        if (r.Hash == t.Hash && Mathf.Abs(r.X - t.Position.x) < DeltaMatch && Mathf.Abs(r.Z - t.Position.z) < DeltaMatch) { into.RemoveAt(i); break; }
+                }
+            foreach (var a in delta.Added)
+                if (kindOfHash != null && kindOfHash.TryGetValue(a.Hash, out int kind))
+                    into.Add(new Tree { Position = new Vector3(a.X, a.Y, a.Z), Scale = a.Scale, Yaw = a.Yaw, Kind = kind, Hash = a.Hash });
+        }
+
+        // The game's first placement of the trees of one zone (client and server).
+        static void PlaceZone(WorldGenerator w, Rule[] rules, int seed, int zx, int zz, List<Tree> into)
         {
             float cx = zx * 64f, cz = zz * 64f;
             var zoneBiome = w.GetBiome(cx, cz, 0.02f, false) | w.GetBiome(cx - 32, cz - 32, 0.02f, false) | w.GetBiome(cx + 32, cz - 32, 0.02f, false)
@@ -184,7 +217,7 @@ namespace Overhaul.Visuals
                         rng.Range(-rule.RandTilt, rule.RandTilt); rng.Range(-rule.RandTilt, rule.RandTilt);
                         if (!Accept(w, rule, ref p)) continue;
                         if (rule.GroundTiltChance > 0f) rng.Value.GetHashCode();
-                        into.Add(new Tree { Position = p, Scale = scale, Yaw = yaw * Mathf.Deg2Rad, Kind = rule.Kind });
+                        into.Add(new Tree { Position = p, Scale = scale, Yaw = yaw * Mathf.Deg2Rad, Kind = rule.Kind, Hash = rule.Hash });
                         placed++;
                     }
                     if (rule.Force && placed >= count) break;
@@ -581,7 +614,7 @@ namespace Overhaul.Visuals
         {
             forestEpoch++; forestCentreX = forestCentreZ = int.MinValue; forestCells.Clear(); uploadedVersion = -1;
             if (kinds != null) foreach (var k in kinds) { k.Trees?.Release(); k.Yaws?.Release(); if (k.Albedo) k.Albedo.Release(); if (k.Normal) k.Normal.Release(); }
-            kinds = null; rules = null; bakeKind = bakeFrame = 0; gathered = null; zoneSeen.Clear();
+            kinds = null; rules = null; kindOfHash = null; bakeKind = bakeFrame = 0; gathered = null; zoneSeen.Clear();
             if (stage) UnityEngine.Object.Destroy(stage);
         }
     }
