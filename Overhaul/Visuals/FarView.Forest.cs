@@ -296,6 +296,14 @@ namespace Overhaul.Visuals
         static void TickForest(Vector3 eye)
         {
             if (!PrepareForest()) return;
+            // An atlas whose contents the graphics card dropped (render textures can be lost, e.g. on a device reset) is
+            // baked again instead of drawing what is left of it.
+            if (kinds.Any(k => k.Material && k.Albedo && (!k.Albedo.IsCreated() || !k.Normal.IsCreated())))
+            {
+                Log.LogInfo("[FarView] impostor atlas lost, baking again");
+                foreach (var k in kinds) { if (k.Albedo) k.Albedo.Release(); if (k.Normal) k.Normal.Release(); if (k.Material) UnityEngine.Object.Destroy(k.Material); k.Material = null; }
+                bakeKind = bakeFrame = 0;
+            }
             if (!Bake()) return;
             float reach = ForestReach(ClientVisuals.FarViewInEffect);
             float cellSize = CellZones * 64f;
@@ -493,6 +501,14 @@ namespace Overhaul.Visuals
         {
             if (bakeKind >= kinds.Count) return true;
             int frameSize = ClientVisuals.FarViewInEffect == ClientVisuals.Level.Low ? 64 : 128;
+            // The bake targets follow the frame size: made once at the first bake, a later bake at another level (Low 64 px,
+            // else 128) copied 128 px frames out of 64 px pictures and the atlas kept only part of each tree.
+            if (bakeCamera && bakeTarget && bakeTarget.width != frameSize)
+            {
+                bakeCamera.targetTexture = null;
+                bakeTarget.Release(); bakeAlbedo.Release(); bakeNormal.Release();
+                UnityEngine.Object.Destroy(bakeCamera.gameObject); bakeCamera = null;
+            }
             if (!bakeCamera)
             {
                 bakeLayer = 31; for (int l = 31; l >= 8; l--) if (string.IsNullOrEmpty(LayerMask.LayerToName(l))) { bakeLayer = l; break; }
