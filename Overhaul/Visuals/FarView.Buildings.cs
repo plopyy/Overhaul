@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Overhaul.Performance;
@@ -96,13 +97,15 @@ namespace Overhaul.Visuals
                 buildingOrder.Sort((a, b) => ((a.Item1 - cx) * (a.Item1 - cx) + (a.Item2 - cz) * (a.Item2 - cz)).CompareTo((b.Item1 - cx) * (b.Item1 - cx) + (b.Item2 - cz) * (b.Item2 - cz)));
                 var inReach = new HashSet<(int, int)>(buildingOrder);
                 foreach (var key in new List<(int, int)>(buildingCells.Keys))
-                    if (!inReach.Contains(key)) { FreeCell(buildingCells[key]); buildingCells.Remove(key); ForgetCellGlows(key); }
+                    if (!inReach.Contains(key)) { if (pending != null && pending.Key.Equals(key)) DropPending(); FreeCell(buildingCells[key]); buildingCells.Remove(key); ForgetCellGlows(key); }
             }
             if (buildingOrder.Count == 0) return;
             var player = ZoneSystem.GetZone(eye);
             int near = ZNet.instance.GetSyncedSimulationDistance().NearSimulationDistance;
             var watch = Stopwatch.StartNew();
-            for (int n = 0; n < buildingOrder.Count && watch.Elapsed.TotalMilliseconds < BuildingBudgetMs; n++)
+            // The cell being merged goes on first, a chunk at a time within the budget.
+            while (pending != null && watch.Elapsed.TotalMilliseconds < BuildingBudgetMs) StepMerge();
+            for (int n = 0; n < buildingOrder.Count && pending == null && watch.Elapsed.TotalMilliseconds < BuildingBudgetMs; n++)
             {
                 var key = buildingOrder[buildingCursor];
                 buildingCursor = (buildingCursor + 1) % buildingOrder.Count;
@@ -149,6 +152,63 @@ namespace Overhaul.Visuals
             return index >= 0 && index < sectors.Length ? sectors[index] : null;
         }
 
+        // A cell being merged a little each frame: its pieces gathered at once (quick), then merged in chunks of at most
+        // ChunkPieces parts per mesh, within the frame budget, the cell's old meshes kept on screen until all are done.
+        // (A whole cell merged in one go took 300-900 ms near a big base.)
+        const int ChunkPieces = 200;
+        sealed class PendingMerge
+        {
+            internal (int, int) Key; internal BuildingCell Cell; internal long Print; internal Vector3 Origin;
+            internal List<(Material Material, CombineInstance[] Parts)> Groups; internal int Group, Offset;
+            internal List<ZDO> Glows; internal GameObject Go; internal readonly List<Mesh> Meshes = new List<Mesh>();
+        }
+        static PendingMerge pending;
+
+        // One chunk merged; true once the whole cell is done (then shown in place of its old meshes).
+        static bool StepMerge()
+        {
+            var p = pending;
+            if (p.Group >= p.Groups.Count) { FinishMerge(); return true; }
+            var (material, parts) = p.Groups[p.Group];
+            int take = Math.Min(ChunkPieces, parts.Length - p.Offset);
+            var chunk = new CombineInstance[take]; Array.Copy(parts, p.Offset, chunk, 0, take);
+            p.Offset += take;
+            if (p.Offset >= parts.Length) { p.Group++; p.Offset = 0; }
+            var mesh = new Mesh { name = "Overhaul far buildings", indexFormat = IndexFormat.UInt32 };
+            try { mesh.CombineMeshes(chunk, true, true, false); }
+            catch (Exception e) { UnityEngine.Object.Destroy(mesh); Log.LogWarning("[FarView] far buildings: " + e.Message); return false; }
+            mesh.UploadMeshData(true);
+            p.Meshes.Add(mesh);
+            if (!p.Go) { p.Go = new GameObject("Far buildings " + p.Key.Item1 + "," + p.Key.Item2); p.Go.SetActive(false); p.Go.transform.SetParent(buildingRoot.transform, false); p.Go.transform.position = p.Origin; }
+            var part = new GameObject(material.name) { layer = LayerMask.NameToLayer("piece") >= 0 ? LayerMask.NameToLayer("piece") : 0 };
+            part.transform.SetParent(p.Go.transform, false);
+            part.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = part.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = true;
+            return false;
+        }
+
+        static void FinishMerge()
+        {
+            var p = pending; pending = null;
+            FreeCell(p.Cell);
+            p.Cell.Print = p.Print; // after FreeCell, which clears it
+            GlowsOfCell(p.Key, p.Glows);
+            p.Cell.Go = p.Go; p.Cell.Meshes.AddRange(p.Meshes);
+            if (p.Go) p.Go.SetActive(true);
+        }
+
+        // A merge left unfinished (the cell went out of reach, the far view stopped): what it built so far is dropped.
+        static void DropPending()
+        {
+            if (pending == null) return;
+            if (pending.Go) UnityEngine.Object.Destroy(pending.Go);
+            foreach (var m in pending.Meshes) if (m) UnityEngine.Object.Destroy(m);
+            pending = null;
+        }
+
         static readonly Dictionary<Material, List<CombineInstance>> mergeGroups = new Dictionary<Material, List<CombineInstance>>();
 
         static void MergeCell((int, int) key, BuildingCell cell, Vector2s player, int near, long print)
@@ -178,29 +238,13 @@ namespace Overhaul.Visuals
                         count++;
                     }
                 }
-            FreeCell(cell);
-            cell.Print = print; // after FreeCell, which clears it
-            GlowsOfCell(key, cellPieces);
-            if (count == 0) return;
-            cell.Go = new GameObject("Far buildings " + key.Item1 + "," + key.Item2);
-            cell.Go.transform.SetParent(buildingRoot.transform, false);
-            cell.Go.transform.position = origin;
-            foreach (var pair in mergeGroups)
+            // Merged a chunk at a time from the next frames on (StepMerge); an empty cell is cleared at once.
+            pending = new PendingMerge
             {
-                if (pair.Value.Count == 0) continue;
-                var mesh = new Mesh { name = "Overhaul far buildings", indexFormat = IndexFormat.UInt32 };
-                try { mesh.CombineMeshes(pair.Value.ToArray(), true, true, false); }
-                catch (Exception e) { UnityEngine.Object.Destroy(mesh); Log.LogWarning("[FarView] far buildings: " + e.Message); continue; }
-                mesh.UploadMeshData(true);
-                cell.Meshes.Add(mesh);
-                var part = new GameObject(pair.Key.name) { layer = LayerMask.NameToLayer("piece") >= 0 ? LayerMask.NameToLayer("piece") : 0 };
-                part.transform.SetParent(cell.Go.transform, false);
-                part.AddComponent<MeshFilter>().sharedMesh = mesh;
-                var renderer = part.AddComponent<MeshRenderer>();
-                renderer.sharedMaterial = pair.Key;
-                renderer.shadowCastingMode = ShadowCastingMode.Off;
-                renderer.receiveShadows = true;
-            }
+                Key = key, Cell = cell, Print = print, Origin = origin, Glows = cellPieces,
+                Groups = count == 0 ? new List<(Material, CombineInstance[])>() : mergeGroups.Where(g => g.Value.Count > 0).Select(g => (g.Key, g.Value.ToArray())).ToList(),
+            };
+            if (count == 0) FinishMerge();
         }
 
         static void FreeCell(BuildingCell cell)
@@ -212,6 +256,7 @@ namespace Overhaul.Visuals
 
         static void StopBuildings()
         {
+            DropPending();
             foreach (var cell in buildingCells.Values) FreeCell(cell);
             buildingCells.Clear();
             cellGlows.Clear(); glowsDirty = true;
