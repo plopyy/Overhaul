@@ -70,16 +70,28 @@ namespace Overhaul.Visuals
             if (rings.Length != wanted) { Stop(); Prepare(); rings = new Ring[wanted]; for (int i = 0; i < wanted; i++) rings[i] = new Ring(); }
 
             var eye = camera.transform.position;
-            for (int level = 0; level < rings.Length; level++) Plan(level, eye);
-            Upload();
-            for (int level = 0; level < rings.Length; level++) Swap(level);
-            UpdateProperties();
-            TickSea();
-            TickForest(eye);
-            TickBuildings(eye);
-            TickLights(eye);
-            TickShadows();
-            TickAir();
+            Timed("FarView.Terrain", () =>
+            {
+                for (int level = 0; level < rings.Length; level++) Plan(level, eye);
+                Upload();
+                for (int level = 0; level < rings.Length; level++) Swap(level);
+                UpdateProperties();
+            });
+            Timed("FarView.Sea", TickSea);
+            Timed("FarView.Forest", () => TickForest(eye));
+            Timed("FarView.Buildings", () => TickBuildings(eye));
+            Timed("FarView.Lights", () => TickLights(eye));
+            Timed("FarView.Shadows", TickShadows);
+            Timed("FarView.Air", TickAir);
+        }
+
+        // While a performance record runs, each part's own time (top_scripts of the record).
+        static void Timed(string label, Action part)
+        {
+            if (!Performance.PerfRecorder.Recording) { part(); return; }
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            try { part(); }
+            finally { Performance.PerfProfile.AddGroup(label, System.Diagnostics.Stopwatch.GetTimestamp() - start); }
         }
 
         // The game's distant land: its material and layer are reused, the land itself is switched off while ours is drawn.

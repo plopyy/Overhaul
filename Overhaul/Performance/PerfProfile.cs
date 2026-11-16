@@ -32,9 +32,10 @@ namespace Overhaul.Performance
         internal static bool Running => sampling;
 
         // A group timed by hand (Overhaul's own per-frame work), counted as a root: added to the frame's timed time.
-        internal static void AddRoot(string label, long spent)
+        internal static void AddRoot(string label, long spent) { Roots.Add(label); AddGroup(label, spent); }
+        // A part of a group already timed (not added again to the frame's timed time).
+        internal static void AddGroup(string label, long spent)
         {
-            Roots.Add(label);
             FrameTicks.TryGetValue(label, out long frame); FrameTicks[label] = frame + spent;
             FrameCalls.TryGetValue(label, out int n); FrameCalls[label] = n + 1;
         }
