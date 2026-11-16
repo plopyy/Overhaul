@@ -173,6 +173,31 @@ namespace Overhaul.Dyes
             if (Debug) Log.LogInfo("Dyes: " + slot + " " + value + " -> " + dyed + " renderers/textures, objects " + string.Join(",", Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)).Select(r => r.name + "[" + (r.sharedMaterial && r.sharedMaterial.mainTexture ? r.sharedMaterial.mainTexture.name : "-") + "]")));
         }
         internal static bool Debug = false;   // logs each tint and writes the dyed textures to the game test folder
+        // o_dyegloss: the worn armour's smoothness (cloth/leather and metal values) times k, from the game's own values.
+        internal static int GlossTest(VisEquipment v, float k)
+        {
+            int n = 0;
+            string[] names = { "_Glossiness", "_MetalGloss", "_MetalGlossiness" };
+            foreach (var slot in new[] { Slot.Helmet, Slot.Chest, Slot.Legs, Slot.Cape })
+                foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
+                {
+                    var m = r.sharedMaterial; if (!m) continue;
+                    var block = new MaterialPropertyBlock(); r.GetPropertyBlock(block);
+                    foreach (var name in names) if (m.HasProperty(name)) block.SetFloat(name, UnityEngine.Mathf.Clamp01(m.GetFloat(name) * k));
+                    r.SetPropertyBlock(block); n++;
+                }
+            if (v.m_bodyModel)
+            {
+                var body = v.m_bodyModel.material;
+                if (!glossBase.TryGetValue(body, out var g)) glossBase[body] = g = new[] { body.HasProperty("_Glossiness") ? body.GetFloat("_Glossiness") : 0, body.HasProperty("_MetalGlossiness") ? body.GetFloat("_MetalGlossiness") : 0 };
+                if (body.HasProperty("_Glossiness")) body.SetFloat("_Glossiness", UnityEngine.Mathf.Clamp01(g[0] * k));
+                if (body.HasProperty("_MetalGlossiness")) body.SetFloat("_MetalGlossiness", UnityEngine.Mathf.Clamp01(g[1] * k));
+                n++;
+            }
+            return n;
+        }
+        static readonly Dictionary<Material, float[]> glossBase = new Dictionary<Material, float[]>();
+
         static void Block(Renderer r, int property, Texture texture)
         {
             var block = new MaterialPropertyBlock(); r.GetPropertyBlock(block); block.SetTexture(property, texture); r.SetPropertyBlock(block);
