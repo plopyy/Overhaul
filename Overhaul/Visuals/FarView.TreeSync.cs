@@ -52,7 +52,10 @@ namespace Overhaul.Visuals
                         d.Added = new Added[pkg.ReadInt()];
                         for (int a = 0; a < d.Added.Length; a++) d.Added[a] = new Added { Hash = pkg.ReadInt(), X = pkg.ReadSingle(), Y = pkg.ReadSingle(), Z = pkg.ReadSingle(), Scale = pkg.ReadSingle(), Yaw = pkg.ReadSingle() };
                         Store(key, d);
+                        received += d.Removed.Length; receivedAdded += d.Added.Length;
                     }
+                    receivedZones += zones;
+                    Log.LogInfo("[FarView] far trees from the server: " + receivedZones + " zones so far, " + received + " gone, " + receivedAdded + " added (" + treeDeltas.Count + " zones with changes)");
                 }
                 catch (Exception e) { Log.LogWarning("[FarView] far trees from the server not read: " + e.Message); }
             }
@@ -64,6 +67,9 @@ namespace Overhaul.Visuals
                 if (forestCells.TryRemove(cell, out _)) { cellJobs.Add((cell.Item1, cell.Item2, forestEpoch)); Interlocked.Increment(ref forestVersion); }
             }
             static int FloorDiv(int a, int b) => a >= 0 ? a / b : -((-a + b - 1) / b);
+            static int receivedZones, received, receivedAdded;
+            // Client diagnostic: trees the server said gone, found in the seed's placement and left out (or not found).
+            internal static int Matched, Unmatched;
 
             // ---------------------------------------------------------------- server
             static ZNet net;
@@ -229,6 +235,7 @@ namespace Overhaul.Visuals
                     if (sentTo.Add(peer.m_uid)) Push(peer, deltas.Keys.ToList());
                 if (changed.Count == 0) return;
                 var zones = changed.ToList(); changed.Clear();
+                Log.LogInfo("[FarView] far trees: " + zones.Count + " zones changed sent to " + ready.Count + " players (" + deltas.Count + " zones with changes, " + bases.Count + " zones placed, " + toCompare.Count + " to compare)");
                 foreach (var peer in ready) Push(peer, zones);
             }
             static void Push(ZNetPeer peer, List<(int, int)> zones)

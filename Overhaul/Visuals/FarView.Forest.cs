@@ -188,12 +188,17 @@ namespace Overhaul.Visuals
             PlaceZone(w, rules, seed, zx, zz, into);
             if (!TreeSync.Enabled || !treeDeltas.TryGetValue((zx, zz), out var delta)) return;
             if (delta.Removed.Length > 0)
+            {
+                int before = into.Count;
                 for (int i = into.Count - 1; i >= from; i--)
                 {
                     var t = into[i];
                     foreach (var r in delta.Removed)
                         if (r.Hash == t.Hash && Mathf.Abs(r.X - t.Position.x) < DeltaMatch && Mathf.Abs(r.Z - t.Position.z) < DeltaMatch) { into.RemoveAt(i); break; }
                 }
+                int gone = before - into.Count;
+                Interlocked.Add(ref TreeSync.Matched, gone); Interlocked.Add(ref TreeSync.Unmatched, delta.Removed.Length - gone);
+            }
             foreach (var a in delta.Added)
                 if (kindOfHash != null && kindOfHash.TryGetValue(a.Hash, out int kind))
                     into.Add(new Tree { Position = new Vector3(a.X, a.Y, a.Z), Scale = a.Scale, Yaw = a.Yaw, Kind = kind, Hash = a.Hash });
@@ -380,7 +385,7 @@ namespace Overhaul.Visuals
                 foreach (var t in cell) { if (t.Kind >= positions.Length) continue; positions[t.Kind].Add(new Vector4(t.Position.x, t.Position.y, t.Position.z, t.Scale)); yaws[t.Kind].Add(t.Yaw); total++; if (t.Position.y < 29f) wet++; }
             if (log)
             {
-                Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level");
+                Log.LogInfo("[FarView] far forest: " + total + " trees in " + forestCells.Count + " cells, " + wet + " below sea level; server changes in " + treeDeltas.Count + " zones, gone trees found " + TreeSync.Matched + ", not found " + TreeSync.Unmatched);
                 // Test runs: the trees of each kind by the biome they stand in, and the biomes each kind's rules allow.
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT")) && WorldGenerator.instance != null)
                 {
