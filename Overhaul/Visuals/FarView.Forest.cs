@@ -666,7 +666,9 @@ namespace Overhaul.Visuals
                 bakeCamera.Render();
                 Graphics.CopyTexture(bakeAlbedo, 0, 0, 0, 0, frameSize, frameSize, kind.Albedo, 0, 0, fx * frameSize, fy * frameSize);
                 Graphics.CopyTexture(bakeNormal, 0, 0, 0, 0, frameSize, frameSize, kind.Normal, 0, 0, fx * frameSize, fy * frameSize);
-                if (++bakeFrame == Frames * Frames) { EndKind(kind); bakeFrame = 0; bakeKind++; }
+                // A kind done: the next one starts on the next frame only (its first pictures took the previous kind's
+                // model too while it was still there: a birch on an Ashlands tree's impostor from some angles).
+                if (++bakeFrame == Frames * Frames) { EndKind(kind); bakeFrame = 0; bakeKind++; break; }
             }
             if (bakeKind >= kinds.Count) Log.LogInfo("[FarView] impostors baked for " + kinds.Count(k => k.Material) + " kinds of tree");
             return bakeKind >= kinds.Count;
@@ -707,7 +709,8 @@ namespace Overhaul.Visuals
         {
             kind.Albedo.GenerateMips(); kind.Normal.GenerateMips();
             DumpAtlas(kind);
-            if (stage) UnityEngine.Object.Destroy(stage);
+            // At once: Destroy waits for the end of the frame, and the next kind's pictures would show this model too.
+            if (stage) UnityEngine.Object.DestroyImmediate(stage);
             stage = null;
             kind.Material = new Material(impostorShader) { name = "Overhaul far " + kind.Name };
             kind.Material.SetTexture("_Albedo", kind.Albedo); kind.Material.SetTexture("_Normal", kind.Normal);
