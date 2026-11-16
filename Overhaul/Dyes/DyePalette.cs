@@ -62,5 +62,15 @@ namespace Overhaul.Dyes
         }
 
         internal static Colour Get(string id) => id != null && byID.TryGetValue(id, out var c) ? c : null;
+
+        // A zone's saved colour: a free code "#RRGGBB" (chosen with the window's sliders), or a former palette ID
+        // (gear dyed before the sliders keeps its colour). Null when not a colour.
+        internal static Color? Value(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            if (id[0] == '#') return id.Length == 7 && ColorUtility.TryParseHtmlString(id, out var c) ? c : (Color?)null;
+            return Get(id)?.Value;
+        }
+        internal static string Code(Color c) => "#" + ColorUtility.ToHtmlStringRGB(c);
     }
 }

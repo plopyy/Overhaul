@@ -13,8 +13,8 @@ namespace Overhaul.Dyes
     // Dyeing window (OverhaulDyeWindow prefab, OverhaulLab DyeWindowAuthoring), opened by the dye button of the equipment
     // panel. Left: the dyeable gear in the bag (worn and cosmetic included). Middle: a copy of the player's look wearing
     // the selected piece with the colours being chosen, rendered with a clear background and turned by dragging. Right:
-    // the piece's zones, the 50 colours (number of dyes owned on each), the cost and Restore / Apply. Apply uses one dye
-    // per zone changed to a colour; restoring a zone to its original look is free.
+    // the piece's zones, three sliders (hue, saturation, contrast) choosing the zone's colour freely, the colour picked,
+    // the cost and Restore / Apply. Apply uses one mystic dye per zone changed; restoring a zone's original look is free.
     internal static class DyeWindow
     {
         static GameObject root, panel, rowTemplate;
@@ -82,12 +82,12 @@ namespace Overhaul.Dyes
         {
             p.Find("Close").GetComponent<Button>().onClick.AddListener(Close);
             rowTemplate = p.Find("ItemPanel/List/Content/Row").gameObject; rowTemplate.SetActive(false);
-            for (int i = 0; i < 4; i++) { int z = i; p.Find("ColourPanel/Zones/Zone" + i).GetComponent<Button>().onClick.AddListener(() => { zone = z; Refresh(); }); }
-            var palette = p.Find("ColourPanel/Palette");
-            for (int i = 0; i < DyePalette.All.Count; i++)
+            for (int i = 0; i < 4; i++) { int z = i; p.Find("ColourPanel/Zones/Zone" + i).GetComponent<Button>().onClick.AddListener(() => { zone = z; LoadSliders(); RefreshColour(); }); }
+            for (int i = 0; i < 3; i++)
             {
-                var c = DyePalette.All[i];
-                palette.Find("Swatch" + i).GetComponent<Button>().onClick.AddListener(() => Pick(c.ID));
+                int k = i; var slider = Slider(i);
+                slider.minValue = 0; slider.maxValue = 1;
+                slider.onValueChanged.AddListener(v => Slide(k, v));
             }
             p.Find("ColourPanel/Reset").GetComponent<Button>().onClick.AddListener(() => Pick(null));
             p.Find("ColourPanel/Apply").GetComponent<Button>().onClick.AddListener(Apply);
@@ -99,26 +99,66 @@ namespace Overhaul.Dyes
             selected = item; zone = 0;
             var gear = DyeGear.Of(item);
             pending = gear != null ? DyeVisuals.Read(item, gear.Zones.Length) : null;
+            LoadSliders();
             Refresh();
         }
         static void Pick(string id)
         {
             if (pending == null || zone >= pending.Length) return;
-            pending[zone] = id; Refresh();
+            pending[zone] = id; LoadSliders(); RefreshColour();
         }
 
-        // Dyes needed by the colours chosen: one per zone set to a new colour.
-        static Dictionary<DyePalette.Colour, int> Needed()
+        // ---------------------------------------------------------------- sliders: hue, saturation, contrast
+        // The colour is HSV with value = 1 - contrast: saturation 0 makes the contrast slider go from white to black.
+        static readonly float[] hsc = { 0, 0, 0 };
+        static readonly Texture2D[] tracks = new Texture2D[3];
+        static Slider Slider(int i) => T("ColourPanel/Sliders/" + (i == 0 ? "Hue" : i == 1 ? "Saturation" : "Contrast") + "/Gradient/Slider").GetComponent<Slider>();
+        static Color Picked => Color.HSVToRGB(hsc[0], hsc[1], 1 - hsc[2]);
+        static void Slide(int i, float v)
         {
-            var need = new Dictionary<DyePalette.Colour, int>();
-            var gear = DyeGear.Of(selected); if (gear == null) return need;
-            var current = DyeVisuals.Read(selected, gear.Zones.Length);
-            for (int z = 0; z < pending.Length; z++)
+            if (pending == null || zone >= pending.Length) return;
+            hsc[i] = v; pending[zone] = DyePalette.Code(Picked);
+            Tracks(); RefreshColour();
+        }
+        // The sliders on the selected zone's colour (a zone left original keeps the last values, its hue included).
+        static void LoadSliders()
+        {
+            if (!panel) return;
+            var c = pending != null && zone < pending.Length ? DyePalette.Value(pending[zone]) : null;
+            if (c != null)
             {
-                if (pending[z] == null || pending[z] == current[z]) continue;
-                var c = DyePalette.Get(pending[z]); need[c] = (need.TryGetValue(c, out int n) ? n : 0) + 1;
+                Color.RGBToHSV(c.Value, out float h, out float sat, out float val);
+                if (sat > .001f && val > .001f) hsc[0] = h;   // grey or black: no hue, the slider keeps its place
+                if (val > .001f) hsc[1] = sat;
+                hsc[2] = 1 - val;
             }
-            return need;
+            for (int i = 0; i < 3; i++) Slider(i).SetValueWithoutNotify(hsc[i]);
+            Tracks();
+        }
+        // Each track painted with what its slider gives at the other two values (hue: every hue, kept readable).
+        static void Tracks()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                var t = tracks[i];
+                if (!t) t = tracks[i] = new Texture2D(128, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "DyeTrack" + i };
+                for (int x = 0; x < 128; x++)
+                {
+                    float k = x / 127f;
+                    t.SetPixel(x, 0, i == 0 ? Color.HSVToRGB(k, Mathf.Max(hsc[1], .6f), Mathf.Max(1 - hsc[2], .6f)) : i == 1 ? Color.HSVToRGB(hsc[0], k, 1 - hsc[2]) : Color.HSVToRGB(hsc[0], hsc[1], 1 - k));
+                }
+                t.Apply(false);
+                var bg = Slider(i).transform.Find("Background").GetComponent<Image>();
+                if (!bg.sprite || bg.sprite.texture != t) { bg.sprite = Sprite.Create(t, new Rect(0, 0, 128, 1), new Vector2(.5f, .5f)); bg.type = Image.Type.Simple; bg.color = Color.white; }
+            }
+        }
+
+        // Mystic dyes needed by the colours chosen: one per zone set to a new colour.
+        static int Needed()
+        {
+            var gear = DyeGear.Of(selected); if (gear == null || pending == null) return 0;
+            var current = DyeVisuals.Read(selected, gear.Zones.Length);
+            return pending.Where((id, z) => id != null && id != current[z]).Count();
         }
         static bool Changed()
         {
@@ -131,9 +171,9 @@ namespace Overhaul.Dyes
         {
             var player = Player.m_localPlayer; var gear = DyeGear.Of(selected);
             if (!player || gear == null || !player.GetInventory().ContainsItem(selected) || !Changed()) return;
-            var inv = player.GetInventory(); var need = Needed();
-            if (need.Any(n => DyeItems.Count(inv, n.Key) < n.Value)) { player.Message(MessageHud.MessageType.Center, "$overhaul_dye_missing"); return; }
-            foreach (var n in need) inv.RemoveItem("$overhaul_dyeitem_" + n.Key.ID, n.Value);
+            var inv = player.GetInventory(); int need = Needed();
+            if (!player.NoCostCheat() && DyeItems.Count(inv) < need) { player.Message(MessageHud.MessageType.Center, "$overhaul_dye_missing"); return; }
+            if (!player.NoCostCheat()) DyeItems.Remove(inv, need);
             DyeVisuals.Write(selected, pending.ToArray());
             inv.Changed();
             if (player.m_visEquipment) player.SetupVisEquipment(player.m_visEquipment, false);
@@ -159,48 +199,35 @@ namespace Overhaul.Dyes
             }
             T("ItemPanel/Empty").gameObject.SetActive(items.Count == 0);
 
+            RefreshColour();
+        }
+
+        // Everything but the gear list (what the sliders change).
+        static void RefreshColour()
+        {
+            if (!panel) return;
+            var player = Player.m_localPlayer; var inv = player ? player.GetInventory() : null;
             var gear = DyeGear.Of(selected);
             T("PreviewPanel/ItemName").GetComponent<TMP_Text>().text = selected != null ? Localization.instance.Localize(selected.m_shared.m_name) : "";
-            // Zones.
-            var current = gear != null ? DyeVisuals.Read(selected, gear.Zones.Length) : new string[0];
+            // Zones: their colour, "Original" when left as in the game.
             for (int z = 0; z < 4; z++)
             {
                 var row = T("ColourPanel/Zones/Zone" + z);
                 bool on = gear != null && z < gear.Zones.Length; row.gameObject.SetActive(on);
                 if (!on) continue;
-                var c = DyePalette.Get(pending[z]);
+                var c = DyePalette.Value(pending[z]);
                 row.Find("Name").GetComponent<TMP_Text>().text = Localization.instance.Localize("$overhaul_dye_zone_" + gear.Zones[z]);
-                row.Find("ColourName").GetComponent<TMP_Text>().text = Localization.instance.Localize(c != null ? c.NameKey : "$overhaul_dye_original");
-                var swatch = row.Find("Colour").GetComponent<Image>(); swatch.color = c != null ? c.Value : new Color(1, 1, 1, .15f);
+                row.Find("ColourName").GetComponent<TMP_Text>().text = c == null ? Localization.instance.Localize("$overhaul_dye_original") : "";
+                row.Find("Colour").GetComponent<Image>().color = c ?? new Color(1, 1, 1, .15f);
                 row.Find("Selected").GetComponent<Image>().enabled = z == zone;
             }
-            // Colours: dyes owned, picked colour of the zone.
-            string picked = pending != null && zone < pending.Length ? pending[zone] : null;
-            var palette = T("ColourPanel/Palette");
-            for (int i = 0; i < DyePalette.All.Count; i++)
-            {
-                var c = DyePalette.All[i]; var s = palette.Find("Swatch" + i);
-                int owned = DyeItems.Count(inv, c);
-                s.Find("Count").GetComponent<TMP_Text>().text = owned > 0 ? owned.ToString() : "";
-                s.Find("Locked").GetComponent<Image>().enabled = owned == 0;
-                s.Find("Selected").GetComponent<Image>().enabled = c.ID == picked;
-            }
-            var pickedColour = DyePalette.Get(picked);
-            T("ColourPanel/ColourName")?.GetComponent<TMP_Text>()?.SetText(pickedColour != null ? Localization.instance.Localize(pickedColour.NameKey) : "");
-            // Cost: every zone set to a new colour costs one dye of that colour; one entry per colour (icon tinted in
-            // it, how many), red when the bag holds too few. Apply stays off until every one is there.
-            var need = Needed(); bool enough = need.All(n => DyeItems.Count(inv, n.Key) >= n.Value);
-            var entries = need.ToList();
-            for (int e = 0; e < 4; e++)
-            {
-                var entry = T("ColourPanel/Cost/Entry" + e); if (!entry) continue;
-                bool on = e < entries.Count || (e == 0 && entries.Count == 0);
-                entry.gameObject.SetActive(on); if (!on) continue;
-                var c = e < entries.Count ? entries[e].Key : null; int n = e < entries.Count ? entries[e].Value : 0;
-                entry.Find("Icon").GetComponent<Image>().sprite = DyeItems.Icon(c != null ? c.Value : Color.white, c != null ? c.ID : "white");
-                var amount = entry.Find("Amount").GetComponent<TMP_Text>(); amount.text = "×" + n;
-                amount.color = c == null || DyeItems.Count(inv, c) >= n ? Color.white : new Color(1f, .35f, .3f);
-            }
+            var picked = pending != null && zone < pending.Length ? DyePalette.Value(pending[zone]) : null;
+            T("ColourPanel/Picked").GetComponent<Image>().color = picked ?? new Color(1, 1, 1, .15f);
+            // Cost: one mystic dye per zone set to a new colour, red when the bag holds too few; Apply off until enough.
+            int need = Needed(); bool enough = (player && player.NoCostCheat()) || DyeItems.Count(inv) >= need;
+            var icon = T("ColourPanel/Cost/Icon").GetComponent<Image>(); var sprite = DyeItems.MysticIcon(); if (sprite) icon.sprite = sprite;
+            var amount = T("ColourPanel/Cost/Amount").GetComponent<TMP_Text>(); amount.text = "×" + need;
+            amount.color = enough ? Color.white : new Color(1f, .35f, .3f);
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)T("ColourPanel/Cost"));
             Enable(T("ColourPanel/Apply"), selected != null && Changed() && enough);
             Enable(T("ColourPanel/Reset"), pending != null && zone < pending.Length && pending[zone] != null);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
@@ -7,23 +8,16 @@ using UnityEngine;
 
 namespace Overhaul.Dyes
 {
-    // The 50 dyes (Overhaul_Dye_<colour ID>), crafted at the workbench from common game ingredients: each normal colour
-    // from something of that colour (2) or two mixed (1 each), its light shade with a bone fragment added, its dark shade
-    // with a coal added; black from coal, white from bone fragments, grey from both. They share one picture, the white dye icon, tinted in their colour by code
-    // (icon + mask: R where to colour, G its relief), so a new colour needs no new image.
+    // The mystic dye (Overhaul_Dye_Mystic): the only dye, whatever the colour picked in the dyeing window. Crafted at the
+    // workbench, 10 at a time, from a raspberry, blueberries, a dandelion, guck and 2 mystic powders. Its icon is paste
+    // n°1 with a rainbow swirl (Assets/Dyes/dye_mystic.png).
+    // The 50 former colour dyes (Overhaul_Dye_<colour ID>) stay registered without recipe so the ones already owned are
+    // not lost: they turn into mystic dyes one for one in the player's bag, and still count (and are used) as mystic dyes
+    // wherever else they lie.
     internal static class DyeItems
     {
+        internal const string Name = "Overhaul_Dye_Mystic", Token = "$overhaul_dyeitem_mystic";
         const string Source = "Resin";
-        // Ingredients giving each hue's normal shade: common ones, two mixed like a real dye where no single one fits.
-        static readonly Dictionary<string, string[]> Ingredients = new Dictionary<string, string[]>
-        {
-            { "red", new[] { "Raspberry" } }, { "orange", new[] { "Carrot" } }, { "yellow", new[] { "Dandelion" } },
-            { "lime", new[] { "Dandelion", "Guck" } }, { "green", new[] { "Guck" } }, { "teal", new[] { "Guck", "Blueberries" } },
-            { "cyan", new[] { "Blueberries", "Ooze" } }, { "sky", new[] { "Blueberries", "Turnip" } }, { "blue", new[] { "Blueberries" } },
-            { "indigo", new[] { "Blueberries", "Thistle" } }, { "purple", new[] { "Thistle" } }, { "magenta", new[] { "Raspberry", "Thistle" } },
-            { "pink", new[] { "Raspberry", "Turnip" } }, { "brown", new[] { "Resin" } }, { "beige", new[] { "Turnip" } },
-            { "grey", new[] { "Coal", "BoneFragments" } },
-        };
 
         internal static void Initialize() => PrefabManager.OnVanillaPrefabsAvailable += Register;
         internal static void Shutdown() => PrefabManager.OnVanillaPrefabsAvailable -= Register;
@@ -31,38 +25,50 @@ namespace Overhaul.Dyes
         static void Register()
         {
             PrefabManager.OnVanillaPrefabsAvailable -= Register;
+            if (!PrefabManager.Instance.GetPrefab(Name))
+            {
+                var config = new ItemConfig
+                {
+                    Name = Token, Description = "$overhaul_dye_mystic_desc",
+                    CraftingStation = CraftingStations.Workbench, MinStationLevel = 1, Amount = 10,
+                    Requirements = new[]
+                    {
+                        new RequirementConfig("Raspberry", 1), new RequirementConfig("Blueberries", 1), new RequirementConfig("Dandelion", 1),
+                        new RequirementConfig("Guck", 1), new RequirementConfig(Rarity.MysticPowder.Name, 2),
+                    },
+                };
+                var icon = MysticIcon(); if (icon) config.Icons = new[] { icon };
+                Add(new CustomItem(Name, Source, config));
+            }
+            // Former colour dyes: no recipe, picture tinted in their colour as before.
             foreach (var colour in DyePalette.All)
             {
                 if (PrefabManager.Instance.GetPrefab(colour.ItemName)) continue;
-                var config = new ItemConfig
-                {
-                    Name = "$overhaul_dyeitem_" + colour.ID, Description = "$overhaul_dye_desc",
-                    CraftingStation = CraftingStations.Workbench, MinStationLevel = 1, Amount = 1,
-                    Requirements = Recipe(colour), Icons = new[] { Icon(colour.Value, colour.ID) },
-                };
-                var item = new CustomItem(colour.ItemName, Source, config);
-                var shared = item.ItemDrop.m_itemData.m_shared;
-                shared.m_maxStackSize = 50; shared.m_weight = .1f; shared.m_teleportable = true;
-                ItemManager.Instance.AddItem(item);
+                var config = new ItemConfig { Name = "$overhaul_dyeitem_" + colour.ID, Description = "$overhaul_dye_desc", Icons = new[] { Icon(colour.Value, colour.ID) } };
+                Add(new CustomItem(colour.ItemName, Source, config));
             }
         }
-
-        static RequirementConfig[] Recipe(DyePalette.Colour c)
+        static void Add(CustomItem item)
         {
-            if (c.ID == "black") return new[] { new RequirementConfig("Coal", 2) };
-            if (c.ID == "white") return new[] { new RequirementConfig("BoneFragments", 2) };
-            // Light shade: one bone fragment more, dark shade: one coal more (added to the same entry when already there).
-            var amounts = new Dictionary<string, int>();
-            foreach (var i in Ingredients[c.Hue]) amounts[i] = (amounts.TryGetValue(i, out int n) ? n : 0) + (Ingredients[c.Hue].Length == 1 ? 2 : 1);
-            if (c.Shade == 0) amounts["BoneFragments"] = (amounts.TryGetValue("BoneFragments", out int b) ? b : 0) + 1;
-            if (c.Shade == 2) amounts["Coal"] = (amounts.TryGetValue("Coal", out int k) ? k : 0) + 1;
-            return amounts.Select(x => new RequirementConfig(x.Key, x.Value)).ToArray();
+            var shared = item.ItemDrop.m_itemData.m_shared;
+            shared.m_maxStackSize = 100; shared.m_weight = .1f; shared.m_teleportable = true;
+            ItemManager.Instance.AddItem(item);
         }
 
-        // The dye icon in a colour (also the cost icon of the dyeing window).
+        static Sprite mystic;
+        internal static Sprite MysticIcon()
+        {
+            if (mystic) return mystic;
+            var tex = DyeGear.Image("dye_mystic.png"); if (!tex) return null;
+            tex.filterMode = FilterMode.Bilinear;
+            mystic = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(.5f, .5f), 100); mystic.name = "DyeMystic";
+            return mystic;
+        }
+
+        // A former dye's icon in its colour (white dye icon + mask: R where to colour, G its relief).
         static Texture2D icon, mask;
         static readonly Dictionary<string, Sprite> icons = new Dictionary<string, Sprite>();
-        internal static Sprite Icon(Color colour, string key)
+        static Sprite Icon(Color colour, string key)
         {
             if (icons.TryGetValue(key, out var s) && s) return s;
             if (!icon) icon = DyeGear.Image("dye_icon.png");
@@ -81,6 +87,36 @@ namespace Overhaul.Dyes
             return icons[key] = s;
         }
 
-        internal static int Count(Inventory inv, DyePalette.Colour c) => inv == null ? 0 : inv.CountItems("$overhaul_dyeitem_" + c.ID);
+        static IEnumerable<string> Former => DyePalette.All.Select(c => "$overhaul_dyeitem_" + c.ID);
+
+        // Mystic dyes owned (former colour dyes count as mystic ones).
+        internal static int Count(Inventory inv) => inv == null ? 0 : inv.CountItems(Token) + Former.Sum(n => inv.CountItems(n));
+        internal static void Remove(Inventory inv, int amount)
+        {
+            int take = Mathf.Min(amount, inv.CountItems(Token)); if (take > 0) { inv.RemoveItem(Token, take); amount -= take; }
+            foreach (var n in Former)
+            {
+                if (amount <= 0) break;
+                take = Mathf.Min(amount, inv.CountItems(n)); if (take > 0) { inv.RemoveItem(n, take); amount -= take; }
+            }
+        }
+
+        // Former colour dyes in the bag become mystic dyes, one for one (when the character loads).
+        static void Convert(Player player)
+        {
+            var inv = player ? player.GetInventory() : null; if (inv == null) return;
+            int count = Former.Sum(n => inv.CountItems(n)); if (count <= 0) return;
+            var prefab = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(Name) : null; if (!prefab) return;
+            foreach (var n in Former) { int c = inv.CountItems(n); if (c > 0) inv.RemoveItem(n, c); }
+            while (count > 0)
+            {
+                int stack = Mathf.Min(count, 100);
+                var data = prefab.GetComponent<ItemDrop>().m_itemData.Clone(); data.m_dropPrefab = prefab; data.m_stack = stack;
+                if (!inv.AddItem(data)) ItemDrop.DropItem(data, stack, player.transform.position + Vector3.up, Quaternion.identity);
+                count -= stack;
+            }
+        }
+        [HarmonyPatch(typeof(Player), nameof(Player.OnSpawned))]
+        static class ConvertOnSpawn { static void Postfix(Player __instance) { if (__instance == Player.m_localPlayer) Convert(__instance); } }
     }
 }

@@ -28,7 +28,7 @@ namespace Overhaul.Dyes
             if (item != null && item.m_customData != null && item.m_customData.TryGetValue(DataKey, out var value))
             {
                 var p = value.Split(',');
-                for (int i = 0; i < zones && i < p.Length; i++) result[i] = DyePalette.Get(p[i]) != null ? p[i] : null;
+                for (int i = 0; i < zones && i < p.Length; i++) result[i] = DyePalette.Value(p[i]) != null ? p[i] : null;
             }
             return result;
         }
@@ -145,7 +145,7 @@ namespace Overhaul.Dyes
             }
             int dyed = 0;
             var colours = new Color?[gear.Zones.Length];
-            for (int z = 0; z < colours.Length; z++) { var c = z < ids.Length ? DyePalette.Get(ids[z]) : null; colours[z] = c?.Value; }
+            for (int z = 0; z < colours.Length; z++) colours[z] = z < ids.Length ? DyePalette.Value(ids[z]) : null;
             string key = string.Join(",", ids);
             foreach (var tex in gear.Textures)
             {
@@ -153,7 +153,7 @@ namespace Overhaul.Dyes
                 {
                     var property = slot == Slot.Legs ? LegsTex : ChestTex;
                     var original = item.m_itemData.m_shared.m_armorMaterial ? item.m_itemData.m_shared.m_armorMaterial.GetTexture(property) : null;
-                    var dyedTex = Dyed(gear, tex, key, colours, original);
+                    var dyedTex = Dyed(v, slot, gear, tex, key, colours, original);
                     if (v.m_bodyModel && v.m_bodyModel.material.HasProperty(property)) { v.m_bodyModel.material.SetTexture(property, dyedTex); dyed++; }
                     // Worn parts drawn with the player shader (the leather tunic's shorts) carry the same texture.
                     foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
@@ -165,7 +165,7 @@ namespace Overhaul.Dyes
                     {
                         var m = r.sharedMaterial;
                         if (!m || !m.HasProperty(MainTex) || !m.mainTexture || m.mainTexture.name != tex.Source) continue;
-                        Block(r, MainTex, Dyed(gear, tex, key, colours, m.mainTexture)); dyed++;
+                        Block(r, MainTex, Dyed(v, slot, gear, tex, key, colours, m.mainTexture)); dyed++;
                     }
                 }
             }
@@ -188,9 +188,21 @@ namespace Overhaul.Dyes
         }
 
         static readonly Dictionary<string, Texture2D> cache = new Dictionary<string, Texture2D>();
-        static Texture2D Dyed(DyeGear.Gear gear, DyeGear.Texture tex, string key, Color?[] colours, Texture original)
+        // The dyeing window's character (a VisEquipment with overrides) shows colours being dragged on the sliders: each of
+        // its textures is composed again in one slot, the former one destroyed, so trying colours keeps nothing.
+        static readonly Dictionary<string, KeyValuePair<string, Texture2D>> trial = new Dictionary<string, KeyValuePair<string, Texture2D>>();
+        static Texture2D Dyed(VisEquipment v, Slot slot, DyeGear.Gear gear, DyeGear.Texture tex, string key, Color?[] colours, Texture original)
         {
             string id = gear.Item + "/" + tex.Source + "/" + key;
+            if (Overrides.TryGetValue(v, out _) && !cache.ContainsKey(id))
+            {
+                string place = (int)slot + "/" + tex.Source;
+                if (trial.TryGetValue(place, out var kept) && kept.Key == id && kept.Value) return kept.Value;
+                if (kept.Value) UnityEngine.Object.Destroy(kept.Value);
+                var made2 = DyeBlend.Compose(tex.White, tex.Mask, colours, original, "Trial_" + id);
+                trial[place] = new KeyValuePair<string, Texture2D>(id, made2);
+                return made2;
+            }
             if (cache.TryGetValue(id, out var t) && t) return t;
             var made = DyeBlend.Compose(tex.White, tex.Mask, colours, original, "Dyed_" + id);
             var dump = System.Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT");
