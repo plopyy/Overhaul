@@ -532,6 +532,9 @@ namespace Overhaul.Visuals
             var bounds = LocalBounds(kind.Prefab, renderers);
             float radius = 0f;
             for (int i = 0; i < 8; i++) radius = Mathf.Max(radius, Vector3.Scale(bounds.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)).magnitude);
+            // 12 % of room around the tree in its frame: a tall thin one (Pinetree_01, ~30 m) touched the frame's edge, and in
+            // the atlas's smaller mips its crown mixed with the next frame, leaving a flat slice on a bare trunk from afar.
+            radius *= 1.12f;
             kind.Sphere = new Vector4(bounds.center.x, bounds.center.y, bounds.center.z, radius);
             kind.Layer = renderers[0].gameObject.layer;
             stage = new GameObject("Overhaul impostor stage");
