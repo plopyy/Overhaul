@@ -31,6 +31,7 @@ namespace Overhaul.Performance
         // by prefab: for the frame (spikes) and for the second (slowest).
         internal static readonly Dictionary<string, long> FrameObjects = new Dictionary<string, long>();
         readonly Dictionary<string, long> secondObjects = new Dictionary<string, long>();
+        readonly Dictionary<string, long> secondSteps = new Dictionary<string, long>();
         double secondShaderMs;
         StreamWriter seconds, spikes;
         string folder, stamp;
@@ -64,8 +65,8 @@ namespace Overhaul.Performance
             stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss", Inv);
             seconds = new StreamWriter(Path.Combine(folder, "record-" + stamp + ".csv"), false, new UTF8Encoding(false));
             spikes = new StreamWriter(Path.Combine(folder, "spikes-" + stamp + ".csv"), false, new UTF8Encoding(false));
-            seconds.WriteLine("time;fps;avg_ms;worst_ms;cpu_main_ms;cpu_render_ms;gpu_ms;draw_calls;shadow_casters;triangles;pieces;merged_pieces;characters;particles;particles_hidden;gc;alloc_kb;x;z;biome;top_scripts;top_allocators_kb;shader_compile_ms;slowest_objects_ms");
-            spikes.WriteLine("time;frame_ms;median_ms;untimed_ms;cpu_render_ms;gpu_ms;alloc_kb;gc;objects_created;zones_spawned;x;z;biome;top_scripts;top_allocators_kb;shader_compile_ms;objects_ms");
+            seconds.WriteLine("time;fps;avg_ms;worst_ms;cpu_main_ms;cpu_render_ms;gpu_ms;draw_calls;shadow_casters;triangles;pieces;merged_pieces;characters;particles;particles_hidden;gc;alloc_kb;x;z;biome;top_scripts;top_allocators_kb;shader_compile_ms;slowest_objects_ms;engine_steps_ms");
+            spikes.WriteLine("time;frame_ms;median_ms;untimed_ms;cpu_render_ms;gpu_ms;alloc_kb;gc;objects_created;zones_spawned;x;z;biome;top_scripts;top_allocators_kb;shader_compile_ms;objects_ms;engine_steps_ms");
             main = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Main Thread Frame Time");
             render = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "CPU Render Thread Frame Time");
             gpu = ProfilerRecorder.StartNew(ProfilerCategory.Internal, "GPU Frame Time");
@@ -77,6 +78,7 @@ namespace Overhaul.Performance
             shaderCompile = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Shader.CreateGPUProgram", 1, ProfilerRecorderOptions.SumAllSamplesInFrame);
             PerfProfile.Install();
             PerfProfile.MeasureAllocations = true;
+            try { TimeLoop(); } catch (Exception e) { Log.LogWarning("[Performance] engine steps not timed: " + e.Message); }
             PerfProfile.FrameTicks.Clear();
             gcAtSecond = gcAtFrame = GC.CollectionCount(0);
             memory = GC.GetTotalMemory(false);
@@ -89,6 +91,8 @@ namespace Overhaul.Performance
             // The groups timed since the last frame belong to this one (close enough to find who made a frame slow).
             foreach (var pair in PerfProfile.FrameTicks) { secondTicks.TryGetValue(pair.Key, out long t); secondTicks[pair.Key] = t + pair.Value; }
             foreach (var pair in PerfProfile.FrameAllocs) { secondAllocs.TryGetValue(pair.Key, out long a); secondAllocs[pair.Key] = a + pair.Value; }
+            TakeSteps();
+            foreach (var pair in FrameSteps) { secondSteps.TryGetValue(pair.Key, out long s); secondSteps[pair.Key] = s + pair.Value; }
             foreach (var pair in FrameObjects) { secondObjects.TryGetValue(pair.Key, out long o); secondObjects[pair.Key] = o + pair.Value; }
             double shaderMs = shaderCompile.Valid && shaderCompile.Count > 0 ? shaderCompile.LastValue / 1e6 : 0; secondShaderMs += shaderMs;
             int gc = GC.CollectionCount(0);
@@ -139,7 +143,7 @@ namespace Overhaul.Performance
             spikes.WriteLine(string.Join(";", DateTime.Now.ToString("HH:mm:ss.fff", Inv), ms.ToString("0.0", Inv), median.ToString("0.0", Inv), Math.Max(0, ms - timed).ToString("0.0", Inv),
                 Ns(render), Ns(gpu), (alloc / 1024).ToString(Inv), gc ? "1" : "0", created.ToString(Inv), zones.ToString(Inv),
                 x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(PerfProfile.FrameTicks, 8, toMs), TopKb(PerfProfile.FrameAllocs, 5),
-                shaderMs.ToString("0.0", Inv), Top(FrameObjects, 8, toMs)));
+                shaderMs.ToString("0.0", Inv), Top(FrameObjects, 8, toMs), Top(FrameSteps, 6, toMs)));
         }
 
         void WriteSecond()
@@ -156,9 +160,9 @@ namespace Overhaul.Performance
                 Ns(main), Ns(render), Ns(gpu), Count(draws), Count(shadows), Count(triangles),
                 WearNTear.s_allInstances.Count, PieceBatcher.MergedPieces, Character.s_characters.Count, particles, HiddenParticles.HiddenCount, gc - gcAtSecond,
                 (secondAlloc / 1024).ToString(Inv), x.ToString("0", Inv), z.ToString("0", Inv), biome, Top(secondTicks, 3, toMs), TopKb(secondAllocs, 5),
-                secondShaderMs.ToString("0.0", Inv), Top(secondObjects, 5, 1000.0 / Stopwatch.Frequency)));
+                secondShaderMs.ToString("0.0", Inv), Top(secondObjects, 5, 1000.0 / Stopwatch.Frequency), Top(secondSteps, 5, toMs)));
             seconds.Flush(); spikes.Flush();
-            gcAtSecond = gc; secondTicks.Clear(); secondAllocs.Clear(); secondAlloc = 0; secondObjects.Clear(); secondShaderMs = 0;
+            gcAtSecond = gc; secondTicks.Clear(); secondAllocs.Clear(); secondAlloc = 0; secondObjects.Clear(); secondSteps.Clear(); secondShaderMs = 0;
             second = 0f; frames = 0; worst = 0f;
         }
 
@@ -172,6 +176,7 @@ namespace Overhaul.Performance
                 seconds?.Dispose(); spikes?.Dispose();
                 main.Dispose(); render.Dispose(); gpu.Dispose(); draws.Dispose(); shadows.Dispose(); triangles.Dispose(); shaderCompile.Dispose();
                 FrameObjects.Clear();
+                try { UntimeLoop(); } catch (Exception e) { Log.LogWarning("[Performance] engine loop not given back: " + e.Message); }
                 PerfProfile.MeasureAllocations = false;
                 PerfProfile.Uninstall();
                 float minutes = total / 60f;
@@ -182,6 +187,57 @@ namespace Overhaul.Performance
             }
             catch (Exception e) { Log.LogWarning("[Performance] Recorder: " + e.Message); }
             if (instance == this) instance = null;
+        }
+
+        // ---- The engine's own steps (Unity's player loop), each timed: physics, animation, loading, rendering... The "untimed"
+        // part of a slow frame lands in one of them. Two markers around every step of every phase, put in when recording
+        // starts and the loop given back when it stops.
+        static UnityEngine.LowLevel.PlayerLoopSystem savedLoop;
+        static bool loopTimed;
+        static string[] stepNames = new string[0];
+        static long[] stepTicks = new long[0];
+        static long stepStart;
+        internal static readonly Dictionary<string, long> FrameSteps = new Dictionary<string, long>();
+
+        static void TimeLoop()
+        {
+            if (loopTimed) return;
+            savedLoop = UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop();
+            var loop = savedLoop; var names = new List<string>();
+            var phases = (UnityEngine.LowLevel.PlayerLoopSystem[])loop.subSystemList.Clone();
+            for (int p = 0; p < phases.Length; p++)
+            {
+                var steps = phases[p].subSystemList; if (steps == null) continue;
+                var timed = new List<UnityEngine.LowLevel.PlayerLoopSystem>();
+                foreach (var step in steps)
+                {
+                    int index = names.Count; names.Add((phases[p].type?.Name ?? "?") + "." + (step.type?.Name ?? "?"));
+                    timed.Add(new UnityEngine.LowLevel.PlayerLoopSystem { type = typeof(PerfRecorder), updateDelegate = () => stepStart = Stopwatch.GetTimestamp() });
+                    timed.Add(step);
+                    timed.Add(new UnityEngine.LowLevel.PlayerLoopSystem { type = typeof(PerfRecorder), updateDelegate = () => { if (stepStart != 0) stepTicks[index] += Stopwatch.GetTimestamp() - stepStart; } });
+                }
+                phases[p].subSystemList = timed.ToArray();
+            }
+            stepNames = names.ToArray(); stepTicks = new long[stepNames.Length];
+            loop.subSystemList = phases;
+            UnityEngine.LowLevel.PlayerLoop.SetPlayerLoop(loop);
+            loopTimed = true;
+        }
+        static void UntimeLoop()
+        {
+            if (!loopTimed) return;
+            UnityEngine.LowLevel.PlayerLoop.SetPlayerLoop(savedLoop);
+            loopTimed = false;
+        }
+        // The steps timed since the last call (about one frame), into FrameSteps (over 1 ms only).
+        static void TakeSteps()
+        {
+            FrameSteps.Clear();
+            for (int i = 0; i < stepTicks.Length; i++)
+            {
+                if (stepTicks[i] * 1000.0 / Stopwatch.Frequency >= 1.0) FrameSteps[stepNames[i]] = stepTicks[i];
+                stepTicks[i] = 0;
+            }
         }
 
         // Each network object created while recording: its prefab and the time spent, prefixes and postfixes of every mod
