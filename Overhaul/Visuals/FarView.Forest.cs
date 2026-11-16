@@ -452,6 +452,7 @@ namespace Overhaul.Visuals
         {
             NearImpostors = on;
             Shader.SetGlobalFloat("_OverhaulImpostorNear", on ? 1f : 0f);
+            EnsureLabels();
             if (!on) { foreach (var r in hiddenNear) if (r) r.forceRenderingOff = false; hiddenNear.Clear(); }
         }
         static void TickNearImpostors()
@@ -471,6 +472,34 @@ namespace Overhaul.Visuals
                 foreach (var r in view.GetComponentsInChildren<Renderer>()) { r.forceRenderingOff = true; hiddenNear.Add(r); }
             }
         }
+
+        // "o_opti impostors" / "nearimpostors": each impostor's kind written above its frame, for the 60 nearest in view within
+        // 300 m (debug drawing, no game UI involved).
+        sealed class Labels : MonoBehaviour
+        {
+            readonly List<(Vector3 Top, string Name, float Distance)> found = new List<(Vector3, string, float)>();
+            GUIStyle style;
+            void OnGUI()
+            {
+                bool on = Shader.GetGlobalFloat("_OverhaulImpostorDebug") > 0.5f || NearImpostors;
+                var camera = Utils.GetMainCamera(); var g = shownTrees;
+                if (!on || !camera || g == null || kinds == null) return;
+                if (style == null) style = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerCenter, normal = { textColor = Color.yellow } };
+                var eye = camera.transform.position; found.Clear();
+                for (int k = 0; k < g.Positions.Length && k < kinds.Count; k++)
+                    foreach (var t in g.Positions[k])
+                    {
+                        var top = new Vector3(t.x, t.y + (kinds[k].Sphere.y + kinds[k].Sphere.w) * t.w, t.z);
+                        float d = Vector3.Distance(eye, top); if (d > 300f) continue;
+                        var s = camera.WorldToScreenPoint(top); if (s.z <= 0f) continue;
+                        found.Add((s, kinds[k].Name, d));
+                    }
+                foreach (var (s, name, d) in found.OrderBy(f => f.Distance).Take(60))
+                    GUI.Label(new Rect(s.x - 80f, Screen.height - s.y - 22f, 160f, 20f), name + " " + d.ToString("0") + " m", style);
+            }
+        }
+        static Labels labels;
+        internal static void EnsureLabels() { if (labels) return; var go = new GameObject("Overhaul impostor labels"); UnityEngine.Object.DontDestroyOnLoad(go); go.hideFlags = HideFlags.HideAndDontSave; labels = go.AddComponent<Labels>(); }
 
         static Gathered shownTrees;
         // "o_opti impostors": the far tree closest to the centre of the screen (its kind, place, distance), from the lists drawn.
