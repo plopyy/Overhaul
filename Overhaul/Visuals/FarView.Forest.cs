@@ -74,8 +74,17 @@ namespace Overhaul.Visuals
             foreach (var kind in kinds) { var view = kind.Prefab.GetComponent<ZNetView>(); kind.Distant = view && view.m_distant; }
             quad = MakeQuad();
             Log.LogInfo("[FarView] far forest: " + kinds.Count + " kinds of tree (" + string.Join(", ", kinds.Select(k => k.Name)) + ")");
+            // Diagnostic: each kind's levels of detail as the game draws them (meshes, triangles, switch heights).
+            foreach (var kind in kinds)
+            {
+                var group = kind.Prefab.GetComponentInChildren<LODGroup>(true);
+                if (!group) { Log.LogInfo("[FarView] LODs " + kind.Name + ": none"); continue; }
+                Log.LogInfo("[FarView] LODs " + kind.Name + " size " + group.size.ToString("0.0") + ": " + string.Join(" | ", group.GetLODs().Select((l, i) => "L" + i + " <" + l.screenRelativeTransitionHeight.ToString("0.000") + " " +
+                    string.Join("+", l.renderers.Where(r => r).Select(r => { var f = r.GetComponent<MeshFilter>(); var m = f ? f.sharedMesh : null; return r.name + (m ? "/" + m.name + " " + (m.isReadable || true ? (int)(TriangleCount(m)) + "t" : "") : "") + "[" + string.Join(",", r.sharedMaterials.Where(x => x).Select(x => x.shader.name)) + "]"; })))));
+            }
             return true;
         }
+        static long TriangleCount(Mesh m) { long t = 0; for (int s = 0; s < m.subMeshCount; s++) t += m.GetIndexCount(s) / 3; return t; }
         static Dictionary<int, int> kindOfHash;   // tree prefab hash -> kind (client)
 
         // The tree kinds (at most 32, those the game places most of) and the game's vegetation rules for them. The same on
