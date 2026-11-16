@@ -126,11 +126,12 @@ namespace Overhaul.Performance
             var begin = new HarmonyMethod(typeof(PerfProfile), nameof(Begin)) { priority = Priority.First };
             var end = new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last };
             var already = new HashSet<string>(Managers.Select(m => m.Type + "." + m.Method));
-            string[] wanted = { "assembly_valheim", "Overhaul", "Unity.Auga", "Jotunn" };
             int patched = 0;
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
             {
-                if (System.Array.IndexOf(wanted, assembly.GetName().Name) < 0) continue;
+                // Every assembly but Unity's and the system's (the game's other assemblies, BepInEx, other plugins too).
+                string an = assembly.GetName().Name;
+                if (assembly.IsDynamic || an.StartsWith("Unity") && an != "Unity.Auga" || an.StartsWith("System") || an == "mscorlib" || an.StartsWith("Mono.") || an == "netstandard" || an.StartsWith("0Harmony") || an.StartsWith("HarmonyX")) continue;
                 System.Type[] types;
                 try { types = assembly.GetTypes(); } catch (ReflectionTypeLoadException e) { types = e.Types.Where(t => t != null).ToArray(); }
                 foreach (var type in types)
