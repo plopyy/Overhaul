@@ -211,7 +211,8 @@ namespace Overhaul.Visuals
                             // Standing there, but the placement's ground (worked out from the world generator) can be metres
                             // off on hills, or its size differ: the tree then sank into the ground from afar, only its top
                             // showing (a bare spire under a flat tier). Then sent as the real one in place of the placed one.
-                            same = Mathf.Abs(p.y - t.Position.y) < 1f && Mathf.Abs(Scale(standing[i]) - t.Scale) < 0.1f * Mathf.Max(t.Scale, 0.01f);
+                            // Height left out: far trees stand on the far land as drawn, which the placement's ground matches.
+                            same = Mathf.Abs(Scale(standing[i]) - t.Scale) < 0.1f * Mathf.Max(t.Scale, 0.01f);
                             matched[i] = same;
                             break;
                         }

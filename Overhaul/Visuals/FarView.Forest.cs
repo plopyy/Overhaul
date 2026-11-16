@@ -201,7 +201,13 @@ namespace Overhaul.Visuals
             }
             foreach (var a in delta.Added)
                 if (kindOfHash != null && kindOfHash.TryGetValue(a.Hash, out int kind))
-                    into.Add(new Tree { Position = new Vector3(a.X, a.Y, a.Z), Scale = a.Scale, Yaw = a.Yaw, Kind = kind, Hash = a.Hash });
+                {
+                    // Standing on the far land as drawn (worked out from the world generator like the far terrain), not at the
+                    // tree's real height: where the far land is above the real ground the tree sank into it, only its top
+                    // showing (a bare spire under a flat tier). Up close the game's own tree stands on the real ground.
+                    float y = Ground(w, a.X, a.Z, out _, out _);
+                    into.Add(new Tree { Position = new Vector3(a.X, y, a.Z), Scale = a.Scale, Yaw = a.Yaw, Kind = kind, Hash = a.Hash });
+                }
         }
 
         // The game's first placement of the trees of one zone (client and server).
