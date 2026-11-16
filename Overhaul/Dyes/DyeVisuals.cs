@@ -146,7 +146,9 @@ namespace Overhaul.Dyes
             int dyed = 0;
             var colours = new Color?[gear.Zones.Length];
             var reliefs = new float[gear.Zones.Length];
-            for (int z = 0; z < colours.Length; z++) { colours[z] = z < ids.Length ? DyePalette.Value(ids[z]) : null; reliefs[z] = z < ids.Length ? DyePalette.Relief(ids[z]) : 1; }
+            var shines = new float[gear.Zones.Length];
+            for (int z = 0; z < colours.Length; z++) { colours[z] = z < ids.Length ? DyePalette.Value(ids[z]) : null; reliefs[z] = z < ids.Length ? DyePalette.Relief(ids[z]) : 1; shines[z] = colours[z].HasValue && z < ids.Length ? DyePalette.Shine(ids[z]) : 1; }
+            bool shine = shines.Any(g => Mathf.Abs(g - 1) > .005f);
             string key = string.Join(",", ids);
             foreach (var tex in gear.Textures)
             {
@@ -155,7 +157,7 @@ namespace Overhaul.Dyes
                     var property = slot == Slot.Legs ? LegsTex : ChestTex;
                     var original = item.m_itemData.m_shared.m_armorMaterial ? item.m_itemData.m_shared.m_armorMaterial.GetTexture(property) : null;
                     var dyedTex = Dyed(v, slot, gear, tex, key, colours, reliefs, original);
-                    if (v.m_bodyModel && v.m_bodyModel.material.HasProperty(property)) { v.m_bodyModel.material.SetTexture(property, dyedTex); dyed++; }
+                    if (v.m_bodyModel && v.m_bodyModel.material.HasProperty(property)) { v.m_bodyModel.material.SetTexture(property, dyedTex); BodyShine(v, slot, Coverage(tex.Mask, shines)); dyed++; }
                     // Worn parts drawn with the player shader (the leather tunic's shorts) carry the same texture.
                     foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
                         foreach (var m in r.sharedMaterials) if (m && m.HasProperty(property) && m.GetTexture(property) && m.GetTexture(property).name == tex.Source) { Block(r, property, dyedTex); dyed++; }
@@ -164,39 +166,68 @@ namespace Overhaul.Dyes
                 {
                     foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
                     {
-                        var m = r.sharedMaterial;
+                        var m = Original(r);
                         if (!m || !m.HasProperty(MainTex) || !m.mainTexture || m.mainTexture.name != tex.Source) continue;
-                        Block(r, MainTex, Dyed(v, slot, gear, tex, key, colours, reliefs, m.mainTexture)); dyed++;
+                        // Shine: the material switched to read its smoothness from the texture's alpha (not for a material
+                        // cutting out by its alpha), the dyed texture carrying each zone's smoothness there.
+                        if (shine && !m.IsKeywordEnabled("_ALPHATEST_ON") && m.HasProperty(Glossiness))
+                        {
+                            bool albedo = m.IsKeywordEnabled(AlbedoAlpha); float gloss = m.GetFloat(Glossiness);
+                            var made = Dyed(v, slot, gear, tex, key + "/shine" + gloss.ToString("0.###") + (albedo ? "a" : ""), colours, reliefs, m.mainTexture, shines, gloss, albedo);
+                            ShineMaterial(r, m);
+                            Block(r, MainTex, made); dyed++;
+                        }
+                        else { Unshine(r); Block(r, MainTex, Dyed(v, slot, gear, tex, key, colours, reliefs, m.mainTexture)); dyed++; }
                     }
                 }
             }
             if (Debug) Log.LogInfo("Dyes: " + slot + " " + value + " -> " + dyed + " renderers/textures, objects " + string.Join(",", Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)).Select(r => r.name + "[" + (r.sharedMaterial && r.sharedMaterial.mainTexture ? r.sharedMaterial.mainTexture.name : "-") + "]")));
         }
         internal static bool Debug = false;   // logs each tint and writes the dyed textures to the game test folder
-        // o_dyegloss: the worn armour's smoothness (cloth/leather and metal values) times k, from the game's own values.
-        internal static int GlossTest(VisEquipment v, float k)
+        static readonly int Glossiness = Shader.PropertyToID("_Glossiness");
+        const string AlbedoAlpha = "_SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A";
+        // Renderers switched to a copy of their material reading the smoothness from the texture alpha (shine slider),
+        // with the game's material to go back to.
+        sealed class Shined { public Material Original, Copy; }
+        static readonly ConditionalWeakTable<Renderer, Shined> shined = new ConditionalWeakTable<Renderer, Shined>();
+        static Material Original(Renderer r) => shined.TryGetValue(r, out var s) && s.Copy && r.sharedMaterial == s.Copy ? s.Original : r.sharedMaterial;
+        static void ShineMaterial(Renderer r, Material original)
         {
-            int n = 0;
-            string[] names = { "_Glossiness", "_MetalGloss", "_MetalGlossiness" };
-            foreach (var slot in new[] { Slot.Helmet, Slot.Chest, Slot.Legs, Slot.Cape })
-                foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
-                {
-                    var m = r.sharedMaterial; if (!m) continue;
-                    var block = new MaterialPropertyBlock(); r.GetPropertyBlock(block);
-                    foreach (var name in names) if (m.HasProperty(name)) block.SetFloat(name, UnityEngine.Mathf.Clamp01(m.GetFloat(name) * k));
-                    r.SetPropertyBlock(block); n++;
-                }
-            if (v.m_bodyModel)
-            {
-                var body = v.m_bodyModel.material;
-                if (!glossBase.TryGetValue(body, out var g)) glossBase[body] = g = new[] { body.HasProperty("_Glossiness") ? body.GetFloat("_Glossiness") : 0, body.HasProperty("_MetalGlossiness") ? body.GetFloat("_MetalGlossiness") : 0 };
-                if (body.HasProperty("_Glossiness")) body.SetFloat("_Glossiness", UnityEngine.Mathf.Clamp01(g[0] * k));
-                if (body.HasProperty("_MetalGlossiness")) body.SetFloat("_MetalGlossiness", UnityEngine.Mathf.Clamp01(g[1] * k));
-                n++;
-            }
-            return n;
+            if (shined.TryGetValue(r, out var s) && s.Copy && r.sharedMaterial == s.Copy) return;
+            var copy = new Material(original) { name = original.name + " (shine)" };
+            copy.EnableKeyword(AlbedoAlpha); copy.SetFloat(Glossiness, 1);
+            shined.Remove(r); shined.Add(r, new Shined { Original = original, Copy = copy });
+            r.sharedMaterial = copy;
         }
-        static readonly Dictionary<Material, float[]> glossBase = new Dictionary<Material, float[]>();
+        static void Unshine(Renderer r)
+        {
+            if (!shined.TryGetValue(r, out var s)) return;
+            if (s.Copy && r.sharedMaterial == s.Copy) r.sharedMaterial = s.Original;
+            if (s.Copy) UnityEngine.Object.Destroy(s.Copy);
+            shined.Remove(r);
+        }
+        // The body (chest and legs textures in one material, one smoothness): the shine of the zones it shows, weighted
+        // by their surface on the texture; the slot last dyed sets it. Back to the game's value when undyed.
+        static readonly ConditionalWeakTable<Material, float[]> bodyGloss = new ConditionalWeakTable<Material, float[]>();
+        static void BodyShine(VisEquipment v, Slot slot, float factor)
+        {
+            var body = v.m_bodyModel ? v.m_bodyModel.material : null; if (!body || !body.HasProperty(Glossiness)) return;
+            if (!bodyGloss.TryGetValue(body, out var g)) bodyGloss.Add(body, g = new[] { body.GetFloat(Glossiness) });
+            body.SetFloat(Glossiness, Mathf.Clamp01(g[0] * factor));
+        }
+        static readonly Dictionary<Texture2D, float[]> coverage = new Dictionary<Texture2D, float[]>();
+        static float Coverage(Texture2D mask, float[] shines)
+        {
+            if (!coverage.TryGetValue(mask, out var c))
+            {
+                c = new float[4];
+                foreach (var p in mask.GetPixels32()) { c[0] += p.r; c[1] += p.g; c[2] += p.b; c[3] += p.a; }
+                coverage[mask] = c;
+            }
+            float sum = 0, weighted = 0;
+            for (int z = 0; z < 4 && z < shines.Length; z++) { sum += c[z]; weighted += c[z] * shines[z]; }
+            return sum > 0 ? weighted / sum : 1;
+        }
 
         static void Block(Renderer r, int property, Texture texture)
         {
@@ -205,7 +236,8 @@ namespace Overhaul.Dyes
         // Back to the game's look: property blocks cleared, the body painted again with the piece's own texture.
         static void Restore(VisEquipment v, Slot slot, int hash)
         {
-            foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true))) r.SetPropertyBlock(null);
+            foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true))) { Unshine(r); r.SetPropertyBlock(null); }
+            if ((slot == Slot.Chest || slot == Slot.Legs) && v.m_bodyModel) BodyShine(v, slot, 1);
             if ((slot != Slot.Chest && slot != Slot.Legs) || !v.m_bodyModel || hash == 0) return;
             var go = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(hash) : null;
             var mat = go ? go.GetComponent<ItemDrop>().m_itemData.m_shared.m_armorMaterial : null;
@@ -217,7 +249,7 @@ namespace Overhaul.Dyes
         // The dyeing window's character (a VisEquipment with overrides) shows colours being dragged on the sliders: each of
         // its textures is composed again in one slot, the former one destroyed, so trying colours keeps nothing.
         static readonly Dictionary<string, KeyValuePair<string, Texture2D>> trial = new Dictionary<string, KeyValuePair<string, Texture2D>>();
-        static Texture2D Dyed(VisEquipment v, Slot slot, DyeGear.Gear gear, DyeGear.Texture tex, string key, Color?[] colours, float[] reliefs, Texture original)
+        static Texture2D Dyed(VisEquipment v, Slot slot, DyeGear.Gear gear, DyeGear.Texture tex, string key, Color?[] colours, float[] reliefs, Texture original, float[] shines = null, float glossBase = 0, bool albedoAlpha = false)
         {
             string id = gear.Item + "/" + tex.Source + "/" + key;
             if (Overrides.TryGetValue(v, out _) && !cache.ContainsKey(id))
@@ -225,12 +257,12 @@ namespace Overhaul.Dyes
                 string place = (int)slot + "/" + tex.Source;
                 if (trial.TryGetValue(place, out var kept) && kept.Key == id && kept.Value) return kept.Value;
                 if (kept.Value) UnityEngine.Object.Destroy(kept.Value);
-                var made2 = DyeBlend.Compose(tex.White, tex.Mask, colours, reliefs, original, "Trial_" + id);
+                var made2 = DyeBlend.Compose(tex.White, tex.Mask, colours, reliefs, original, "Trial_" + id, shines, glossBase, albedoAlpha);
                 trial[place] = new KeyValuePair<string, Texture2D>(id, made2);
                 return made2;
             }
             if (cache.TryGetValue(id, out var t) && t) return t;
-            var made = DyeBlend.Compose(tex.White, tex.Mask, colours, reliefs, original, "Dyed_" + id);
+            var made = DyeBlend.Compose(tex.White, tex.Mask, colours, reliefs, original, "Dyed_" + id, shines, glossBase, albedoAlpha);
             var dump = System.Environment.GetEnvironmentVariable("OVERHAUL_TEST_OUT");
             if (Debug && !string.IsNullOrEmpty(dump))
                 try { System.IO.File.WriteAllBytes(System.IO.Path.Combine(dump, ("dyed-" + id).Replace('/', '_').Replace(',', '_').Replace(' ', '_') + ".png"), ImageConversion.EncodeToPNG(made)); } catch { }

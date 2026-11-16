@@ -156,21 +156,6 @@ namespace Overhaul.Commands
                     ServerWeather.Request(name);
                     args.Context.AddString("Overhaul : meteo " + name + " demandee au serveur pour tous les joueurs (puis la meteo reprend normalement).");
                 }));
-            // Test of the gear shine (dyes): scales the smoothness of the armour worn by the local player, to see whether a
-            // dark dye looks really black with less shine. Lost at the next equipment change.
-            new Terminal.ConsoleCommand(Prefix + "dyegloss",
-                "Test : multiplie la brillance de l'armure portee : o_dyegloss 0 (mat) .. 1 (jeu) .. 2 (admin serveur + devcommands).",
-                (Terminal.ConsoleEvent)(args =>
-                {
-                    if (!AdminCommandAccess.LocalEnabled) { args.Context.AddString("Overhaul : administrateur et devcommands actifs requis."); return; }
-                    var player = Player.m_localPlayer;
-                    if (!player || !player.m_visEquipment) { args.Context.AddString("Overhaul : aucun joueur."); return; }
-                    if (args.Length < 2 || !float.TryParse(args[1].Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float k))
-                    { args.Context.AddString("Usage : o_dyegloss <facteur> (0 = mat, 1 = jeu, 2 = deux fois plus brillant)"); return; }
-                    k = UnityEngine.Mathf.Clamp(k, 0, 3);
-                    int n = global::Overhaul.Dyes.DyeVisuals.GlossTest(player.m_visEquipment, k);
-                    args.Context.AddString("Overhaul : brillance x" + k + " sur " + n + " materiaux de l'armure portee (jusqu'au prochain changement d'equipement).");
-                }));
             new Terminal.ConsoleCommand(Prefix + "time",
                 "Avance l'heure de tout le serveur jusqu'au prochain hh:mm : o_time 10:20 (admin serveur + devcommands).",
                 (Terminal.ConsoleEvent)(args =>

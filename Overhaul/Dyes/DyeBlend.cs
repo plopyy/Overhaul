@@ -25,9 +25,12 @@ namespace Overhaul.Dyes
             return new Color(Soft(Mathf.Max(0, c.r * s + add)), Soft(Mathf.Max(0, c.g * s + add)), Soft(Mathf.Max(0, c.b * s + add)), 1);
         }
 
+        // shines (null: the alpha kept as it is): the alpha written as smoothness instead, for a material switched to read
+        // its smoothness from the texture's alpha (DyeVisuals): the material's own smoothness (glossBase, times the alpha
+        // when it already read it there: albedoAlpha) times each dyed zone's shine factor.
         // A dyed texture: the white version, each zone of the mask tinted with its colour (null = left as in the game,
         // which the white version holds outside the zones only, so an undyed zone takes the original texture: "original").
-        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, float[] reliefs, Texture original, string name)
+        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, float[] reliefs, Texture original, string name, float[] shines = null, float glossBase = 0, bool albedoAlpha = false)
         {
             var w = white.GetPixels32(); var m = mask.GetPixels32();
             Color32[] o = null;
@@ -39,6 +42,7 @@ namespace Overhaul.Dyes
             {
                 var px = (Color)w[i];
                 var mk = m[i];
+                float gloss = shines == null ? px.a : (albedoAlpha && o != null ? o[i].a / 255f : 1) * glossBase;
                 bool zoned = mk.r > 0 || mk.g > 0 || mk.b > 0 || mk.a > 0;
                 if (zoned && o != null)
                 {
@@ -49,11 +53,14 @@ namespace Overhaul.Dyes
                     {
                         float a = (z == 0 ? mk.r : z == 1 ? mk.g : z == 2 ? mk.b : mk.a) / 255f;
                         if (a <= 0) continue;
-                        var target = z < colours.Length && colours[z].HasValue ? Tint(colours[z].Value, w[i].r / 255f, reliefs != null && z < reliefs.Length ? reliefs[z] : 1) : g;
+                        bool dyed = z < colours.Length && colours[z].HasValue;
+                        var target = dyed ? Tint(colours[z].Value, w[i].r / 255f, reliefs != null && z < reliefs.Length ? reliefs[z] : 1) : g;
+                        if (shines != null && dyed && z < shines.Length) gloss = Mathf.Lerp(gloss, Mathf.Clamp01(gloss * shines[z]), a);
                         baseColour = new Color(Mathf.Lerp(baseColour.r, target.r, a), Mathf.Lerp(baseColour.g, target.g, a), Mathf.Lerp(baseColour.b, target.b, a), px.a);
                     }
                     px = baseColour;
                 }
+                if (shines != null) px.a = gloss;
                 result[i] = px;
             }
             var t = new Texture2D(white.width, white.height, TextureFormat.RGBA32, true) { name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };

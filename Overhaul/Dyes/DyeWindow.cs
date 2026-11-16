@@ -13,7 +13,7 @@ namespace Overhaul.Dyes
     // Dyeing window (OverhaulDyeWindow prefab, OverhaulLab DyeWindowAuthoring), opened by the dye button of the equipment
     // panel. Left: the dyeable gear in the bag (worn and cosmetic included). Middle: a copy of the player's look wearing
     // the selected piece with the colours being chosen, rendered with a clear background and turned by dragging. Right:
-    // the piece's zones, four sliders (hue, saturation, brightness, relief) choosing the zone's colour freely, the colour picked,
+    // the piece's zones, five sliders (hue, saturation, brightness, relief, shine) choosing the zone's colour freely, the colour picked,
     // the cost and Restore / Apply. Apply uses one mystic dye per zone changed; restoring a zone's original look is free.
     internal static class DyeWindow
     {
@@ -83,7 +83,7 @@ namespace Overhaul.Dyes
             p.Find("Close").GetComponent<Button>().onClick.AddListener(Close);
             rowTemplate = p.Find("ItemPanel/List/Content/Row").gameObject; rowTemplate.SetActive(false);
             for (int i = 0; i < 4; i++) { int z = i; p.Find("ColourPanel/Zones/Zone" + i).GetComponent<Button>().onClick.AddListener(() => { zone = z; LoadSliders(); RefreshColour(); }); }
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 5; i++)
             {
                 int k = i; var slider = Slider(i);
                 slider.minValue = 0; slider.maxValue = 1;
@@ -111,15 +111,15 @@ namespace Overhaul.Dyes
         // ---------------------------------------------------------------- sliders: hue, saturation, brightness, relief
         // The colour is HSV (brightness = value: 0 black, 1 the full colour; saturation 0 goes black to white); relief is
         // the zone's grain, slider 0..1 = factor 0..2 (middle: as painted).
-        static readonly float[] hsc = { 0, 0, 1, .5f };
-        static readonly string[] keys = { "Hue", "Saturation", "Brightness", "Relief" };
-        static readonly Texture2D[] tracks = new Texture2D[4];
+        static readonly float[] hsc = { 0, 0, 1, .5f, .5f };
+        static readonly string[] keys = { "Hue", "Saturation", "Brightness", "Relief", "Shine" };
+        static readonly Texture2D[] tracks = new Texture2D[5];
         static Slider Slider(int i) => T("ColourPanel/Sliders/" + keys[i] + "/Gradient/Slider").GetComponent<Slider>();
         static Color Picked => Color.HSVToRGB(hsc[0], hsc[1], hsc[2]);
         static void Slide(int i, float v)
         {
             if (pending == null || zone >= pending.Length) return;
-            hsc[i] = v; pending[zone] = DyePalette.Code(Picked, hsc[3] * 2);
+            hsc[i] = v; pending[zone] = DyePalette.Code(Picked, hsc[3] * 2, hsc[4] * 2);
             Tracks(); RefreshColour();
         }
         // The sliders on the selected zone's colour (a zone left original keeps the last values, its hue included).
@@ -135,19 +135,20 @@ namespace Overhaul.Dyes
                 if (val > .001f) hsc[1] = sat;
                 hsc[2] = val;
                 hsc[3] = DyePalette.Relief(id) / 2;
+                hsc[4] = DyePalette.Shine(id) / 2;
             }
-            for (int i = 0; i < 4; i++) Slider(i).SetValueWithoutNotify(hsc[i]);
+            for (int i = 0; i < 5; i++) Slider(i).SetValueWithoutNotify(hsc[i]);
             Tracks();
         }
         // Each track painted with what its slider gives at the other values (hue: every hue, kept readable; relief: the
         // colour with a grain growing from none to strong).
         static void Tracks()
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 5; i++)
             {
-                int w = i == 3 ? 256 : 128;
+                int w = i >= 3 ? 256 : 128;
                 var t = tracks[i];
-                if (!t) t = tracks[i] = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = i == 3 ? FilterMode.Point : FilterMode.Bilinear, name = "DyeTrack" + i };
+                if (!t) t = tracks[i] = new Texture2D(w, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = i >= 3 ? FilterMode.Point : FilterMode.Bilinear, name = "DyeTrack" + i };
                 for (int x = 0; x < w; x++)
                 {
                     float k = x / (w - 1f);
@@ -155,6 +156,7 @@ namespace Overhaul.Dyes
                     if (i == 0) px = Color.HSVToRGB(k, Mathf.Max(hsc[1], .6f), Mathf.Max(hsc[2], .6f));
                     else if (i == 1) px = Color.HSVToRGB(hsc[0], k, hsc[2]);
                     else if (i == 2) px = Color.HSVToRGB(hsc[0], hsc[1], k);
+                    else if (i == 4) px = DyeSliderTracks.Shine(x, k, hsc[0], hsc[1], hsc[2]);
                     else
                     {
                         var mid = Color.HSVToRGB(hsc[0], hsc[1], Mathf.Clamp(hsc[2], .35f, .75f));
@@ -429,5 +431,19 @@ namespace Overhaul.Dyes
     internal sealed class DyeDrag : MonoBehaviour, IDragHandler
     {
         public void OnDrag(PointerEventData e) { DyeWindow.Preview.Yaw -= e.delta.x * .5f; }
+    }
+
+    // The shine track: the colour from matte (flat, a little lighter) to glossy (deeper, with sharp light glints).
+    internal static class DyeSliderTracks
+    {
+        internal static Color Shine(int x, float k, float h, float s, float v)
+        {
+            var c = Color.HSVToRGB(h, s, Mathf.Clamp(v, .25f, .8f));
+            var flat = Color.Lerp(c, Color.grey, .35f);
+            var deep = c * .8f;
+            var px = Color.Lerp(flat, deep, k);
+            float glint = x % 24 < 2 ? k * k : 0;
+            return Color.Lerp(px, Color.white, glint * .9f);
+        }
     }
 }

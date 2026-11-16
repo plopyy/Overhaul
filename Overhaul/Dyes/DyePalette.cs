@@ -63,25 +63,29 @@ namespace Overhaul.Dyes
 
         internal static Colour Get(string id) => id != null && byID.TryGetValue(id, out var c) ? c : null;
 
-        // A zone's saved colour: a free code "#RRGGBB" (chosen with the window's sliders), followed by ":NNN" when its
-        // relief is not the usual one (percent, 0 flat to 200 strong), or a former palette ID (gear dyed before the sliders
-        // keeps its colour). Null when not a colour.
+        // A zone's saved colour: a free code "#RRGGBB" (chosen with the window's sliders), followed by ":relief" and
+        // ":shine" when they are not the usual ones (percent, 0 to 200, 100 = as in the game), or a former palette ID (gear
+        // dyed before the sliders keeps its colour). Null when not a colour.
         internal static Color? Value(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
             if (id[0] == '#') return (id.Length == 7 || (id.Length > 8 && id[7] == ':')) && ColorUtility.TryParseHtmlString(id.Substring(0, 7), out var c) ? c : (Color?)null;
             return Get(id)?.Value;
         }
-        // A zone's relief factor (1: the material's grain as painted).
-        internal static float Relief(string id)
+        static float Part(string id, int index)
         {
             if (string.IsNullOrEmpty(id) || id.Length <= 8 || id[0] != '#' || id[7] != ':') return 1;
-            return int.TryParse(id.Substring(8), out int p) ? Mathf.Clamp(p, 0, 200) / 100f : 1;
+            var parts = id.Split(':');
+            return parts.Length > index && int.TryParse(parts[index], out int p) ? Mathf.Clamp(p, 0, 200) / 100f : 1;
         }
-        internal static string Code(Color c, float relief = 1)
+        // A zone's relief factor (1: the material's grain as painted).
+        internal static float Relief(string id) => Part(id, 1);
+        // A zone's shine factor (1: the material's smoothness in the game; 0 matte, 2 twice as smooth).
+        internal static float Shine(string id) => Part(id, 2);
+        internal static string Code(Color c, float relief = 1, float shine = 1)
         {
-            int p = Mathf.Clamp(Mathf.RoundToInt(relief * 100), 0, 200);
-            return "#" + ColorUtility.ToHtmlStringRGB(c) + (p == 100 ? "" : ":" + p);
+            int r = Mathf.Clamp(Mathf.RoundToInt(relief * 100), 0, 200), g = Mathf.Clamp(Mathf.RoundToInt(shine * 100), 0, 200);
+            return "#" + ColorUtility.ToHtmlStringRGB(c) + (g != 100 ? ":" + r + ":" + g : r != 100 ? ":" + r : "");
         }
     }
 }
