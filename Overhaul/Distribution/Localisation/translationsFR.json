@@ -3451,6 +3451,8 @@
   "overhaul_dye_zone_carapace": "Carapace",
   "overhaul_dye_zone_feathers": "Plumes",
   "overhaul_dye_zone_fur": "Fourrure",
+  "overhaul_dye_zone_boots": "Bottes",
+  "overhaul_dye_zone_loincloth": "Pagne",
   "overhaul_dye": "Teinture",
   "overhaul_dye_desc": "Colore une zone d’une pièce d’équipement. S’utilise depuis la fenêtre de teinture (bouton du panneau d’équipement).",
   "overhaul_dye_c_red": "Rouge",

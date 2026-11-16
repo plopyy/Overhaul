@@ -3348,6 +3348,8 @@
   "overhaul_dye_zone_carapace": "Carapace",
   "overhaul_dye_zone_feathers": "Feathers",
   "overhaul_dye_zone_fur": "Fur",
+  "overhaul_dye_zone_boots": "Boots",
+  "overhaul_dye_zone_loincloth": "Loincloth",
   "overhaul_dye": "Dye",
   "overhaul_dye_desc": "Colours one zone of a piece of gear. Use it from the dyeing window (button in the equipment panel).",
   "overhaul_dye_c_red": "Red",
