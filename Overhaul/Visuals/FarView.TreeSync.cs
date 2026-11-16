@@ -197,26 +197,37 @@ namespace Overhaul.Visuals
                     foreach (var zdo in bySector[sector]) if (treeHashes.Contains(zdo.GetPrefab())) standing.Add(zdo);
                 var removed = new List<Removed>(); var added = new List<Added>();
                 var matched = new bool[standing.Count];
+                var used = new bool[standing.Count];
                 foreach (var t in baseTrees)
                 {
-                    bool found = false;
+                    bool same = false; int found = -1;
                     for (int i = 0; i < standing.Count; i++)
                     {
-                        if (matched[i] || standing[i].GetPrefab() != t.Hash) continue;
+                        if (used[i] || standing[i].GetPrefab() != t.Hash) continue;
                         var p = standing[i].GetPosition();
-                        if (Mathf.Abs(p.x - t.Position.x) < Match && Mathf.Abs(p.z - t.Position.z) < Match) { matched[i] = found = true; break; }
+                        if (Mathf.Abs(p.x - t.Position.x) < Match && Mathf.Abs(p.z - t.Position.z) < Match)
+                        {
+                            found = i; used[i] = true;
+                            // Standing there, but the placement's ground (worked out from the world generator) can be metres
+                            // off on hills, or its size differ: the tree then sank into the ground from afar, only its top
+                            // showing (a bare spire under a flat tier). Then sent as the real one in place of the placed one.
+                            same = Mathf.Abs(p.y - t.Position.y) < 1f && Mathf.Abs(Scale(standing[i]) - t.Scale) < 0.1f * Mathf.Max(t.Scale, 0.01f);
+                            matched[i] = same;
+                            break;
+                        }
                     }
-                    if (!found) removed.Add(new Removed { Hash = t.Hash, X = t.Position.x, Z = t.Position.z });
+                    if (!same) removed.Add(new Removed { Hash = t.Hash, X = t.Position.x, Z = t.Position.z });
                 }
                 for (int i = 0; i < standing.Count; i++)
                 {
                     if (matched[i]) continue;
                     var zdo = standing[i]; var p = zdo.GetPosition();
-                    float scale = zdo.GetFloat(ZDOVars.s_scaleScalarHash, zdo.GetVec3(ZDOVars.s_scaleHash, Vector3.one).y);
+                    float scale = Scale(zdo);
                     added.Add(new Added { Hash = zdo.GetPrefab(), X = p.x, Y = p.y, Z = p.z, Scale = scale, Yaw = zdo.GetRotation().eulerAngles.y * Mathf.Deg2Rad });
                 }
                 return new ZoneDelta { Removed = removed.ToArray(), Added = added.ToArray() };
             }
+            static float Scale(ZDO zdo) => zdo.GetFloat(ZDOVars.s_scaleScalarHash, zdo.GetVec3(ZDOVars.s_scaleHash, Vector3.one).y);
             static bool Same(ZoneDelta a, ZoneDelta b)
             {
                 if (a == null) return b.Removed.Length == 0 && b.Added.Length == 0;
