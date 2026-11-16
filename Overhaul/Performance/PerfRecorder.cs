@@ -77,6 +77,8 @@ namespace Overhaul.Performance
             // does not expose it in this build).
             shaderCompile = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Shader.CreateGPUProgram", 1, ProfilerRecorderOptions.SumAllSamplesInFrame);
             PerfProfile.Install();
+            int deep = PerfProfile.InstallDeep();
+            Log.LogInfo("[Performance] Recorder: " + deep + " scripts and coroutines timed one by one");
             PerfProfile.MeasureAllocations = true;
             try { TimeLoop(); } catch (Exception e) { Log.LogWarning("[Performance] engine steps not timed: " + e.Message); }
             PerfProfile.FrameTicks.Clear();

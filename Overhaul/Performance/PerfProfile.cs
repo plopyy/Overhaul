@@ -117,6 +117,46 @@ namespace Overhaul.Performance
             return patched;
         }
 
+        // Recording only ("o_opti record"): every Update / LateUpdate / FixedUpdate of the game's, Overhaul's, Auga's and Jotunn's
+        // scripts and every coroutine step (compiler-made MoveNext) of those assemblies timed on its own, as a root: what the
+        // engine's script steps spend shows by name instead of untimed. Hundreds of patches, put in once when recording starts.
+        internal static int InstallDeep()
+        {
+            if (harmony == null) return 0;
+            var begin = new HarmonyMethod(typeof(PerfProfile), nameof(Begin)) { priority = Priority.First };
+            var end = new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last };
+            var already = new HashSet<string>(Managers.Select(m => m.Type + "." + m.Method));
+            string[] wanted = { "assembly_valheim", "Overhaul", "Unity.Auga", "Jotunn" };
+            int patched = 0;
+            foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (System.Array.IndexOf(wanted, assembly.GetName().Name) < 0) continue;
+                System.Type[] types;
+                try { types = assembly.GetTypes(); } catch (ReflectionTypeLoadException e) { types = e.Types.Where(t => t != null).ToArray(); }
+                foreach (var type in types)
+                {
+                    if (type.IsGenericTypeDefinition || type.ContainsGenericParameters) continue;
+                    // Timed by hand already (the optimisations' runner, the recorder, Overhaul.Update): not twice.
+                    if ((type.Namespace ?? "").StartsWith("Overhaul.Performance") || (type.DeclaringType != null && (type.DeclaringType.Namespace ?? "").StartsWith("Overhaul.Performance")) || type.FullName == "Overhaul.Overhaul") continue;
+                    bool behaviour = typeof(UnityEngine.MonoBehaviour).IsAssignableFrom(type);
+                    bool coroutine = type.Name.StartsWith("<") && typeof(System.Collections.IEnumerator).IsAssignableFrom(type);
+                    if (!behaviour && !coroutine) continue;
+                    foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                    {
+                        if (method.IsAbstract || method.IsGenericMethodDefinition || method.GetParameters().Length != 0) continue;
+                        bool update = behaviour && (method.Name == "Update" || method.Name == "LateUpdate" || method.Name == "FixedUpdate");
+                        bool step = coroutine && (method.Name == "MoveNext" || method.Name == "System.Collections.IEnumerator.MoveNext");
+                        if (!update && !step) continue;
+                        string label = step ? "Co." + (type.DeclaringType != null ? type.DeclaringType.Name + "." : "") + type.Name : type.Name + "." + method.Name;
+                        if (already.Contains(type.Name + "." + method.Name)) continue;
+                        methodLabels[method] = label; Roots.Add(label);
+                        try { harmony.Patch(method, begin, end); patched++; } catch { }
+                    }
+                }
+            }
+            return patched;
+        }
+
         internal static void Uninstall()
         {
             if (users == 0 || --users > 0) return;
