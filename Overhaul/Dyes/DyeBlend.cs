@@ -67,7 +67,9 @@ namespace Overhaul.Dyes
         internal static Texture2D MetalMap(Texture2D mask, float[] metals, Texture original, float plain, string name)
         {
             var m = mask.GetPixels32(); int width = mask.width, height = mask.height;
-            Color32[] o = original ? Read(original) : null; int ow = original ? original.width : 1, oh = original ? original.height : 1;
+            // The game's map read and the new one stored with the same colour space, so the shader gets the same values.
+            bool linear = !original || !original.isDataSRGB;
+            Color32[] o = original ? Read(original, linear) : null; int ow = original ? original.width : 1, oh = original ? original.height : 1;
             var result = new Color32[m.Length];
             for (int i = 0; i < m.Length; i++)
             {
@@ -86,24 +88,26 @@ namespace Overhaul.Dyes
                 byte v = (byte)Mathf.RoundToInt(metal * 255);
                 result[i] = new Color32(v, v, v, (byte)Mathf.RoundToInt(alpha * 255));
             }
-            var t = new Texture2D(width, height, TextureFormat.RGBA32, true, true) { name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };
+            var t = new Texture2D(width, height, TextureFormat.RGBA32, true, linear) { name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };
             t.SetPixels32(result); t.Apply(true, !DyeVisuals.Debug);
             return t;
         }
 
-        // CPU copy of a game texture (not readable): through a render texture, in sRGB like the game draws it.
-        static readonly Dictionary<Texture, Color32[]> read = new Dictionary<Texture, Color32[]>();
-        internal static Color32[] Read(Texture source)
+        // CPU copy of a game texture (not readable): through a render texture, in sRGB like the game draws a colour
+        // texture, or linear for a data map (metal: read in sRGB its values would come back raised).
+        static readonly Dictionary<Texture, Color32[]> read = new Dictionary<Texture, Color32[]>(), readLinear = new Dictionary<Texture, Color32[]>();
+        internal static Color32[] Read(Texture source, bool linear = false)
         {
-            if (read.TryGetValue(source, out var px) && px != null) return px;
-            var rt = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var cache = linear ? readLinear : read;
+            if (cache.TryGetValue(source, out var px) && px != null) return px;
+            var rt = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGB32, linear ? RenderTextureReadWrite.Linear : RenderTextureReadWrite.sRGB);
             var old = RenderTexture.active;
             Graphics.Blit(source, rt); RenderTexture.active = rt;
-            var t = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+            var t = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, linear);
             t.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0); t.Apply();
             RenderTexture.active = old; RenderTexture.ReleaseTemporary(rt);
             px = t.GetPixels32(); UnityEngine.Object.Destroy(t);
-            return read[source] = px;
+            return cache[source] = px;
         }
     }
 }

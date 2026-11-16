@@ -92,10 +92,15 @@ namespace Overhaul.Dyes
             [HarmonyPriority(Priority.Last)]
             static void Postfix(VisEquipment __instance)
             {
-                if (!__instance.m_isPlayer || __instance.m_isArmorStand) return;
                 string[] wanted = null;
-                var zdo = __instance.m_nview ? __instance.m_nview.GetZDO() : null;
-                if (zdo == null && !Overrides.TryGetValue(__instance, out wanted)) return;
+                ZDO zdo = null;
+                if (__instance.m_isArmorStand) { wanted = StandDyes(__instance); if (wanted == null) return; }
+                else
+                {
+                    if (!__instance.m_isPlayer) return;
+                    zdo = __instance.m_nview ? __instance.m_nview.GetZDO() : null;
+                    if (zdo == null && !Overrides.TryGetValue(__instance, out wanted)) return;
+                }
                 var state = States.GetOrCreateValue(__instance);
                 for (int i = 0; i < 4; i++)
                 {
@@ -109,6 +114,34 @@ namespace Overhaul.Dyes
                     Apply(__instance, (Slot)i, value, hadDye);
                 }
             }
+        }
+
+        // Armour stands: the pieces on it keep their item data (dyes included) in the stand's ZDO, one set per slot
+        // (ItemDrop.SaveToZDO with the slot index); read again when the ZDO changes. "<prefab>:<ids>" per slot.
+        sealed class StandCache { public uint Revision = uint.MaxValue; public string[] Values; }
+        static readonly ConditionalWeakTable<VisEquipment, StandCache> standCache = new ConditionalWeakTable<VisEquipment, StandCache>();
+        static string[] StandDyes(VisEquipment v)
+        {
+            var stand = v.GetComponentInParent<ArmorStand>();
+            var zdo = stand && stand.m_nview ? stand.m_nview.GetZDO() : null;
+            if (zdo == null || !ObjectDB.instance) return null;
+            var cache = standCache.GetOrCreateValue(v);
+            if (cache.Values != null && cache.Revision == zdo.DataRevision) return cache.Values;
+            var values = new string[4];
+            for (int i = 0; i < stand.m_slots.Count; i++)
+            {
+                var visSlot = stand.m_slots[i].m_slot;
+                int slot = visSlot == VisSlot.Helmet ? 0 : visSlot == VisSlot.Chest ? 1 : visSlot == VisSlot.Legs ? 2 : visSlot == VisSlot.Shoulder ? 3 : -1;
+                if (slot < 0) continue;
+                int hash = zdo.GetInt(ArmorStand.s_itemKeyHashes[i], 0);
+                var prefab = hash != 0 ? ObjectDB.instance.GetItemPrefab(hash) : null;
+                if (!prefab || DyeGear.Get(prefab.name) == null) continue;
+                var data = prefab.GetComponent<ItemDrop>().m_itemData.Clone(); data.m_dropPrefab = prefab;
+                ItemDrop.LoadFromZDO(data, zdo, i);
+                values[slot] = Encode(data);
+            }
+            cache.Revision = zdo.DataRevision; cache.Values = values;
+            return values;
         }
 
         static object Instances(VisEquipment v, Slot s) =>
