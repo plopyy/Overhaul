@@ -95,6 +95,8 @@ namespace Overhaul.Performance
                 bool on = Shader.GetGlobalFloat("_OverhaulImpostorDebug") < 0.5f;
                 Shader.SetGlobalFloat("_OverhaulImpostorDebug", on ? 1f : 0f);
                 args.Context.AddString(L(on ? "overhaul_perf_impostors_on" : "overhaul_perf_impostors_off"));
+                var aimed = Visuals.FarView.AimedImpostor();
+                args.Context.AddString(aimed); Utility.Log.LogInfo("[FarView] " + aimed);
                 return;
             }
             if (first == "hud")

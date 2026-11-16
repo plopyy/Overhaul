@@ -413,8 +413,32 @@ namespace Overhaul.Visuals
         }
 
         // The worker's lists into each kind's buffers (main thread).
+        static Gathered shownTrees;
+        // "o_opti impostors": the far tree closest to the centre of the screen (its kind, place, distance), from the lists drawn.
+        internal static string AimedImpostor()
+        {
+            var camera = Utils.GetMainCamera(); var g = shownTrees;
+            if (!camera || g == null || kinds == null) return "no far trees drawn";
+            var eye = camera.transform.position; var look = camera.transform.forward;
+            float best = float.MaxValue; int bestKind = -1; Vector4 bestTree = default;
+            for (int k = 0; k < g.Positions.Length && k < kinds.Count; k++)
+                foreach (var t in g.Positions[k])
+                {
+                    var top = new Vector3(t.x, t.y + kinds[k].Sphere.y * t.w, t.z) - eye;
+                    float d = top.magnitude; if (d < 50f) continue;
+                    float angle = Vector3.Angle(look, top);
+                    // The tree's own size counts (a big far tree at the same angle as a small near one).
+                    float score = angle - Mathf.Rad2Deg * Mathf.Atan(kinds[k].Sphere.w * t.w / d);
+                    if (score < best) { best = score; bestKind = k; bestTree = t; }
+                }
+            if (bestKind < 0) return "no far tree in view";
+            float dist = Vector3.Distance(eye, new Vector3(bestTree.x, bestTree.y, bestTree.z));
+            return "aimed far tree: " + kinds[bestKind].Name + " at " + bestTree.x.ToString("0") + ", " + bestTree.y.ToString("0") + ", " + bestTree.z.ToString("0") + " (" + dist.ToString("0") + " m, scale " + bestTree.w.ToString("0.00") + ")";
+        }
+
         static void Upload(Gathered g)
         {
+            shownTrees = g;
             if (kinds == null || g.Positions.Length != kinds.Count) return;
             for (int k = 0; k < kinds.Count; k++)
             {
@@ -601,6 +625,11 @@ namespace Overhaul.Visuals
             kind.Material.SetTexture("_Albedo", kind.Albedo); kind.Material.SetTexture("_Normal", kind.Normal);
             kind.Material.SetFloat("_Frames", Frames); kind.Material.SetVector("_Sphere", kind.Sphere); kind.Material.SetFloat("_Cutoff", 0.5f);
             kind.Material.enableInstancing = true;
+            // Its border colour for "o_opti impostors" (a hue per kind, listed in the log).
+            int index = kinds.IndexOf(kind);
+            var colour = Color.HSVToRGB((index * 0.618f) % 1f, 1f, 1f);
+            kind.Material.SetColor("_DebugColor", new Color(colour.r, colour.g, colour.b, 1f));
+            Log.LogInfo("[FarView] impostor border colour of " + kind.Name + ": #" + ColorUtility.ToHtmlStringRGB(colour));
             if (kind.Trees != null) { kind.Material.SetBuffer("_Trees", kind.Trees); kind.Material.SetBuffer("_Yaws", kind.Yaws); }
         }
 
