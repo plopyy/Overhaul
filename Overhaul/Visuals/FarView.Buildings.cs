@@ -11,13 +11,15 @@ namespace Overhaul.Visuals
     // Far view, buildings: the game only creates the pieces near you, the rest of a base exists as network data (ZDO) the
     // game knows (your bases, others' you have been near, world ruins of places it generated). Beyond the zones the game
     // fills, out to 1.5 / 2.5 / 3.5 km (Low / Medium / High), those pieces are drawn as the game's own meshes and
-    // materials (the least detailed level of each piece), merged per 256 m cell into one mesh per material. A cell is
+    // materials (the least detailed level of each piece), merged per 64 m cell (one zone) into one mesh per material. A cell is
     // merged again when its pieces change (count or data revision) or when the zones the game fills move over it; one
     // cell per frame within a time budget, the nearest first. Not drawn far off: small pieces (under 1 m), pieces with
     // physics, ships and carts, pieces not using the game's piece shader.
     internal static partial class FarView
     {
-        const int BuildingCellZones = 4;
+        // One zone per cell: a 256 m cell holding a big base (5000+ pieces) was merged in one go (300-400 ms frames), again
+        // each time the zones the game fills moved over it while walking near the base.
+        const int BuildingCellZones = 1;
         const double BuildingBudgetMs = 3.0;
         static float BuildingReach(ClientVisuals.Level level) => level == ClientVisuals.Level.Low ? 1500f : level == ClientVisuals.Level.Medium ? 2500f : 3500f;
 
