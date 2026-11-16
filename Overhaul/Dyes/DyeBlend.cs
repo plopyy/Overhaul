@@ -25,12 +25,9 @@ namespace Overhaul.Dyes
             return new Color(Soft(Mathf.Max(0, c.r * s + add)), Soft(Mathf.Max(0, c.g * s + add)), Soft(Mathf.Max(0, c.b * s + add)), 1);
         }
 
-        // shines (null: the alpha kept as it is): the alpha written as smoothness instead, for a material switched to read
-        // its smoothness from the texture's alpha (DyeVisuals): the material's own smoothness (glossBase, times the alpha
-        // when it already read it there: albedoAlpha) times each dyed zone's shine factor.
         // A dyed texture: the white version, each zone of the mask tinted with its colour (null = left as in the game,
         // which the white version holds outside the zones only, so an undyed zone takes the original texture: "original").
-        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, float[] reliefs, Texture original, string name, float[] shines = null, float glossBase = 0, bool albedoAlpha = false)
+        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, float[] reliefs, Texture original, string name)
         {
             var w = white.GetPixels32(); var m = mask.GetPixels32();
             Color32[] o = null;
@@ -42,7 +39,6 @@ namespace Overhaul.Dyes
             {
                 var px = (Color)w[i];
                 var mk = m[i];
-                float gloss = shines == null ? px.a : (albedoAlpha && o != null ? o[i].a / 255f : 1) * glossBase;
                 bool zoned = mk.r > 0 || mk.g > 0 || mk.b > 0 || mk.a > 0;
                 if (zoned && o != null)
                 {
@@ -53,17 +49,44 @@ namespace Overhaul.Dyes
                     {
                         float a = (z == 0 ? mk.r : z == 1 ? mk.g : z == 2 ? mk.b : mk.a) / 255f;
                         if (a <= 0) continue;
-                        bool dyed = z < colours.Length && colours[z].HasValue;
-                        var target = dyed ? Tint(colours[z].Value, w[i].r / 255f, reliefs != null && z < reliefs.Length ? reliefs[z] : 1) : g;
-                        if (shines != null && dyed && z < shines.Length) gloss = Mathf.Lerp(gloss, Mathf.Clamp01(gloss * shines[z]), a);
+                        var target = z < colours.Length && colours[z].HasValue ? Tint(colours[z].Value, w[i].r / 255f, reliefs != null && z < reliefs.Length ? reliefs[z] : 1) : g;
                         baseColour = new Color(Mathf.Lerp(baseColour.r, target.r, a), Mathf.Lerp(baseColour.g, target.g, a), Mathf.Lerp(baseColour.b, target.b, a), px.a);
                     }
                     px = baseColour;
                 }
-                if (shines != null) px.a = gloss;
                 result[i] = px;
             }
             var t = new Texture2D(white.width, white.height, TextureFormat.RGBA32, true) { name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };
+            t.SetPixels32(result); t.Apply(true, !DyeVisuals.Debug);
+            return t;
+        }
+
+        // A metal map for the zones' metal sliders (red: metallic, read with the material's _Metallic set to 1): the
+        // game's metal (its map's red, or "plain" where it has none) raised in each zone toward 1 by the zone's amount.
+        // Metal with a dark colour sends no light back (no diffuse part, its reflection tinted by the colour).
+        internal static Texture2D MetalMap(Texture2D mask, float[] metals, Texture original, float plain, string name)
+        {
+            var m = mask.GetPixels32(); int width = mask.width, height = mask.height;
+            Color32[] o = original ? Read(original) : null; int ow = original ? original.width : 1, oh = original ? original.height : 1;
+            var result = new Color32[m.Length];
+            for (int i = 0; i < m.Length; i++)
+            {
+                float metal = plain, alpha = 1;
+                if (o != null)
+                {
+                    int x = i % width * ow / width, y = i / width * oh / height; var p = o[y * ow + x];
+                    metal = p.r / 255f * plain; alpha = p.a / 255f;
+                }
+                var mk = m[i];
+                for (int z = 0; z < 4 && z < metals.Length; z++)
+                {
+                    float a = (z == 0 ? mk.r : z == 1 ? mk.g : z == 2 ? mk.b : mk.a) / 255f;
+                    if (a > 0 && metals[z] > 0) metal = Mathf.Lerp(metal, Mathf.Lerp(metal, 1, metals[z]), a);
+                }
+                byte v = (byte)Mathf.RoundToInt(metal * 255);
+                result[i] = new Color32(v, v, v, (byte)Mathf.RoundToInt(alpha * 255));
+            }
+            var t = new Texture2D(width, height, TextureFormat.RGBA32, true, true) { name = name, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Repeat };
             t.SetPixels32(result); t.Apply(true, !DyeVisuals.Debug);
             return t;
         }

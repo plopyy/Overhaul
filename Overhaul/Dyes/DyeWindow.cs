@@ -13,7 +13,7 @@ namespace Overhaul.Dyes
     // Dyeing window (OverhaulDyeWindow prefab, OverhaulLab DyeWindowAuthoring), opened by the dye button of the equipment
     // panel. Left: the dyeable gear in the bag (worn and cosmetic included). Middle: a copy of the player's look wearing
     // the selected piece with the colours being chosen, rendered with a clear background and turned by dragging. Right:
-    // the piece's zones, five sliders (hue, saturation, brightness, relief, shine) choosing the zone's colour freely, the colour picked,
+    // the piece's zones, five sliders (hue, saturation, brightness, relief, metal) choosing the zone's colour freely, the colour picked,
     // the cost and Restore / Apply. Apply uses one mystic dye per zone changed; restoring a zone's original look is free.
     internal static class DyeWindow
     {
@@ -111,15 +111,15 @@ namespace Overhaul.Dyes
         // ---------------------------------------------------------------- sliders: hue, saturation, brightness, relief
         // The colour is HSV (brightness = value: 0 black, 1 the full colour; saturation 0 goes black to white); relief is
         // the zone's grain, slider 0..1 = factor 0..2 (middle: as painted).
-        static readonly float[] hsc = { 0, 0, 1, .5f, .5f };
-        static readonly string[] keys = { "Hue", "Saturation", "Brightness", "Relief", "Shine" };
+        static readonly float[] hsc = { 0, 0, 1, .5f, 0 };
+        static readonly string[] keys = { "Hue", "Saturation", "Brightness", "Relief", "Metal" };
         static readonly Texture2D[] tracks = new Texture2D[5];
         static Slider Slider(int i) => T("ColourPanel/Sliders/" + keys[i] + "/Gradient/Slider").GetComponent<Slider>();
         static Color Picked => Color.HSVToRGB(hsc[0], hsc[1], hsc[2]);
         static void Slide(int i, float v)
         {
             if (pending == null || zone >= pending.Length) return;
-            hsc[i] = v; pending[zone] = DyePalette.Code(Picked, hsc[3] * 2, hsc[4] * 2);
+            hsc[i] = v; pending[zone] = DyePalette.Code(Picked, hsc[3] * 2, hsc[4]);
             Tracks(); RefreshColour();
         }
         // The sliders on the selected zone's colour (a zone left original keeps the last values, its hue included).
@@ -135,7 +135,7 @@ namespace Overhaul.Dyes
                 if (val > .001f) hsc[1] = sat;
                 hsc[2] = val;
                 hsc[3] = DyePalette.Relief(id) / 2;
-                hsc[4] = DyePalette.Shine(id) / 2;
+                hsc[4] = DyePalette.Metal(id);
             }
             for (int i = 0; i < 5; i++) Slider(i).SetValueWithoutNotify(hsc[i]);
             Tracks();
@@ -156,7 +156,7 @@ namespace Overhaul.Dyes
                     if (i == 0) px = Color.HSVToRGB(k, Mathf.Max(hsc[1], .6f), Mathf.Max(hsc[2], .6f));
                     else if (i == 1) px = Color.HSVToRGB(hsc[0], k, hsc[2]);
                     else if (i == 2) px = Color.HSVToRGB(hsc[0], hsc[1], k);
-                    else if (i == 4) px = DyeSliderTracks.Shine(x, k, hsc[0], hsc[1], hsc[2]);
+                    else if (i == 4) px = DyeSliderTracks.Metal(x, k, hsc[0], hsc[1], hsc[2]);
                     else
                     {
                         var mid = Color.HSVToRGB(hsc[0], hsc[1], Mathf.Clamp(hsc[2], .35f, .75f));
@@ -433,17 +433,17 @@ namespace Overhaul.Dyes
         public void OnDrag(PointerEventData e) { DyeWindow.Preview.Yaw -= e.delta.x * .5f; }
     }
 
-    // The shine track: the colour from matte (flat, a little lighter) to glossy (deeper, with sharp light glints).
+    // The metal track: the colour as in the game (a little grey veil) to all metal (deeper, its glints in its own colour).
     internal static class DyeSliderTracks
     {
-        internal static Color Shine(int x, float k, float h, float s, float v)
+        internal static Color Metal(int x, float k, float h, float s, float v)
         {
             var c = Color.HSVToRGB(h, s, Mathf.Clamp(v, .25f, .8f));
             var flat = Color.Lerp(c, Color.grey, .35f);
             var deep = c * .8f;
             var px = Color.Lerp(flat, deep, k);
             float glint = x % 24 < 2 ? k * k : 0;
-            return Color.Lerp(px, Color.white, glint * .9f);
+            return Color.Lerp(px, Color.Lerp(Color.white, c, k), glint * .9f);
         }
     }
 }
