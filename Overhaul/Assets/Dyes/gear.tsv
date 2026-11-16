@@ -28,3 +28,15 @@ CapeWolf	fur	WolfCape_d|WolfCape_d|mesh;(Wood 26) tree bark seamless texture 204
 HelmetFenring	cloth,trim	FenringArmor_d|FenringArmor_d|mesh
 ArmorFenringChest	trim,leather	FenringArmorChest_d|FenringArmorChest_d|body;FenringArmor_d|FenringArmor_d|mesh
 ArmorFenringLegs	trim,leather,cloth	FenringArmorLegs_d|FenringArmorLegs_d|body;FenringArmor_d|FenringArmor_d|mesh
+CapeLox	fur	LoxCape_D|LoxCape_D|mesh
+HelmetFlametal	metal,trim,leather	FlametalArmor_d|FlametalArmor_d|mesh
+ArmorFlametalChest	metal,leather,trim,cloth	FlametalArmorChest_d|FlametalArmorChest_d|body;FlametalArmor_d|FlametalArmor_d|mesh
+ArmorFlametalLegs	leather,cloth,metal	FlametalArmorLegs_d|FlametalArmorLegs_d|body;FlametalArmor_d|FlametalArmor_d|mesh
+HelmetAshlandsMediumHood	cloth,leather	ashlandsmediumarmor_d|ashlandsmediumarmor_d|mesh
+ArmorAshlandsMediumChest	cloth,leather,trim	AshlandsMediumArmorChest_d|AshlandsMediumArmorChest_d|body;ashlandsmediumarmor_d|ashlandsmediumarmor_d|mesh
+ArmorAshlandsMediumlegs	leather,trim	AshlandsMediumArmorLegs_d|AshlandsMediumArmorLegs_d|body;ashlandsmediumarmor_d|ashlandsmediumarmor_d|mesh
+CapeAsksvin	cloth	Asksvincape_d|Asksvincape_d|mesh
+HelmetMage_Ashlands	cloth,trim,leather	AshlandsMageArmor_d|AshlandsMageArmor_d|mesh
+ArmorMageChest_Ashlands	trim,cloth,leather,metal	AshlandsMageArmorChest_d|AshlandsMageArmorChest_d|body;AshlandsMageArmor_d|AshlandsMageArmor_d|mesh
+ArmorMageLegs_Ashlands	leather,metal	AshlandsMageArmorLEGS_d|AshlandsMageArmorLEGS_d|body;AshlandsMageArmor_d|AshlandsMageArmor_d|mesh
+CapeAsh	cloth	Ashcape_d|Ashcape_d|mesh
