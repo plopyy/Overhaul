@@ -53,7 +53,7 @@ namespace Overhaul.Performance
             runner.hideFlags = HideFlags.HideAndDontSave;
             runner.AddComponent<Runner>();
             new Terminal.ConsoleCommand(Command, "Overhaul performance: o_opti [ab|profile|hud|look|mods|record [minutes|stop]|status|<option> on|off]",
-                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods", "impostors", "trees" }.Concat(Options.Select(o => o.Id)).ToList());
+                (Terminal.ConsoleEvent)Run, optionsFetcher: () => new List<string> { "ab", "profile", "hud", "record", "status", "look", "mods", "impostors", "trees", "nearimpostors" }.Concat(Options.Select(o => o.Id)).ToList());
         }
 
         internal static string L(string key, params string[] words) =>
@@ -87,6 +87,17 @@ namespace Overhaul.Performance
             if (first == "look")
             {
                 InstancedProps.Look(args.Context);
+                return;
+            }
+            // "o_opti nearimpostors": far tree impostors shown within 20 m in place of the game's trees (again: back to normal).
+            // Instanced props are off meanwhile (they draw the game's trees themselves).
+            if (first == "nearimpostors")
+            {
+                bool on = !Visuals.FarView.NearImpostors;
+                Visuals.FarView.SetNearImpostors(on);
+                var props = Options.FirstOrDefault(o => o.Id == "props");
+                if (props.Set != null) props.Set(!on);
+                args.Context.AddString(L(on ? "overhaul_perf_nearimpostors_on" : "overhaul_perf_nearimpostors_off"));
                 return;
             }
             // "o_opti trees": the far trees placed around the player, to the console (first lines) and the log (all).

@@ -336,6 +336,7 @@ namespace Overhaul.Visuals
             var ready = Interlocked.Exchange(ref gathered, null);
             if (ready != null) Upload(ready);
             TickZoneMask();
+            TickNearImpostors();
             DrawForest(eye, reach);
         }
 
@@ -440,6 +441,35 @@ namespace Overhaul.Visuals
                 }
             lines.Insert(0, lines.Count + " far trees within " + radius.ToString("0") + " m of " + p.x.ToString("0") + ", " + p.z.ToString("0") + ", player biome " + w.GetBiome(p.x, p.z, 0.02f, false));
             return lines;
+        }
+
+        // "o_opti nearimpostors": the impostors drawn within 20 m too (shader global) and the game's own trees of the same kinds
+        // hidden there (their renderers off, given back when they leave the circle or the mode ends).
+        internal static bool NearImpostors;
+        static readonly List<Renderer> hiddenNear = new List<Renderer>();
+        static float nextNearScan;
+        internal static void SetNearImpostors(bool on)
+        {
+            NearImpostors = on;
+            Shader.SetGlobalFloat("_OverhaulImpostorNear", on ? 1f : 0f);
+            if (!on) { foreach (var r in hiddenNear) if (r) r.forceRenderingOff = false; hiddenNear.Clear(); }
+        }
+        static void TickNearImpostors()
+        {
+            if (!NearImpostors || Time.time < nextNearScan || !ZNetScene.instance || kindOfHash == null) return;
+            nextNearScan = Time.time + 0.25f;
+            var camera = Utils.GetMainCamera(); if (!camera) return;
+            var eye = camera.transform.position;
+            foreach (var r in hiddenNear) if (r) r.forceRenderingOff = false;
+            hiddenNear.Clear();
+            foreach (var view in ZNetScene.instance.m_instances.Values)
+            {
+                if (!view) continue;
+                var zdo = view.GetZDO(); if (zdo == null || !kindOfHash.ContainsKey(zdo.GetPrefab())) continue;
+                var p = view.transform.position;
+                if ((p.x - eye.x) * (p.x - eye.x) + (p.z - eye.z) * (p.z - eye.z) > 400f) continue;
+                foreach (var r in view.GetComponentsInChildren<Renderer>()) { r.forceRenderingOff = true; hiddenNear.Add(r); }
+            }
         }
 
         static Gathered shownTrees;

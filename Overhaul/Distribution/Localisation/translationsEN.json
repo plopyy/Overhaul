@@ -3324,6 +3324,8 @@
   "overhaul_dye_mystic_desc": "A swirl of every colour. Dyes one zone of a piece of gear in the colour of your choice, from the dyeing window (button in the equipment panel).",
   "overhaul_perf_impostors_on": "Far tree impostors: red borders on (o_opti impostors again to hide them).",
   "overhaul_perf_impostors_off": "Far tree impostors: red borders off.",
+  "overhaul_perf_nearimpostors_on": "Far tree impostors shown within 20 m in place of the game's trees (o_opti nearimpostors again to go back).",
+  "overhaul_perf_nearimpostors_off": "Game trees shown again near you.",
   "overhaul_dye_colours": "Colours",
   "overhaul_dye_apply": "Apply",
   "overhaul_dye_reset": "Restore",
