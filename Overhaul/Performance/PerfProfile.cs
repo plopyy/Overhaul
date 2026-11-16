@@ -126,12 +126,12 @@ namespace Overhaul.Performance
             var begin = new HarmonyMethod(typeof(PerfProfile), nameof(Begin)) { priority = Priority.First };
             var end = new HarmonyMethod(typeof(PerfProfile), nameof(EndMethod)) { priority = Priority.Last };
             var already = new HashSet<string>(Managers.Select(m => m.Type + "." + m.Method));
-            int patched = 0;
+            int patched = 0, failed = 0;
             foreach (var assembly in System.AppDomain.CurrentDomain.GetAssemblies())
             {
                 // Every assembly but Unity's and the system's (the game's other assemblies, BepInEx, other plugins too).
                 string an = assembly.GetName().Name;
-                if (assembly.IsDynamic || an.StartsWith("Unity") && an != "Unity.Auga" || an.StartsWith("System") || an == "mscorlib" || an.StartsWith("Mono.") || an == "netstandard" || an.StartsWith("0Harmony") || an.StartsWith("HarmonyX")) continue;
+                if (assembly.IsDynamic || an.StartsWith("UnityEngine") && an != "UnityEngine.UI" || an.StartsWith("Unity.") && an != "Unity.Auga" && an != "Unity.TextMeshPro" || an.StartsWith("System") || an == "mscorlib" || an.StartsWith("Mono.") || an == "netstandard" || an.StartsWith("0Harmony") || an.StartsWith("HarmonyX")) continue;
                 System.Type[] types;
                 try { types = assembly.GetTypes(); } catch (ReflectionTypeLoadException e) { types = e.Types.Where(t => t != null).ToArray(); }
                 foreach (var type in types)
@@ -140,7 +140,7 @@ namespace Overhaul.Performance
                     // Timed by hand already (the optimisations' runner, the recorder, Overhaul.Update): not twice.
                     if ((type.Namespace ?? "").StartsWith("Overhaul.Performance") || (type.DeclaringType != null && (type.DeclaringType.Namespace ?? "").StartsWith("Overhaul.Performance")) || type.FullName == "Overhaul.Overhaul") continue;
                     bool behaviour = typeof(UnityEngine.MonoBehaviour).IsAssignableFrom(type);
-                    bool coroutine = type.Name.StartsWith("<") && typeof(System.Collections.IEnumerator).IsAssignableFrom(type);
+                    bool coroutine = typeof(System.Collections.IEnumerator).IsAssignableFrom(type) && !type.IsInterface;
                     if (!behaviour && !coroutine) continue;
                     foreach (var method in type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                     {
@@ -151,10 +151,12 @@ namespace Overhaul.Performance
                         string label = step ? "Co." + (type.DeclaringType != null ? type.DeclaringType.Name + "." : "") + type.Name : type.Name + "." + method.Name;
                         if (already.Contains(type.Name + "." + method.Name)) continue;
                         methodLabels[method] = label; Roots.Add(label);
-                        try { harmony.Patch(method, begin, end); patched++; } catch { }
+                        try { harmony.Patch(method, begin, end); patched++; }
+                        catch (System.Exception e) { failed++; if (failed <= 30) Log.LogInfo("[Performance] not timed: " + type.FullName + "." + method.Name + " (" + e.GetType().Name + ")"); }
                     }
                 }
             }
+            if (failed > 0) Log.LogInfo("[Performance] " + failed + " updates or coroutines could not be timed");
             return patched;
         }
 
