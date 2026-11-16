@@ -16,17 +16,18 @@ namespace Overhaul.Dyes
 
         static float Soft(float x) => x <= Knee ? x : Knee + (1 - Knee) * (float)Math.Tanh((x - Knee) / (1 - Knee));
 
-        internal static Color Tint(Color c, float grey)
+        // relief: the zone's relief slider, a power on the material's grain (0 flat, 1 as painted, 2 stronger, never
+        // crushed to black); raised, it also lifts a dark dye's highlights faster so a black shows its grain.
+        internal static Color Tint(Color c, float grey, float relief = 1)
         {
-            float s = grey / GRef, dark = 1 - Mathf.Max(c.r, Mathf.Max(c.g, c.b)); dark *= dark;
-            float relief = Mathf.Min(s - 1, 0) + .35f * Mathf.Max(s - 1, 0);
-            float add = Dark * dark * relief;
+            float s = Mathf.Pow(grey / GRef, relief), dark = 1 - Mathf.Max(c.r, Mathf.Max(c.g, c.b)); dark *= dark;
+            float add = Dark * dark * (Mathf.Min(s - 1, 0) + (.35f + 5 * Mathf.Max(relief - 1, 0)) * Mathf.Max(s - 1, 0));
             return new Color(Soft(Mathf.Max(0, c.r * s + add)), Soft(Mathf.Max(0, c.g * s + add)), Soft(Mathf.Max(0, c.b * s + add)), 1);
         }
 
         // A dyed texture: the white version, each zone of the mask tinted with its colour (null = left as in the game,
         // which the white version holds outside the zones only, so an undyed zone takes the original texture: "original").
-        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, Texture original, string name)
+        internal static Texture2D Compose(Texture2D white, Texture2D mask, Color?[] colours, float[] reliefs, Texture original, string name)
         {
             var w = white.GetPixels32(); var m = mask.GetPixels32();
             Color32[] o = null;
@@ -48,7 +49,7 @@ namespace Overhaul.Dyes
                     {
                         float a = (z == 0 ? mk.r : z == 1 ? mk.g : z == 2 ? mk.b : mk.a) / 255f;
                         if (a <= 0) continue;
-                        var target = z < colours.Length && colours[z].HasValue ? Tint(colours[z].Value, w[i].r / 255f) : g;
+                        var target = z < colours.Length && colours[z].HasValue ? Tint(colours[z].Value, w[i].r / 255f, reliefs != null && z < reliefs.Length ? reliefs[z] : 1) : g;
                         baseColour = new Color(Mathf.Lerp(baseColour.r, target.r, a), Mathf.Lerp(baseColour.g, target.g, a), Mathf.Lerp(baseColour.b, target.b, a), px.a);
                     }
                     px = baseColour;

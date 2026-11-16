@@ -63,14 +63,25 @@ namespace Overhaul.Dyes
 
         internal static Colour Get(string id) => id != null && byID.TryGetValue(id, out var c) ? c : null;
 
-        // A zone's saved colour: a free code "#RRGGBB" (chosen with the window's sliders), or a former palette ID
-        // (gear dyed before the sliders keeps its colour). Null when not a colour.
+        // A zone's saved colour: a free code "#RRGGBB" (chosen with the window's sliders), followed by ":NNN" when its
+        // relief is not the usual one (percent, 0 flat to 200 strong), or a former palette ID (gear dyed before the sliders
+        // keeps its colour). Null when not a colour.
         internal static Color? Value(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
-            if (id[0] == '#') return id.Length == 7 && ColorUtility.TryParseHtmlString(id, out var c) ? c : (Color?)null;
+            if (id[0] == '#') return (id.Length == 7 || (id.Length > 8 && id[7] == ':')) && ColorUtility.TryParseHtmlString(id.Substring(0, 7), out var c) ? c : (Color?)null;
             return Get(id)?.Value;
         }
-        internal static string Code(Color c) => "#" + ColorUtility.ToHtmlStringRGB(c);
+        // A zone's relief factor (1: the material's grain as painted).
+        internal static float Relief(string id)
+        {
+            if (string.IsNullOrEmpty(id) || id.Length <= 8 || id[0] != '#' || id[7] != ':') return 1;
+            return int.TryParse(id.Substring(8), out int p) ? Mathf.Clamp(p, 0, 200) / 100f : 1;
+        }
+        internal static string Code(Color c, float relief = 1)
+        {
+            int p = Mathf.Clamp(Mathf.RoundToInt(relief * 100), 0, 200);
+            return "#" + ColorUtility.ToHtmlStringRGB(c) + (p == 100 ? "" : ":" + p);
+        }
     }
 }
