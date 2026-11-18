@@ -215,6 +215,7 @@
     <EmbeddedResource Include="Assets\overhaul_enchanttable"><LogicalName>Overhaul.Assets.overhaul_enchanttable</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_gems"><LogicalName>Overhaul.Assets.overhaul_gems</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_mysticpowder"><LogicalName>Overhaul.Assets.overhaul_mysticpowder</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="Assets\overhaul_mysticdye"><LogicalName>Overhaul.Assets.overhaul_mysticdye</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="Assets\overhaul_shields">
       <LogicalName>Overhaul.Assets.overhaul_shields</LogicalName>
     </EmbeddedResource>

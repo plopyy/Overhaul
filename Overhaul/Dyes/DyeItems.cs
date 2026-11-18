@@ -4,7 +4,9 @@ using HarmonyLib;
 using Jotunn.Configs;
 using Jotunn.Entities;
 using Jotunn.Managers;
+using Overhaul.Utility;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Overhaul.Dyes
 {
@@ -38,16 +40,38 @@ namespace Overhaul.Dyes
                     },
                 };
                 var icon = MysticIcon(); if (icon) config.Icons = new[] { icon };
-                Add(new CustomItem(Name, Source, config));
+                var custom = new CustomItem(Name, Source, config); Dress(custom.ItemPrefab); Add(custom);
             }
             // Former colour dyes: no recipe, picture tinted in their colour as before.
             foreach (var colour in DyePalette.All)
             {
                 if (PrefabManager.Instance.GetPrefab(colour.ItemName)) continue;
                 var config = new ItemConfig { Name = "$overhaul_dyeitem_" + colour.ID, Description = "$overhaul_dye_desc", Icons = new[] { Icon(colour.Value, colour.ID) } };
-                Add(new CustomItem(colour.ItemName, Source, config));
+                var custom = new CustomItem(colour.ItemName, Source, config); Dress(custom.ItemPrefab); Add(custom);
             }
         }
+        // The resin's pickup, physics and network stay; its look becomes the user's pot model (MysticDye prefab of the
+        // overhaul_mysticdye bundle, OverhaulLab MysticDyeAuthoring: 0.4 m wide, 0.29 m high, resting on y = 0), with a box
+        // collider fitting it.
+        static AssetBundle bundle;
+        static void Dress(GameObject prefab)
+        {
+            if (!bundle) bundle = EmbeddedAssets.LoadBundle("Overhaul.Assets.overhaul_mysticdye");
+            var model = bundle ? bundle.LoadAsset<GameObject>("MysticDye") : null;
+            if (!model) { Log.LogError("Mystic dye: MysticDye missing from overhaul_mysticdye"); return; }
+            foreach (var lod in prefab.GetComponentsInChildren<LODGroup>(true)) Object.DestroyImmediate(lod);
+            foreach (var renderer in prefab.GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (renderer.gameObject == prefab) { Object.DestroyImmediate(renderer.GetComponent<MeshFilter>()); Object.DestroyImmediate(renderer); }
+                else Object.DestroyImmediate(renderer.gameObject);
+            }
+            foreach (var collider in prefab.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(collider);
+            var look = Object.Instantiate(model, prefab.transform, false); look.name = "model";
+            int layer = prefab.layer; foreach (var t in look.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
+            var box = prefab.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, .145f, 0f); box.size = new Vector3(.4f, .29f, .4f);
+        }
+
         static void Add(CustomItem item)
         {
             var shared = item.ItemDrop.m_itemData.m_shared;
