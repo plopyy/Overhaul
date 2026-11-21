@@ -31,7 +31,7 @@ namespace Overhaul.Visuals
             const string Rpc = "Overhaul_FarTrees";
             const float Match = 1.5f, NearCheckEvery = 10f, SendEvery = 1f, NewZonesEvery = 15f;
             const double BudgetMs = 2.0;
-            const int ZonesPerPacket = 256, PeerReach = 3;
+            const int ZonesPerPacket = 128, PeerReach = 3;
 
             // ---------------------------------------------------------------- client
             internal static void Register(ZNetPeer peer)
@@ -238,17 +238,35 @@ namespace Overhaul.Visuals
                 return true;
             }
 
-            // Every difference to a player who just joined; then the zones changed, to everyone.
+            // Every difference to a player who just joined; then the zones changed, to everyone. A joining player gets them only
+            // once their character is in the world, a few packets a second: sent all at once (5 MB on a big world) during the
+            // connection they held back the game's own handshake past its 30 s and the server dropped the player (2026-11-21).
+            const int PacketsPerSend = 2;
+            static readonly Dictionary<long, Queue<(int, int)>> backlog = new Dictionary<long, Queue<(int, int)>>();
             static void Send()
             {
                 var ready = net.GetPeers().Where(p => p.IsReady() && p.m_rpc != null).ToList();
                 sentTo.RemoveWhere(uid => !ready.Any(p => p.m_uid == uid));
+                foreach (var uid in backlog.Keys.Where(uid => !ready.Any(p => p.m_uid == uid)).ToList()) backlog.Remove(uid);
                 foreach (var peer in ready)
-                    if (sentTo.Add(peer.m_uid)) Push(peer, deltas.Keys.ToList());
+                    if (peer.m_characterID != ZDOID.None && sentTo.Add(peer.m_uid)) backlog[peer.m_uid] = new Queue<(int, int)>(deltas.Keys);
+                foreach (var peer in ready)
+                {
+                    if (!backlog.TryGetValue(peer.m_uid, out var queue)) continue;
+                    var batch = new List<(int, int)>();
+                    while (queue.Count > 0 && batch.Count < ZonesPerPacket * PacketsPerSend) batch.Add(queue.Dequeue());
+                    Push(peer, batch);
+                    if (queue.Count == 0) backlog.Remove(peer.m_uid);
+                }
                 if (changed.Count == 0) return;
                 var zones = changed.ToList(); changed.Clear();
                 Log.LogInfo("[FarView] far trees: " + zones.Count + " zones changed sent to " + ready.Count + " players (" + deltas.Count + " zones with changes, " + bases.Count + " zones placed, " + toCompare.Count + " to compare)");
-                foreach (var peer in ready) Push(peer, zones);
+                // A player still receiving the join backlog gets the changed zones within it (queued after).
+                foreach (var peer in ready)
+                {
+                    if (backlog.TryGetValue(peer.m_uid, out var queue)) { foreach (var z in zones) queue.Enqueue(z); }
+                    else if (sentTo.Contains(peer.m_uid)) Push(peer, zones);
+                }
             }
             static void Push(ZNetPeer peer, List<(int, int)> zones)
             {
