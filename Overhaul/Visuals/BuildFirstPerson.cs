@@ -6,7 +6,8 @@ namespace Overhaul.Visuals
     // First-person view while the building hammer is in hand (user, 2026-11-21): a clear view to build. Taking the hammer
     // switches the camera to the game's own first-person mode (camera distance 0, eye position + m_fpsOffset, normally out
     // of the zoom's reach); putting it away gives back the distance the player had before. The wheel no longer zooms
-    // meanwhile. The local player's head bone is shrunk to nothing on this client only, so the head, hair, beard and
+    // meanwhile: the distance's bounds are both 0 (the zoom sensitivity is left alone: other camera patches save and
+    // restore it, and one of them kept the 0 for good, no more zoom at all, 2.4.0.645-647). The local player's head bone is shrunk to nothing on this client only, so the head, hair, beard and
     // helmet (all on that bone) do not block the view; other players see the character as usual.
     internal static class BuildFirstPerson
     {
@@ -21,22 +22,22 @@ namespace Overhaul.Visuals
         [HarmonyPatch(typeof(GameCamera), "UpdateCamera")]
         static class Camera
         {
-            static void Prefix(GameCamera __instance, out (float min, float zoom) __state)
+            static void Prefix(GameCamera __instance, out (float min, float max, float boat) __state)
             {
-                __state = (__instance.m_minDistance, __instance.m_zoomSens);
+                __state = (__instance.m_minDistance, __instance.m_maxDistance, __instance.m_maxDistanceBoat);
                 var player = Player.m_localPlayer;
                 bool want = !__instance.m_freeFly && Wanted(player);
                 if (want && !active) { active = true; savedDistance = __instance.m_distance; }
                 else if (!want && active) { active = false; __instance.m_distance = savedDistance; }
                 if (active)
                 {
-                    __instance.m_minDistance = 0f; __instance.m_zoomSens = 0f; __instance.m_distance = 0f;
+                    __instance.m_minDistance = __instance.m_maxDistance = __instance.m_maxDistanceBoat = 0f; __instance.m_distance = 0f;
                 }
                 Head(player, active);
             }
-            static void Finalizer(GameCamera __instance, (float min, float zoom) __state)
+            static void Finalizer(GameCamera __instance, (float min, float max, float boat) __state)
             {
-                __instance.m_minDistance = __state.min; __instance.m_zoomSens = __state.zoom;
+                __instance.m_minDistance = __state.min; __instance.m_maxDistance = __state.max; __instance.m_maxDistanceBoat = __state.boat;
             }
         }
 

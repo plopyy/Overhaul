@@ -446,8 +446,9 @@ namespace Overhaul.Dyes
         [HarmonyPatch(typeof(GameCamera), "UpdateCamera")]
         static class NoWorldZoom
         {
-            static void Prefix(GameCamera __instance, out float __state) { __state = __instance.m_zoomSens; if (Visible) __instance.m_zoomSens = 0; }
-            static void Finalizer(GameCamera __instance, float __state) => __instance.m_zoomSens = __state;
+            // Given back only when changed here (restoring a value another patch had zeroed left the zoom stuck at 0).
+            static void Prefix(GameCamera __instance, out float __state) { __state = -1; if (Visible) { __state = __instance.m_zoomSens; __instance.m_zoomSens = 0; } }
+            static void Finalizer(GameCamera __instance, float __state) { if (__state >= 0) __instance.m_zoomSens = __state; }
         }
         [HarmonyPatch(typeof(Menu), "Update")]
         static class MenuInput { static bool Prefix() => !BlocksInput; }

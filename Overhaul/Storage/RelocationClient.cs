@@ -266,9 +266,10 @@ namespace Overhaul.Storage
         [HarmonyPatch(typeof(GameCamera),"UpdateCamera")]
         private static class RotationScroll
         {
+            // Given back only when changed here (restoring a value another patch had zeroed left the zoom stuck at 0).
             private static void Prefix(GameCamera __instance,out float __state)
-            {__state=__instance.m_zoomSens;if(Active)__instance.m_zoomSens=0;}
-            private static void Finalizer(GameCamera __instance,float __state)=>__instance.m_zoomSens=__state;
+            {__state=-1;if(Active){__state=__instance.m_zoomSens;__instance.m_zoomSens=0;}}
+            private static void Finalizer(GameCamera __instance,float __state){if(__state>=0)__instance.m_zoomSens=__state;}
         }
     }
 }
