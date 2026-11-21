@@ -35,6 +35,11 @@ namespace Overhaul.Storage
             if (!go) return null;
             foreach (var store in go.GetComponentsInParent<DeviceStore>())
                 if (store.Visible) return store;
+            // The aimed collider may sit beside the device's component rather than under it (frost kiln: some angles
+            // hit a sibling part or the native switch): the window is looked for in the whole network object.
+            var root = go.GetComponentInParent<ZNetView>();
+            if (root) foreach (var store in root.GetComponentsInChildren<DeviceStore>())
+                if (store.Visible) return store;
             return null;
         }
         internal static void Attach(Component source)

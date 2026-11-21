@@ -191,7 +191,10 @@ namespace Overhaul.Storage
         internal override string Title => Cooker.m_name;
         internal override ItemDrop DefaultFuel => Cooker.m_useFuel ? Cooker.m_fuelItem : null;
         internal override bool HasMaterials => true;
-        internal override int Width => Utils.GetPrefabName(Cooker.gameObject) == "piece_oven" ? 2 : 3;
+        // The frost foundry casts one mould at a time: a single cell on top (user, 2026-11-21).
+        bool Foundry => Utils.GetPrefabName(Cooker.gameObject) == "piece_FrostFoundry";
+        internal override int Width => Foundry ? 1 : Utils.GetPrefabName(Cooker.gameObject) == "piece_oven" ? 2 : 3;
+        internal override int Height => Foundry ? 1 : 2;
         internal override int WorkSlots => Cooker.m_slots.Length;
         internal override string MaterialLabel => Word(Utils.GetPrefabName(Cooker.gameObject) == "piece_FrostFoundry" ? "moulds" : "food");
         internal override bool Accepts(ItemDrop.ItemData item, bool fuel, Vector2i? pos = null) => item?.m_dropPrefab &&
