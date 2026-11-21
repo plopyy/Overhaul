@@ -18,9 +18,9 @@ ArmorBronzeLegs	leather,metal	BronzeArmorLegs_d|BronzeArmorLegs_d|body;BronzeArm
 HelmetIron	hide,metal	helmet_iron_d|helmet_iron_d|mesh
 ArmorIronChest	metal,leather	IronArmorChestPlayer_d|IronArmorChestPlayer_d|body;IronArmorChest_d|IronArmorChest_d|mesh
 ArmorIronLegs	trim,leather,metal	IronArmorLegs_d|IronArmorLegs_d|body;IronArmorLegs_d|IronArmorLegs_d|mesh
-HelmetRoot	roots,hide,leather	AbominationArmor_d|AbominationArmor_d|mesh
-ArmorRootChest	roots,hide,leather	AbominationArmorChest_d|AbominationArmorChest_d|body;AbominationArmor_d|AbominationArmor_d|mesh
-ArmorRootLegs	hide,roots	AbominationArmorLegs_d|AbominationArmorLegs_d|body;AbominationArmor_d|AbominationArmor_d|mesh
+HelmetRoot	bark,roots	AbominationArmor_d|AbominationArmor_d|mesh
+ArmorRootChest	hide,roots,bark,leather	AbominationArmorChest_d|AbominationArmorChest_d|body;AbominationArmor_d|AbominationArmor_d|mesh
+ArmorRootLegs	hide,roots,bark	AbominationArmorLegs_d|AbominationArmorLegs_d|body;AbominationArmor_d|AbominationArmor_d|mesh
 HelmetDrake	mail	SilverArmourChest_d|SilverArmourChest_d|mesh
 ArmorWolfChest	mail,hide,cloth	SilverArmour_Skin_d|SilverArmour_Skin_d|body;SilverArmourChest_d|SilverArmourChest_d|mesh
 ArmorWolfLegs	cloth,mail,hide	SilverArmour_Skin_Legs_d|SilverArmour_Skin_Legs_d|body;SilverArmourChest_d|SilverArmourChest_d|mesh
@@ -41,6 +41,7 @@ ArmorMageChest_Ashlands	trim,cloth,leather,metal	AshlandsMageArmorChest_d|Ashlan
 ArmorMageLegs_Ashlands	leather,metal	AshlandsMageArmorLEGS_d|AshlandsMageArmorLEGS_d|body;AshlandsMageArmor_d|AshlandsMageArmor_d|mesh
 CapeAsh	cloth	Ashcape_d|Ashcape_d|mesh
 HelmetLox	fur	LoxHood_D|LoxHood_D|mesh
+BeltStrength	leather,metal	belt1_d|belt1_d|mesh
 ArmorLoxChest	fur	LoxChest_D|LoxChest_D|mesh
 ArmorLoxLegs	fur	LoxLegs_D|LoxLegs_D|mesh
 HelmetBerserkerHood	leather,hide	BerserkerArmor_d|BerserkerArmor_d|mesh

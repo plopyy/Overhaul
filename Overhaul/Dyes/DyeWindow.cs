@@ -54,6 +54,7 @@ namespace Overhaul.Dyes
                 Wire(panel.transform);
             }
             if (InventoryGui.instance && InventoryGui.IsVisible()) InventoryGui.instance.Hide();
+            Preview.Distance = Preview.FarDistance; Preview.Height = Preview.MiddleHeight;   // whole body again at each opening
             Collect();
             Select(items.Contains(selected) ? selected : items.FirstOrDefault());
             root.SetActive(true); ZCursor.LockState = CursorLockMode.None; ZCursor.Show();
@@ -270,6 +271,21 @@ namespace Overhaul.Dyes
             static VisEquipment vis;
             static int layer = -1;
             internal static float Yaw = 0;   // facing the camera, which stands in front (+z)
+            // Mouse wheel on the character: camera distance from FarDistance (whole body) to NearDistance; dragging up and
+            // down then moves the looked-at height (head to feet), back to the body's middle when zoomed out.
+            internal const float FarDistance = 4.6f, NearDistance = 1.1f, MiddleHeight = .95f;
+            internal static float Distance = FarDistance, Height = MiddleHeight;
+            internal static void Zoom(float steps)
+            {
+                Distance = Mathf.Clamp(Distance * Mathf.Pow(.85f, steps), NearDistance, FarDistance);
+                Pan(0);
+            }
+            internal static void Pan(float metres)
+            {
+                // The further the camera, the less the height may leave the middle (whole body stays in view zoomed out).
+                float room = .85f * Mathf.InverseLerp(FarDistance, NearDistance, Distance);
+                Height = Mathf.Clamp(Height + metres, MiddleHeight - room, MiddleHeight + room);
+            }
             static readonly Vector3 Place = new Vector3(0, 6000, 0);
 
             static int Layer()
@@ -320,6 +336,7 @@ namespace Overhaul.Dyes
             {
                 if (!puppet) return;
                 puppet.transform.rotation = Quaternion.Euler(0, Yaw, 0);
+                Frame();
                 foreach (var a in puppet.GetComponentsInChildren<Animator>()) a.SetBool(OnGround, true);
                 // The game's updater does not reach this copy: its visuals (body, hair, gear) are updated here.
                 try { vis.CustomUpdate(Time.deltaTime, Time.time); }
@@ -371,16 +388,17 @@ namespace Overhaul.Dyes
                     vis.m_skinColor = zdo.GetVec3(ZDOVars.s_skinColor, Vector3.one); vis.m_hairColor = zdo.GetVec3(ZDOVars.s_hairColor, Vector3.one);
                     vis.m_hairItem = zdo.GetInt(ZDOVars.s_hairItem, 0); vis.m_beardItem = zdo.GetInt(ZDOVars.s_beardItem, 0);
                 }
-                var shown = new ItemDrop.ItemData[4];
-                for (int s = 0; s < 4; s++) shown[s] = ShownItem(player, s);
+                var shown = new ItemDrop.ItemData[DyeVisuals.SlotCount];
+                for (int s = 0; s < shown.Length; s++) shown[s] = ShownItem(player, s);
                 int slot = item == null ? -1 : SlotOf(item);
                 if (slot >= 0) shown[slot] = item;
                 int Hash(ItemDrop.ItemData i) => i?.m_dropPrefab ? i.m_dropPrefab.name.GetStableHashCode() : 0;
                 vis.m_helmetItem = Hash(shown[0]); vis.m_chestItem = Hash(shown[1]); vis.m_legItem = Hash(shown[2]); vis.m_shoulderItem = Hash(shown[3]);
                 vis.m_shoulderItemVariant = shown[3]?.m_variant ?? 0;
+                vis.m_utilityItem = Hash(shown[4]);
                 vis.m_leftItem = vis.m_rightItem = 0;
-                var overrides = new string[4];
-                for (int s = 0; s < 4; s++)
+                var overrides = new string[DyeVisuals.SlotCount];
+                for (int s = 0; s < overrides.Length; s++)
                 {
                     var it = shown[s]; if (it == null || DyeGear.Of(it) == null) continue;
                     var dyes = it == item && ids != null ? ids : DyeVisuals.Read(it, DyeGear.Of(it).Zones.Length);
@@ -390,6 +408,7 @@ namespace Overhaul.Dyes
             }
             static ItemDrop.ItemData ShownItem(Player p, int slot)
             {
+                if (slot == 4) return p.m_utilityItem;   // no cosmetic slot for utility items
                 var cosmetic = EquipmentAndQuickSlots.CosmeticEquipment.Get(p, slot);
                 if (cosmetic != null) return cosmetic;
                 return slot == 0 ? p.m_helmetItem : slot == 1 ? p.m_chestItem : slot == 2 ? p.m_legItem : p.m_shoulderItem;
@@ -402,14 +421,17 @@ namespace Overhaul.Dyes
                     case ItemDrop.ItemData.ItemType.Chest: return 1;
                     case ItemDrop.ItemData.ItemType.Legs: return 2;
                     case ItemDrop.ItemData.ItemType.Shoulder: return 3;
+                    case ItemDrop.ItemData.ItemType.Utility: return 4;
                     default: return -1;
                 }
             }
             // Whole body in view, a little from above.
             static void Frame()
             {
-                cameraGo.transform.position = Place + new Vector3(0, 1.05f, 0) + Quaternion.Euler(8, 0, 0) * new Vector3(0, 0, 4.6f);
-                cameraGo.transform.LookAt(Place + new Vector3(0, .95f, 0));
+                if (!cameraGo) return;
+                var target = Place + new Vector3(0, Height, 0);
+                cameraGo.transform.position = target + new Vector3(0, .1f, 0) + Quaternion.Euler(8, 0, 0) * new Vector3(0, 0, Distance);
+                cameraGo.transform.LookAt(target);
             }
         }
 
@@ -420,6 +442,13 @@ namespace Overhaul.Dyes
         static class ControllerInput { static bool Prefix(ref bool __result) { if (!BlocksInput) return true; __result = false; return false; } }
         [HarmonyPatch(typeof(GameCamera), nameof(GameCamera.UpdateMouseCapture))]
         static class CursorInput { static bool Prefix() { if (!Visible) return true; ZCursor.LockState = CursorLockMode.None; ZCursor.Show(); return false; } }
+        // The mouse wheel zooms the preview only, never the game camera behind the window.
+        [HarmonyPatch(typeof(GameCamera), "UpdateCamera")]
+        static class NoWorldZoom
+        {
+            static void Prefix(GameCamera __instance, out float __state) { __state = __instance.m_zoomSens; if (Visible) __instance.m_zoomSens = 0; }
+            static void Finalizer(GameCamera __instance, float __state) => __instance.m_zoomSens = __state;
+        }
         [HarmonyPatch(typeof(Menu), "Update")]
         static class MenuInput { static bool Prefix() => !BlocksInput; }
         // The inventory does not open over the window.
@@ -427,10 +456,15 @@ namespace Overhaul.Dyes
         static class NoInventory { static bool Prefix() => !Visible; }
     }
 
-    // Dragging on the character turns it.
-    internal sealed class DyeDrag : MonoBehaviour, IDragHandler
+    // Dragging on the character turns it (sideways) and, zoomed in, moves the view up and down; the wheel zooms.
+    internal sealed class DyeDrag : MonoBehaviour, IDragHandler, IScrollHandler
     {
-        public void OnDrag(PointerEventData e) { DyeWindow.Preview.Yaw -= e.delta.x * .5f; }
+        public void OnDrag(PointerEventData e)
+        {
+            DyeWindow.Preview.Yaw -= e.delta.x * .5f;
+            DyeWindow.Preview.Pan(-e.delta.y * .004f * DyeWindow.Preview.Distance / DyeWindow.Preview.FarDistance);
+        }
+        public void OnScroll(PointerEventData e) { DyeWindow.Preview.Zoom(e.scrollDelta.y); }
     }
 
     // The metal track: the colour as in the game (a little grey veil) to all metal (deeper, its glints in its own colour).

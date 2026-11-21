@@ -9,15 +9,16 @@ using UnityEngine;
 namespace Overhaul.Dyes
 {
     // Dyes on gear: saved on the item (custom data "overhaul_dye" = colour IDs per zone, "-" = left as in the game) and shown
-    // on every player who sees it. The owner publishes the dyes of the four armour slots it shows (helmet, chest, legs,
-    // cape; cosmetic slots first, as the visuals do) in its ZDO; every client then tints those pieces on that player.
+    // on every player who sees it. The owner publishes the dyes of the slots it shows (helmet, chest, legs, cape, belt or
+    // other utility item; cosmetic slots first, as the visuals do) in its ZDO; every client then tints those pieces on that player.
     // Pieces are tinted through material property blocks (worn meshes) or the body material's _ChestTex / _LegsTex
     // (armour painted on the skin), with textures composed once per (item, colours) and kept.
     internal static class DyeVisuals
     {
         internal const string DataKey = "overhaul_dye";
-        internal enum Slot { Helmet, Chest, Legs, Cape }
-        static readonly string[] ZdoKeys = { "overhaul_dye_helmet", "overhaul_dye_chest", "overhaul_dye_legs", "overhaul_dye_cape" };
+        internal enum Slot { Helmet, Chest, Legs, Cape, Utility }
+        internal const int SlotCount = 5;
+        static readonly string[] ZdoKeys = { "overhaul_dye_helmet", "overhaul_dye_chest", "overhaul_dye_legs", "overhaul_dye_cape", "overhaul_dye_utility" };
         static readonly int[] ZdoHashes = ZdoKeys.Select(k => k.GetStableHashCode()).ToArray();
         static readonly int MainTex = Shader.PropertyToID("_MainTex"), ChestTex = Shader.PropertyToID("_ChestTex"), LegsTex = Shader.PropertyToID("_LegsTex");
 
@@ -48,13 +49,15 @@ namespace Overhaul.Dyes
         // The piece shown in each slot: the cosmetic one when set, else the equipped one.
         static ItemDrop.ItemData Shown(Player p, Slot slot)
         {
-            var cosmetic = EquipmentAndQuickSlots.CosmeticEquipment.Get(p, (int)slot);
+            // Cosmetic slots exist for the four armour pieces only.
+            var cosmetic = slot == Slot.Utility ? null : EquipmentAndQuickSlots.CosmeticEquipment.Get(p, (int)slot);
             if (cosmetic != null) return cosmetic;
             switch (slot)
             {
                 case Slot.Helmet: return p.m_helmetItem;
                 case Slot.Chest: return p.m_chestItem;
                 case Slot.Legs: return p.m_legItem;
+                case Slot.Utility: return p.m_utilityItem;
                 default: return p.m_shoulderItem;
             }
         }
@@ -62,7 +65,7 @@ namespace Overhaul.Dyes
         {
             if (!p || !p.m_nview || !p.m_nview.IsValid() || !p.m_nview.IsOwner()) return;
             var zdo = p.m_nview.GetZDO();
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < SlotCount; i++)
             {
                 var value = Encode(Shown(p, (Slot)i));
                 if (zdo.GetString(ZdoHashes[i], "") != value) zdo.Set(ZdoHashes[i], value);
@@ -83,7 +86,7 @@ namespace Overhaul.Dyes
         internal static readonly ConditionalWeakTable<VisEquipment, string[]> Overrides = new ConditionalWeakTable<VisEquipment, string[]>();
 
         sealed class Applied { public string Value = ""; public object Instances; public int Hash; }
-        sealed class State { public readonly Applied[] Slots = { new Applied(), new Applied(), new Applied(), new Applied() }; }
+        sealed class State { public readonly Applied[] Slots = Enumerable.Range(0, SlotCount).Select(_ => new Applied()).ToArray(); }
         static readonly ConditionalWeakTable<VisEquipment, State> States = new ConditionalWeakTable<VisEquipment, State>();
 
         [HarmonyPatch(typeof(VisEquipment), "UpdateEquipmentVisuals")]
@@ -102,9 +105,9 @@ namespace Overhaul.Dyes
                     if (zdo == null && !Overrides.TryGetValue(__instance, out wanted)) return;
                 }
                 var state = States.GetOrCreateValue(__instance);
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < SlotCount; i++)
                 {
-                    string value = zdo != null ? zdo.GetString(ZdoHashes[i], "") : wanted[i] ?? "";
+                    string value = zdo != null ? zdo.GetString(ZdoHashes[i], "") : i < wanted.Length ? wanted[i] ?? "" : "";
                     object instances = Instances(__instance, (Slot)i);
                     int hash = Hash(__instance, (Slot)i);
                     var applied = state.Slots[i];
@@ -127,11 +130,11 @@ namespace Overhaul.Dyes
             if (zdo == null || !ObjectDB.instance) return null;
             var cache = standCache.GetOrCreateValue(v);
             if (cache.Values != null && cache.Revision == zdo.DataRevision) return cache.Values;
-            var values = new string[4];
+            var values = new string[SlotCount];
             for (int i = 0; i < stand.m_slots.Count; i++)
             {
                 var visSlot = stand.m_slots[i].m_slot;
-                int slot = visSlot == VisSlot.Helmet ? 0 : visSlot == VisSlot.Chest ? 1 : visSlot == VisSlot.Legs ? 2 : visSlot == VisSlot.Shoulder ? 3 : -1;
+                int slot = visSlot == VisSlot.Helmet ? 0 : visSlot == VisSlot.Chest ? 1 : visSlot == VisSlot.Legs ? 2 : visSlot == VisSlot.Shoulder ? 3 : visSlot == VisSlot.Utility ? 4 : -1;
                 if (slot < 0) continue;
                 int hash = zdo.GetInt(ArmorStand.s_itemKeyHashes[i], 0);
                 var prefab = hash != 0 ? ObjectDB.instance.GetItemPrefab(hash) : null;
@@ -145,13 +148,15 @@ namespace Overhaul.Dyes
         }
 
         static object Instances(VisEquipment v, Slot s) =>
-            s == Slot.Helmet ? (object)v.m_helmetItemInstance : s == Slot.Chest ? v.m_chestItemInstances : s == Slot.Legs ? (object)v.m_legItemInstances : v.m_shoulderItemInstances;
+            s == Slot.Helmet ? (object)v.m_helmetItemInstance : s == Slot.Chest ? v.m_chestItemInstances : s == Slot.Legs ? (object)v.m_legItemInstances
+            : s == Slot.Utility ? v.m_utilityItemInstances : v.m_shoulderItemInstances;
         static int Hash(VisEquipment v, Slot s) =>
-            s == Slot.Helmet ? v.m_currentHelmetItemHash : s == Slot.Chest ? v.m_currentChestItemHash : s == Slot.Legs ? v.m_currentLegItemHash : v.m_currentShoulderItemHash;
+            s == Slot.Helmet ? v.m_currentHelmetItemHash : s == Slot.Chest ? v.m_currentChestItemHash : s == Slot.Legs ? v.m_currentLegItemHash
+            : s == Slot.Utility ? v.m_currentUtilityItemHash : v.m_currentShoulderItemHash;
         static IEnumerable<GameObject> Objects(VisEquipment v, Slot s)
         {
             if (s == Slot.Helmet) { if (v.m_helmetItemInstance) yield return v.m_helmetItemInstance; yield break; }
-            var list = s == Slot.Chest ? v.m_chestItemInstances : s == Slot.Legs ? v.m_legItemInstances : v.m_shoulderItemInstances;
+            var list = s == Slot.Chest ? v.m_chestItemInstances : s == Slot.Legs ? v.m_legItemInstances : s == Slot.Utility ? v.m_utilityItemInstances : v.m_shoulderItemInstances;
             if (list != null) foreach (var o in list) if (o) yield return o;
         }
 
