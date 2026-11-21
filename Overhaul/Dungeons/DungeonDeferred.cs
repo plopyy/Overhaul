@@ -26,8 +26,9 @@ namespace Overhaul.Dungeons
         [HarmonyPatch(typeof(DungeonGenerator), "Generate", new System.Type[] { typeof(int), typeof(ZoneSystem.SpawnMode) })]
         static class SkipFirstGeneration
         {
-            // Too heavy to generate at the door without dropping the players (3900+ objects): generated with its zone as before.
-            static readonly HashSet<string> NotDeferred = new HashSet<string> { "MorkBorg" };
+            // Deep North dungeons: too heavy to generate at the door without dropping the players (fortress 3900+ objects,
+            // holes 1600+): generated with their zone as before (2026-11-21).
+            static readonly HashSet<string> NotDeferred = new HashSet<string> { "MorkBorg", "TheHole01", "TheDarkestHole", "DN_Bossroom" };
             [HarmonyPriority(Priority.Low)] // after DungeonGeneratePatch: its seed and room counts are recorded on the generator
             static bool Prefix(DungeonGenerator __instance, ZoneSystem.SpawnMode mode)
             {
