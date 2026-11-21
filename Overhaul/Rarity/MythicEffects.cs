@@ -1099,10 +1099,11 @@ namespace Overhaul.Rarity
         // Set while the rock's own parts are broken, so those hits do not roll again.
         internal static bool shattering;
 
-        // The hit's miner, if a pickaxe hit by a player rolls the shatter on the rock's owner.
-        private static Player Shatters(ZNetView rock, HitData hit)
+        // The hit's miner, if a pickaxe hit by a player rolls the shatter on the rock's owner. Only a pickaxe able to mine the
+        // rock (its tool tier at least the rock's minimum) can shatter it: a black metal pickaxe cannot break a petrified troll.
+        private static Player Shatters(ZNetView rock, HitData hit, int minToolTier)
         {
-            if (shattering || hit == null || hit.m_skill != Skills.SkillType.Pickaxes || !rock || !rock.IsOwner()) return null;
+            if (shattering || hit == null || hit.m_skill != Skills.SkillType.Pickaxes || !rock || !rock.IsOwner() || hit.m_toolTier < minToolTier) return null;
             var player = hit.GetAttacker() as Player;
             if (!player || !player.m_nview || !player.m_nview.IsValid()) return null;
             float chance = player == Player.m_localPlayer ? Enchantments.MythicValue(player.GetCurrentWeapon(), "Prospector") : player.m_nview.GetZDO().GetFloat(ProspectKey, 0);
@@ -1121,7 +1122,7 @@ namespace Overhaul.Rarity
         {
             private static void Postfix(MineRock5 __instance, HitData hit)
             {
-                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                var player = Shatters(__instance.m_nview, hit, __instance.m_minToolTier); if (!player) return;
                 shattering = true;
                 try
                 {
@@ -1145,7 +1146,7 @@ namespace Overhaul.Rarity
             private static void Postfix(Destructible __instance, HitData hit)
             {
                 if (__instance.m_destroyed || !Mineable(__instance)) return;
-                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                var player = Shatters(__instance.m_nview, hit, __instance.m_minToolTier); if (!player) return;
                 shattering = true;
                 try { __instance.RPC_Damage(0, Breaking(hit)); }
                 finally { shattering = false; }
@@ -1158,7 +1159,7 @@ namespace Overhaul.Rarity
         {
             private static void Postfix(MineRock __instance, HitData hit)
             {
-                var player = Shatters(__instance.m_nview, hit); if (!player) return;
+                var player = Shatters(__instance.m_nview, hit, __instance.m_minToolTier); if (!player) return;
                 shattering = true;
                 try
                 {
