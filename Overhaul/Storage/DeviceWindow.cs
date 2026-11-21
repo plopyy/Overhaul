@@ -16,6 +16,8 @@ namespace Overhaul.Storage
         private InventoryGui gui;
         private DeviceStore store;
         private GameObject panel;
+        // A device window (enchanting table, machines...) is open in place of the chest window.
+        internal static bool Showing(InventoryGui gui) { var w = gui ? gui.GetComponent<DeviceWindow>() : null; return w && w.panel; }
         private InventoryGrid originalGrid, materialGrid, fuelGrid;
         private InventoryGrid activeGrid;
         private int inputFrame = -1;
@@ -65,11 +67,11 @@ namespace Overhaul.Storage
             var parentRect = containerRect.parent as RectTransform;
             if (parentRect)
             {
+                // Right of the player panel, centred vertically on the screen (user, 2026-11-21).
                 float left = rightTop.x + 18f;
-                float top = Mathf.Min(parentRect.rect.yMax - 20f, rightTop.y);
                 var position = containerRect.localPosition;
                 position.x = left + containerRect.pivot.x * rect.sizeDelta.x;
-                position.y = top - (1f - containerRect.pivot.y) * rect.sizeDelta.y;
+                position.y = parentRect.rect.center.y + (containerRect.pivot.y - .5f) * rect.sizeDelta.y;
                 containerRect.localPosition = position;
             }
             Text(panel.transform, "Title", store.Adapter.Title);

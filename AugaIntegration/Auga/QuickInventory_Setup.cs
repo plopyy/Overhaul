@@ -103,6 +103,7 @@ namespace Auga
   private void LateUpdate() {
    var gui=InventoryGui.instance;
    if(!gui || !gui.m_player || !InventoryGui.IsVisible())return;
+   if(Overhaul.Storage.DeviceWindow.Showing(gui))return; // device windows keep their own place
    global::EquipmentAndQuickSlots.EquipmentPanel.FollowInventoryBackground(
        gui.m_player.Find("Bkg") as RectTransform, (RectTransform)transform);
   }
