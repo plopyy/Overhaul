@@ -106,6 +106,15 @@ namespace Auga
    if(Overhaul.Storage.DeviceWindow.Showing(gui))return; // device windows keep their own place
    global::EquipmentAndQuickSlots.EquipmentPanel.FollowInventoryBackground(
        gui.m_player.Find("Bkg") as RectTransform, (RectTransform)transform);
+   // Room left under the inventory for the chest window, as if the inventory had its two extra rows (fully upgraded):
+   // the window keeps the same height whatever the rows unlocked so far; beyond it the grid scrolls.
+   var fit=GetComponent<AugaUnity.AugaContainerFit>();var rect=(RectTransform)transform;var parent=rect.parent as RectTransform;
+   if(fit&&parent){
+    int missing=Mathf.Max(0,UpgradedExtraRows-global::EquipmentAndQuickSlots.Slots.ExtraRows);
+    float top=rect.localPosition.y+(1f-rect.pivot.y)*rect.rect.height;
+    fit.MaxHeight=top-missing*fit.CellSpace-(parent.rect.yMin+ScreenMargin);
+   }
   }
+  const int UpgradedExtraRows=2;const float ScreenMargin=20f;
  }
 }
