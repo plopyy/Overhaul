@@ -22,9 +22,9 @@ namespace Overhaul.Visuals
         [HarmonyPatch(typeof(GameCamera), "UpdateCamera")]
         static class Camera
         {
-            static void Prefix(GameCamera __instance, out (float min, float max, float boat) __state)
+            static void Prefix(GameCamera __instance, out (float min, float max, float boat, bool tilt) __state)
             {
-                __state = (__instance.m_minDistance, __instance.m_maxDistance, __instance.m_maxDistanceBoat);
+                __state = (__instance.m_minDistance, __instance.m_maxDistance, __instance.m_maxDistanceBoat, __instance.m_smoothYTilt);
                 var player = Player.m_localPlayer;
                 bool want = !__instance.m_freeFly && Wanted(player);
                 if (want && !active) { active = true; savedDistance = __instance.m_distance; }
@@ -32,12 +32,14 @@ namespace Overhaul.Visuals
                 if (active)
                 {
                     __instance.m_minDistance = __instance.m_maxDistance = __instance.m_maxDistanceBoat = 0f; __instance.m_distance = 0f;
+                    // Looking up, the game pulls the camera towards 1.5 m (smooth Y tilt): from 0 it jumped behind the head and back.
+                    __instance.m_smoothYTilt = false;
                 }
                 Head(player, active);
             }
-            static void Finalizer(GameCamera __instance, (float min, float max, float boat) __state)
+            static void Finalizer(GameCamera __instance, (float min, float max, float boat, bool tilt) __state)
             {
-                __instance.m_minDistance = __state.min; __instance.m_maxDistance = __state.max; __instance.m_maxDistanceBoat = __state.boat;
+                __instance.m_minDistance = __state.min; __instance.m_maxDistance = __state.max; __instance.m_maxDistanceBoat = __state.boat; __instance.m_smoothYTilt = __state.tilt;
             }
         }
 
