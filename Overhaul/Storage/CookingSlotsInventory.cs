@@ -4,15 +4,15 @@ using UnityEngine;
 
 namespace Overhaul.Storage
 {
-    // Oven, meat racks and frost foundry: one inventory cell per physical cooking place (oven 2x2, wooden rack 2,
-    // iron rack 5 in a row, foundry 1: one mould cast at a time, taken with the use key once done). Each cell holds a stack of one raw dish; the first one cooks in its place
+    // Oven and meat racks: one inventory cell per physical cooking place (oven 2x2, wooden rack 2,
+    // iron rack 5 in a row). Each cell holds a stack of one raw dish; the first one cooks in its place
     // and, once cooked, stays there (burning if left) until a player takes it with the use key.
     internal sealed class CookingSlotsInventory : CookingInventory
     {
         internal static bool Handles(CookingStation station)
         {
             var name = Utils.GetPrefabName(station.gameObject);
-            return name == "piece_oven" || name == "piece_cookingstation" || name == "piece_cookingstation_iron" || name == "piece_FrostFoundry";
+            return name == "piece_oven" || name == "piece_cookingstation" || name == "piece_cookingstation_iron";
         }
         private bool Oven => Utils.GetPrefabName(Cooker.gameObject) == "piece_oven";
         internal override int Width => Oven ? 2 : Cooker.m_slots.Length;
@@ -128,7 +128,6 @@ namespace Overhaul.Storage
                 }
             });
         }
-        internal override string TakeLabel => Utils.GetPrefabName(Cooker.gameObject) == "piece_FrostFoundry" ? "$overhaul_take_cast" : "$overhaul_take_cooked";
         internal override bool HasFinished => Enumerable.Range(0, Cooker.m_slots.Length).Any(i =>
         {
             Cooker.GetSlot(i, out var name, out _, out var status, out _);

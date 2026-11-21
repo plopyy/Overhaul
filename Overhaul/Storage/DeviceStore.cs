@@ -176,7 +176,7 @@ namespace Overhaul.Storage
             return Container.Interact(user, false, false);
         }
         internal string Hover() => Localization.instance.Localize(Adapter.Title + "\n[<color=yellow><b>$KEY_Use</b></color>] " +
-            (Adapter.HasFinished ? Adapter.TakeLabel : "$piece_container_open")) + DeviceActions.Hint(this);
+            (Adapter.HasFinished ? "$overhaul_take_cooked" : "$piece_container_open")) + DeviceActions.Hint(this);
         internal void DropAll()
         {
             if (!Ready || !Owner || Dropping) return;
