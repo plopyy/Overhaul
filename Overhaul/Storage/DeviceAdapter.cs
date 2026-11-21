@@ -33,6 +33,7 @@ namespace Overhaul.Storage
         // A finished product waiting in the device is taken with the use key instead of opening the window.
         internal virtual bool TakeFinished(Humanoid user) => false;
         internal virtual bool HasFinished => false;
+        internal virtual string TakeLabel => "$overhaul_take_cooked";
         internal static string Word(string key) => Leveling.LevelingText.Get("overhaul_device_" + key);
         internal static string Name(ItemDrop item) => item ? item.m_itemData.m_shared.m_name : "";
         internal static DeviceAdapter Create(Component c)
@@ -191,10 +192,7 @@ namespace Overhaul.Storage
         internal override string Title => Cooker.m_name;
         internal override ItemDrop DefaultFuel => Cooker.m_useFuel ? Cooker.m_fuelItem : null;
         internal override bool HasMaterials => true;
-        // The frost foundry casts one mould at a time: a single cell on top (user, 2026-11-21).
-        bool Foundry => Utils.GetPrefabName(Cooker.gameObject) == "piece_FrostFoundry";
-        internal override int Width => Foundry ? 1 : Utils.GetPrefabName(Cooker.gameObject) == "piece_oven" ? 2 : 3;
-        internal override int Height => Foundry ? 1 : 2;
+        internal override int Width => Utils.GetPrefabName(Cooker.gameObject) == "piece_oven" ? 2 : 3;
         internal override int WorkSlots => Cooker.m_slots.Length;
         internal override string MaterialLabel => Word(Utils.GetPrefabName(Cooker.gameObject) == "piece_FrostFoundry" ? "moulds" : "food");
         internal override bool Accepts(ItemDrop.ItemData item, bool fuel, Vector2i? pos = null) => item?.m_dropPrefab &&
