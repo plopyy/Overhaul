@@ -376,6 +376,13 @@ namespace Overhaul.Dyes
                 camera.cullingMask = 1 << l; camera.fieldOfView = 26; camera.nearClipPlane = .1f; camera.farClipPlane = 20; camera.allowHDR = false;
                 var light = new GameObject("DyePreviewLight").AddComponent<Light>(); light.transform.SetParent(cameraGo.transform, false);
                 light.type = LightType.Directional; light.intensity = 1.1f; light.cullingMask = 1 << l; light.transform.localRotation = Quaternion.Euler(25, -20, 0);
+                // Far up in the sky the preview has no reflection to show: metal parts (armour painted on the body with a metal
+                // map, e.g. the Fenris coat's sleeves) came out black in the window though white in game. A reflection probe
+                // around it gives them the game's default reflection.
+                var probe = new GameObject("DyePreviewReflection").AddComponent<ReflectionProbe>();
+                probe.transform.position = Place + Vector3.up; probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Custom;
+                probe.customBakedTexture = RenderSettings.customReflectionTexture ? RenderSettings.customReflectionTexture : ReflectionProbe.defaultTexture;
+                probe.size = new Vector3(8, 8, 8); probe.importance = 100; probe.transform.SetParent(cameraGo.transform, true);
             }
 
             // The player's look and shown gear, the selected piece put on, and the colours being chosen on it.
