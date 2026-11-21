@@ -26,10 +26,14 @@ namespace Overhaul.Dungeons
         [HarmonyPatch(typeof(DungeonGenerator), "Generate", new System.Type[] { typeof(int), typeof(ZoneSystem.SpawnMode) })]
         static class SkipFirstGeneration
         {
+            // Too heavy to generate at the door without dropping the players (3900+ objects): generated with its zone as before.
+            static readonly HashSet<string> NotDeferred = new HashSet<string> { "MorkBorg" };
             [HarmonyPriority(Priority.Low)] // after DungeonGeneratePatch: its seed and room counts are recorded on the generator
-            static bool Prefix(ZoneSystem.SpawnMode mode)
+            static bool Prefix(DungeonGenerator __instance, ZoneSystem.SpawnMode mode)
             {
                 var capture = Current;
+                var location = __instance.GetComponentInParent<Location>();
+                if (location && NotDeferred.Contains(Utils.GetPrefabName(location.gameObject))) return true;
                 // Only inside the initial spawn of a supported location (DungeonLocationPatch), never a reset's staging.
                 if (capture == null || capture.Staging || capture.Parent != null || mode == ZoneSystem.SpawnMode.Client || !DeferOn) return true;
                 capture.Deferred = true;

@@ -699,7 +699,9 @@ namespace Overhaul.Dungeons
 
         // Generated interiors outside the boss layouts move into a height lane only when their rooms fit
         // its reservation (288 x 96 x 288 m, also the navigation band). Others keep their native height.
-        private static readonly HashSet<string> laneUnfit = new HashSet<string>(StringComparer.Ordinal);
+        // MorkBorg (Ashlands fortress) is known not to fit: without it here, each server start generated its first interior
+        // twice (lane, then native height), freezing the server long enough to drop the players (2026-11-21).
+        private static readonly HashSet<string> laneUnfit = new HashSet<string>(StringComparer.Ordinal) { "MorkBorg" };
 
         private static bool LaneFits(ZoneSystem.ZoneLocation location)
         {
