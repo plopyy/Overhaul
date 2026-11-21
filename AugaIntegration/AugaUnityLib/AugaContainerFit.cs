@@ -26,7 +26,11 @@ namespace AugaUnity
             if (MaxHeight > 0) rows = Mathf.Min(rows, Mathf.Max(MinRows, Mathf.FloorToInt((MaxHeight - Padding.y) / CellSpace)));
             var size = new Vector2(columns * CellSpace + Padding.x, Mathf.Max(MinHeight, rows * CellSpace + Padding.y));
             var rect = (RectTransform)transform;
-            if (rect.sizeDelta != size) rect.sizeDelta = size;
+            if (rect.sizeDelta == size) return;
+            rect.sizeDelta = size;
+            // The game lays the cells out once, centred on the grid's width at that moment (the window's previous size):
+            // a size of 0 makes its next update lay them out again on the new width.
+            Grid.m_width = 0;
         }
     }
 }
