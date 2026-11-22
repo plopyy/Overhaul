@@ -118,6 +118,13 @@ namespace XPortal.UI
 
         public void HandleInput()
         {
+            // A UI group shown after the window opened (the loading or fade screens of a portal arrival) greyed the whole
+            // window, Escape and Cancel included: the window takes the focus back every frame while open, and Escape
+            // closes it even if it is still greyed.
+            TakeUIFocus();
+            var group = mainPanel ? mainPanel.GetComponent<CanvasGroup>() : null;
+            if (group && !group.interactable && ZInput.GetKeyDown(KeyCode.Escape)) { OnCancelButtonClicked(); return; }
+
             if (targetPortalDropdownUpDownKeyhint)
             {
                 targetPortalDropdownUpDownKeyhint.SetActive(ZInput.IsGamepadActive());

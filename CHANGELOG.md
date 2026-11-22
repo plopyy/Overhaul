@@ -2,6 +2,7 @@
 
 ## 2.4.0 (in progress)
 
+- Portal window: no longer stays greyed out and impossible to close when opened right after arriving through a portal (a loading screen shown after it took the focus); Escape always closes it. (2.4.0.664)
 - Dyes: pure black now stays really black and pure white really white (relief around dark dyes mostly downward, highlight roll-off raised); Bronze, Iron, Root, Wolf (with wolf cape) and Fenris sets dyeable.
 - Dye window: "Contrast" renamed "Brightness" (black on the left), new per-zone "Relief" slider (flat to strong grain, middle = as before; changing it alone costs one mystic dye).
 - Dyes: Lox cape (Plains), Flametal, Ask, Embla sets with the ash and asksvin capes (Ashlands) dyeable. Linen cape left out (the game tints it by style).
