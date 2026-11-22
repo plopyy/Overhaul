@@ -97,10 +97,10 @@ namespace Overhaul.Transmog
             selected = item; source = null;
             CollectLooks();
             source = looks.FirstOrDefault();
-            Preview.Yaw = 0;
+            Preview.Spin = Quaternion.identity;
             Refresh();
         }
-        static void Pick(ItemDrop.ItemData look) { source = look; Preview.Yaw = 0; Refresh(); }
+        static void Pick(ItemDrop.ItemData look) { source = look; Preview.Spin = Quaternion.identity; Refresh(); }
 
         static void Apply()
         {
@@ -204,8 +204,17 @@ namespace Overhaul.Transmog
             static Transmog.Look shownLook;
             static int layer = -1;
             static Bounds bounds;
-            internal static float Yaw, Distance = 1f;   // Distance: 1 = whole item in view, smaller = closer
+            internal static Quaternion Spin = Quaternion.identity;
+            internal static float Distance = 1f;   // Distance: 1 = whole item in view, smaller = closer
             static readonly Vector3 Place = new Vector3(0, 6100, 0);
+            // Free rotation: sideways drag turns about the screen's vertical, up/down drag about its horizontal
+            // (flat items like shields and swords can be seen from any side).
+            internal static void Turn(Vector2 delta)
+            {
+                var right = cameraGo ? cameraGo.transform.right : Vector3.left;
+                var up = cameraGo ? cameraGo.transform.up : Vector3.up;
+                Spin = Quaternion.AngleAxis(-delta.x * .5f, up) * Quaternion.AngleAxis(delta.y * .5f, right) * Spin;
+            }
             internal static void Zoom(float steps) => Distance = Mathf.Clamp(Distance * Mathf.Pow(.85f, steps), .35f, 1f);
 
             static int Layer()
@@ -293,7 +302,7 @@ namespace Overhaul.Transmog
                     model.SetActive(true);
                     // Turned about the item's centre.
                     var offset = bounds.center - Place;
-                    var rot = Quaternion.Euler(0, Yaw, 0);
+                    var rot = Spin;
                     model.transform.SetPositionAndRotation(Place - rot * offset, rot);
                     int l = Layer(); foreach (var t in model.GetComponentsInChildren<Transform>(true)) if (t.gameObject.layer != l) t.gameObject.layer = l;
                 }
@@ -323,10 +332,10 @@ namespace Overhaul.Transmog
         static class NoInventory { static bool Prefix() => !Visible; }
     }
 
-    // Dragging on the item turns it; the wheel zooms.
+    // Dragging on the item turns it in every direction; the wheel zooms.
     internal sealed class TransmogDrag : MonoBehaviour, IDragHandler, IScrollHandler
     {
-        public void OnDrag(PointerEventData e) => TransmogWindow.Preview.Yaw -= e.delta.x * .5f;
+        public void OnDrag(PointerEventData e) => TransmogWindow.Preview.Turn(e.delta);
         public void OnScroll(PointerEventData e) => TransmogWindow.Preview.Zoom(e.scrollDelta.y);
     }
 }
