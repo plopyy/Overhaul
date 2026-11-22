@@ -215,7 +215,7 @@ namespace Overhaul.Transmog
                 var up = cameraGo ? cameraGo.transform.up : Vector3.up;
                 Spin = Quaternion.AngleAxis(-delta.x * .5f, up) * Quaternion.AngleAxis(delta.y * .5f, right) * Spin;
             }
-            internal static void Zoom(float steps) => Distance = Mathf.Clamp(Distance * Mathf.Pow(.85f, steps), .35f, 1f);
+            internal static void Zoom(float steps) => Distance = Mathf.Clamp(Distance * Mathf.Pow(.7f, steps), .12f, 1f);
 
             static int Layer()
             {

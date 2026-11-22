@@ -273,11 +273,11 @@ namespace Overhaul.Dyes
             internal static float Yaw = 0;   // facing the camera, which stands in front (+z)
             // Mouse wheel on the character: camera distance from FarDistance (whole body) to NearDistance; dragging up and
             // down then moves the looked-at height (head to feet), back to the body's middle when zoomed out.
-            internal const float FarDistance = 4.6f, NearDistance = 1.1f, MiddleHeight = .95f;
+            internal const float FarDistance = 4.6f, NearDistance = .45f, MiddleHeight = .95f;
             internal static float Distance = FarDistance, Height = MiddleHeight;
             internal static void Zoom(float steps)
             {
-                Distance = Mathf.Clamp(Distance * Mathf.Pow(.85f, steps), NearDistance, FarDistance);
+                Distance = Mathf.Clamp(Distance * Mathf.Pow(.7f, steps), NearDistance, FarDistance);
                 Pan(0);
             }
             internal static void Pan(float metres)
