@@ -106,7 +106,7 @@
 - **Grimoire** (spell book), first version, opened with F1 for now (Settings > Overhaul > Shortcuts): an open book in the Auga look. On the right page, one bookmark per element (fire, ice, lightning) and the element's spells by type (normal, special, shield) and rank, ranks II and III showing the class level that unlocks them. On the left page, the details of the clicked spell (eitr, damage, cast time, area) and the 4 installed spells (2 normal spells, 1 special, 1 shield). Installing a spell: drag and drop it onto a matching slot. The spells are those of Spells.cfg (the demo list is gone), empty cards are hidden; the installed spells are those of the equipped staff.
 
 ### Changed
-- Deep North: frost trolls and barkas (frozen trees) spawn five times as often, one at a time instead of in groups. (2.4.0.669-670)
+- Deep North: five times as many frost trolls and barkas (frozen trees) can be around at once; spawn rate and group size unchanged. (2.4.0.669-671)
 - The performance console command `operf` is now `o_opti` (same sub-commands, still open to every player, no admin rights needed). (2.4.0.449)
 - Merged pieces switch to their low detail when the far half of their 16 m area reaches the pieces' own distance (was the area's centre), so they keep no more triangles than the pieces did. (2.4.0.411)
 - Only one immunity catalyst per trinket, and only one worn trinket with an immunity catalyst.
