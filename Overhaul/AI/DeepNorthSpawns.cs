@@ -11,7 +11,7 @@ namespace Overhaul.AI
         const float RateMultiplier = 1.5f;
         static readonly HashSet<SpawnSystem.SpawnData> tuned = new HashSet<SpawnSystem.SpawnData>();
 
-        static int Density(string prefab) => prefab == "TrollFrost" || prefab == "Barka" ? 5 : prefab.StartsWith("Elaking") ? 3 : prefab == "Moose" ? 2 : 0;
+        static int Density(string prefab) => prefab == "Spawner_TrollFrost" || prefab == "TrollFrost" || prefab == "Barka" ? 5 : prefab.StartsWith("Elaking") ? 3 : prefab == "Moose" ? 2 : 0;
 
         [HarmonyPatch(typeof(SpawnSystem), nameof(SpawnSystem.Awake))]
         static class Tune
