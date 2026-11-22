@@ -114,7 +114,7 @@ namespace Overhaul.Dyes
                     if (applied.Value == value && ReferenceEquals(applied.Instances, instances) && applied.Hash == hash) continue;
                     bool hadDye = applied.Value.Length > 0;
                     applied.Value = value; applied.Instances = instances; applied.Hash = hash;
-                    Apply(__instance, (Slot)i, value, hadDye);
+                    if (!Apply(__instance, (Slot)i, value, hadDye)) applied.Value = "\u0001";   // not done: again next frame
                 }
             }
         }
@@ -161,7 +161,7 @@ namespace Overhaul.Dyes
         }
 
         // Tints the slot's piece with "<prefab>:<ids>" (empty = as in the game). The piece must be the one shown in the slot.
-        static void Apply(VisEquipment v, Slot slot, string value, bool hadDye)
+        static bool Apply(VisEquipment v, Slot slot, string value, bool hadDye)
         {
             ItemDrop item = null; string[] ids = null; DyeGear.Gear gear = null;
             int hash = Hash(v, slot);
@@ -179,7 +179,7 @@ namespace Overhaul.Dyes
             if (gear == null || item == null)
             {
                 if (hadDye) Restore(v, slot, hash);
-                return;
+                return true;
             }
             int dyed = 0;
             var colours = new Color?[gear.Zones.Length];
@@ -188,6 +188,19 @@ namespace Overhaul.Dyes
             for (int z = 0; z < colours.Length; z++) { colours[z] = z < ids.Length ? DyePalette.Value(ids[z]) : null; reliefs[z] = z < ids.Length ? DyePalette.Relief(ids[z]) : 1; metals[z] = colours[z].HasValue && z < ids.Length ? DyePalette.Metal(ids[z]) : 0; }
             bool metal = metals.Any(g => g > .005f);
             string key = string.Join(",", ids);
+            // The game streams its textures' mip levels: one not fully loaded yet would be read blurred and blocky. The full
+            // level is requested and the slot dyed again on a later frame, once it is there.
+            bool ready = true;
+            foreach (var tex in gear.Textures)
+            {
+                if (tex.Body) { var am = item.m_itemData.m_shared.m_armorMaterial; ready &= Loaded(am ? am.GetTexture(slot == Slot.Legs ? LegsTex : ChestTex) : null); }
+                else foreach (var r in Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)))
+                    {
+                        var m = Original(r);
+                        if (m && m.HasProperty(MainTex) && m.mainTexture && m.mainTexture.name == tex.Source) { ready &= Loaded(m.mainTexture); if (m.HasProperty(MetalMapID)) ready &= Loaded(m.GetTexture(MetalMapID)); }
+                    }
+            }
+            if (!ready) return false;
             foreach (var tex in gear.Textures)
             {
                 if (tex.Body)
@@ -226,6 +239,13 @@ namespace Overhaul.Dyes
                 }
             }
             if (Debug) Log.LogInfo("Dyes: " + slot + " " + value + " -> " + dyed + " renderers/textures, objects " + string.Join(",", Objects(v, slot).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)).Select(r => r.name + "[" + (r.sharedMaterial && r.sharedMaterial.mainTexture ? r.sharedMaterial.mainTexture.name : "-") + "]")));
+            return true;
+        }
+        static bool Loaded(Texture t)
+        {
+            if (!(t is Texture2D t2) || !t2.streamingMipmaps || t2.loadedMipmapLevel == 0) return true;
+            t2.requestedMipmapLevel = 0;
+            return false;
         }
         internal static bool Debug = false;   // logs each tint and writes the dyed textures to the game test folder
         static readonly int Metallic = Shader.PropertyToID("_Metallic"), MetalMapID = Shader.PropertyToID("_MetallicGlossMap");
