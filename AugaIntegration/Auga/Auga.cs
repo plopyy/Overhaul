@@ -27,6 +27,7 @@ namespace Auga
         public GameObject ClassPanel;
         public GameObject Grimoire;
         public GameObject DyeWindow;
+        public GameObject TransmogWindow;
         public GameObject ClassChoice, ClassTree, ClassHud;
         public Texture2D Cursor;
         public GameObject MenuPrefab;
@@ -508,6 +509,7 @@ namespace Auga
             Assets.ClassPanel = assetBundle.LoadAsset<GameObject>("OverhaulClassPanel");
             Assets.Grimoire = assetBundle.LoadAsset<GameObject>("OverhaulGrimoire");
             Assets.DyeWindow = assetBundle.LoadAsset<GameObject>("OverhaulDyeWindow");
+            Assets.TransmogWindow = assetBundle.LoadAsset<GameObject>("OverhaulTransmogWindow");
             Assets.ClassChoice = assetBundle.LoadAsset<GameObject>("OverhaulClassChoice");
             Assets.ClassTree = assetBundle.LoadAsset<GameObject>("OverhaulClassTree");
             Assets.ClassHud = assetBundle.LoadAsset<GameObject>("OverhaulClassHud");

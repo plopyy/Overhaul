@@ -97,7 +97,7 @@ namespace Overhaul
         public void Update()
         {
             long start = Performance.PerfRecorder.Recording ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
-            XPortal.XPortal.Update(); if (Features.Classes) Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); Dyes.DyeWindow.Tick(); Visuals.FarView.TreeSync.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); Rarity.RavenThief.Tick();
+            XPortal.XPortal.Update(); if (Features.Classes) Leveling.ClassWindow.Tick(); Magic.GrimoireWindow.Tick(); Dyes.DyeWindow.Tick(); Transmog.TransmogWindow.Tick(); Visuals.FarView.TreeSync.Tick(); EquipmentAndQuickSlots.EquipmentAndQuickSlots.Update(); Effects.Dots.Tick(); Rarity.IceShards.Tick(); Rarity.RavenThief.Tick();
             if (start != 0) Performance.PerfProfile.AddRoot("Overhaul.Update", System.Diagnostics.Stopwatch.GetTimestamp() - start);
         }
 
@@ -133,6 +133,7 @@ namespace Overhaul
             Magic.MageMysticSet.Shutdown();
             Dyes.DyeItems.Shutdown();
             Dyes.DyeWindow.Clear();
+            Transmog.TransmogWindow.Clear();
             Magic.SpellSystem.Shutdown();
             Magic.EitrFoods.Shutdown();
             Magic.GrimoireStand.Shutdown();
