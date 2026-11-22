@@ -127,7 +127,7 @@ namespace Overhaul
         internal void SetHelmetPresent(bool present)
         {
             if(meshes==null)meshes=GetComponentsInChildren<Renderer>(true);
-            bool off=present||Overhaul.Visuals.BuildFirstPerson.Hides(equipment);
+            bool off=present||global::Overhaul.Visuals.BuildFirstPerson.Hides(equipment);
             foreach(var mesh in meshes)if(mesh)mesh.forceRenderingOff=off;
         }
         private void LateUpdate()
