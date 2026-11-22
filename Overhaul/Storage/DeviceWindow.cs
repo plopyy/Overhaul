@@ -300,6 +300,25 @@ namespace Overhaul.Storage
             }
             private static void Postfix(InventoryGui __instance) => __instance.GetComponent<DeviceWindow>()?.Refresh();
         }
+        // The game closes an open container once the player is farther than 4 m from its centre. A big machine (frost kiln)
+        // can be used from a part farther than that from its centre: it closed at once. For a device, the distance counts
+        // from the machine's edge (its colliders' extent added).
+        [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
+        private static class DeviceReach
+        {
+            private static void Prefix(InventoryGui __instance, out float __state)
+            {
+                __state = -1;
+                var c = __instance.m_currentContainer; if (!c || !DeviceStore.Of(c)) return;
+                float extent = 0;
+                var root = c.GetComponentInParent<ZNetView>(); var t = root ? root.transform : c.transform;
+                foreach (var col in t.GetComponentsInChildren<Collider>())
+                    if (!col.isTrigger) extent = Mathf.Max(extent, Vector3.Distance(c.transform.position, col.bounds.center) + col.bounds.extents.magnitude);
+                if (extent <= 0) return;
+                __state = __instance.m_autoCloseDistance; __instance.m_autoCloseDistance += extent;
+            }
+            private static void Finalizer(InventoryGui __instance, float __state) { if (__state >= 0) __instance.m_autoCloseDistance = __state; }
+        }
         [HarmonyPatch(typeof(InventoryGui), "Hide")]
         private static class HideWindow { private static void Postfix(InventoryGui __instance) => __instance.GetComponent<DeviceWindow>()?.Restore(); }
         [HarmonyPatch(typeof(InventoryGui), "CloseContainer")]
