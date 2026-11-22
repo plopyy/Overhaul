@@ -645,7 +645,14 @@ namespace Overhaul
 
 			bool held = ZInput.GetButton("Run") || ZInput.GetButton("JoyRun");
 			// Still track the key while disabled, so re-enabling never fires a dash for a held key.
-			if (ConsumeDashPress(held, player.TakeInput()) && OverhaulConfig.DashEnabled.Value) StartDash(player);
+			if (ConsumeDashPress(held, player.TakeInput()) && OverhaulConfig.DashEnabled.Value && !WindowsKeyHeld()) StartDash(player);
+        }
+
+        // Win+Shift+S (screenshot) and other Windows shortcuts: Shift pressed with the Windows key held is no dash.
+        static bool WindowsKeyHeld()
+        {
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            return keyboard != null && (keyboard.leftMetaKey.isPressed || keyboard.rightMetaKey.isPressed);
         }
 
         internal static bool ConsumeDashPress(bool held, bool takeInput)

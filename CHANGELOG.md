@@ -11,6 +11,7 @@
 - Dyes: bear set zones boots / fur / belt / loincloth (war paint and necklace left as in the game), cursed bear belt and straps in their own zone.
 - Dyes: root set split into roots and bark (the mossy bark plates the roots wind over had been dyed as roots); the root helmet's whole head can now be dyed (only its root took a colour). Megingjord belt dyeable (leather, gold buckle and studs). Dye window: the mouse wheel on the character zooms in (dragging up and down then moves from head to feet) without zooming the game camera behind.
 - Dyes: Deep North orator set (helmet, robe, legs, cape) and courage set (helmet, armour, legs) dyeable; courage zones gilding / white / blue / rest (trousers, gloves, beige belt).
+- Dash: Shift pressed while the Windows key is held (Win+Shift+S screenshot) no longer dashes.
 - Dyes: dyed gear no longer looks blurred and blocky the first time it shows (on the character after loading, or in the dye window) until it is re-equipped or recoloured.
 - Dye window: the character gets the game's default reflection, so metal parts painted on the body (Fenris coat sleeves) no longer show black in the window while right in game.
 - Far trees from the server: a joining player gets them only once their character is in the world, 256 zones a second, instead of all at once during the connection (on a big world, about 5 MB held back the game's handshake past 30 s and the server dropped the player).
