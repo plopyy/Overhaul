@@ -3,7 +3,7 @@ using HarmonyLib;
 
 namespace Overhaul.AI
 {
-    // Deep North felt empty (user, 2026-11-22): frost trolls and elakings spawn five times as often, one at a time instead of
+    // Deep North felt empty (user, 2026-11-22): frost trolls and barkas spawn five times as often, one at a time instead of
     // in groups. The world spawn entries are shared assets, so each one is tuned once, the first time a spawn system wakes.
     // The cap per zone keeps at least the native group size, so the count around the player can still reach what a native
     // group gave, just spread out over time.
@@ -12,7 +12,7 @@ namespace Overhaul.AI
         const float RateMultiplier = 5f;
         static readonly HashSet<SpawnSystem.SpawnData> tuned = new HashSet<SpawnSystem.SpawnData>();
 
-        static bool Target(string prefab) => prefab == "TrollFrost" || prefab.StartsWith("Elaking");
+        static bool Target(string prefab) => prefab == "TrollFrost" || prefab == "Barka";
 
         [HarmonyPatch(typeof(SpawnSystem), nameof(SpawnSystem.Awake))]
         static class Tune
