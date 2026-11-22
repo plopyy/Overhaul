@@ -1,20 +1,20 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
 namespace Overhaul.Visuals
 {
-    // First-person view while the building hammer is in hand (user, 2026-11-21): a clear view to build. Taking the hammer
-    // switches the camera to the game's own first-person mode (camera distance 0, eye position + m_fpsOffset, normally out
-    // of the zoom's reach); putting it away gives back the distance the player had before. The wheel no longer zooms
-    // meanwhile: the distance's bounds are both 0 (the zoom sensitivity is left alone: other camera patches save and
-    // restore it, and one of them kept the 0 for good, no more zoom at all, 2.4.0.645-647). The local player's head bone is shrunk to nothing on this client only, so the head, hair, beard and
-    // helmet (all on that bone) do not block the view; other players see the character as usual.
+    // Building view while the hammer is in hand (user, 2026-11-22, replaces the forced first person of 2026-11-21): the
+    // camera keeps its distance, but the local character is not drawn on this client (other players see it as usual), so
+    // nothing blocks the view. The wheel zooms from the game's first person (distance 0) to a bit farther than the usual
+    // maximum. Putting the hammer away gives back the distance the player had before taking it. The zoom sensitivity is
+    // left alone (other camera patches save and restore it; one kept a 0 for good once, 2.4.0.645-647).
     internal static class BuildFirstPerson
     {
+        const float ExtraZoomOut = 1.5f;   // max distance x1.5 while building
         static bool active;
         static float savedDistance;
-        static Transform head;
-        static Vector3 headScale;
+        static readonly List<Renderer> hidden = new List<Renderer>();
 
         static bool Wanted(Player p) => p && p == Player.m_localPlayer && !p.IsDead() && !p.InIntro() && !p.IsAttached()
             && !p.InBed() && Storage.RelocationClient.HasHammer(p);
@@ -31,11 +31,12 @@ namespace Overhaul.Visuals
                 else if (!want && active) { active = false; __instance.m_distance = savedDistance; }
                 if (active)
                 {
-                    __instance.m_minDistance = __instance.m_maxDistance = __instance.m_maxDistanceBoat = 0f; __instance.m_distance = 0f;
-                    // Looking up, the game pulls the camera towards 1.5 m (smooth Y tilt): from 0 it jumped behind the head and back.
-                    __instance.m_smoothYTilt = false;
+                    __instance.m_minDistance = 0f;
+                    __instance.m_maxDistance *= ExtraZoomOut; __instance.m_maxDistanceBoat *= ExtraZoomOut;
+                    // Looking up, the game pulls the camera towards 1.5 m (smooth Y tilt): close in, it jumped behind the head.
+                    if (__instance.m_distance < 1.5f) __instance.m_smoothYTilt = false;
                 }
-                Head(player, active);
+                Hide(player, active);
             }
             static void Finalizer(GameCamera __instance, (float min, float max, float boat, bool tilt) __state)
             {
@@ -43,21 +44,21 @@ namespace Overhaul.Visuals
             }
         }
 
-        // The head bone (and everything attached under it) shrunk while in first person, restored after.
-        static void Head(Player player, bool hide)
+        // Every renderer of the local character (body, gear, held items, which change with equipment) skipped while
+        // building; the ones turned off are turned back on after. Shadows go with them.
+        static void Hide(Player player, bool hide)
         {
-            if (hide)
+            if (hide && player)
             {
-                var bone = player ? player.GetComponentInChildren<Animator>()?.GetBoneTransform(HumanBodyBones.Head) : null;
-                if (bone != head) { Restore(); head = bone; if (head) headScale = head.localScale; }
-                if (head) head.localScale = Vector3.one * 0.0001f;
+                foreach (var r in player.GetComponentsInChildren<Renderer>(true))
+                    if (!r.forceRenderingOff) { r.forceRenderingOff = true; hidden.Add(r); }
             }
             else Restore();
         }
         static void Restore()
         {
-            if (head) head.localScale = headScale;
-            head = null;
+            foreach (var r in hidden) if (r) r.forceRenderingOff = false;
+            hidden.Clear();
         }
     }
 }
