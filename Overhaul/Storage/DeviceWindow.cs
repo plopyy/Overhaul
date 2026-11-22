@@ -281,7 +281,12 @@ namespace Overhaul.Storage
             private static void Postfix(InventoryGui __instance)
             {
                 var store = DeviceStore.Of(__instance.m_currentContainer);
-                if (store && store.Ready && store.Visible) Get(__instance).Show(store);
+                if (store && store.Ready && store.Visible) { Get(__instance).Show(store); return; }
+                // Diagnostic (frost kiln reported opening the bag without its window): a container that belongs to a device
+                // but did not get the device window says why.
+                var c = __instance.m_currentContainer; if (!c) return;
+                var any = c.GetComponentInParent<DeviceStore>() ?? c.GetComponentInChildren<DeviceStore>();
+                if (store || any) Utility.Log.LogWarning($"Device window not shown for {c.name}: store={(store ? store.name : "none")} ready={(store && store.Ready)} visible={(store && store.Visible)} nearby={(any ? any.name + " container=" + (any.Container ? any.Container.name : "none") : "none")}");
             }
         }
         [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
