@@ -50,6 +50,7 @@ namespace Overhaul
             Leveling.ClassSkills.Initialize();
             AI.MobBehaviorConfig.Initialize();
             AugaUnity.ComplexTooltip.FoodDuration = Leveling.NutritionDuration.Preview;
+            AugaUnity.ComplexTooltip.AppearanceName = Transmog.Transmog.LookName;
             Effects.CharacterSheetData.Initialize();
             AugaUnity.ComplexTooltip.ElementStatBonus = (player, stat) => Leveling.LevelingEffects.Bonus(player, stat);
             AugaUnity.ComplexTooltip.StaffShield = DynamicCombat.StaffShieldAbsorb;

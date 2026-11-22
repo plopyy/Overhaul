@@ -436,6 +436,13 @@ namespace AugaUnity
                 TextBoxAddPreprocessedLine(textBox, item, "<color=aqua>$item_dlc</color>");
             }
 
+            var appearance = AppearanceName?.Invoke(item);
+            if (appearance != null)
+            {
+                var textBox = AddTextBox(CenteredTextBoxPrefab);
+                textBox.AddLine("<color=#7CC0FF>" + Localization.instance.Localize("$overhaul_transmog_look_line " + appearance) + "</color>");
+            }
+
             var skillLevel = Player.m_localPlayer.GetSkillLevel(item.m_shared.m_skillType);
             var statusEffectTooltip = item.GetStatusEffectTooltip(quality, skillLevel);
             var showExtraText = true;
@@ -842,6 +849,8 @@ namespace AugaUnity
         }
 
         public static Func<ItemDrop.ItemData, float> FoodDuration;
+        // Name of the look a transmogrified item wears (null: its own), set by Overhaul.
+        public static Func<ItemDrop.ItemData, string> AppearanceName;
         public void RefreshFoodDuration()
         {
             if (_food != null)
