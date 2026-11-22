@@ -16,6 +16,9 @@ namespace Overhaul.Visuals
         static float savedDistance;
         static readonly List<Renderer> hidden = new List<Renderer>();
 
+        // The circlet turns its own meshes on and off every frame (under a helmet): it asks here so it stays off too.
+        internal static bool Hides(VisEquipment v) => active && v && Player.m_localPlayer && v.gameObject == Player.m_localPlayer.gameObject;
+
         static bool Wanted(Player p) => p && p == Player.m_localPlayer && !p.IsDead() && !p.InIntro() && !p.IsAttached()
             && !p.InBed() && Storage.RelocationClient.HasHammer(p);
 
@@ -50,10 +53,16 @@ namespace Overhaul.Visuals
         {
             if (hide && player)
             {
-                foreach (var r in player.GetComponentsInChildren<Renderer>(true))
-                    if (!r.forceRenderingOff) { r.forceRenderingOff = true; hidden.Add(r); }
+                Off(player.gameObject);
+                // The thief raven (catalyst on a jewel) is its own object flying with the character.
+                var raven = Rarity.RavenThief.Shown(player); if (raven) Off(raven);
             }
             else Restore();
+        }
+        static void Off(GameObject go)
+        {
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (!r.forceRenderingOff) { r.forceRenderingOff = true; hidden.Add(r); }
         }
         static void Restore()
         {

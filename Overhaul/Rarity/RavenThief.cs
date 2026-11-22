@@ -23,6 +23,7 @@ namespace Overhaul.Rarity
         static AnimationClip idle, away, swoop;
         static Vector3 clawOffset, hipOffset; // from the raven's root, idle pose, facing +z
         static Player owner;
+        internal static GameObject Shown(Player p) => owner == p ? raven : null;   // hidden with the character while building
         static float failedAt = -100;
         // Items it could not reach or take, left alone until the time given (a door may open meanwhile).
         static readonly Dictionary<ItemDrop, float> skipped = new Dictionary<ItemDrop, float>();
