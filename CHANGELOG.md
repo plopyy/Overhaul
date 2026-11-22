@@ -116,8 +116,8 @@
 - Every item added without a chosen slot (loot, pickup, shortcut moves, take all) now fills inventories and chests from the top.
 - Ask armour set: keeps +10 % pierce, gains the lox set sneak and bow skill bonuses, loses its stamina cost reductions.
 - Crafting panel: the item details scroll back to the top when another recipe is selected.
-
 - Dungeon generations and room spawns log where they ran, the location, objects created and how long they held the game (warning from 0.5 s), to find what drops players at a dungeon's first generation. (2.4.0.673)
+
 ### Fixed
 - Performance: a client optimisation that fails now stops alone (and says so in the log) instead of stopping all the others with it. (2.4.0.431)
 - Instanced world objects: Ashlands trees could stay invisible (collision still there): their level-of-detail group carries a broken reference point millions of metres away, so the copy was always seen as off screen; the centre of a copy is now the middle of its meshes. (2.4.0.427)
