@@ -16,11 +16,24 @@ namespace AugaUnity
         public float MinHeight = 0;   // the side buttons' column must fit
         [System.NonSerialized] public float MaxHeight;
 
+        // The grid's scroll goes back to the top each time a chest opens (the window shows, or another chest's
+        // inventory comes in), held two frames so the game's own layout of the cells does not move it again.
+        Inventory shown; int toTop;
+        void OnEnable() { toTop = 2; }
+        void ScrollToTop()
+        {
+            if (toTop <= 0) return; toTop--;
+            var scroll = GetComponentInChildren<UnityEngine.UI.ScrollRect>(true);
+            if (scroll) { scroll.StopMovement(); scroll.verticalNormalizedPosition = 1f; }
+        }
+
         void LateUpdate()
         {
             if (!Grid || !Grid.gameObject.activeInHierarchy) return;
             var inventory = Grid.GetInventory();
             if (inventory == null) return;
+            if (inventory != shown) { shown = inventory; toTop = 2; }
+            ScrollToTop();
             int columns = Mathf.Clamp(inventory.GetWidth(), 1, MaxColumns);
             int rows = Mathf.Max(MinRows, inventory.GetHeight());
             if (MaxHeight > 0) rows = Mathf.Min(rows, Mathf.Max(MinRows, Mathf.FloorToInt((MaxHeight - Padding.y) / CellSpace)));
