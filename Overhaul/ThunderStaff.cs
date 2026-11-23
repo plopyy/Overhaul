@@ -110,7 +110,9 @@ namespace Overhaul
                 foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
                 foreach (var p in go.GetComponentsInChildren<ParticleSystem>(true)) p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 foreach (var l in go.GetComponentsInChildren<Light>(true)) l.enabled = false;
-                foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) a.Stop();
+                // Its electric hum loop (a ZSFX that plays on its own start, after this): switched off, not just stopped.
+                foreach (var z in go.GetComponentsInChildren<ZSFX>(true)) z.enabled = false;
+                foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) { a.Stop(); a.enabled = false; }
             }
 
             internal static void Rumble(Vector3 point, ZDOID projectile)
