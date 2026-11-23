@@ -60,7 +60,9 @@ namespace Overhaul.Storage
                         copy.SetColor("_Color", m.GetColor("_Color") * Tint);
                         if (copy.HasProperty("_MetalColor")) copy.SetColor("_MetalColor", copy.GetColor("_MetalColor") * Tint);
                         // The glowing lines are orange in the emission texture: turned icy cyan.
-                        if (copy.GetTexture("_EmissionMap") is Texture2D emission) copy.SetTexture("_EmissionMap", Icy(emission));
+                        if (copy.GetTexture("_EmissionMap") is Texture2D emission) copy.SetTexture("_EmissionMap", Icy(emission, false));
+                        // The dark metal body: turned a light frosted blue (its shading and detail kept).
+                        if (copy.GetTexture("_MainTex") is Texture2D albedo) copy.SetTexture("_MainTex", Icy(albedo, true));
                         tinted[m] = copy;
                     }
                     materials[i] = copy;
@@ -73,9 +75,11 @@ namespace Overhaul.Storage
         private static readonly Dictionary<Texture2D, Texture2D> icy = new Dictionary<Texture2D, Texture2D>();
         // A copy of a texture (read back from the GPU: game textures are not readable) with every warm colour turned cyan,
         // brightness kept.
-        private static Texture2D Icy(Texture2D source)
+        private static readonly Dictionary<Texture2D, Texture2D> frosted = new Dictionary<Texture2D, Texture2D>();
+        private static Texture2D Icy(Texture2D source, bool body)
         {
-            if (icy.TryGetValue(source, out var done)) return done;
+            var cache = body ? frosted : icy;
+            if (cache.TryGetValue(source, out var done)) return done;
             var rt = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
             var active = RenderTexture.active;
             Graphics.Blit(source, rt);
@@ -88,13 +92,18 @@ namespace Overhaul.Storage
             {
                 Color c = pixels[i];
                 Color.RGBToHSV(c, out float h, out float s, out float v);
-                if (s < .2f || (h > .2f && h < .85f)) continue;
-                var blue = Color.HSVToRGB(.53f, s * .85f, v);
+                Color blue;
+                if (body) blue = Color.HSVToRGB(.56f, .38f, Mathf.Min(1f, v * 1.9f + .12f));
+                else
+                {
+                    if (s < .2f || (h > .2f && h < .85f)) continue;
+                    blue = Color.HSVToRGB(.53f, s * .85f, v);
+                }
                 pixels[i] = new Color(blue.r, blue.g, blue.b, c.a);
             }
             copy.SetPixels32(pixels);
             copy.Apply(true, true);
-            icy[source] = copy;
+            cache[source] = copy;
             return copy;
         }
 
