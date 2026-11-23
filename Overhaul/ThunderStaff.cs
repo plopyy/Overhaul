@@ -1,3 +1,4 @@
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
@@ -134,9 +135,14 @@ namespace Overhaul
                 if (!rumble)
                 {
                     var incinerator = ZNetScene.instance ? ZNetScene.instance.GetPrefab("incinerator") : null;
-                    var lever = incinerator ? incinerator.GetComponent<Incinerator>() : null;
-                    if (lever) foreach (var e in lever.m_leverEffects.m_effectPrefabs) if (e.m_prefab && e.m_prefab.name == "sfx_distant thunder") rumble = e.m_prefab;
-                    if (!rumble) { Utility.Log.LogWarning("Thunder rumble: the obliterator's sfx_distant thunder not found"); return; }
+                    var lever = incinerator ? incinerator.GetComponentInChildren<Incinerator>(true) : null;
+                    if (lever) foreach (var e in lever.m_leverEffects.m_effectPrefabs) if (e.m_prefab && e.m_prefab.name.IndexOf("thunder", System.StringComparison.OrdinalIgnoreCase) >= 0) rumble = e.m_prefab;
+                    if (!rumble)
+                    {
+                        Utility.Log.LogWarning("Thunder rumble: the obliterator's distant thunder not found (incinerator " + (bool)incinerator + ", effects: "
+                            + (lever ? string.Join(", ", lever.m_leverEffects.m_effectPrefabs.Select(e => e.m_prefab ? e.m_prefab.name : "null")) : "-") + ")");
+                        return;
+                    }
                 }
                 Object.Instantiate(rumble, point, Quaternion.identity);
             }
