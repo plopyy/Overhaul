@@ -130,6 +130,8 @@ namespace Overhaul.Rarity
 
         private const int RainBolts = 16;
         private const float RainSeconds = 6f, RainRadius = 10f;
+        // Between a bolt's thunder rumble and the bolt.
+        private const float RainBoltDelay = 1f;
         // Chance of the weapon that fired the projectile, rolled when it hits.
         private sealed class Wrath { internal float Chance; }
         // Set while a rain bolt strikes, so its lightning area deals the bolt's damage (StaffMagic).
@@ -207,8 +209,8 @@ namespace Overhaul.Rarity
         private static System.Collections.IEnumerator RumbledBolt(Player owner, Vector3 point, HitData hit)
         {
             if (Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) point = ground.point;
-            ThunderStaff.Thunder.Rumble(point);
-            yield return new WaitForSeconds(ThunderStaff.Thunder.RainDelay);
+            Magic.Warnings.Play(Magic.Warnings.Thunder, point);
+            yield return new WaitForSeconds(RainBoltDelay);
             if (owner && !owner.IsDead()) Bolt(owner, point, hit);
         }
 

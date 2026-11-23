@@ -24,6 +24,8 @@ namespace Overhaul.Magic
             public string Id, NameKey, DescriptionKey, Element, Icon, Attack, Projectile;
             // Projectile (the attack's projectile) or Nova (an ice nova at the caster's feet, the attack only its animation).
             public bool Nova;
+            // Cast = Strike: no projectile, the effect falls on the aimed point (AimedStrike).
+            public StrikeSettings Strike;
             public Kind Kind;
             public int Tier, Level;
             // Rank of the spell itself (the grimoire's pips): 1 until spells rank up with the class level.
@@ -114,6 +116,14 @@ namespace Overhaul.Magic
                     FreezeDuration = RarityConfig.Float(v, "FreezeDuration", 0),
                     Nova = string.Equals(RarityConfig.Get(v, "Cast", "Projectile"), "Nova", StringComparison.OrdinalIgnoreCase),
                 };
+                if (string.Equals(RarityConfig.Get(v, "Cast", "Projectile"), "Strike", StringComparison.OrdinalIgnoreCase))
+                    spell.Strike = new StrikeSettings
+                    {
+                        Effect = RarityConfig.Get(v, "StrikeEffect", "staff_thunderblood_aoe"),
+                        Warning = RarityConfig.Get(v, "StrikeWarning", ""),
+                        Delay = Mathf.Max(0, RarityConfig.Float(v, "StrikeDelay", 0)),
+                        Range = Mathf.Max(1, RarityConfig.Float(v, "StrikeRange", 30)),
+                    };
                 if (spell.Element != "fire" && spell.Element != "ice" && spell.Element != "lightning") { Utility.Log.LogWarning("Spells.cfg: [" + section.Key + "] unknown element, fire used"); spell.Element = "fire"; }
                 data.Spells.Add(spell); data.ById[id] = spell;
             }

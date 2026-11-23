@@ -68,7 +68,7 @@ namespace Overhaul.Magic
         // area of 80). For a spell's projectile or a Zeus's Wrath bolt, each area of the impact takes the projectile's own
         // damage (the spell's share of the magic power, in its element), the spell's status effect and its caster, and
         // spares the caster's allies; the rod deals none.
-        internal sealed class ImpactSource { internal Character Owner; internal ItemDrop.ItemData Weapon; internal HitData.DamageTypes Damage; }
+        internal sealed class ImpactSource { internal Character Owner; internal ItemDrop.ItemData Weapon; internal HitData.DamageTypes Damage; internal bool Strike; }
         // Set while an impact's areas are created: by a projectile's spawn on hit, or by the Lightning Strike staff's lightning.
         internal static ImpactSource Spawning;
         [HarmonyPatch(typeof(Projectile), "SpawnOnHit")]
@@ -83,7 +83,7 @@ namespace Overhaul.Magic
             static void Postfix(Aoe __instance)
             {
                 var source = Spawning;
-                if (source == null || !(IsStaff(source.Weapon) || Rarity.MythicEffects.RainStrike)) return;
+                if (source == null || !(source.Strike || IsStaff(source.Weapon) || Rarity.MythicEffects.RainStrike)) return;
                 __instance.m_useAttackSettings = false;
                 __instance.m_damage = __instance.m_radius < 1f ? new HitData.DamageTypes() : source.Damage;
                 __instance.m_owner = source.Owner; __instance.m_hitFriendly = false;
