@@ -151,9 +151,78 @@ namespace Overhaul.Storage
                 }
                 c.transform.position = position;
             }
+            FrostShieldLogs.Check(center, radius);
             stale.Clear();
             foreach (var key in inside.Keys) if (!key) stale.Add(key);
             foreach (var key in stale) inside.Remove(key);
+        }
+    }
+
+    // Tree logs touching a dome (thrown by frost trolls, or a felled trunk falling on it) break into their wood and other loot.
+    internal static class FrostShieldLogs
+    {
+        internal static readonly HashSet<TreeLog> Logs = new HashSet<TreeLog>();
+        private static readonly List<TreeLog> stale = new List<TreeLog>(), breaking = new List<TreeLog>();
+        private static List<TreeLog> spawned;
+        private static readonly System.Action<TreeLog, HitData, bool> NativeDestroy =
+            AccessTools.MethodDelegate<System.Action<TreeLog, HitData, bool>>(AccessTools.Method(typeof(TreeLog), "Destroy"));
+
+        [HarmonyPatch(typeof(TreeLog), "Awake")]
+        private static class Track
+        {
+            private static void Postfix(TreeLog __instance)
+            {
+                Logs.Add(__instance);
+                spawned?.Add(__instance);
+            }
+        }
+
+        internal static void Check(Vector3 center, float radius)
+        {
+            breaking.Clear(); stale.Clear();
+            foreach (var log in Logs)
+            {
+                if (!log) { stale.Add(log); continue; }
+                if (Straddles(log, center, radius)) breaking.Add(log);
+            }
+            foreach (var log in stale) Logs.Remove(log);
+            foreach (var log in breaking) Break(log);
+        }
+
+        private static bool Straddles(TreeLog log, Vector3 center, float radius)
+        {
+            var nview = log.GetComponent<ZNetView>();
+            if (!nview || !nview.IsValid() || !nview.IsOwner()) return false;
+            float near, far;
+            if (log.GetComponentInChildren<CapsuleCollider>() is CapsuleCollider capsule)
+            {
+                var t = capsule.transform; var s = t.lossyScale;
+                var axis = capsule.direction == 0 ? t.right * s.x : capsule.direction == 1 ? t.up * s.y : t.forward * s.z;
+                float thick = capsule.radius * Mathf.Max(capsule.direction == 0 ? 0 : Mathf.Abs(s.x), capsule.direction == 1 ? 0 : Mathf.Abs(s.y), capsule.direction == 2 ? 0 : Mathf.Abs(s.z));
+                var mid = t.TransformPoint(capsule.center);
+                var half = axis.normalized * Mathf.Max(0f, capsule.height * axis.magnitude * .5f - thick);
+                float a = (mid + half - center).magnitude, b = (mid - half - center).magnitude;
+                // Closest point of the segment to the centre, for a log lying across the dome's edge with both ends outside.
+                var seg = 2f * half; float u = seg.sqrMagnitude > 0f ? Mathf.Clamp01(Vector3.Dot(center - (mid - half), seg) / seg.sqrMagnitude) : 0f;
+                float c = (mid - half + seg * u - center).magnitude;
+                near = Mathf.Min(a, b, c) - thick; far = Mathf.Max(a, b) + thick;
+            }
+            else
+            {
+                float d = (log.transform.position - center).magnitude;
+                near = d - 1f; far = d + 1f;
+            }
+            return near < radius && far > radius;
+        }
+
+        // Native destruction (loot, effects, origin tracking of other patches); the sub-logs it spawns break as well.
+        private static void Break(TreeLog log)
+        {
+            if (!log) return;
+            var previous = spawned; var mine = new List<TreeLog>(); spawned = mine;
+            try { NativeDestroy(log, null, false); }
+            finally { spawned = previous; }
+            foreach (var sub in mine) Break(sub);
         }
     }
 
