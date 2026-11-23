@@ -235,8 +235,7 @@
     </PropertyGroup>
     <MakeDir Directories="$(PackagesDirectory)" Condition="!Exists('$(PackagesDirectory)')" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PackagesDirectory)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\AlterItemStat.cfg" DestinationFolder="$(PackagesDirectory)" SkipUnchangedFiles="true" /><ItemGroup><LevelingDistribution Include="$(MSBuildProjectDirectory)\Distribution\**\*" Exclude="$(MSBuildProjectDirectory)\Distribution\DungeonBossLoot.cfg" /></ItemGroup><Copy SourceFiles="@(LevelingDistribution)" DestinationFiles="@(LevelingDistribution->'$(PackagesDirectory)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\Distribution\DungeonBossLoot.cfg" DestinationFolder="$(PackagesDirectory)" Condition="!Exists('$(PackagesDirectory)\DungeonBossLoot.cfg')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\AlterItemStat.cfg" DestinationFolder="$(PackagesDirectory)" SkipUnchangedFiles="true" /><ItemGroup><LevelingDistribution Include="$(MSBuildProjectDirectory)\Distribution\**\*" /></ItemGroup><Copy SourceFiles="@(LevelingDistribution)" DestinationFiles="@(LevelingDistribution->'$(PackagesDirectory)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
 <ItemGroup>
