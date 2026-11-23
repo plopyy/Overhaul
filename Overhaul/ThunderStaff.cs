@@ -1,14 +1,16 @@
+using System.Reflection.Emit;
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
 namespace Overhaul
 {
-    // Lightning Strike staff (StaffThunderBlood): its lightning falls at once where the player aims instead of after a
-    // flying projectile. The game still fires its projectiles (count and damage untouched); each one is traced from the
-    // camera through the crosshair - the first exactly on it, the others spread around it (in a fan with Fan Volley,
-    // else at random within the weapon's accuracy) - moved to the first surface met and hits there at once, so the
-    // game spawns its own lightning (staff_thunderblood_aoe). Every red colour of the lightning is turned blue-white.
+    // Lightning Strike staff (StaffThunderBlood) and the grimoire's lightning spell: no projectile. The attack's projectile
+    // is replaced by a lightning call that takes the hit the game computed (the staff's damage, quality, skill, spell); the
+    // point is traced from the camera through the crosshair (the burst's others spread around it), the obliterator's
+    // thunder rumbles there and the staff's own lightning (staff_thunderblood_aoe) falls on it 2 s later, dealing that hit.
+    // Every red colour of the lightning is turned blue-white.
     internal static class ThunderStaff
     {
         private const string ProjectileName = "staff_thunderblood_projectile", LightningName = "staff_thunderblood_aoe";
@@ -17,8 +19,6 @@ namespace Overhaul
         // The line traced from the camera: MaxDistance plus the camera's distance to the player.
         private static float reach = MaxDistance;
 
-        // Set while Zeus's Wrath drops its own bolts, which must hit where they are placed.
-        internal static bool Raining;
 
         // The burst being fired: its attack (for the final projectile count) and the index of the next projectile.
         private static Attack burst;
@@ -31,48 +31,96 @@ namespace Overhaul
             private static void Finalizer() => burst = null;
         }
 
-        [HarmonyPatch(typeof(Projectile), nameof(Projectile.Setup))]
-        private static class Instant
+        // The attack creates no projectile: where the game would instantiate the staff's projectile, it gets a bare lightning
+        // call instead (no model, no network object), which the game sets up like the projectile with the hit it computed
+        // (the staff's damage, quality, skill and modifiers). Other players' attacks are
+        // left to the native code (their own game calls their lightning).
+        [HarmonyPatch(typeof(Attack), "FireProjectileBurst")]
+        private static class NoProjectile
         {
-            // After the other Setup patches (explosive projectiles mark it there).
-            [HarmonyPriority(Priority.Last)]
-            private static void Postfix(Projectile __instance, Character owner, ItemDrop.ItemData item)
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
-                if (Raining || !owner || owner != Player.m_localPlayer || !__instance.name.StartsWith(ProjectileName, System.StringComparison.Ordinal)) return;
-                var camera = Utils.GetMainCamera();
-                if (!camera) return;
-                int count = burst != null ? Mathf.Max(1, burst.m_projectiles) : 1, i = index++;
-                Vector3 origin = camera.transform.position, direction = camera.transform.forward;
-                reach = MaxDistance + Vector3.Distance(origin, owner.transform.position);
-                if (Rarity.MythicEffects.Extra(item) > 0) direction = Rarity.MythicEffects.Turn(direction, Rarity.MythicEffects.Angle(i % count, count));
-                else if (i > 0 && burst != null)
+                var instantiate = AccessTools.FirstMethod(typeof(Object), m => m.Name == nameof(Object.Instantiate) && m.IsGenericMethodDefinition
+                    && m.GetParameters().Length == 3 && m.GetParameters()[1].ParameterType == typeof(Vector3)).MakeGenericMethod(typeof(GameObject));
+                int count = 0;
+                foreach (var code in instructions)
                 {
-                    float spread = burst.m_projectileAccuracy;
-                    direction = Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0) * direction;
+                    if (code.Calls(instantiate))
+                    {
+                        count++;
+                        yield return new CodeInstruction(OpCodes.Ldarg_0);
+                        yield return new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ThunderStaff), nameof(Spawn))).MoveLabelsFrom(code);
+                        continue;
+                    }
+                    yield return code;
                 }
-                if (!Trace(origin, direction, owner, out RaycastHit hit))
+                if (count != 1) throw new System.InvalidOperationException("Attack.FireProjectileBurst: projectile creation not found");
+            }
+        }
+
+        private static GameObject Spawn(GameObject prefab, Vector3 position, Quaternion rotation, Attack attack)
+        {
+            if (!prefab || !prefab.name.StartsWith(ProjectileName, System.StringComparison.Ordinal) || !attack.m_character || attack.m_character != Player.m_localPlayer)
+                return Object.Instantiate(prefab, position, rotation);
+            var call = new GameObject("Lightning call");
+            call.AddComponent<LightningCall>();
+            return call;
+        }
+
+        // Takes the hit the attack computed for its projectile, finds where the lightning falls and calls it there.
+        private sealed class LightningCall : MonoBehaviour, IProjectile
+        {
+            public void Setup(Character owner, Vector3 velocity, float hitNoise, HitData hitData, ItemDrop.ItemData item, ItemDrop.ItemData ammo)
+            {
+                try
                 {
-                    // Nothing within reach: the lightning falls on the ground under the far end of the line.
-                    if (!Physics.Raycast(origin + direction * reach + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
+                    // What the staff's projectile setup would do with the hit (the spell turns the magic power into its element).
+                    if (Magic.StaffMagic.IsStaff(item)) Magic.SpellSystem.OnHitSetup(owner, hitData);
+                    if (Aim(owner, item, out Vector3 point))
+                        Thunder.Call(owner, item, hitData, point);
                 }
-                __instance.transform.position = hit.point;
-                Thunder.Strike(__instance, owner, hit.point, hit.normal, Thunder.StaffDelay);
+                finally { Destroy(gameObject); }
             }
 
-            // First surface along the line, the shooter left out.
-            private static bool Trace(Vector3 start, Vector3 direction, Character owner, out RaycastHit first)
+            public string GetTooltipString(int itemQuality) => "";
+        }
+
+        // The point the lightning falls on: traced from the camera through the crosshair - the first exactly on it, the others
+        // of the burst spread around it (in a fan with Fan Volley, else at random within the weapon's accuracy) - to the first
+        // surface met, or the ground under the far end of the line.
+        private static bool Aim(Character owner, ItemDrop.ItemData item, out Vector3 point)
+        {
+            point = default;
+            var camera = Utils.GetMainCamera();
+            if (!camera) return false;
+            int count = burst != null ? Mathf.Max(1, burst.m_projectiles) : 1, i = index++;
+            Vector3 origin = camera.transform.position, direction = camera.transform.forward;
+            reach = MaxDistance + Vector3.Distance(origin, owner.transform.position);
+            if (Rarity.MythicEffects.Extra(item) > 0) direction = Rarity.MythicEffects.Turn(direction, Rarity.MythicEffects.Angle(i % count, count));
+            else if (i > 0 && burst != null)
             {
-                first = default;
-                float best = float.MaxValue;
-                foreach (var hit in Physics.RaycastAll(start, direction, reach, Projectile.s_rayMaskSolids, QueryTriggerInteraction.Ignore))
-                {
-                    if (hit.distance >= best) continue;
-                    var target = Projectile.FindHitObject(hit.collider);
-                    if (target && target == owner.gameObject) continue;
-                    best = hit.distance; first = hit;
-                }
-                return best < float.MaxValue;
+                float spread = burst.m_projectileAccuracy;
+                direction = Quaternion.Euler(Random.Range(-spread, spread), Random.Range(-spread, spread), 0) * direction;
             }
+            if (!Trace(origin, direction, owner, out RaycastHit hit)
+                && !Physics.Raycast(origin + direction * reach + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return false;
+            point = hit.point;
+            return true;
+        }
+
+        // First surface along the line, the shooter left out.
+        private static bool Trace(Vector3 start, Vector3 direction, Character owner, out RaycastHit first)
+        {
+            first = default;
+            float best = float.MaxValue;
+            foreach (var hit in Physics.RaycastAll(start, direction, reach, Projectile.s_rayMaskSolids, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.distance >= best) continue;
+                var target = Projectile.FindHitObject(hit.collider);
+                if (target && target == owner.gameObject) continue;
+                best = hit.distance; first = hit;
+            }
+            return best < float.MaxValue;
         }
 
         // The obliterator's warning: a distant thunder rumble where the lightning will fall, then the strike after a delay
@@ -83,54 +131,58 @@ namespace Overhaul
             private const string RumbleRpc = "Overhaul_ThunderRumble";
             private static GameObject rumble;
 
-            // Holds the projectile still and hidden where it will strike, rumbles, then lets it hit there.
-            internal static void Strike(Projectile projectile, Character owner, Vector3 point, Vector3 normal, float delay)
+            // The lightning's hit: the attack's damage (the staff's stats, skill and spell), its weapon, owner, the weapon wear
+            // of the attack and the effects the weapon carries.
+            private sealed class Bolt
             {
-                projectile.enabled = false;
-                Hide(projectile.gameObject);
-                var nview = projectile.GetComponent<ZNetView>();
-                Rumble(point, nview && nview.IsValid() ? nview.GetZDO().m_uid : ZDOID.None);
-                owner.StartCoroutine(Later(projectile, point, normal, delay));
+                internal Character Owner; internal ItemDrop.ItemData Weapon; internal HitData Hit;
+                internal float Wrath; internal bool Explosive; internal AttackDurability.Attempt Attempt;
             }
 
-            private static System.Collections.IEnumerator Later(Projectile projectile, Vector3 point, Vector3 normal, float delay)
+            internal static void Call(Character owner, ItemDrop.ItemData item, HitData hit, Vector3 point)
+            {
+                var attempt = AttackDurability.Current;
+                var bolt = new Bolt
+                {
+                    Owner = owner, Weapon = item, Hit = hit,
+                    Wrath = item != null ? Rarity.Enchantments.MythicValue(item, "ZeusWrath") : 0,
+                    Explosive = Rarity.Enchantments.ItemValue(item, "ExplosiveProjectile") >= 1 || Effects.Effects.Get(owner, "ExplosiveProjectile") >= 1,
+                    Attempt = attempt != null && attempt.Player == owner ? attempt : null
+                };
+                Rumble(point);
+                owner.StartCoroutine(Fall(bolt, point, StaffDelay));
+            }
+
+            // The staff's own lightning (staff_thunderblood_aoe) appears on the point: its areas deal the hit's damage (StaffMagic).
+            private static System.Collections.IEnumerator Fall(Bolt bolt, Vector3 point, float delay)
             {
                 yield return new WaitForSeconds(delay);
-                if (!projectile) yield break;
-                var nview = projectile.GetComponent<ZNetView>();
-                if (!nview || !nview.IsValid() || !nview.IsOwner()) yield break;
-                projectile.enabled = true;
-                projectile.transform.position = point;
-                // No collider: whoever stands there when it falls is hit by its area, not the creature aimed at 2 s earlier.
-                projectile.OnHit(null, point, false, normal);
+                if (!bolt.Owner || !ZNetScene.instance) yield break;
+                var prefab = ZNetScene.instance.GetPrefab(LightningName);
+                if (!prefab) yield break;
+                var previous = Magic.StaffMagic.Spawning;
+                Magic.StaffMagic.Spawning = new Magic.StaffMagic.ImpactSource { Owner = bolt.Owner, Weapon = bolt.Weapon, Damage = bolt.Hit.m_damage };
+                GameObject lightning;
+                try { lightning = Object.Instantiate(prefab, point, Quaternion.identity); }
+                finally { Magic.StaffMagic.Spawning = previous; }
+                foreach (var area in lightning.GetComponentsInChildren<Aoe>(true))
+                {
+                    area.Setup(bolt.Owner, Vector3.down, 0f, null, null, null);
+                    // The attack's weapon wear goes with the areas' hits.
+                    AttackDurability.Give(area, bolt.Attempt);
+                }
+                if (bolt.Explosive) Effects.EffectPatches.Explosive.Detonate(bolt.Owner, bolt.Weapon, bolt.Hit.m_skill, bolt.Hit.m_pushForce, point);
+                if (bolt.Wrath > 0 && bolt.Owner is Player player && player == Player.m_localPlayer && Random.value * 100f < bolt.Wrath)
+                    Rarity.MythicEffects.StartRain(player, point, bolt.Hit.m_damage.GetTotalDamage(), bolt.Hit);
             }
 
-            private static void Hide(GameObject go)
+            internal static void Rumble(Vector3 point)
             {
-                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
-                foreach (var p in go.GetComponentsInChildren<ParticleSystem>(true)) p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-                foreach (var l in go.GetComponentsInChildren<Light>(true)) l.enabled = false;
-                // Its electric hum loop (a ZSFX that plays on its own start, after this): switched off, not just stopped.
-                foreach (var z in go.GetComponentsInChildren<ZSFX>(true)) z.enabled = false;
-                foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) { a.Stop(); a.enabled = false; }
-            }
-
-            internal static void Rumble(Vector3 point, ZDOID projectile)
-            {
-                if (ZRoutedRpc.instance != null) ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RumbleRpc, point, projectile);
+                if (ZRoutedRpc.instance != null) ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RumbleRpc, point);
                 else Play(point);
             }
 
-            private static void OnRumble(long sender, Vector3 point, ZDOID projectile)
-            {
-                // Other players' copy of the waiting projectile is hidden too.
-                if (projectile != ZDOID.None && ZNetScene.instance)
-                {
-                    var instance = ZNetScene.instance.FindInstance(projectile);
-                    if (instance) Hide(instance.gameObject);
-                }
-                Play(point);
-            }
+            private static void OnRumble(long sender, Vector3 point) => Play(point);
 
             private static void Play(Vector3 point)
             {
@@ -156,7 +208,7 @@ namespace Overhaul
             [HarmonyPatch(typeof(ZRoutedRpc), MethodType.Constructor, typeof(bool))]
             private static class Register
             {
-                private static void Postfix(ZRoutedRpc __instance) => __instance.Register<Vector3, ZDOID>(RumbleRpc, OnRumble);
+                private static void Postfix(ZRoutedRpc __instance) => __instance.Register<Vector3>(RumbleRpc, OnRumble);
             }
         }
 

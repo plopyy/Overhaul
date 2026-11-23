@@ -68,26 +68,28 @@ namespace Overhaul.Magic
         // area of 80). For a spell's projectile or a Zeus's Wrath bolt, each area of the impact takes the projectile's own
         // damage (the spell's share of the magic power, in its element), the spell's status effect and its caster, and
         // spares the caster's allies; the rod deals none.
-        static Projectile spawning;
+        internal sealed class ImpactSource { internal Character Owner; internal ItemDrop.ItemData Weapon; internal HitData.DamageTypes Damage; }
+        // Set while an impact's areas are created: by a projectile's spawn on hit, or by the Lightning Strike staff's lightning.
+        internal static ImpactSource Spawning;
         [HarmonyPatch(typeof(Projectile), "SpawnOnHit")]
         static class ImpactSpawn
         {
-            static void Prefix(Projectile __instance) => spawning = __instance;
-            static void Finalizer() => spawning = null;
+            static void Prefix(Projectile __instance, out ImpactSource __state) { __state = Spawning; Spawning = new ImpactSource { Owner = __instance.m_owner, Weapon = __instance.m_weapon, Damage = __instance.m_damage }; }
+            static void Finalizer(ImpactSource __state) => Spawning = __state;
         }
         [HarmonyPatch(typeof(Aoe), "Awake")]
         static class ImpactArea
         {
             static void Postfix(Aoe __instance)
             {
-                var source = spawning;
-                if (!source || !(IsStaff(source.m_weapon) || Rarity.MythicEffects.RainStrike)) return;
+                var source = Spawning;
+                if (source == null || !(IsStaff(source.Weapon) || Rarity.MythicEffects.RainStrike)) return;
                 __instance.m_useAttackSettings = false;
-                __instance.m_damage = __instance.m_radius < 1f ? new HitData.DamageTypes() : source.m_damage;
-                __instance.m_owner = source.m_owner; __instance.m_hitFriendly = false;
+                __instance.m_damage = __instance.m_radius < 1f ? new HitData.DamageTypes() : source.Damage;
+                __instance.m_owner = source.Owner; __instance.m_hitFriendly = false;
                 // A Zeus's Wrath bolt also hits trees and rocks, at tool tier 4.
                 if (Rarity.MythicEffects.RainStrike) { __instance.m_hitProps = true; __instance.m_toolTier = Mathf.Max(__instance.m_toolTier, 4); }
-                var spell = IsStaff(source.m_weapon) ? SpellSystem.CastBy(source.m_owner) : null;
+                var spell = IsStaff(source.Weapon) ? SpellSystem.CastBy(source.Owner) : null;
                 __instance.m_statusEffectHash = spell != null && spell.HasEffect ? spell.EffectName.GetStableHashCode() : 0;
             }
         }

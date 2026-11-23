@@ -295,6 +295,9 @@ namespace Overhaul.Effects
                 }
             }
 
+            // Taken from a projectile that another impact replaces (the Lightning Strike staff's lightning).
+            internal static bool Take(Projectile projectile) => Projectiles.TryGetValue(projectile, out _) && Projectiles.Remove(projectile);
+
             [HarmonyPatch(typeof(Projectile), "OnHit")]
             private static class Explode
             {
@@ -303,35 +306,40 @@ namespace Overhaul.Effects
                     if (!__runOriginal) return;   // a contact ignored (the caster: SpellSystem)
                     if (water || !Projectiles.TryGetValue(__instance, out _)) return;
                     Projectiles.Remove(__instance);
-                    var model = Fireball();
-                    if (!model) return;
-                    // Halved by hand: the effect list only scales entries marked for it.
-                    foreach (var effect in model.m_hitEffects.Create(hitPoint, Quaternion.identity, null, 1f))
+                    Detonate(__instance.m_owner, __instance.m_weapon, __instance.m_skill, __instance.m_attackForce, hitPoint);
+                }
+            }
+
+            internal static void Detonate(Character owner, ItemDrop.ItemData weapon, Skills.SkillType skill, float force, Vector3 hitPoint)
+            {
+                var model = Fireball();
+                if (!model) return;
+                // Halved by hand: the effect list only scales entries marked for it.
+                foreach (var effect in model.m_hitEffects.Create(hitPoint, Quaternion.identity, null, 1f))
+                {
+                    if (!effect) continue;
+                    effect.transform.localScale = Vector3.one * Scale;
+                    // Particles follow the scale only in hierarchy mode.
+                    foreach (var particles in effect.GetComponentsInChildren<ParticleSystem>(true)) { var main = particles.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+                }
+                float radius = Mathf.Max(1f, model.m_aoe * Scale);
+                // Like the game's own area damage: every destructible around (creatures, trees, logs, rocks...), each once.
+                var seen = new HashSet<GameObject>();
+                foreach (var collider in Physics.OverlapSphere(hitPoint, radius, Projectile.s_rayMaskSolids, QueryTriggerInteraction.UseGlobal))
+                {
+                    var target = Projectile.FindHitObject(collider);
+                    var destructible = target ? target.GetComponent<IDestructible>() : null;
+                    if (destructible == null || !seen.Add(target)) continue;
+                    if (destructible is Character character && (character == owner || character.IsDead() || (owner && !BaseAI.IsEnemy(owner, character)))) continue;
+                    var hit = new HitData
                     {
-                        if (!effect) continue;
-                        effect.transform.localScale = Vector3.one * Scale;
-                        // Particles follow the scale only in hierarchy mode.
-                        foreach (var particles in effect.GetComponentsInChildren<ParticleSystem>(true)) { var main = particles.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
-                    }
-                    float radius = Mathf.Max(1f, model.m_aoe * Scale);
-                    // Like the game's own area damage: every destructible around (creatures, trees, logs, rocks...), each once.
-                    var seen = new HashSet<GameObject>();
-                    foreach (var collider in Physics.OverlapSphere(hitPoint, radius, Projectile.s_rayMaskSolids, QueryTriggerInteraction.UseGlobal))
-                    {
-                        var target = Projectile.FindHitObject(collider);
-                        var destructible = target ? target.GetComponent<IDestructible>() : null;
-                        if (destructible == null || !seen.Add(target) || !__instance.IsValidTarget(destructible)) continue;
-                        if (destructible is Character character && (character == __instance.m_owner || character.IsDead() || (__instance.m_owner && !BaseAI.IsEnemy(__instance.m_owner, character)))) continue;
-                        var hit = new HitData
-                        {
-                            m_damage = new HitData.DamageTypes { m_fire = ExplosionDamage, m_chop = ExplosionDamage, m_pickaxe = ExplosionDamage },
-                            m_toolTier = ToolTier(__instance.m_weapon), m_point = collider.ClosestPointOnBounds(hitPoint),
-                            m_dir = (target.transform.position - hitPoint).normalized, m_hitCollider = collider, m_skill = __instance.m_skill,
-                            m_pushForce = __instance.m_attackForce * Scale
-                        };
-                        hit.SetAttacker(__instance.m_owner);
-                        destructible.Damage(hit);
-                    }
+                        m_damage = new HitData.DamageTypes { m_fire = ExplosionDamage, m_chop = ExplosionDamage, m_pickaxe = ExplosionDamage },
+                        m_toolTier = ToolTier(weapon), m_point = collider.ClosestPointOnBounds(hitPoint),
+                        m_dir = (target.transform.position - hitPoint).normalized, m_hitCollider = collider, m_skill = skill,
+                        m_pushForce = force * Scale
+                    };
+                    hit.SetAttacker(owner);
+                    destructible.Damage(hit);
                 }
             }
         }

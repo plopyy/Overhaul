@@ -36,6 +36,14 @@ namespace Overhaul
         private static readonly ConditionalWeakTable<Attack, Attempt> Attacks = new ConditionalWeakTable<Attack, Attempt>();
         private static readonly ConditionalWeakTable<object, Attempt> Projectiles = new ConditionalWeakTable<object, Attempt>();
         [ThreadStatic] internal static Attempt Current;
+        // The attack a projectile belongs to, taken from it (the Lightning Strike staff's lightning replaces its projectile).
+        internal static Attempt Take(object projectile)
+        {
+            if (!Projectiles.TryGetValue(projectile, out var attempt)) return null;
+            Projectiles.Remove(projectile);
+            return attempt;
+        }
+        internal static void Give(object target, Attempt attempt) { Projectiles.Remove(target); if (attempt != null) Projectiles.Add(target, attempt); }
 
         private static Attempt Get(Attack attack)
         {

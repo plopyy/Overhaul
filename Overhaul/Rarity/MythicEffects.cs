@@ -164,13 +164,26 @@ namespace Overhaul.Rarity
                 // Rain centre: the impact point, whatever was hit; a sphere cast that starts inside a collider reports no
                 // point (zero), so the projectile's own position stands in when the point is off.
                 Vector3 center = hitPoint == Vector3.zero || Vector3.Distance(hitPoint, __instance.transform.position) > 3f ? __instance.transform.position : hitPoint;
-                var hit = __instance.m_originalHitData?.Clone() ?? new HitData();
                 float damage = __instance.m_damage.GetTotalDamage();
-                float bolt = damage > 0 ? damage : hit.m_damage.GetTotalDamage();
-                // Lightning that also splits trees and breaks rocks: the same damage as chop and pickaxe damage (tool tier: the area's, StaffMagic).
-                hit.m_damage = new HitData.DamageTypes { m_lightning = bolt, m_chop = bolt, m_pickaxe = bolt };
-                player.StartCoroutine(Rain(player, center, hit));
+                StartRain(player, center, damage > 0 ? damage : (__instance.m_originalHitData?.m_damage.GetTotalDamage() ?? 0), __instance.m_originalHitData);
             }
+        }
+
+        // The weapon's Zeus's Wrath chance carried by a projectile, taken from it (the Lightning Strike staff's lightning
+        // replaces its projectile and rolls when it falls).
+        internal static float TakeWrath(Projectile projectile)
+        {
+            if (!Wrathful.TryGetValue(projectile, out var wrath)) return 0;
+            Wrathful.Remove(projectile);
+            return wrath.Chance;
+        }
+
+        internal static void StartRain(Player player, Vector3 center, float bolt, HitData template)
+        {
+            var hit = template?.Clone() ?? new HitData();
+            // Lightning that also splits trees and breaks rocks: the same damage as chop and pickaxe damage (tool tier: the area's, StaffMagic).
+            hit.m_damage = new HitData.DamageTypes { m_lightning = bolt, m_chop = bolt, m_pickaxe = bolt };
+            player.StartCoroutine(Rain(player, center, hit));
         }
 
         private static System.Collections.IEnumerator Rain(Player owner, Vector3 center, HitData hit)
@@ -194,7 +207,7 @@ namespace Overhaul.Rarity
         private static System.Collections.IEnumerator RumbledBolt(Player owner, Vector3 point, HitData hit)
         {
             if (Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) point = ground.point;
-            ThunderStaff.Thunder.Rumble(point, ZDOID.None);
+            ThunderStaff.Thunder.Rumble(point);
             yield return new WaitForSeconds(ThunderStaff.Thunder.RainDelay);
             if (owner && !owner.IsDead()) Bolt(owner, point, hit);
         }
@@ -203,16 +216,16 @@ namespace Overhaul.Rarity
         // the hard antler catalyst).
         internal static void Bolt(Player owner, Vector3 point, HitData hit)
         {
-            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_projectile") : null;
+            // The staff's lightning itself, no projectile: its areas deal the bolt's damage (StaffMagic).
+            var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab("staff_thunderblood_aoe") : null;
             if (!prefab || !Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) return;
-            var bolt = UnityEngine.Object.Instantiate(prefab, ground.point, Quaternion.identity).GetComponent<Projectile>();
-            if (!bolt) return;
-            ThunderStaff.Raining = true;
-            try { bolt.Setup(owner, Vector3.down, 0f, hit.Clone(), null, null); }
-            finally { ThunderStaff.Raining = false; }
+            var previous = Magic.StaffMagic.Spawning;
+            Magic.StaffMagic.Spawning = new Magic.StaffMagic.ImpactSource { Owner = owner, Damage = hit.m_damage };
             RainStrike = true;
-            try { bolt.OnHit(ground.collider, ground.point, false, ground.normal); }
-            finally { RainStrike = false; }
+            GameObject lightning;
+            try { lightning = UnityEngine.Object.Instantiate(prefab, ground.point, Quaternion.identity); }
+            finally { RainStrike = false; Magic.StaffMagic.Spawning = previous; }
+            foreach (var area in lightning.GetComponentsInChildren<Aoe>(true)) area.Setup(owner, Vector3.down, 0f, null, null, null);
         }
 
         // --- DragonFist: every 4th attack of the weapon hurls a dragon of energy straight ahead (MythicVfx Mythic_DragonFist,
