@@ -69,7 +69,31 @@ namespace Overhaul.Storage
                 }
                 renderer.sharedMaterials = materials;
             }
+            // Nearly silent: its own hum, and its effects (start, stop, hits, low fuel loop, ice added) as quiet copies, the
+            // native generator's sounds untouched.
+            Quiet(prefab);
+            foreach (var list in new[] { shield.m_fuelAddedEffects, shield.m_shieldHitEffects, shield.m_shieldStart, shield.m_shieldStop, shield.m_shieldLowLoop })
+                foreach (var effect in list.m_effectPrefabs)
+                    if (effect.m_prefab && effect.m_prefab.GetComponentInChildren<AudioSource>(true)) effect.m_prefab = QuietCopy(effect.m_prefab);
             if (!prefab.GetComponent<FrostShieldBarrier>()) prefab.AddComponent<FrostShieldBarrier>();
+        }
+
+        internal const float Volume = .1f;
+        private static void Quiet(GameObject go)
+        {
+            foreach (var z in go.GetComponentsInChildren<ZSFX>(true)) { z.m_minVol *= Volume; z.m_maxVol *= Volume; }
+            foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) a.volume *= Volume;
+        }
+
+        private static GameObject QuietCopy(GameObject source)
+        {
+            string name = source.name + "_frostquiet";
+            var existing = PrefabManager.Instance.GetPrefab(name);
+            if (existing) return existing;
+            var copy = PrefabManager.Instance.CreateClonedPrefab(name, source);
+            Quiet(copy);
+            PrefabManager.Instance.AddPrefab(copy);
+            return copy;
         }
 
         private static readonly Dictionary<Texture2D, Texture2D> icy = new Dictionary<Texture2D, Texture2D>();
