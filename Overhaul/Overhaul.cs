@@ -79,6 +79,7 @@ namespace Overhaul
             Rarity.MythicVfx.Initialize();
             Magic.SpellVfx.Initialize();
             Storage.FeedingTrough.Initialize();
+            Storage.FrostShieldGenerator.Initialize();
             Storage.CharcoalKilnWoods.Initialize();
             Patches.WoodenArrowRecipe.Initialize();
             Storage.ProductionClock.Initialize();
@@ -142,6 +143,7 @@ namespace Overhaul
             Rarity.MythicVfx.Shutdown();
             Magic.SpellVfx.Shutdown();
             Storage.FeedingTrough.Shutdown();
+            Storage.FrostShieldGenerator.Shutdown();
             Storage.CharcoalKilnWoods.Shutdown();
             Patches.WoodenArrowRecipe.Shutdown();
             OverhaulConfig.StopSyncManager();

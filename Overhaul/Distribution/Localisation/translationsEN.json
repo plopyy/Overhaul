@@ -2652,6 +2652,8 @@
   "overhaul_key_ctrl": "Ctrl",
   "overhaul_feeding_trough": "Feeding trough",
   "overhaul_feeding_trough_description": "Four slots to feed and tame nearby animals. They detect the trough within 20 m and can eat their usual food within 4 m, even without moving.",
+  "overhaul_frost_shield": "Frost shield generator",
+  "overhaul_frost_shield_description": "An improved shield generator fuelled with ice. Raises a 50 m dome that stops projectiles and keeps hostile creatures out until the ice runs out. Players, tamed creatures, passive animals, boars, necks and hens pass freely; creatures already inside stay inside.",
   "overhaul_device_bases": "Bases",
   "overhaul_device_bones": "Bones",
   "overhaul_device_equipment": "Equipment",

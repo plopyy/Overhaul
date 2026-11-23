@@ -2755,6 +2755,8 @@
   "overhaul_key_ctrl": "Ctrl",
   "overhaul_feeding_trough": "Mangeoire",
   "overhaul_feeding_trough_description": "Quatre emplacements pour nourrir les animaux alentour et les apprivoiser. Ils détectent la mangeoire à 20 m et peuvent manger leur nourriture habituelle à 4 m maximum, même sans se déplacer.",
+  "overhaul_frost_shield": "Générateur de bouclier de givre",
+  "overhaul_frost_shield_description": "Un générateur de bouclier amélioré alimenté à la glace. Déploie un dôme de 50 m qui arrête les projectiles et empêche les créatures hostiles d'entrer tant qu'il reste de la glace. Les joueurs, créatures apprivoisées, animaux passifs, sangliers, nyx et poules passent librement ; les créatures déjà à l'intérieur y restent.",
   "overhaul_device_bases": "Bases",
   "overhaul_device_bones": "Os",
   "overhaul_device_equipment": "Équipement",
