@@ -309,12 +309,17 @@ namespace Overhaul.Storage
                 if (ai.m_targetStatic && FrostShieldBarrier.Shielding(ai.m_targetStatic.transform.position, ai.m_character)) ai.m_targetStatic = null;
                 var target = ai.m_targetCreature;
                 var dome = target ? FrostShieldBarrier.Shielding(target.transform.position, ai.m_character) : null;
-                if (!dome) { Sieges.Remove(ai); return; }
+                if (!dome)
+                {
+                    if (Sieges.TryGetValue(ai, out var ended)) { Sieges.Remove(ai); Utility.Log.LogInfo("Frost shield: " + ai.name + " ends its siege after " + (Time.time - ended.Start).ToString("0.0") + " s (target " + (target ? target.name + " no longer shielded" : "lost") + ")"); }
+                    return;
+                }
                 var siege = Sieges.GetOrCreateValue(ai);
-                if (siege.Target != target) { siege.Target = target; siege.Start = Time.time; }
+                if (siege.Target != target) { siege.Target = target; siege.Start = Time.time; Utility.Log.LogInfo("Frost shield: " + ai.name + " besieges " + target.name); }
                 siege.Dome = dome;
                 if (Time.time - siege.Start < Duration) return;
                 Sieges.Remove(ai);
+                Utility.Log.LogInfo("Frost shield: " + ai.name + " drops " + target.name + " after its " + Duration + " s siege");
                 ai.m_targetCreature = null;
                 canHearTarget = canSeeTarget = false;
                 ai.SetAlerted(false);
