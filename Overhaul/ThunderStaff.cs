@@ -55,7 +55,7 @@ namespace Overhaul
                     if (!Physics.Raycast(origin + direction * reach + Vector3.up * 50f, Vector3.down, out hit, 500f, Projectile.s_rayMaskSolids)) return;
                 }
                 __instance.transform.position = hit.point;
-                __instance.OnHit(hit.collider, hit.point, false, hit.normal);
+                Thunder.Strike(__instance, owner, hit.point, hit.normal, Thunder.StaffDelay);
             }
 
             // First surface along the line, the shooter left out.
@@ -71,6 +71,80 @@ namespace Overhaul
                     best = hit.distance; first = hit;
                 }
                 return best < float.MaxValue;
+            }
+        }
+
+        // The obliterator's warning: a distant thunder rumble where the lightning will fall, then the strike after a delay
+        // (shorter than the obliterator's 4.5 s) so it can be dodged. Every player hears the rumble (routed RPC).
+        internal static class Thunder
+        {
+            internal const float StaffDelay = 2f, RainDelay = 1f;
+            private const string RumbleRpc = "Overhaul_ThunderRumble";
+            private static GameObject rumble;
+
+            // Holds the projectile still and hidden where it will strike, rumbles, then lets it hit there.
+            internal static void Strike(Projectile projectile, Character owner, Vector3 point, Vector3 normal, float delay)
+            {
+                projectile.enabled = false;
+                Hide(projectile.gameObject);
+                var nview = projectile.GetComponent<ZNetView>();
+                Rumble(point, nview && nview.IsValid() ? nview.GetZDO().m_uid : ZDOID.None);
+                owner.StartCoroutine(Later(projectile, point, normal, delay));
+            }
+
+            private static System.Collections.IEnumerator Later(Projectile projectile, Vector3 point, Vector3 normal, float delay)
+            {
+                yield return new WaitForSeconds(delay);
+                if (!projectile) yield break;
+                var nview = projectile.GetComponent<ZNetView>();
+                if (!nview || !nview.IsValid() || !nview.IsOwner()) yield break;
+                projectile.enabled = true;
+                projectile.transform.position = point;
+                // No collider: whoever stands there when it falls is hit by its area, not the creature aimed at 2 s earlier.
+                projectile.OnHit(null, point, false, normal);
+            }
+
+            private static void Hide(GameObject go)
+            {
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+                foreach (var p in go.GetComponentsInChildren<ParticleSystem>(true)) p.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                foreach (var l in go.GetComponentsInChildren<Light>(true)) l.enabled = false;
+                foreach (var a in go.GetComponentsInChildren<AudioSource>(true)) a.Stop();
+            }
+
+            internal static void Rumble(Vector3 point, ZDOID projectile)
+            {
+                if (ZRoutedRpc.instance != null) ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, RumbleRpc, point, projectile);
+                else Play(point);
+            }
+
+            private static void OnRumble(long sender, Vector3 point, ZDOID projectile)
+            {
+                // Other players' copy of the waiting projectile is hidden too.
+                if (projectile != ZDOID.None && ZNetScene.instance)
+                {
+                    var instance = ZNetScene.instance.FindInstance(projectile);
+                    if (instance) Hide(instance.gameObject);
+                }
+                Play(point);
+            }
+
+            private static void Play(Vector3 point)
+            {
+                if (!rumble)
+                {
+                    var incinerator = ZNetScene.instance ? ZNetScene.instance.GetPrefab("incinerator") : null;
+                    var lever = incinerator ? incinerator.GetComponent<Incinerator>() : null;
+                    if (lever) foreach (var e in lever.m_leverEffects.m_effectPrefabs) if (e.m_prefab && e.m_prefab.name == "sfx_distant thunder") rumble = e.m_prefab;
+                    if (!rumble) { Utility.Log.LogWarning("Thunder rumble: the obliterator's sfx_distant thunder not found"); return; }
+                }
+                Object.Instantiate(rumble, point, Quaternion.identity);
+            }
+
+            [HarmonyPatch(typeof(ZRoutedRpc), MethodType.Constructor, typeof(bool))]
+            private static class Register
+            {
+                private static void Postfix(ZRoutedRpc __instance) => __instance.Register<Vector3, ZDOID>(RumbleRpc, OnRumble);
             }
         }
 

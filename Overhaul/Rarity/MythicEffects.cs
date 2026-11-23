@@ -186,8 +186,17 @@ namespace Overhaul.Rarity
                 if (moment > elapsed) { yield return new WaitForSeconds(moment - elapsed); elapsed = moment; }
                 if (!owner || owner.IsDead()) yield break;
                 Vector2 offset = UnityEngine.Random.insideUnitCircle * RainRadius;
-                Bolt(owner, center + new Vector3(offset.x, 0, offset.y), hit);
+                owner.StartCoroutine(RumbledBolt(owner, center + new Vector3(offset.x, 0, offset.y), hit));
             }
+        }
+
+        // A rain bolt: the obliterator's thunder rumble where it will fall, then the bolt a moment later.
+        private static System.Collections.IEnumerator RumbledBolt(Player owner, Vector3 point, HitData hit)
+        {
+            if (Physics.Raycast(point + Vector3.up * 40f, Vector3.down, out RaycastHit ground, 100f, Projectile.s_rayMaskSolids)) point = ground.point;
+            ThunderStaff.Thunder.Rumble(point, ZDOID.None);
+            yield return new WaitForSeconds(ThunderStaff.Thunder.RainDelay);
+            if (owner && !owner.IsDead()) Bolt(owner, point, hit);
         }
 
         // One bolt of the Lightning Strike staff falling on the ground under point, its area dealing hit's damage (also used by
