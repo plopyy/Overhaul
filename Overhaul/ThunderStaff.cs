@@ -134,17 +134,21 @@ namespace Overhaul
             {
                 if (!rumble)
                 {
+                    // The distant thunder is a child of the obliterator's lever effect (vfx_lever), next to its lever sound and sparks:
+                    // only that child is played.
                     var incinerator = ZNetScene.instance ? ZNetScene.instance.GetPrefab("incinerator") : null;
                     var lever = incinerator ? incinerator.GetComponentInChildren<Incinerator>(true) : null;
-                    if (lever) foreach (var e in lever.m_leverEffects.m_effectPrefabs) if (e.m_prefab && e.m_prefab.name.IndexOf("thunder", System.StringComparison.OrdinalIgnoreCase) >= 0) rumble = e.m_prefab;
-                    if (!rumble)
-                    {
-                        Utility.Log.LogWarning("Thunder rumble: the obliterator's distant thunder not found (incinerator " + (bool)incinerator + ", effects: "
-                            + (lever ? string.Join(", ", lever.m_leverEffects.m_effectPrefabs.Select(e => e.m_prefab ? e.m_prefab.name : "null")) : "-") + ")");
-                        return;
-                    }
+                    if (lever)
+                        foreach (var e in lever.m_leverEffects.m_effectPrefabs)
+                            if (e.m_prefab)
+                                foreach (var t in e.m_prefab.GetComponentsInChildren<ZSFX>(true))
+                                    if (t.name.IndexOf("thunder", System.StringComparison.OrdinalIgnoreCase) >= 0) rumble = t.gameObject;
+                    if (!rumble) { Utility.Log.LogWarning("Thunder rumble: the obliterator's distant thunder not found"); return; }
                 }
-                Object.Instantiate(rumble, point, Quaternion.identity);
+                var sound = Object.Instantiate(rumble, point, Quaternion.identity);
+                sound.SetActive(true);
+                // Its own parent's timed destruction is not copied with it.
+                Object.Destroy(sound, 8f);
             }
 
             [HarmonyPatch(typeof(ZRoutedRpc), MethodType.Constructor, typeof(bool))]
