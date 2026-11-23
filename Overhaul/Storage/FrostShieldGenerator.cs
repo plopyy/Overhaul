@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using HarmonyLib;
 using Jotunn.Entities;
 using Jotunn.Managers;
 using UnityEngine;
@@ -84,10 +86,28 @@ namespace Overhaul.Storage
         private readonly Dictionary<Character, bool> inside = new Dictionary<Character, bool>();
         private readonly List<Character> stale = new List<Character>();
 
+        internal static readonly List<FrostShieldBarrier> Active = new List<FrostShieldBarrier>();
+
         private void Awake()
         {
             shield = GetComponent<ShieldGenerator>();
             nview = GetComponent<ZNetView>();
+        }
+        private void OnEnable() => Active.Add(this);
+        private void OnDisable() => Active.Remove(this);
+
+        private bool Raised => shield && shield.m_shieldDome && shield.m_radius > 0f && shield.m_radiusTarget > 0f;
+        internal bool Covers(Vector3 point) => Raised && (point - shield.m_shieldDome.transform.position).sqrMagnitude < shield.m_radius * shield.m_radius;
+        internal Vector3 Center => shield.m_shieldDome.transform.position;
+        internal float CurrentRadius => shield.m_radius;
+        // Held out by this dome: not a free crosser and not one of the creatures that were already inside.
+        internal bool HoldsOut(Character c) => !FrostShieldGenerator.CanCross(c) && !(inside.TryGetValue(c, out bool isInside) && isInside);
+
+        // The dome covering a point that this creature is kept out of, if any.
+        internal static FrostShieldBarrier Shielding(Vector3 point, Character outsider)
+        {
+            foreach (var barrier in Active) if (barrier && barrier.Covers(point) && barrier.HoldsOut(outsider)) return barrier;
+            return null;
         }
 
         private void FixedUpdate()
@@ -134,6 +154,80 @@ namespace Overhaul.Storage
             stale.Clear();
             foreach (var key in inside.Keys) if (!key) stale.Add(key);
             foreach (var key in stale) inside.Remove(key);
+        }
+    }
+
+    // Monsters kept out of a dome ignore what is inside it; a target that runs into a dome is besieged for 30 s, then dropped.
+    internal static class FrostShieldSiege
+    {
+        internal const float Duration = 30f;
+        private sealed class Siege { internal Character Target; internal float Start; internal FrostShieldBarrier Dome; }
+        private static readonly ConditionalWeakTable<MonsterAI, Siege> Sieges = new ConditionalWeakTable<MonsterAI, Siege>();
+
+        private static bool Owner(BaseAI ai) => ai && ai.m_nview && ai.m_nview.IsValid() && ai.m_nview.IsOwner() && ai.m_character;
+
+        private static Siege Current(BaseAI ai) => ai is MonsterAI monster && Sieges.TryGetValue(monster, out var siege) && siege.Dome ? siege : null;
+
+        [HarmonyPatch(typeof(BaseAI), nameof(BaseAI.FindEnemy))]
+        private static class IgnoreShielded
+        {
+            private static void Postfix(BaseAI __instance, ref Character __result)
+            {
+                if (__result && FrostShieldBarrier.Active.Count > 0 && Owner(__instance) && FrostShieldBarrier.Shielding(__result.transform.position, __instance.m_character)) __result = null;
+            }
+        }
+
+        [HarmonyPatch(typeof(MonsterAI), "UpdateTarget")]
+        private static class Besiege
+        {
+            private static void Postfix(MonsterAI __instance, ref bool canHearTarget, ref bool canSeeTarget)
+            {
+                var ai = __instance;
+                if (FrostShieldBarrier.Active.Count == 0 || !Owner(ai)) { if (ai) Sieges.Remove(ai); return; }
+                if (ai.m_targetStatic && FrostShieldBarrier.Shielding(ai.m_targetStatic.transform.position, ai.m_character)) ai.m_targetStatic = null;
+                var target = ai.m_targetCreature;
+                var dome = target ? FrostShieldBarrier.Shielding(target.transform.position, ai.m_character) : null;
+                if (!dome) { Sieges.Remove(ai); return; }
+                var siege = Sieges.GetOrCreateValue(ai);
+                if (siege.Target != target) { siege.Target = target; siege.Start = Time.time; }
+                siege.Dome = dome;
+                if (Time.time - siege.Start < Duration) return;
+                Sieges.Remove(ai);
+                ai.m_targetCreature = null;
+                canHearTarget = canSeeTarget = false;
+                ai.SetAlerted(false);
+                ai.SetTargetInfo(ZDOID.None);
+            }
+        }
+
+        // Besiegers walk up to the dome, then wait at its edge facing their target.
+        [HarmonyPatch(typeof(BaseAI), nameof(BaseAI.MoveTowards))]
+        private static class HoldAtEdge
+        {
+            private static bool Prefix(BaseAI __instance)
+            {
+                var siege = Current(__instance);
+                if (siege == null || !siege.Target) return true;
+                var c = __instance.m_character;
+                if ((c.transform.position - siege.Dome.Center).magnitude > siege.Dome.CurrentRadius + c.GetRadius() + 4f) return true;
+                c.SetMoveDir(Vector3.zero);
+                c.SetRun(false);
+                var look = siege.Target.transform.position - c.transform.position;
+                if (Utils.LengthXZ(look) > .01f) __instance.LookTowards(look.normalized);
+                return false;
+            }
+        }
+
+        // No attack at a target behind the dome (melee through the wall, ranged shots wasted on it).
+        [HarmonyPatch(typeof(MonsterAI), "DoAttack")]
+        private static class NoAttack
+        {
+            private static bool Prefix(MonsterAI __instance, ref bool __result)
+            {
+                if (Current(__instance) == null) return true;
+                __result = false;
+                return false;
+            }
         }
     }
 }
