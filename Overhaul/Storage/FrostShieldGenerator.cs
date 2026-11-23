@@ -85,6 +85,7 @@ namespace Overhaul.Storage
         // Creatures seen inside the dome when it was raised (or that spawned in it) stay free until they leave.
         private readonly Dictionary<Character, bool> inside = new Dictionary<Character, bool>();
         private readonly List<Character> stale = new List<Character>();
+        private bool wasRaised;
 
         internal static readonly List<FrostShieldBarrier> Active = new List<FrostShieldBarrier>();
 
@@ -96,7 +97,7 @@ namespace Overhaul.Storage
         private void OnEnable() => Active.Add(this);
         private void OnDisable() => Active.Remove(this);
 
-        private bool Raised => shield && shield.m_shieldDome && shield.m_radius > 0f && shield.m_radiusTarget > 0f;
+        internal bool Raised => shield && shield.m_shieldDome && shield.m_radius > 0f && shield.m_radiusTarget > 0f;
         internal bool Covers(Vector3 point) => Raised && (point - shield.m_shieldDome.transform.position).sqrMagnitude < shield.m_radius * shield.m_radius;
         internal Vector3 Center => shield.m_shieldDome.transform.position;
         internal float CurrentRadius => shield.m_radius;
@@ -114,7 +115,9 @@ namespace Overhaul.Storage
         {
             if (!shield || !nview || !nview.IsValid() || !shield.m_shieldDome) return;
             float radius = shield.m_radius;
-            if (radius <= 0f || shield.m_radiusTarget <= 0f) { inside.Clear(); return; }
+            if (radius <= 0f || shield.m_radiusTarget <= 0f) { inside.Clear(); wasRaised = false; return; }
+            if (!wasRaised && radius >= FrostShieldGenerator.Radius - .01f) { wasRaised = true; FrostShieldLogs.CheckAll(this); }
+            FrostShieldLogs.Tick();
             var center = shield.m_shieldDome.transform.position;
             float reach = FrostShieldGenerator.Radius + 5f;
             foreach (var c in Character.GetAllCharacters())
@@ -151,7 +154,6 @@ namespace Overhaul.Storage
                 }
                 c.transform.position = position;
             }
-            FrostShieldLogs.Check(center, radius);
             stale.Clear();
             foreach (var key in inside.Keys) if (!key) stale.Add(key);
             foreach (var key in stale) inside.Remove(key);
@@ -159,11 +161,14 @@ namespace Overhaul.Storage
     }
 
     // Tree logs touching a dome (thrown by frost trolls, or a felled trunk falling on it) break into their wood and other loot.
+    // Event driven: logs present when a dome is raised are checked once; a log spawned near a raised dome is watched only while it moves.
     internal static class FrostShieldLogs
     {
-        internal static readonly HashSet<TreeLog> Logs = new HashSet<TreeLog>();
-        private static readonly List<TreeLog> stale = new List<TreeLog>(), breaking = new List<TreeLog>();
+        private const float WatchTime = 15f;
+        private static readonly Dictionary<TreeLog, float> watched = new Dictionary<TreeLog, float>();
+        private static readonly List<TreeLog> done = new List<TreeLog>(), breaking = new List<TreeLog>();
         private static List<TreeLog> spawned;
+        private static float lastTick = -1f;
         private static readonly System.Action<TreeLog, HitData, bool> NativeDestroy =
             AccessTools.MethodDelegate<System.Action<TreeLog, HitData, bool>>(AccessTools.Method(typeof(TreeLog), "Destroy"));
 
@@ -172,21 +177,38 @@ namespace Overhaul.Storage
         {
             private static void Postfix(TreeLog __instance)
             {
-                Logs.Add(__instance);
-                spawned?.Add(__instance);
+                if (spawned != null) { spawned.Add(__instance); return; }
+                foreach (var barrier in FrostShieldBarrier.Active)
+                    if (barrier && barrier.Raised && (__instance.transform.position - barrier.Center).sqrMagnitude < 80f * 80f) { watched[__instance] = Time.time + WatchTime; return; }
             }
         }
 
-        internal static void Check(Vector3 center, float radius)
+        // Once, when a dome reaches its full size.
+        internal static void CheckAll(FrostShieldBarrier barrier)
         {
-            breaking.Clear(); stale.Clear();
-            foreach (var log in Logs)
-            {
-                if (!log) { stale.Add(log); continue; }
-                if (Straddles(log, center, radius)) breaking.Add(log);
-            }
-            foreach (var log in stale) Logs.Remove(log);
+            breaking.Clear();
+            foreach (var log in Object.FindObjectsByType<TreeLog>(FindObjectsSortMode.None))
+                if (Straddles(log, barrier.Center, barrier.CurrentRadius)) breaking.Add(log);
             foreach (var log in breaking) Break(log);
+        }
+
+        // Only logs that just spawned near a raised dome, until they rest or time out; once per physics tick for all domes.
+        internal static void Tick()
+        {
+            if (watched.Count == 0 || lastTick == Time.fixedTime) return;
+            lastTick = Time.fixedTime;
+            done.Clear(); breaking.Clear();
+            foreach (var pair in watched)
+            {
+                var log = pair.Key;
+                if (!log || Time.time > pair.Value) { done.Add(log); continue; }
+                foreach (var barrier in FrostShieldBarrier.Active)
+                    if (barrier && barrier.Raised && Straddles(log, barrier.Center, barrier.CurrentRadius)) { breaking.Add(log); break; }
+                var body = log.GetComponent<Rigidbody>();
+                if (body && body.IsSleeping()) done.Add(log);
+            }
+            foreach (var log in breaking) { done.Add(log); Break(log); }
+            foreach (var log in done) watched.Remove(log);
         }
 
         private static bool Straddles(TreeLog log, Vector3 center, float radius)
