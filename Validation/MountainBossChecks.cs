@@ -122,7 +122,7 @@ public static class MountainBossChecks
                 Check(ZDOMan.instance.m_objectsByID.Count==objects,"Planning does not spawn monsters or loot");generator.Save();seen.Add(Convert.ToBase64String(view.GetZDO().GetByteArray(ZDOVars.s_roomData,null)));
                 var visitRooms=(List<Bounds>)Call(runtime,"ReadVisitRooms",view.GetZDO());
                 Check(visitRooms.Count==DungeonGenerator.m_placedRooms.Count,"All native saved mountain rooms can be read by command targeting");
-                if(seed<5){generator.Clear();DungeonGenerator.m_placedRooms.Clear();generator.Load();Check(generator.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.Name=="Overhaul_MountainCave_BossRoom")==1,"Saved mountain plan retains one arena");generator.Spawn();Check(ZDOMan.instance.m_objectsByID.Count==objects,"Client reconstruction spawns no new network objects");}
+                if(seed<5){generator.Clear();DungeonGenerator.m_placedRooms.Clear();generator.Load();Check(generator.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.name=="Overhaul_MountainCave_BossRoom")==1,"Saved mountain plan retains one arena");generator.Spawn();Check(ZDOMan.instance.m_objectsByID.Count==objects,"Client reconstruction spawns no new network objects");}
             }
             Check(seen.Count==200,"All mountain seeds generate distinct plans");
             int ek=(int)encounter.GetField("EncounterKey",All).GetValue(null),bk=(int)encounter.GetField("BossKey",All).GetValue(null),dk=(int)encounter.GetField("DefeatedKey",All).GetValue(null);

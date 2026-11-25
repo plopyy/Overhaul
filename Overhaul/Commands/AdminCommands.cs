@@ -292,7 +292,7 @@ namespace Overhaul.Commands
             evacuations.Add(new Evacuation { World = ZDOMan.instance, Peer = peer, Character = character.m_uid,
                 Target = target.m_uid, Epoch = target.GetInt(DungeonRuntime.EpochKey, 0), Location = location,
                 Deadline = Time.realtimeSinceStartup + 60f });
-            return "Overhaul : sortie vers l'entree exterieure de " + location.m_prefab.Name + " " + target.m_uid + ", puis tentative de reset de ce donjon uniquement.";
+            return "Overhaul : sortie vers l'entree exterieure de " + location.m_prefab.name + " " + target.m_uid + ", puis tentative de reset de ce donjon uniquement.";
         }
 
         internal static bool TryGetExterior(GameObject prefab, ZDO proxy, out Vector3 point, out Quaternion rotation)

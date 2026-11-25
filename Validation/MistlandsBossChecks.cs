@@ -75,7 +75,7 @@ public static class MistlandsBossChecks
                 DungeonGenerator.m_placedRooms.Remove(boss);Check(!dg.TestCollision(boss,boss.transform.position,boss.transform.rotation),"reserved arena incl secrets has no room overlap seed "+seed);DungeonGenerator.m_placedRooms.Add(boss);
                 Check(DungeonGenerator.m_placedRooms.All(r=>r.name.StartsWith("dvergr_")||r==boss),"only native mine connectors seed "+seed);
                 dg.Save();plans.Add(Convert.ToBase64String(nv.GetZDO().GetByteArray(ZDOVars.s_roomData,null)));
-                if(seed<5){int count=manager.m_objectsByID.Count;dg.Clear();DungeonGenerator.m_placedRooms.Clear();dg.Load();Check(dg.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.Name=="Overhaul_Mistlands_BossRoom")==1,"saved mine retains one boss room "+seed);dg.Spawn();Check(manager.m_objectsByID.Count==count,"client reconstruction creates no new network objects "+seed);}
+                if(seed<5){int count=manager.m_objectsByID.Count;dg.Clear();DungeonGenerator.m_placedRooms.Clear();dg.Load();Check(dg.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.name=="Overhaul_Mistlands_BossRoom")==1,"saved mine retains one boss room "+seed);dg.Spawn();Check(manager.m_objectsByID.Count==count,"client reconstruction creates no new network objects "+seed);}
             }
             Check(plans.Count==200,"200 distinct native plans, minimum boss depth "+minDepth);
         }

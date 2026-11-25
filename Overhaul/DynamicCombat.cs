@@ -1185,7 +1185,7 @@ namespace Overhaul
 			}
 
 			Quaternion effectRotation = Quaternion.LookRotation(direction, Vector3.up);
-			GameObject effect = SoftReferenceableAssets.Utils.Instantiate(effectReference,
+			GameObject effect = SoftReferenceableAssets.SoftReferenceUtility.Instantiate(effectReference,
 				player.transform.position, effectRotation);
 			effectReference.Release();
 			if (effect == null)

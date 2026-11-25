@@ -30,11 +30,6 @@ namespace Overhaul.Performance
                     grassEye = camera.transform.position;
                 }
                 if (r.m_instanceCount == 0) return false;
-                if (r.m_frustumCull)
-                {
-                    if (r.m_dirtyBounds) r.UpdateBounds();
-                    if (!Utils.InsideMainCamera(r.m_bounds)) return false;
-                }
                 if (!r.m_useLod)
                 {
                     Graphics.DrawMeshInstanced(r.m_mesh, 0, r.m_material, r.m_instances, r.m_instanceCount, null, r.m_shadowCasting, true, InstanceRenderer.s_layer);

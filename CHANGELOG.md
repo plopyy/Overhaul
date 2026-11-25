@@ -1,7 +1,8 @@
-# Changelog
+﻿# Changelog
 
 ## 2.4.0 (in progress)
 
+- Compatible with Valheim 1.0.30: dungeon resets, visits and guardian rooms, the Jotun dash effect, the SQLite world save and the lean grass drawing no longer fail on the changed game code. (2.4.0.695)
 - Portal window: no longer stays greyed out and impossible to close when opened right after arriving through a portal (a loading screen shown after it took the focus); Escape always closes it. (2.4.0.664)
 - Dyes: pure black now stays really black and pure white really white (relief around dark dyes mostly downward, highlight roll-off raised); Bronze, Iron, Root, Wolf (with wolf cape) and Fenris sets dyeable.
 - Dye window: "Contrast" renamed "Brightness" (black on the left), new per-zone "Relief" slider (flat to strong grain, middle = as before; changing it alone costs one mystic dye).

@@ -17,13 +17,13 @@ namespace Overhaul.Persistence
                 Position=Components(z.m_position),Rotation=Components(z.m_rotation),Flags=(z.Persistent?256:0)|(z.Distant?512:0)|((int)z.Type<<10)};
             ZDOExtraData.GetData(z.m_uid,out var floats,out var vectors,out var quats,out var ints,out var longs,out var strings,out var bytes,out var connection);
             void Add(int key,string type,object value){if(!ZDOExtraData.s_sessionOnly.Contains(key))o.Properties.Add(new PropertyRecord{Key=key,Name=NameCatalog.Key(key),Type=type,Value=value});}
-            if(floats!=null)foreach(var p in floats)Add(p.Key,"float",p.Value);
-            if(vectors!=null)foreach(var p in vectors)Add(p.Key,"vector3",Components(p.Value));
-            if(quats!=null)foreach(var p in quats)Add(p.Key,"quaternion",new[]{p.Value.x,p.Value.y,p.Value.z,p.Value.w});
-            if(ints!=null)foreach(var p in ints)Add(p.Key,"int",p.Value);
-            if(longs!=null)foreach(var p in longs)Add(p.Key,"long",p.Value);
-            if(strings!=null)foreach(var p in strings)Add(p.Key,"string",p.Value);
-            if(bytes!=null)foreach(var p in bytes)Add(p.Key,"bytes",(byte[])p.Value.Clone());
+            for(int i=0;i<floats.Count;i++){var p=floats[i];Add(p.Key,"float",p.Value);}
+            for(int i=0;i<vectors.Count;i++){var p=vectors[i];Add(p.Key,"vector3",Components(p.Value));}
+            for(int i=0;i<quats.Count;i++){var p=quats[i];Add(p.Key,"quaternion",new[]{p.Value.x,p.Value.y,p.Value.z,p.Value.w});}
+            for(int i=0;i<ints.Count;i++){var p=ints[i];Add(p.Key,"int",p.Value);}
+            for(int i=0;i<longs.Count;i++){var p=longs[i];Add(p.Key,"long",p.Value);}
+            for(int i=0;i<strings.Count;i++){var p=strings[i];Add(p.Key,"string",p.Value);}
+            for(int i=0;i<bytes.Count;i++){var p=bytes[i];Add(p.Key,"bytes",(byte[])p.Value.Clone());}
             if(connection!=null){o.ConnectionType=(int)connection.m_type;o.TargetUser=connection.m_target.UserID;o.TargetId=connection.m_target.ID;}
             return o;
         }

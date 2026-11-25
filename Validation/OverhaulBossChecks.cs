@@ -286,7 +286,7 @@ public static class OverhaulBossChecks
 			{
 				string[] obj2 = new string[11]
 				{
-					r.m_prefab.Name,
+					r.m_prefab.name,
 					" ",
 					null,
 					null,
@@ -349,7 +349,7 @@ public static class OverhaulBossChecks
 					generator.Clear();
 					DungeonGenerator.m_placedRooms.Clear();
 					generator.Load();
-					Check(generator.m_loadedRooms.Count((DungeonGenerator.RoomPlacementData r) => r.m_roomData.m_prefab.Name == "Overhaul_ForestCrypt_BossRoom") == 1, "Saved room contract resolves arena exactly once");
+					Check(generator.m_loadedRooms.Count((DungeonGenerator.RoomPlacementData r) => r.m_roomData.m_prefab.name == "Overhaul_ForestCrypt_BossRoom") == 1, "Saved room contract resolves arena exactly once");
 					generator.Spawn();
 					Check(generator.GetComponentsInChildren<Room>().Length == array6.Length, "Native client rebuilds complete plan");
 					Check(ZDOMan.instance.m_objectsByID.Count == count, "Reload spawns no duplicate boss/chest");

@@ -113,7 +113,7 @@ public static class SwampBossChecks
                 Check(rooms.All(r=>!r.name.StartsWith("Overhaul_Forest")),"Swamp uses only native swamp connector rooms");
                 DungeonGenerator.m_placedRooms.Remove(boss);Check(!generator.TestCollision(boss,boss.transform.position,boss.transform.rotation),"Arena never intersects native rooms");DungeonGenerator.m_placedRooms.Add(boss);
                 Check(ZDOMan.instance.m_objectsByID.Count==objects,"Planning does not spawn monsters or loot");generator.Save();seen.Add(Convert.ToBase64String(view.GetZDO().GetByteArray(ZDOVars.s_roomData,null)));
-                if(seed<5){generator.Clear();DungeonGenerator.m_placedRooms.Clear();generator.Load();Check(generator.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.Name=="Overhaul_SunkenCrypt_BossRoom")==1,"Saved swamp plan retains one arena");generator.Spawn();Check(ZDOMan.instance.m_objectsByID.Count==objects,"Client reconstruction spawns no new network objects");}
+                if(seed<5){generator.Clear();DungeonGenerator.m_placedRooms.Clear();generator.Load();Check(generator.m_loadedRooms.Count(r=>r.m_roomData.m_prefab.name=="Overhaul_SunkenCrypt_BossRoom")==1,"Saved swamp plan retains one arena");generator.Spawn();Check(ZDOMan.instance.m_objectsByID.Count==objects,"Client reconstruction spawns no new network objects");}
             }
             Check(seen.Count==200,"All swamp seeds generate distinct plans");
             File.WriteAllText("../../../Tools/BossDungeonWork/Swamp/stair-connections.csv",stairsReport.ToString());

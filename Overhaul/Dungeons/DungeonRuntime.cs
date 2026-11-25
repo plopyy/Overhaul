@@ -180,18 +180,18 @@ namespace Overhaul.Dungeons
             {
                 if (proxy.GetPrefab() != prefab) continue;
                 var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-                if (location == null || !enabled.Contains(location.m_prefab.Name)) continue;
+                if (location == null || !enabled.Contains(location.m_prefab.name)) continue;
                 reports.Remove(proxy.m_uid);
                 if (preparation != null && preparation.Id == proxy.m_uid)
                 {
-                    Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + proxy.m_uid + " : chargement deja en cours");
+                    Log.LogInfo("Dungeon " + location.m_prefab.name + " " + proxy.m_uid + " : chargement deja en cours");
                     count++;
                     continue;
                 }
                 proxy.SetOwner(ZNet.GetUID());
                 proxy.Set(RequestedKey, true);
                 QueueReset(proxy.m_uid);
-                Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + proxy.m_uid + " : demande admin enregistree");
+                Log.LogInfo("Dungeon " + location.m_prefab.name + " " + proxy.m_uid + " : demande admin enregistree");
                 count++;
             }
             nextTick = 0;
@@ -217,10 +217,10 @@ namespace Overhaul.Dungeons
         internal static string ManualTargetRefusal(ZDO target)
         {
             var location = ZoneSystem.instance.GetLocation(target.GetInt(ZDOVars.s_location, 0));
-            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.Name)) return "Overhaul : cible non autorisee.";
-            string label = location.m_prefab.Name + " " + target.m_uid;
+            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.name)) return "Overhaul : cible non autorisee.";
+            string label = location.m_prefab.name + " " + target.m_uid;
             var enabled = new HashSet<string>(OverhaulConfig.ResetLocations.Value.Split(',').Select(s => s.Trim()));
-            if (!enabled.Contains(location.m_prefab.Name)) return "Overhaul : " + label + " ignore, reset desactive dans la configuration.";
+            if (!enabled.Contains(location.m_prefab.name)) return "Overhaul : " + label + " ignore, reset desactive dans la configuration.";
 
             return null;
         }
@@ -229,7 +229,7 @@ namespace Overhaul.Dungeons
         {
             string refused = ManualTargetRefusal(target);
             if (refused != null) return refused;
-            string label = ZoneSystem.instance.GetLocation(target.GetInt(ZDOVars.s_location, 0)).m_prefab.Name + " " + target.m_uid;
+            string label = ZoneSystem.instance.GetLocation(target.GetInt(ZDOVars.s_location, 0)).m_prefab.name + " " + target.m_uid;
             reports.Remove(target.m_uid);
             if (preparation != null && preparation.Id == target.m_uid) return "Overhaul : " + label + ", chargement deja en cours.";
             target.SetOwner(ZNet.GetUID());
@@ -251,7 +251,7 @@ namespace Overhaul.Dungeons
             {
                 if (proxy.GetPrefab() != prefab) continue;
                 var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-                if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.Name)) continue;
+                if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.name)) continue;
                 if (inside)
                 {
                     if (position.y >= 11000)
@@ -344,7 +344,7 @@ namespace Overhaul.Dungeons
             if (requested) proxy.Set(RequestedKey, false);
             ZoneSystem.ZoneLocation location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
             if (location == null) return;
-            string name = location.m_prefab.Name;
+            string name = location.m_prefab.name;
             if (!DungeonPolicy.Supported.Contains(name)) return;
             // Finish an already committed transaction even if configuration was disabled afterwards.
             byte[] journal = proxy.GetByteArray(JournalKey, null);
@@ -369,18 +369,18 @@ namespace Overhaul.Dungeons
             // A first generation fills an empty interior: the player waiting at its arrival point loses nothing.
             if (!first && !KnownPlayersClear(proxy, location))
             {
-                Report(proxy, location.m_prefab.Name, "joueur dans le donjon, chargement evite");
+                Report(proxy, location.m_prefab.name, "joueur dans le donjon, chargement evite");
                 return;
             }
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
-            if (!ZoneSystem.instance.IsZoneGenerated(zone)) { Report(proxy, location.m_prefab.Name, "secteur non genere"); return; }
+            if (!ZoneSystem.instance.IsZoneGenerated(zone)) { Report(proxy, location.m_prefab.name, "secteur non genere"); return; }
             var next = recovery || first ? location : NextVersion(location);
             preparation = new Preparation { Id = proxy.m_uid, Location = location, Next = next, Recovery = recovery, Manual = manual, First = first, Deadline = Time.realtimeSinceStartup + 60f };
             queued.Add(proxy.m_uid);
             // Keep our own reference, independent of the native streaming cache lifetime.
             location.m_prefab.LoadAsync();
             if (next != location) next.m_prefab.LoadAsync();
-            Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + proxy.m_uid + " : chargement des assets et du terrain (maximum 60 s)");
+            Log.LogInfo("Dungeon " + location.m_prefab.name + " " + proxy.m_uid + " : chargement des assets et du terrain (maximum 60 s)");
             AdvancePreparation(Time.realtimeSinceStartup);
         }
 
@@ -400,7 +400,7 @@ namespace Overhaul.Dungeons
             if (work == null) return;
             ZDO proxy = session.GetZDO(work.Id);
             if (proxy == null) { EndPreparation(); return; }
-            string name = work.Location.m_prefab.Name;
+            string name = work.Location.m_prefab.name;
             if (realtime >= work.Deadline)
             {
                 Report(proxy, name, "chargement expire apres 60 s, tentative abandonnee");
@@ -445,8 +445,8 @@ namespace Overhaul.Dungeons
         // A dvergr tower comes back as any of the tower versions; other locations as themselves.
         private static ZoneSystem.ZoneLocation NextVersion(ZoneSystem.ZoneLocation location)
         {
-            if (!DungeonPolicy.Towers.Contains(location.m_prefab.Name)) return location;
-            var versions = ZoneSystem.instance.m_locations.Where(l => l != null && l.m_enable && l.m_prefab.IsValid && DungeonPolicy.Towers.Contains(l.m_prefab.Name)).ToList();
+            if (!DungeonPolicy.Towers.Contains(location.m_prefab.name)) return location;
+            var versions = ZoneSystem.instance.m_locations.Where(l => l != null && l.m_enable && l.m_prefab.IsValid && DungeonPolicy.Towers.Contains(l.m_prefab.name)).ToList();
             return versions.Count == 0 ? location : versions[UnityEngine.Random.Range(0, versions.Count)];
         }
 
@@ -461,7 +461,7 @@ namespace Overhaul.Dungeons
                 instance.m_location = next;
                 ZoneSystem.instance.m_locationInstances[zone] = instance;
             }
-            Log.LogInfo("Dungeon " + proxy.m_uid + " : nouvelle version " + next.m_prefab.Name);
+            Log.LogInfo("Dungeon " + proxy.m_uid + " : nouvelle version " + next.m_prefab.name);
         }
 
         private static void Reset(ZDO proxy, ZoneSystem.ZoneLocation location, ZoneSystem.ZoneLocation next, bool first = false)
@@ -470,7 +470,7 @@ namespace Overhaul.Dungeons
             // Consume it before any occupied/migration/placement failure can return.
             proxy.Set(RequestedKey, false);
             string owner = Identity(proxy);
-            string name = location.m_prefab.Name;
+            string name = location.m_prefab.name;
             // Stable snapshot of IDs only: ZDOPool can reuse destroyed ZDO instances during staging.
             ZDOID[] world = session.m_objectsByID.Keys.ToArray();
             List<ZDOID> old = world.Where(id => { ZDO z = session.GetZDO(id); return z != null && z != proxy && z.GetString(OwnerKey, "") == owner; }).ToList();
@@ -651,7 +651,7 @@ namespace Overhaul.Dungeons
         private static Capture Stage(ZDO proxy, ZoneSystem.ZoneLocation location, Dictionary<int, ZDO> previous, bool replay, int seed)
         {
             var capture = new Capture { Staging = true, Replay = replay, Seed = seed, Epoch = proxy.GetInt(EpochKey, 0) + 1, Parent = proxy };
-            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.Name);
+            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.name);
             if (!replay && (boss || LaneFits(location)))
                 capture.InteriorHeight = BossInteriorReservation.ChooseHeight(proxy);
             foreach (var pair in previous) capture.PreviousGenerators.Add(pair.Key, pair.Value);
@@ -705,7 +705,7 @@ namespace Overhaul.Dungeons
 
         private static bool LaneFits(ZoneSystem.ZoneLocation location)
         {
-            if (laneUnfit.Contains(location.m_prefab.Name)) return false;
+            if (laneUnfit.Contains(location.m_prefab.name)) return false;
             Location loc = location.m_prefab.Asset ? location.m_prefab.Asset.GetComponent<Location>() : null;
             if (!loc || !loc.m_hasInterior || !BossInteriorPlacement.FindInterior(loc)) return false;
             // Native zone heights (often 256 m) are loose bounds: CheckLane measures the rooms actually placed.
@@ -733,7 +733,7 @@ namespace Overhaul.Dungeons
                     if (zdo != null && zdo.GetPosition().y > 3000 && !lane.Contains(zdo.GetPosition())) { outside = "objet a " + zdo.GetPosition(); break; }
                 }
             if (outside == null) { capture.Objects.Select(session.GetZDO).First(z => z != null).Set(BossInteriorReservation.HeightKey, capture.InteriorHeight); return; }
-            laneUnfit.Add(location.m_prefab.Name);
+            laneUnfit.Add(location.m_prefab.name);
             throw new LaneMismatch("interieur hors du couloir de hauteur (" + outside + "), regeneration a la hauteur d'origine");
         }
 
