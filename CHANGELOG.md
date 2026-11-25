@@ -1,6 +1,11 @@
 ﻿﻿# Changelog
 
-## 2.3.1 (in progress)
+## 2.3.2 (in progress)
+
+### Fixed
+- Compatible with Valheim 1.0.30: dungeon resets, visits and guardian rooms, the Jotun dash effect and the SQLite world save no longer fail on the renamed game methods.
+
+## 2.3.1
 
 ### Added
 - **Server passwords** are remembered per server on your computer, so you connect without typing them again. A refused password is forgotten.

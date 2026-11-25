@@ -46,7 +46,7 @@ namespace Overhaul.Dungeons
         {
             __state = null;
             if (DungeonRuntime.Current != null || mode == ZoneSystem.SpawnMode.Client || ZNet.instance == null || !ZNet.instance.IsServer()) return;
-            if (!DungeonPolicy.Supported.Contains(location.m_prefab.Name)) return;
+            if (!DungeonPolicy.Supported.Contains(location.m_prefab.name)) return;
             __state = new DungeonRuntime.Capture();
             DungeonRuntime.Current = __state;
         }

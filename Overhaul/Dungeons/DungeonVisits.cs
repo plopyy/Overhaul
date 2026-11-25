@@ -19,7 +19,7 @@ namespace Overhaul.Dungeons
         {
             if (!ZoneSystem.instance) return;
             var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.Name)) return;
+            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.name)) return;
             Vector2s zone = ZoneSystem.GetZone(proxy.GetPosition());
             HashSet<ZDOID> sites;
             if (!visitSites.TryGetValue(zone, out sites)) visitSites[zone] = sites = new HashSet<ZDOID>();
@@ -35,10 +35,10 @@ namespace Overhaul.Dungeons
         private static bool EligibleForSweep(ZDO proxy, long utcTicks)
         {
             var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.Name)) return false;
+            if (location == null || !DungeonPolicy.Supported.Contains(location.m_prefab.name)) return false;
             byte[] journal = proxy.GetByteArray(JournalKey, null);
             if (journal != null && journal.Length != 0) return true; // Complete a transaction already started.
-            if (!selected.Contains(location.m_prefab.Name)) return false;
+            if (!selected.Contains(location.m_prefab.name)) return false;
             long visited = proxy.GetLong(VisitStartedKey, 0);
             if (visited == 0) return false; // Manual requests keep their separate one-shot queue.
             // Manual requests enter the queue directly. They must never override the deadline
@@ -92,7 +92,7 @@ namespace Overhaul.Dungeons
                         if (journal != null && journal.Length != 0) continue;
                         // Towers wait for an alteration instead (DungeonAlterations).
                         var site = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-                        if (site != null && DungeonPolicy.Towers.Contains(site.m_prefab.Name)) continue;
+                        if (site != null && DungeonPolicy.Towers.Contains(site.m_prefab.name)) continue;
                         try
                         {
                             List<Bounds> volumes = GetVisitBounds(proxy);
@@ -104,7 +104,7 @@ namespace Overhaul.Dungeons
                             if (visitIssues.TryGetValue(id, out previous) && previous == e.Message) continue;
                             visitIssues[id] = e.Message;
                             var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-                            Log.LogInfo("Dungeon " + (location == null ? "inconnu" : location.m_prefab.Name) + " " + id +
+                            Log.LogInfo("Dungeon " + (location == null ? "inconnu" : location.m_prefab.name) + " " + id +
                                 " : detection de visite indisponible (" + e.Message + "). Ceci n'est pas une tentative de reset.");
                         }
                     }

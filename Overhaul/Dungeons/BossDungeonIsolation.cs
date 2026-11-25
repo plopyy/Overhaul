@@ -11,7 +11,7 @@ namespace Overhaul.Dungeons
         private static void Prefix(ZoneSystem.ZoneLocation location, Vector3 pos, ZoneSystem.SpawnMode mode, out State __state)
         {
             __state = null;
-            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.Name);
+            bool boss = BossDungeonLayout.IsSupported(location.m_prefab.name);
             var current = DungeonRuntime.Current;
             // Boss layouts always use a lane; other interiors only once a reset has moved them into one.
             bool use = mode == ZoneSystem.SpawnMode.Client ? BossInteriorReservation.Lane(BossDungeonLayout.LoadingProxy)

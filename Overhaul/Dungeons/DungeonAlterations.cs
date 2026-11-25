@@ -35,16 +35,16 @@ namespace Overhaul.Dungeons
                     ZDO proxy = session.GetZDO(id);
                     if (proxy == null || proxy.GetLong(VisitStartedKey, 0) != 0) continue;
                     var location = ZoneSystem.instance.GetLocation(proxy.GetInt(ZDOVars.s_location, 0));
-                    if (location == null || !DungeonPolicy.Towers.Contains(location.m_prefab.Name)) continue;
+                    if (location == null || !DungeonPolicy.Towers.Contains(location.m_prefab.name)) continue;
                     byte[] journal = proxy.GetByteArray(JournalKey, null);
                     if (journal != null && journal.Length != 0) continue;
                     try
                     {
                         List<Bounds> volumes = GetVisitBounds(proxy);
                         if (volumes != null && StartFirstVisit(proxy, position, volumes, DateTime.UtcNow.Ticks))
-                            Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + id + " : tour alteree, delai de reset demarre");
+                            Log.LogInfo("Dungeon " + location.m_prefab.name + " " + id + " : tour alteree, delai de reset demarre");
                     }
-                    catch (Exception e) { Log.LogInfo("Dungeon " + location.m_prefab.Name + " " + id + " : alteration non prise en compte (" + e.Message + ")"); }
+                    catch (Exception e) { Log.LogInfo("Dungeon " + location.m_prefab.name + " " + id + " : alteration non prise en compte (" + e.Message + ")"); }
                 }
             }
         }
